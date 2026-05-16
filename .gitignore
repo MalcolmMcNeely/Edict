@@ -1,0 +1,93 @@
+# ==========================================
+# Edict — .gitignore
+# .NET / C# + JetBrains Rider
+# ==========================================
+
+# Build output
+bin/
+obj/
+out/
+publish/
+
+# .NET
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!**/packages/repositories.config
+*.nuspec
+
+# ASP.NET / Blazor
+**/wwwroot/dist/
+**/wwwroot/.vite/
+appsettings.Development.json
+appsettings.Local.json
+
+# Secrets — never commit these
+**/secrets.json
+**/accuracy-settings.json
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem
+.env
+.env.*
+!.env.example
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# Visual Studio (in case anyone else joins)
+.vs/
+*.VC.db
+*.VC.opendb
+*.vcxproj.filters
+*.vcxproj.user
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+lcov.info
+
+# Verify snapshot testing — received files are never committed
+*.received.txt
+*.received.xml
+*.received.json
+*.received.*
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# Docker
+.dockerignore
+
+# Terraform / infra (if you add it later)
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
