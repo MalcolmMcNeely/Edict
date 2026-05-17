@@ -1,0 +1,14 @@
+{
+  IsAbstract: true,
+  ExternallyConstructible: false,
+  Variants: [
+    {
+      Name: Accepted,
+      IsSealed: true
+    },
+    {
+      Name: Rejected,
+      IsSealed: true
+    }
+  ]
+}

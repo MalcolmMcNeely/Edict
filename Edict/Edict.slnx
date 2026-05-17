@@ -5,4 +5,6 @@
     <File Path="../README.md" />
   </Folder>
   <Project Path="Edict.Core/Edict.Core.csproj" />
+  <Project Path="Edict.Abstractions/Edict.Abstractions.csproj" />
+  <Project Path="Edict.Abstractions.Tests/Edict.Abstractions.Tests.csproj" />
 </Solution>
