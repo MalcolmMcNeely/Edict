@@ -6,7 +6,25 @@
       "Bash(gh label *)",
       "Bash(chmod +x .claude/hooks/block-dangerous-git.sh)",
       "Bash(bash .claude/hooks/block-dangerous-git.sh)",
-      "Bash(echo \"allow-case exit=$?\")"
+      "Bash(echo \"allow-case exit=$?\")",
+      "Bash(Get-ChildItem -Path C:\\\\Projects\\\\Edict -Recurse -Depth 2)",
+      "Bash(Select-Object -Property FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(dotnet test *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(Get-ChildItem C:\\\\Projects\\\\Edict -Depth 1)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "PowerShell(Get-ChildItem C:\\\\Projects\\\\Edict | ForEach-Object { \"$\\($_.PSIsContainer\\) $\\($_.Name\\)\" })",
+      "PowerShell(Get-ChildItem C:\\\\Projects\\\\Edict\\\\Edict | ForEach-Object { \"$\\($_.PSIsContainer\\) $\\($_.Name\\)\" })",
+      "PowerShell(dotnet build *)",
+      "PowerShell(dotnet test *)",
+      "PowerShell(dotnet nuget list *)",
+      "PowerShell(dotnet package search *)",
+      "PowerShell(git *)",
+      "PowerShell(gh issue *)",
+      "Bash(dotnet build *)"
     ]
   }
 }

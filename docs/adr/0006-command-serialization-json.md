@@ -1,5 +1,7 @@
 # Command/result serialization is Orleans JSON, not generated surrogates
 
+**Status:** the JSON wire-format decision is **superseded by ADR 0007** (Orleans MessagePack, string keys). The *generated-surrogate prohibition* below still stands unchanged — hand-written serializer attributes were never the thing this ADR ruled out.
+
 `Command`, `CommandResult` and `RejectionReason` live in `Edict.Abstractions`, which has no Orleans dependency (ADR 0005). They cross the grain boundary, so Orleans needs codecs for them. The intended design was for `Edict.Generators` to emit `[GenerateSerializer]` surrogates + `[RegisterConverter]` converters per concrete command.
 
 **This is impossible.** Roslyn source generators never observe each other's output. Orleans' own serializer source generator runs as a sibling of `Edict.Generators`, so any `[GenerateSerializer]`/`[RegisterConverter]` type Edict generates is invisible to Orleans codegen and **no codec is ever produced** (proven at runtime: `CodecNotFoundException: Could not find a copier for type …Command`). The same ordering limit also means a generated grain interface and a generated `[GrainType]` are invisible to Orleans codegen.
