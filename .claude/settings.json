@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -File .claude/hooks/block-dangerous-git.ps1"
+            "command": "bash .claude/hooks/block-dangerous-git.sh"
           }
         ]
       }

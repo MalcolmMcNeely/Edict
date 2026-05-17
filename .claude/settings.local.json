@@ -3,7 +3,10 @@
     "allow": [
       "Bash(gh repo *)",
       "Bash(gh issue *)",
-      "Bash(gh label *)"
+      "Bash(gh label *)",
+      "Bash(chmod +x .claude/hooks/block-dangerous-git.sh)",
+      "Bash(bash .claude/hooks/block-dangerous-git.sh)",
+      "Bash(echo \"allow-case exit=$?\")"
     ]
   }
 }
