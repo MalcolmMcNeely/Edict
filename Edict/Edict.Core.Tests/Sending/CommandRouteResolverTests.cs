@@ -3,7 +3,7 @@ using Edict.Core.Sending;
 
 namespace Edict.Core.Tests.Sending;
 
-file sealed record PlaceOrder(Guid OrderId) : Command
+file sealed partial record PlaceOrder(Guid OrderId) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;

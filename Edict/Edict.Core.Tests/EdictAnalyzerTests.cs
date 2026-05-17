@@ -234,6 +234,65 @@ public class EdictAnalyzerTests
         Assert.Equal(18, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
+    // ── EDICT006: concrete Command must be declared partial ─────────────────
+
+    [Fact]
+    public void EDICT006_not_raised_when_command_is_partial()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public sealed partial record PlaceOrder(Guid OrderId) : Command
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new CommandMustBePartialAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT006_raised_on_type_when_concrete_command_is_not_partial()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public sealed record PlaceOrder(Guid OrderId) : Command
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new CommandMustBePartialAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT006", d.Id);
+        Assert.Contains("PlaceOrder", d.GetMessage());
+        // Line 3 (0-indexed): "public sealed record PlaceOrder..."
+        Assert.Equal(3, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    [Fact]
+    public void EDICT006_not_raised_on_abstract_command_subtype()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public abstract record OrderCommand(Guid OrderId) : Command;
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new CommandMustBePartialAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
     // ── EDICT005: [Telemeterized] must be on a primitive property ────────────
 
     [Fact]
