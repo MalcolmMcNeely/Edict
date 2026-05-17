@@ -45,16 +45,16 @@ namespace Sample
 
     public partial class OrderGrain : IOrderGrain
     {
-        public override global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult> Dispatch(
+        public override async global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult> Dispatch(
             global::Edict.Contracts.Commands.Command command)
         {
-            return command switch
+            return await (command switch
             {
-                global::Sample.CancelOrder c => this.Handle(c),
-                global::Sample.PlaceOrder c => this.Handle(c),
+                global::Sample.CancelOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
+                global::Sample.PlaceOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
                 _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
                     command.GetType()),
-            };
+            });
         }
     }
 }

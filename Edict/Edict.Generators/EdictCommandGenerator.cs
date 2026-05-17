@@ -205,7 +205,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
         {
             arms.Append("                ")
                 .Append(command.Fqn)
-                .Append(" c => this.Handle(c),\n");
+                .Append(" c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),\n");
         }
 
         return $$"""
@@ -221,15 +221,15 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
-                    public override {{TaskOfCommandResult}} Dispatch(
+                    public override async {{TaskOfCommandResult}} Dispatch(
                         global::Edict.Contracts.Commands.Command command)
                     {
-                        return command switch
+                        return await (command switch
                         {
             {{arms.ToString().TrimEnd('\n')}}
                             _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
                                 command.GetType()),
-                        };
+                        });
                     }
                 }
             }

@@ -35,6 +35,24 @@ public sealed record FailOrderCommand(Guid OrderId) : Command
     public Guid OrderId { get; init; } = OrderId;
 }
 
+// Commands used by the Command Validator tests (issue #12).
+
+[MessagePackObject(keyAsPropertyName: true)]
+public sealed record ValidateSkuCommand(Guid OrderId, string Sku) : Command
+{
+    [RouteKey]
+    public Guid OrderId { get; init; } = OrderId;
+
+    public string Sku { get; init; } = Sku;
+}
+
+[MessagePackObject(keyAsPropertyName: true)]
+public sealed record StateCheckCommand(Guid OrderId) : Command
+{
+    [RouteKey]
+    public Guid OrderId { get; init; } = OrderId;
+}
+
 public partial class OrderGrain : CommandHandlerGrain
 {
     public Task<CommandResult> Handle(PlaceOrderCommand command)
@@ -52,4 +70,12 @@ public partial class OrderGrain : CommandHandlerGrain
 
     public Task<CommandResult> Handle(FailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
+
+    public Task<CommandResult> Handle(ValidateSkuCommand command) =>
+        Task.FromResult<CommandResult>(new CommandResult.Accepted());
+
+    public Task<CommandResult> Handle(StateCheckCommand command) =>
+        Task.FromResult<CommandResult>(new CommandResult.Accepted());
+
+    protected override object? GetValidationState() => "grain-active";
 }

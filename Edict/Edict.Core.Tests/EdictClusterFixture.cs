@@ -1,7 +1,9 @@
 using Edict.Contracts.Sending;
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.Grains;
 using Edict.Generated;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -51,8 +53,12 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 
     private sealed class SiloConfigurator : ISiloConfigurator
     {
-        public void Configure(ISiloBuilder siloBuilder) =>
+        public void Configure(ISiloBuilder siloBuilder)
+        {
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
+            siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
+        }
     }
 
     private sealed class ClientConfigurator : IClientBuilderConfigurator
