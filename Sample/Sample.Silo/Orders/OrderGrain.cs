@@ -1,0 +1,50 @@
+using Edict.Abstractions;
+using Edict.Core;
+using Sample.Orders;
+
+namespace Sample.Silo.Orders;
+
+public partial class OrderGrain : CommandHandlerGrain
+{
+    private enum OrderStatus { Open, Submitted, Cancelled }
+
+    private OrderStatus _status = OrderStatus.Open;
+    private readonly List<(string Sku, int Quantity)> _items = [];
+
+    public Task<CommandResult> Handle(PlaceOrderCommand command)
+    {
+        _status = OrderStatus.Open;
+        _items.Clear();
+        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    }
+
+    public Task<CommandResult> Handle(AddLineItemCommand command)
+    {
+        if (_status != OrderStatus.Open)
+            return Task.FromResult<CommandResult>(new CommandResult.Rejected(
+                [new RejectionReason("order_not_open", "Order is not open for modifications.")]));
+
+        _items.Add((command.Sku, command.Quantity));
+        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    }
+
+    public Task<CommandResult> Handle(SubmitOrderCommand command)
+    {
+        if (_items.Count == 0)
+            return Task.FromResult<CommandResult>(new CommandResult.Rejected(
+                [new RejectionReason("no_items", "Order has no line items.")]));
+
+        _status = OrderStatus.Submitted;
+        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    }
+
+    public Task<CommandResult> Handle(CancelOrderCommand command)
+    {
+        if (_status == OrderStatus.Submitted)
+            return Task.FromResult<CommandResult>(new CommandResult.Rejected(
+                [new RejectionReason("already_submitted", "Order has already been submitted.")]));
+
+        _status = OrderStatus.Cancelled;
+        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    }
+}

@@ -103,6 +103,7 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 Once all tests are GREEN and any refactoring is done:
 
 - [ ] Run the full test suite one final time
+- [ ] Commit directly to `main` — no feature branches
 - [ ] Commit with a descriptive message referencing the issue (e.g. `feat: description (#N)`)
 - [ ] Always include the Co-authored-by trailer: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
