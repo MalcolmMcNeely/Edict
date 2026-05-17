@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../Edict/Edict.Abstractions/Edict.Abstractions.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Contracts/Edict.Contracts.csproj" />
     </ItemGroup>
 
 </Project>

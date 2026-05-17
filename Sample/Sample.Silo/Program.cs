@@ -1,4 +1,4 @@
-using Edict.Core;
+using Edict.Core.Diagnostics;
 using Edict.Core.Serialization;
 using OpenTelemetry;
 using Orleans.Serialization;

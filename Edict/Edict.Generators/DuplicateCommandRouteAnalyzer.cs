@@ -10,8 +10,8 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Abstractions.Command";
+    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
+    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
 
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT004",

@@ -1,5 +1,5 @@
-using Edict.Abstractions;
-using Edict.Core;
+using Edict.Contracts.Results;
+using Edict.Contracts.Sending;
 using Sample.Orders;
 
 namespace Sample.Api.Orders;

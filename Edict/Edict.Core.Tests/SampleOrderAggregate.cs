@@ -1,5 +1,8 @@
-using Edict.Abstractions;
-using Edict.Core;
+using Edict.Contracts.Commands;
+using Edict.Contracts.Results;
+using Edict.Contracts.Telemetry;
+using Edict.Core.Grains;
+using Edict.Core.Tests.Serialization;
 
 using MessagePack;
 

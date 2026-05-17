@@ -8,8 +8,9 @@ public class EdictCommandGeneratorTests
         using System;
         using System.Threading.Tasks;
 
-        using Edict.Abstractions;
-        using Edict.Core;
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Results;
+        using Edict.Core.Grains;
 
         namespace Sample;
 
@@ -39,8 +40,10 @@ public class EdictCommandGeneratorTests
         using System;
         using System.Threading.Tasks;
 
-        using Edict.Abstractions;
-        using Edict.Core;
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Results;
+        using Edict.Contracts.Telemetry;
+        using Edict.Core.Grains;
 
         namespace Sample;
 

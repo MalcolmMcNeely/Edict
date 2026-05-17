@@ -38,7 +38,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
 
         if (type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != "global::Edict.Core.CommandHandlerGrain")
+                != "global::Edict.Core.Grains.CommandHandlerGrain")
         {
             return;
         }

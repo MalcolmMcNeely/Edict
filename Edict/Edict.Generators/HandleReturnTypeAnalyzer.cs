@@ -8,10 +8,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Abstractions.Command";
+    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
+    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
     private const string TaskOfCommandResultFqn =
-        "global::System.Threading.Tasks.Task<global::Edict.Abstractions.CommandResult>";
+        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult>";
 
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT002",

@@ -10,8 +10,9 @@ public class EdictAnalyzerTests
     private const string ValidBase = """
         using System;
         using System.Threading.Tasks;
-        using Edict.Abstractions;
-        using Edict.Core;
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Results;
+        using Edict.Core.Grains;
         namespace Sample;
         public sealed record PlaceOrder(Guid OrderId) : Command
         {
@@ -41,8 +42,9 @@ public class EdictAnalyzerTests
         const string source = """
             using System;
             using System.Threading.Tasks;
-            using Edict.Abstractions;
-            using Edict.Core;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Results;
+            using Edict.Core.Grains;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : Command
             {
@@ -61,8 +63,8 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 10 (0-indexed): "public class OrderGrain : CommandHandlerGrain"
-        Assert.Equal(10, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 11 (0-indexed): "public class OrderGrain : CommandHandlerGrain"
+        Assert.Equal(11, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
     // ── EDICT002: Handle must return Task<CommandResult> ────────────────────
@@ -81,8 +83,9 @@ public class EdictAnalyzerTests
         const string source = """
             using System;
             using System.Threading.Tasks;
-            using Edict.Abstractions;
-            using Edict.Core;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Results;
+            using Edict.Core.Grains;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : Command
             {
@@ -102,8 +105,8 @@ public class EdictAnalyzerTests
         Assert.Equal("EDICT002", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 12 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
-        Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 13 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
+        Assert.Equal(13, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
     // ── EDICT003: [RouteKey] must be exactly one Guid property ──────────────
@@ -121,7 +124,7 @@ public class EdictAnalyzerTests
     {
         const string source = """
             using System;
-            using Edict.Abstractions;
+            using Edict.Contracts.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : Command
             {
@@ -143,7 +146,7 @@ public class EdictAnalyzerTests
     {
         const string source = """
             using System;
-            using Edict.Abstractions;
+            using Edict.Contracts.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId, Guid CorrelationId) : Command
             {
@@ -166,7 +169,7 @@ public class EdictAnalyzerTests
     {
         const string source = """
             using System;
-            using Edict.Abstractions;
+            using Edict.Contracts.Commands;
             namespace Sample;
             public sealed record PlaceOrder(string OrderId) : Command
             {
@@ -200,8 +203,9 @@ public class EdictAnalyzerTests
         const string source = """
             using System;
             using System.Threading.Tasks;
-            using Edict.Abstractions;
-            using Edict.Core;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Results;
+            using Edict.Core.Grains;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : Command
             {
@@ -226,8 +230,8 @@ public class EdictAnalyzerTests
         Assert.Equal("EDICT004", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 17 (0-indexed): "public Task<CommandResult> Handle(PlaceOrder c) =>" in DuplicateGrain
-        Assert.Equal(17, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 18 (0-indexed): "public Task<CommandResult> Handle(PlaceOrder c) =>" in DuplicateGrain
+        Assert.Equal(18, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
     // ── EDICT005: [Telemeterized] must be on a primitive property ────────────
@@ -237,7 +241,8 @@ public class EdictAnalyzerTests
     {
         const string source = """
             using System;
-            using Edict.Abstractions;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Telemetry;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId, string Sku) : Command
             {
@@ -258,7 +263,8 @@ public class EdictAnalyzerTests
     {
         const string source = """
             using System;
-            using Edict.Abstractions;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Telemetry;
             namespace Sample;
             public class OrderDetails { public string Info { get; set; } = ""; }
             public sealed record PlaceOrder(Guid OrderId, OrderDetails Details) : Command
@@ -275,7 +281,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT005", d.Id);
         Assert.Contains("Details", d.GetMessage());
-        // Line 9 (0-indexed): "public OrderDetails Details { get; init; } = Details;"
-        Assert.Equal(9, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 10 (0-indexed): "public OrderDetails Details { get; init; } = Details;"
+        Assert.Equal(10, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

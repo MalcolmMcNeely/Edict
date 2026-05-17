@@ -1,5 +1,5 @@
-using Edict.Abstractions;
-using Edict.Core;
+using Edict.Contracts.Results;
+using Edict.Core.Grains;
 using Sample.Orders;
 
 namespace Sample.Silo.Orders;

@@ -1,4 +1,4 @@
-using Edict.Abstractions;
+using Edict.Contracts.Commands;
 
 using MessagePack;
 

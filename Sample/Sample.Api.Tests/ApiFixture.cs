@@ -1,4 +1,4 @@
-using Edict.Core;
+using Edict.Core.Grains;
 using Edict.Core.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

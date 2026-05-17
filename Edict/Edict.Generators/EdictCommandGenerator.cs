@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the command spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.CommandHandlerGrain</c>: the Orleans grain interface, the
+/// <c>Edict.Core.Grains.CommandHandlerGrain</c>: the Orleans grain interface, the
 /// <c>Dispatch</c> type-switch override, an Orleans surrogate + converter per
 /// concrete command, and a single <c>AddEdict()</c> that wires the route map,
 /// sender and ActivitySource.
@@ -23,12 +23,12 @@ namespace Edict.Generators;
 [Generator]
 public sealed class EdictCommandGenerator : IIncrementalGenerator
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Abstractions.Command";
-    private const string RouteKeyAttributeFqn = "global::Edict.Abstractions.RouteKeyAttribute";
-    private const string TelemeterizedAttributeFqn = "global::Edict.Abstractions.TelemeterizedAttribute";
+    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
+    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
+    private const string RouteKeyAttributeFqn = "global::Edict.Contracts.Commands.RouteKeyAttribute";
+    private const string TelemeterizedAttributeFqn = "global::Edict.Contracts.Telemetry.TelemeterizedAttribute";
     private const string TaskOfCommandResult =
-        "global::System.Threading.Tasks.Task<global::Edict.Abstractions.CommandResult>";
+        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult>";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -215,19 +215,19 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             namespace {{grain.Namespace}}
             {
                 /// <summary>Generated Orleans grain interface for {{grain.GrainName}}.</summary>
-                public partial interface {{interfaceName}} : global::Edict.Core.IEdictCommandHandler
+                public partial interface {{interfaceName}} : global::Edict.Core.Grains.IEdictCommandHandler
                 {
                 }
 
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
                     public override {{TaskOfCommandResult}} Dispatch(
-                        global::Edict.Abstractions.Command command)
+                        global::Edict.Contracts.Commands.Command command)
                     {
                         return command switch
                         {
             {{arms.ToString().TrimEnd('\n')}}
-                            _ => throw new global::Edict.Core.UnroutableCommandException(
+                            _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
                                 command.GetType()),
                         };
                     }
@@ -255,7 +255,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 {
                     entries.Append("                [typeof(")
                         .Append(command.Fqn)
-                        .Append(")] = new global::Edict.Core.CommandRoute(typeof(")
+                        .Append(")] = new global::Edict.Core.Sending.CommandRoute(typeof(")
                         .Append(command.Fqn)
                         .Append("), typeof(")
                         .Append(interfaceFqn)
@@ -282,7 +282,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
                     entries.Append("                [typeof(")
                         .Append(command.Fqn)
-                        .Append(")] = new global::Edict.Core.CommandRoute(\n")
+                        .Append(")] = new global::Edict.Core.Sending.CommandRoute(\n")
                         .Append("                    typeof(").Append(command.Fqn).Append("),\n")
                         .Append("                    typeof(").Append(interfaceFqn).Append("),\n")
                         .Append("                    \"").Append(grain.GrainTypeName).Append("\",\n")
@@ -308,20 +308,20 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                     {
                         var routes = new global::System.Collections.Generic.Dictionary<
-                            global::System.Type, global::Edict.Core.CommandRoute>
+                            global::System.Type, global::Edict.Core.Sending.CommandRoute>
                         {
             {{entries.ToString().TrimEnd('\n')}}
                         };
 
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Core.CommandRouteResolver>(
-                                services, new global::Edict.Core.CommandRouteResolver(routes));
+                            .AddSingleton<global::Edict.Core.Sending.CommandRouteResolver>(
+                                services, new global::Edict.Core.Sending.CommandRouteResolver(routes));
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Core.IEdictSender, global::Edict.Core.EdictSender>(
+                            .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Sending.EdictSender>(
                                 services);
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
                             .AddSingleton<global::System.Diagnostics.ActivitySource>(
-                                services, global::Edict.Core.EdictDiagnostics.ActivitySource);
+                                services, global::Edict.Core.Diagnostics.EdictDiagnostics.ActivitySource);
 
                         return services;
                     }

@@ -1,4 +1,5 @@
-using Edict.Abstractions;
+using Edict.Contracts.Commands;
+using Edict.Contracts.Telemetry;
 
 using MessagePack;
 

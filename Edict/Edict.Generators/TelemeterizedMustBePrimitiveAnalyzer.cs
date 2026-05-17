@@ -9,7 +9,7 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TelemeterizedMustBePrimitiveAnalyzer : DiagnosticAnalyzer
 {
-    private const string TelemeterizedAttributeFqn = "global::Edict.Abstractions.TelemeterizedAttribute";
+    private const string TelemeterizedAttributeFqn = "global::Edict.Contracts.Telemetry.TelemeterizedAttribute";
 
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT005",

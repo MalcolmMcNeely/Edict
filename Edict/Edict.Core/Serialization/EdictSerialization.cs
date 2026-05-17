@@ -1,11 +1,12 @@
-using Edict.Abstractions;
+using Edict.Contracts.Commands;
+using Edict.Contracts.Results;
 
 using Orleans.Serialization;
 
 namespace Edict.Core.Serialization;
 
 /// <summary>
-/// Orleans serialization for the <c>Edict.Abstractions</c> contract surface.
+/// Orleans serialization for the <c>Edict.Contracts</c> contract surface.
 /// <para>
 /// <c>Command</c>/<c>CommandResult</c> live in an Orleans-free assembly (ADR
 /// 0005), and a generated <c>[GenerateSerializer]</c> surrogate is impossible:

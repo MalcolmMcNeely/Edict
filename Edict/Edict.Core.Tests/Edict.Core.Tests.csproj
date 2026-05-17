@@ -19,7 +19,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
-        <ProjectReference Include="..\Edict.Abstractions\Edict.Abstractions.csproj" />
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <!--
           Referenced two ways: as an Analyzer so it actually runs over this
           test assembly's sample grains (slices 5/6 end-to-end), and as a

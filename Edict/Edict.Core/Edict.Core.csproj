@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Edict.Abstractions\Edict.Abstractions.csproj" />
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
     </ItemGroup>
 
 </Project>

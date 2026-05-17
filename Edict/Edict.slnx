@@ -7,8 +7,8 @@
   <Folder Name="/Edict/">
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
-    <Project Path="Edict.Abstractions/Edict.Abstractions.csproj" />
-    <Project Path="Edict.Abstractions.Tests/Edict.Abstractions.Tests.csproj" />
+    <Project Path="Edict.Contracts/Edict.Contracts.csproj" />
+    <Project Path="Edict.Contracts.Tests/Edict.Contracts.Tests.csproj" />
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">

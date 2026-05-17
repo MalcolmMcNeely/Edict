@@ -10,8 +10,8 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandFqn = "global::Edict.Abstractions.Command";
-    private const string RouteKeyAttributeFqn = "global::Edict.Abstractions.RouteKeyAttribute";
+    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
+    private const string RouteKeyAttributeFqn = "global::Edict.Contracts.Commands.RouteKeyAttribute";
     private const string GuidFqn = "global::System.Guid";
 
     internal static readonly DiagnosticDescriptor MissingRouteKey = new DiagnosticDescriptor(
