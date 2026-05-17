@@ -86,6 +86,16 @@ Rules:
 - Don't anticipate future tests
 - Keep tests focused on observable behavior
 
+**Asserting GREEN in this repo:** the project convention (CLAUDE.md, the
+`testing` skill) overrides this skill's generic Assert-based examples. The
+GREEN assertion defaults to a **single Verify snapshot** capturing the
+outcome and shape, not a chain of `Assert.Equal`. Reach for a few targeted
+`Assert`s only for a single behavioral fact (e.g. an exception type). For
+the command/event contract surface, the round-trip/shape test **is** the
+ADR 0007 Verify drift guard — a renamed or removed property must fail CI on
+the snapshot diff. Use fixed, deterministic inputs so the snapshot is
+stable and the literal values are themselves the assertion.
+
 ### 4. Refactor
 
 After all tests pass, look for [refactor candidates](refactoring.md):
@@ -120,4 +130,6 @@ Once all tests are GREEN and any refactoring is done:
 [ ] Test would survive internal refactor
 [ ] Code is minimal for this test
 [ ] No speculative features added
+[ ] GREEN asserted via a Verify snapshot, not an Assert chain (targeted Asserts only for a single behavioral fact)
+[ ] Contract-surface tests double as the ADR 0007 Verify drift guard
 ```
