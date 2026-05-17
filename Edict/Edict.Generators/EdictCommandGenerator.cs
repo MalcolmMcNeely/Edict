@@ -26,6 +26,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
     private const string CommandHandlerGrainFqn = "global::Edict.Core.CommandHandlerGrain";
     private const string CommandFqn = "global::Edict.Abstractions.Command";
     private const string RouteKeyAttributeFqn = "global::Edict.Abstractions.RouteKeyAttribute";
+    private const string TelemeterizedAttributeFqn = "global::Edict.Abstractions.TelemeterizedAttribute";
     private const string TaskOfCommandResult =
         "global::System.Threading.Tasks.Task<global::Edict.Abstractions.CommandResult>";
 
@@ -124,6 +125,9 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
     private static CommandModel? MapCommand(INamedTypeSymbol command)
     {
+        string? routeKeyProperty = null;
+        var telemeterizedProperties = new List<TelemeterizedProperty>();
+
         for (INamedTypeSymbol? type = command; type is not null; type = type.BaseType)
         {
             if (type.ToDisplayString(FullyQualified) is "global::System.Object")
@@ -133,19 +137,51 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
             foreach (var property in type.GetMembers().OfType<IPropertySymbol>())
             {
-                if (property.GetAttributes().Any(a =>
-                        a.AttributeClass?.ToDisplayString(FullyQualified) == RouteKeyAttributeFqn))
+                var attributes = property.GetAttributes();
+
+                if (routeKeyProperty is null &&
+                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == RouteKeyAttributeFqn))
                 {
-                    return new CommandModel(
-                        command.ToDisplayString(FullyQualified),
-                        command.Name,
-                        property.Name);
+                    routeKeyProperty = property.Name;
+                }
+
+                if (IsPrimitiveType(property.Type) &&
+                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == TelemeterizedAttributeFqn))
+                {
+                    telemeterizedProperties.Add(new TelemeterizedProperty(property.Name));
                 }
             }
         }
 
-        return null;
+        if (routeKeyProperty is null)
+        {
+            return null;
+        }
+
+        return new CommandModel(
+            command.ToDisplayString(FullyQualified),
+            command.Name,
+            routeKeyProperty,
+            telemeterizedProperties.ToImmutableArray());
     }
+
+    private static bool IsPrimitiveType(ITypeSymbol type) =>
+        type.SpecialType is
+            SpecialType.System_String or
+            SpecialType.System_Boolean or
+            SpecialType.System_Byte or
+            SpecialType.System_SByte or
+            SpecialType.System_Int16 or
+            SpecialType.System_UInt16 or
+            SpecialType.System_Int32 or
+            SpecialType.System_UInt32 or
+            SpecialType.System_Int64 or
+            SpecialType.System_UInt64 or
+            SpecialType.System_Single or
+            SpecialType.System_Double or
+            SpecialType.System_Decimal or
+            SpecialType.System_Char
+        || type.ToDisplayString(FullyQualified) == "global::System.Guid";
 
     private static bool DerivesFromCommand(INamedTypeSymbol type)
     {
@@ -215,19 +251,48 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
             foreach (var command in grain.Commands)
             {
-                entries.Append("                [typeof(")
-                    .Append(command.Fqn)
-                    .Append(")] = new global::Edict.Core.CommandRoute(typeof(")
-                    .Append(command.Fqn)
-                    .Append("), typeof(")
-                    .Append(interfaceFqn)
-                    .Append("), \"")
-                    .Append(grain.GrainTypeName)
-                    .Append("\", command => ((")
-                    .Append(command.Fqn)
-                    .Append(")command).")
-                    .Append(command.RouteKeyProperty)
-                    .Append("),\n");
+                if (command.TelemeterizedProperties.IsEmpty)
+                {
+                    entries.Append("                [typeof(")
+                        .Append(command.Fqn)
+                        .Append(")] = new global::Edict.Core.CommandRoute(typeof(")
+                        .Append(command.Fqn)
+                        .Append("), typeof(")
+                        .Append(interfaceFqn)
+                        .Append("), \"")
+                        .Append(grain.GrainTypeName)
+                        .Append("\", command => ((")
+                        .Append(command.Fqn)
+                        .Append(")command).")
+                        .Append(command.RouteKeyProperty)
+                        .Append("),\n");
+                }
+                else
+                {
+                    var tagLines = new StringBuilder();
+                    foreach (var property in command.TelemeterizedProperties)
+                    {
+                        var tagName = $"edict.{command.SimpleName.ToLowerInvariant()}.{property.PropertyName.ToLowerInvariant()}";
+                        tagLines.Append("                        activity?.SetTag(\"")
+                            .Append(tagName)
+                            .Append("\", typedCommand.")
+                            .Append(property.PropertyName)
+                            .Append(");\n");
+                    }
+
+                    entries.Append("                [typeof(")
+                        .Append(command.Fqn)
+                        .Append(")] = new global::Edict.Core.CommandRoute(\n")
+                        .Append("                    typeof(").Append(command.Fqn).Append("),\n")
+                        .Append("                    typeof(").Append(interfaceFqn).Append("),\n")
+                        .Append("                    \"").Append(grain.GrainTypeName).Append("\",\n")
+                        .Append("                    command => ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(",\n")
+                        .Append("                    (command, activity) =>\n")
+                        .Append("                    {\n")
+                        .Append("                        var typedCommand = (").Append(command.Fqn).Append(")command;\n")
+                        .Append(tagLines)
+                        .Append("                    }),\n");
+                }
             }
         }
 
@@ -279,5 +344,8 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
     private sealed record CommandModel(
         string Fqn,
         string SimpleName,
-        string RouteKeyProperty);
+        string RouteKeyProperty,
+        ImmutableArray<TelemeterizedProperty> TelemeterizedProperties);
+
+    private sealed record TelemeterizedProperty(string PropertyName);
 }

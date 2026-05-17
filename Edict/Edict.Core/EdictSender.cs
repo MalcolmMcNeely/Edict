@@ -18,8 +18,15 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var (_, grainClassName, key) = resolver.ResolveTarget(command);
-        var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, grainClassName);
-        return grain.Dispatch(command);
+        var route = resolver.GetRoute(command);
+        var key = route.RouteKeySelector(command);
+        var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
+
+        return CommandSpanScope.ExecuteAsync(
+            $"edict.command {command.GetType().Name}",
+            key,
+            route.TagWriter,
+            command,
+            () => grain.Dispatch(command));
     }
 }

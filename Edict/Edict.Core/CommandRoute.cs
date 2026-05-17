@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Edict.Abstractions;
 
 namespace Edict.Core;
@@ -21,8 +23,14 @@ namespace Edict.Core;
 /// that share the <see cref="IEdictCommandHandler"/> interface.
 /// </param>
 /// <param name="RouteKeySelector">Reads the command's <c>[RouteKey]</c> Guid.</param>
+/// <param name="TagWriter">
+/// Generator-emitted delegate that writes <c>[Telemeterized]</c> property values
+/// as OTEL tags on the active span. <see langword="null"/> when the command has
+/// no annotated primitive properties.
+/// </param>
 public sealed record CommandRoute(
     Type CommandType,
     Type GrainInterfaceType,
     string GrainClassName,
-    Func<Command, Guid> RouteKeySelector);
+    Func<Command, Guid> RouteKeySelector,
+    Action<Command, Activity?>? TagWriter = null);

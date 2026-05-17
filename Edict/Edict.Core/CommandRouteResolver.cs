@@ -30,6 +30,13 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     public (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(
         Command command)
     {
+        var route = GetRoute(command);
+        return (route.GrainInterfaceType, route.GrainClassName, route.RouteKeySelector(command));
+    }
+
+    /// <summary>Returns the full <see cref="CommandRoute"/> for <paramref name="command"/>.</summary>
+    internal CommandRoute GetRoute(Command command)
+    {
         ArgumentNullException.ThrowIfNull(command);
 
         if (!routes.TryGetValue(command.GetType(), out var route))
@@ -37,6 +44,6 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
             throw new UnroutableCommandException(command.GetType());
         }
 
-        return (route.GrainInterfaceType, route.GrainClassName, route.RouteKeySelector(command));
+        return route;
     }
 }
