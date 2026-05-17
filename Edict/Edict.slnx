@@ -8,6 +8,7 @@
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
     <Project Path="Edict.Contracts/Edict.Contracts.csproj" />
+    <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />
     <Project Path="Edict.Contracts.Tests/Edict.Contracts.Tests.csproj" />
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
   </Folder>
