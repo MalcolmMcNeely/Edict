@@ -1,7 +1,10 @@
 using Edict.Abstractions;
 
+using MessagePack;
+
 namespace Sample.Orders;
 
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : Command
 {
     [RouteKey]

@@ -1,3 +1,5 @@
+using MessagePack;
+
 namespace Edict.Abstractions;
 
 /// <summary>
@@ -7,4 +9,5 @@ namespace Edict.Abstractions;
 /// </summary>
 /// <param name="Code">Stable identifier a UI can branch on.</param>
 /// <param name="Message">Human-readable explanation for display.</param>
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record RejectionReason(string Code, string Message);

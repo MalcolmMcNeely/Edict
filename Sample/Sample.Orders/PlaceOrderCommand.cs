@@ -1,7 +1,10 @@
 using Edict.Abstractions;
 
+using MessagePack;
+
 namespace Sample.Orders;
 
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record PlaceOrderCommand(Guid OrderId) : Command
 {
     [RouteKey]

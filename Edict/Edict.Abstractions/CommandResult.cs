@@ -1,3 +1,5 @@
+using MessagePack;
+
 namespace Edict.Abstractions;
 
 /// <summary>
@@ -8,6 +10,7 @@ namespace Edict.Abstractions;
 /// The private constructor makes the hierarchy closed: only the nested
 /// variants can derive from it.
 /// </summary>
+[MessagePackObject(keyAsPropertyName: true)]
 public abstract record CommandResult
 {
     private CommandResult()
@@ -15,9 +18,11 @@ public abstract record CommandResult
     }
 
     /// <summary>The command was accepted and handled. Carries no domain data.</summary>
+    [MessagePackObject(keyAsPropertyName: true)]
     public sealed record Accepted : CommandResult;
 
     /// <summary>The command was rejected for one or more business reasons.</summary>
     /// <param name="Reasons">The structured reasons the command was rejected.</param>
+    [MessagePackObject(keyAsPropertyName: true)]
     public sealed record Rejected(IReadOnlyList<RejectionReason> Reasons) : CommandResult;
 }

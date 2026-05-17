@@ -1,11 +1,14 @@
 using Edict.Abstractions;
 using Edict.Core;
 
+using MessagePack;
+
 namespace Edict.Core.Tests;
 
 // Sample-shaped consumer code. The generator runs over this assembly and emits
 // IOrderGrain, OrderGrain.Dispatch, the Orleans surrogates and AddEdict().
 
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record PlaceOrderCommand(Guid OrderId, string Sku) : Command
 {
     [RouteKey]
@@ -15,12 +18,14 @@ public sealed record PlaceOrderCommand(Guid OrderId, string Sku) : Command
     public string Sku { get; init; } = Sku;
 }
 
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record CancelOrderCommand(Guid OrderId, string Reason) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
+[MessagePackObject(keyAsPropertyName: true)]
 public sealed record FailOrderCommand(Guid OrderId) : Command
 {
     [RouteKey]

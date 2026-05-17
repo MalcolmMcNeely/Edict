@@ -1,3 +1,5 @@
+using MessagePack;
+
 namespace Edict.Abstractions;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace Edict.Abstractions;
 /// holds no trace-correlation fields because a direct grain call propagates
 /// <see cref="System.Diagnostics.Activity"/> context natively (ADR 0003).
 /// </summary>
+[MessagePackObject(keyAsPropertyName: true)]
 public abstract record Command
 {
     /// <summary>Framework-assigned identity for this command instance.</summary>
