@@ -2,8 +2,8 @@ using Edict.Abstractions;
 
 namespace Edict.Core.Tests;
 
+[Collection(EdictClusterCollection.Name)]
 public sealed class CommandPipelineEndToEndTests(EdictClusterFixture fixture)
-    : IClassFixture<EdictClusterFixture>
 {
     [Fact]
     public async Task Send_routes_a_command_through_to_its_handler_and_returns_Accepted()

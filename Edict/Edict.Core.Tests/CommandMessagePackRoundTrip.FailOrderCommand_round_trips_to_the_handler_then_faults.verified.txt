@@ -1,0 +1,4 @@
+﻿{
+  Name: InvalidOperationException,
+  Message: simulated failure
+}

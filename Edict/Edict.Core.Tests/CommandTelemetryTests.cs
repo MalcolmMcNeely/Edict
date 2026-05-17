@@ -4,8 +4,8 @@ using Edict.Abstractions;
 
 namespace Edict.Core.Tests;
 
+[Collection(EdictClusterCollection.Name)]
 public sealed class CommandTelemetryTests(EdictClusterFixture fixture)
-    : IClassFixture<EdictClusterFixture>
 {
     [Fact]
     public async Task Send_opens_one_edict_span_per_command_dispatch()

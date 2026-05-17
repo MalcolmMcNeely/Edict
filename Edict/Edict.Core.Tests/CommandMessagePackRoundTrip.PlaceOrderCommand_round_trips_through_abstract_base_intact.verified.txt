@@ -1,0 +1,9 @@
+﻿{
+  Result: {},
+  ReceivedType: Edict.Core.Tests.PlaceOrderCommand,
+  Received: {
+    OrderId: 22222222-2222-2222-2222-222222222222,
+    Sku: ITEM-1,
+    CommandId: 11111111-1111-1111-1111-111111111101
+  }
+}

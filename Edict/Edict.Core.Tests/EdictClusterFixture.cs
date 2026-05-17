@@ -39,7 +39,8 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 
     // Both hosts must see the Orleans metadata generated into the sample
     // (test) assembly and Edict.Core — TestCluster doesn't discover them by
-    // default — and route the Edict contract types through JSON.
+    // default — and route the Edict contract types through MessagePack
+    // (ADR 0007, superseding ADR 0006's JSON).
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(OrderGrain).Assembly)

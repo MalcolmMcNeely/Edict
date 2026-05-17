@@ -34,12 +34,18 @@ public sealed record FailOrderCommand(Guid OrderId) : Command
 
 public partial class OrderGrain : CommandHandlerGrain
 {
-    public Task<CommandResult> Handle(PlaceOrderCommand command) =>
-        Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    public Task<CommandResult> Handle(PlaceOrderCommand command)
+    {
+        CommandRoundTripRecorder.Record(command);
+        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    }
 
-    public Task<CommandResult> Handle(CancelOrderCommand command) =>
-        Task.FromResult<CommandResult>(new CommandResult.Rejected(
+    public Task<CommandResult> Handle(CancelOrderCommand command)
+    {
+        CommandRoundTripRecorder.Record(command);
+        return Task.FromResult<CommandResult>(new CommandResult.Rejected(
             [new RejectionReason("already_shipped", "Order has already shipped.")]));
+    }
 
     public Task<CommandResult> Handle(FailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
