@@ -7,6 +7,8 @@
         <LangVersion>latest</LangVersion>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <!-- RS2008: release tracking not required for internal library -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
     </PropertyGroup>
 
     <!--
