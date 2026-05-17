@@ -87,4 +87,14 @@ public class EdictCommandGeneratorTests
 
         return Verify(generated);
     }
+
+    [Fact]
+    public Task Generator_emits_alias_declaration_per_concrete_command()
+    {
+        var generated = GeneratorTestHarness.Run(SampleConsumer)
+            .Where(kvp => kvp.Key.EndsWith(".Alias.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        return Verify(generated);
+    }
 }
