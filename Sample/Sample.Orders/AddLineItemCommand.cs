@@ -6,7 +6,7 @@ using MessagePack;
 namespace Sample.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : Command
+public sealed partial record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;

@@ -5,7 +5,7 @@ using MessagePack;
 namespace Sample.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record PlaceOrderCommand(Guid OrderId) : Command
+public sealed partial record PlaceOrderCommand(Guid OrderId) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;

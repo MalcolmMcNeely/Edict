@@ -12,7 +12,7 @@ namespace Edict.Core.Tests;
 // IOrderGrain, OrderGrain.Dispatch, the Orleans surrogates and AddEdict().
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record PlaceOrderCommand(Guid OrderId, string Sku) : Command
+public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
@@ -22,14 +22,14 @@ public sealed record PlaceOrderCommand(Guid OrderId, string Sku) : Command
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record CancelOrderCommand(Guid OrderId, string Reason) : Command
+public sealed partial record CancelOrderCommand(Guid OrderId, string Reason) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record FailOrderCommand(Guid OrderId) : Command
+public sealed partial record FailOrderCommand(Guid OrderId) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
@@ -38,7 +38,7 @@ public sealed record FailOrderCommand(Guid OrderId) : Command
 // Commands used by the Command Validator tests (issue #12).
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record ValidateSkuCommand(Guid OrderId, string Sku) : Command
+public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
@@ -47,7 +47,7 @@ public sealed record ValidateSkuCommand(Guid OrderId, string Sku) : Command
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record StateCheckCommand(Guid OrderId) : Command
+public sealed partial record StateCheckCommand(Guid OrderId) : Command
 {
     [RouteKey]
     public Guid OrderId { get; init; } = OrderId;
