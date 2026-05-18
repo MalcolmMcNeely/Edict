@@ -1,4 +1,5 @@
 using Edict.Contracts.Commands;
+using Edict.Contracts.Events;
 using Edict.Contracts.Results;
 
 using Orleans.Serialization;
@@ -34,5 +35,6 @@ public static class EdictSerialization
     private static bool IsEdictContract(Type type) =>
         typeof(Command).IsAssignableFrom(type)
         || typeof(CommandResult).IsAssignableFrom(type)
-        || type == typeof(RejectionReason);
+        || type == typeof(RejectionReason)
+        || typeof(Event).IsAssignableFrom(type);
 }

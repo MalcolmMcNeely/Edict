@@ -8,13 +8,20 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Edict.Core.Tests;
 
 /// <summary>
-/// Runs <see cref="EdictCommandGenerator"/> over a snippet of consumer source
-/// and returns the emitted files as a deterministic name-to-text map, so a
-/// Verify snapshot can assert the generated interface/dispatch/surrogate/map.
+/// Runs an Edict source generator over a snippet of consumer source and
+/// returns the emitted files as a deterministic name-to-text map, so a
+/// Verify snapshot can assert the generated output.
 /// </summary>
 internal static class GeneratorTestHarness
 {
-    public static IReadOnlyDictionary<string, string> Run(string consumerSource)
+    public static IReadOnlyDictionary<string, string> Run(string consumerSource) =>
+        Run(consumerSource, new EdictCommandGenerator());
+
+    public static IReadOnlyDictionary<string, string> RunEventGenerator(string consumerSource) =>
+        Run(consumerSource, new EdictEventGenerator());
+
+    private static IReadOnlyDictionary<string, string> Run(
+        string consumerSource, IIncrementalGenerator generator)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
@@ -29,7 +36,7 @@ internal static class GeneratorTestHarness
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var driver = CSharpGeneratorDriver
-            .Create(new EdictCommandGenerator().AsSourceGenerator())
+            .Create(generator.AsSourceGenerator())
             .RunGenerators(compilation);
 
         var result = driver.GetRunResult();
