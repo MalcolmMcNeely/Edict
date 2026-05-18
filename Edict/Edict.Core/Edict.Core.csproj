@@ -8,10 +8,10 @@
 
     <ItemGroup>
         <PackageReference Include="FluentValidation" Version="11.11.0" />
-        <PackageReference Include="Microsoft.Orleans.Sdk" Version="9.2.1" />
-        <PackageReference Include="Microsoft.Orleans.Streaming" Version="9.2.1" />
-        <PackageReference Include="Microsoft.Orleans.Serialization.MessagePack" Version="9.2.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Orleans.Sdk" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Streaming" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Serialization.MessagePack" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
     </ItemGroup>
 
     <ItemGroup>

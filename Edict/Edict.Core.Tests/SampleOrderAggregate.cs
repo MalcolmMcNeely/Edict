@@ -65,6 +65,17 @@ public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
     public string Sku { get; init; } = Sku;
 }
 
+// Test event for EventDeduplicationGrain integration tests.
+[MessagePackObject(keyAsPropertyName: true)]
+[Stream("DedupTest")]
+public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : Event
+{
+    [RouteKey]
+    public Guid AggregateId { get; init; } = AggregateId;
+
+    public int Sequence { get; init; } = Sequence;
+}
+
 public partial class OrderGrain : CommandHandlerGrain
 {
     public Task<CommandResult> Handle(PlaceOrderCommand command)

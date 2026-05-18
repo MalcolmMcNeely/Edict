@@ -42,6 +42,11 @@ public sealed class EdictClusterFixture : IAsyncLifetime
     {
         _azurite = new AzuriteBuilder()
             .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+            .WithCreateParameterModifier(p =>
+            {
+                p.Cmd ??= [];
+                p.Cmd.Add("--skipApiVersionCheck");
+            })
             .Build();
         await _azurite.StartAsync();
         _queueConnectionString = _azurite.GetConnectionString();
@@ -76,6 +81,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
+            siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>
