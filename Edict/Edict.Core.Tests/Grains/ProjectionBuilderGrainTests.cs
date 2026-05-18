@@ -1,0 +1,81 @@
+using System.Diagnostics;
+
+using Edict.Core.Diagnostics;
+using Edict.Core.Tests.Grains;
+
+namespace Edict.Core.Tests.Grains;
+
+[Collection(EdictClusterCollection.Name)]
+public sealed class ProjectionBuilderGrainTests(EdictClusterFixture fixture)
+{
+    // Cycle 3 — tracer bullet: command acceptance delivers event to projection grain
+    [Fact]
+    public async Task Command_acceptance_delivers_event_to_projection_grain()
+    {
+        var orderId = Guid.NewGuid();
+
+        await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
+
+        var projection = fixture.Cluster.GrainFactory.GetGrain<IOrderProjectionAccess>(orderId);
+        await WaitForProjectionAsync(projection, expectedCount: 1);
+        Assert.Equal(1, await projection.GetOrderCountAsync());
+    }
+
+    // Cycle 4 — handler span is a child of the publish span (ADR 0003)
+    [Fact]
+    public async Task Handler_span_is_child_of_publish_span()
+    {
+        var orderId = Guid.NewGuid();
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
+
+        var projection = fixture.Cluster.GrainFactory.GetGrain<IOrderProjectionAccess>(orderId);
+        await WaitForProjectionAsync(projection, expectedCount: 1);
+
+        var publishSpan = stopped.Single(a => a.OperationName == "edict.event.publish OrderPlacedEvent"
+            && a.TraceId != default);
+        var handlerSpan = stopped.Single(a => a.OperationName == "edict.event.handle OrderPlacedEvent");
+
+        Assert.Equal(publishSpan.TraceId, handlerSpan.TraceId);
+        Assert.Equal(publishSpan.SpanId, handlerSpan.ParentSpanId);
+    }
+
+    // Cycle 5 — event type with no Handle overload is a no-op; projection count unchanged
+    [Fact]
+    public async Task Unhandled_event_type_is_no_op()
+    {
+        var grainId = Guid.NewGuid();
+        var publisher = fixture.Cluster.GrainFactory.GetGrain<IProjectionPublisherGrain>(grainId);
+        var projection = fixture.Cluster.GrainFactory.GetGrain<IOrderProjectionAccess>(grainId);
+
+        // DedupTestEvent has no Handle in OrderProjectionGrain → DispatchAsync returns false
+        var unhandled = new DedupTestEvent(grainId, 1) with
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+        };
+        await publisher.PublishToStreamAsync("Orders", unhandled);
+
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        Assert.Equal(0, await projection.GetOrderCountAsync());
+    }
+
+    private static async Task WaitForProjectionAsync(IOrderProjectionAccess projection, int expectedCount)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await projection.GetOrderCountAsync() >= expectedCount)
+                return;
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+        }
+    }
+}

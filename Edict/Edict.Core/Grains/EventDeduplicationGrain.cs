@@ -108,7 +108,7 @@ public abstract class EventDeduplicationGrain : Grain<DeduplicationState>
         span?.SetTag("edict.deduplicated", true);
     }
 
-    private static ActivityContext RestoreEventContext(Event evt)
+    protected static ActivityContext RestoreEventContext(Event evt)
     {
         if (evt.TraceId is { Length: 32 } && evt.SpanId is { Length: 16 })
         {
