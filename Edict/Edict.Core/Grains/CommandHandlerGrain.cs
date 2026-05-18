@@ -26,12 +26,12 @@ namespace Edict.Core.Grains;
 /// override that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
 /// </summary>
-public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
+public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
 {
-    private List<Event>? _raisedEvents;
+    private List<EdictEvent>? _raisedEvents;
 
     /// <inheritdoc />
-    public abstract Task<CommandResult> Dispatch(Command command);
+    public abstract Task<EdictCommandResult> Dispatch(EdictCommand command);
 
     /// <summary>
     /// Buffers an event to be flushed to its domain stream after the current
@@ -39,7 +39,7 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
     /// throw. Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context
     /// at flush time (ADR 0011).
     /// </summary>
-    protected void Raise(Event theEvent)
+    protected void Raise(EdictEvent theEvent)
     {
         ArgumentNullException.ThrowIfNull(theEvent);
         (_raisedEvents ??= []).Add(theEvent);
@@ -78,7 +78,7 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
         foreach (var evt in _raisedEvents)
         {
             var (streamName, routeKey) = GetEventStreamAddress(evt);
-            var stream = provider.GetStream<Event>(StreamId.Create(streamName, routeKey));
+            var stream = provider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
             using var publishActivity = EdictDiagnostics.ActivitySource.StartActivity(
                 $"edict.event.publish {evt.GetType().Name}",
@@ -106,14 +106,14 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
     /// <summary>
     /// Resolves <see cref="IValidator{TCommand}"/> from grain DI, runs it with
     /// the current grain state in <c>ValidationContext.RootContextData</c>, and
-    /// short-circuits to <see cref="CommandResult.Rejected"/> on failure.
+    /// short-circuits to <see cref="EdictCommandResult.Rejected"/> on failure.
     /// Returns the result of <paramref name="handle"/> when validation passes or
     /// no validator is registered. Called from the generated <c>Dispatch</c>.
     /// </summary>
-    protected async Task<CommandResult> ValidateAndHandleAsync<TCommand>(
+    protected async Task<EdictCommandResult> ValidateAndHandleAsync<TCommand>(
         TCommand command,
-        Func<Task<CommandResult>> handle)
-        where TCommand : Command
+        Func<Task<EdictCommandResult>> handle)
+        where TCommand : EdictCommand
     {
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
@@ -127,9 +127,9 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
             var result = await validator.ValidateAsync(context);
             if (!result.IsValid)
             {
-                return new CommandResult.Rejected(
+                return new EdictCommandResult.Rejected(
                     result.Errors
-                        .Select(static e => new RejectionReason(
+                        .Select(static e => new EdictRejectionReason(
                             e.ErrorCode ?? "validation_error",
                             e.ErrorMessage))
                         .ToArray());
@@ -146,19 +146,19 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
     /// </summary>
     protected virtual object? GetValidationState() => null;
 
-    private static (string StreamName, Guid RouteKey) GetEventStreamAddress(Event evt)
+    private static (string StreamName, Guid RouteKey) GetEventStreamAddress(EdictEvent evt)
     {
         var type = evt.GetType();
 
-        var streamAttr = (StreamAttribute?)Attribute.GetCustomAttribute(type, typeof(StreamAttribute))
+        var streamAttr = (EdictStreamAttribute?)Attribute.GetCustomAttribute(type, typeof(EdictStreamAttribute))
             ?? throw new InvalidOperationException(
-                $"Event {type.Name} is missing [Stream] — every concrete event must declare its domain stream (ADR 0011).");
+                $"Event {type.Name} is missing [EdictStream] — every concrete event must declare its domain stream (ADR 0011).");
 
         var routeKeyProp = Array.Find(
             type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
-            p => Attribute.IsDefined(p, typeof(RouteKeyAttribute)))
+            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
             ?? throw new InvalidOperationException(
-                $"Event {type.Name} is missing a [RouteKey] Guid property (ADR 0011).");
+                $"Event {type.Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
 
         return (streamAttr.Name, (Guid)routeKeyProp.GetValue(evt)!);
     }

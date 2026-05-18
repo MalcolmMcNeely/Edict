@@ -17,7 +17,7 @@ public class BoundaryTests
 {
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
-            typeof(Command).Assembly,
+            typeof(EdictCommand).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -25,7 +25,7 @@ public class BoundaryTests
     public void EdictContracts_DoesNotDependOnOrleansRuntime()
     {
         var rule = Types().That()
-            .ResideInAssembly(typeof(Command).Assembly.GetName().Name!)
+            .ResideInAssembly(typeof(EdictCommand).Assembly.GetName().Name!)
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Orleans")
@@ -52,7 +52,7 @@ public class BoundaryTests
     public void EdictContracts_DoesNotDependOnAzureDataTables()
     {
         var rule = Types().That()
-            .ResideInAssembly(typeof(Command).Assembly.GetName().Name!)
+            .ResideInAssembly(typeof(EdictCommand).Assembly.GetName().Name!)
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Azure\.Data\.Tables")

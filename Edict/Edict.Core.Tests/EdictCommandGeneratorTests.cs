@@ -14,25 +14,25 @@ public class EdictCommandGeneratorTests
 
         namespace Sample;
 
-        public sealed record PlaceOrder(Guid OrderId, string Sku) : Command
+        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed record CancelOrder(Guid OrderId) : Command
+        public sealed record CancelOrder(Guid OrderId) : EdictCommand
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public partial class OrderGrain : CommandHandlerGrain
+        public partial class OrderGrain : EdictCommandHandlerGrain
         {
-            public Task<CommandResult> Handle(PlaceOrder command) =>
-                Task.FromResult<CommandResult>(new CommandResult.Accepted());
+            public Task<EdictCommandResult> Handle(PlaceOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-            public Task<CommandResult> Handle(CancelOrder command) =>
-                Task.FromResult<CommandResult>(new CommandResult.Accepted());
+            public Task<EdictCommandResult> Handle(CancelOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
         """;
 
@@ -47,28 +47,28 @@ public class EdictCommandGeneratorTests
 
         namespace Sample;
 
-        public sealed record PlaceOrder(Guid OrderId, string Sku) : Command
+        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
 
-            [Telemeterized]
+            [EdictTelemeterized]
             public string Sku { get; init; } = Sku;
         }
 
-        public sealed record CancelOrder(Guid OrderId) : Command
+        public sealed record CancelOrder(Guid OrderId) : EdictCommand
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public partial class OrderGrain : CommandHandlerGrain
+        public partial class OrderGrain : EdictCommandHandlerGrain
         {
-            public Task<CommandResult> Handle(PlaceOrder command) =>
-                Task.FromResult<CommandResult>(new CommandResult.Accepted());
+            public Task<EdictCommandResult> Handle(PlaceOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-            public Task<CommandResult> Handle(CancelOrder command) =>
-                Task.FromResult<CommandResult>(new CommandResult.Accepted());
+            public Task<EdictCommandResult> Handle(CancelOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
         """;
 

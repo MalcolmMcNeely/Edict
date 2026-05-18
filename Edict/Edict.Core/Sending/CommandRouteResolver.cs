@@ -3,9 +3,9 @@ using Edict.Contracts.Commands;
 namespace Edict.Core.Sending;
 
 /// <summary>
-/// Pure routing core: given a <see cref="Command"/> instance, returns the
+/// Pure routing core: given a <see cref="EdictCommand"/> instance, returns the
 /// aggregate grain interface and the Guid grain key, using the
-/// generator-emitted command-to-grain map plus the generated <c>[RouteKey]</c>
+/// generator-emitted command-to-grain map plus the generated <c>[EdictRouteKey]</c>
 /// accessor. Deliberately has no Orleans dependency so it is unit-testable
 /// without a TestCluster — the <see cref="EdictSender"/> shell owns the
 /// Orleans hop.
@@ -16,7 +16,7 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     /// Resolves the owning aggregate grain interface and its Guid key for
     /// <paramref name="command"/>.
     /// </summary>
-    public (Type GrainInterfaceType, Guid Key) Resolve(Command command)
+    public (Type GrainInterfaceType, Guid Key) Resolve(EdictCommand command)
     {
         var (grainInterfaceType, _, key) = ResolveTarget(command);
         return (grainInterfaceType, key);
@@ -28,14 +28,14 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     /// <see cref="Grains.IEdictCommandHandler"/> interface) and Guid key.
     /// </summary>
     public (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(
-        Command command)
+        EdictCommand command)
     {
         var route = GetRoute(command);
         return (route.GrainInterfaceType, route.GrainClassName, route.RouteKeySelector(command));
     }
 
     /// <summary>Returns the full <see cref="CommandRoute"/> for <paramref name="command"/>.</summary>
-    internal CommandRoute GetRoute(Command command)
+    internal CommandRoute GetRoute(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 

@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the projection spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Grains.ProjectionBuilderGrain</c>: the Orleans grain interface,
+/// <c>Edict.Core.Grains.EdictProjectionBuilderGrain</c>: the Orleans grain interface,
 /// one <c>[ImplicitStreamSubscription]</c> per unique stream across the grain's
 /// <c>Handle(TEvent)</c> overloads, a <c>SubscribeToStreamAsync</c> override,
 /// and a <c>DispatchAsync</c> type-switch with per-event handler spans (ADR 0003).
@@ -23,11 +23,6 @@ namespace Edict.Generators;
 [Generator]
 public sealed class EdictProjectionGenerator : IIncrementalGenerator
 {
-    private const string ProjectionBuilderGrainFqn = "global::Edict.Core.Grains.ProjectionBuilderGrain";
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-    private const string StreamAttributeFqn = "global::Edict.Contracts.Events.StreamAttribute";
-    private const string TaskFqn = "global::System.Threading.Tasks.Task";
-
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var grains = context.SyntaxProvider
@@ -58,7 +53,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
             if (method.Parameters.Length != 1)
                 continue;
 
-            if (method.ReturnType.ToDisplayString(FullyQualified) != TaskFqn)
+            if (method.ReturnType.ToDisplayString(FullyQualified) != EdictWellKnownNames.TaskFqn)
                 continue;
 
             if (method.Parameters[0].Type is not INamedTypeSymbol eventType)
@@ -95,7 +90,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
     private static string? GetStreamName(INamedTypeSymbol eventType)
     {
         var attr = eventType.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString(FullyQualified) == StreamAttributeFqn);
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictStreamAttributeFqn);
 
         return attr?.ConstructorArguments.Length > 0
             ? attr.ConstructorArguments[0].Value as string
@@ -106,7 +101,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(FullyQualified) == EventFqn)
+            if (current.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictEventFqn)
                 return true;
         }
         return false;
@@ -119,7 +114,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
             var fqn = current.IsGenericType
                 ? current.OriginalDefinition.ToDisplayString(FullyQualified)
                 : current.ToDisplayString(FullyQualified);
-            if (fqn == ProjectionBuilderGrainFqn)
+            if (fqn == EdictWellKnownNames.EdictProjectionBuilderGrainFqn)
                 return true;
         }
         return false;
@@ -149,7 +144,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
         {
             subscribeBody
                 .Append("            var stream").Append(i)
-                .Append(" = provider.GetStream<global::Edict.Contracts.Events.Event>(\n")
+                .Append(" = provider.GetStream<global::Edict.Contracts.Events.EdictEvent>(\n")
                 .Append("                global::Orleans.Runtime.StreamId.Create(\"")
                 .Append(streamNames[i])
                 .Append("\", key));\n")
@@ -198,7 +193,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
                     }
 
                     protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
-                        global::Edict.Contracts.Events.Event evt)
+                        global::Edict.Contracts.Events.EdictEvent evt)
                     {
                         switch (evt)
                         {

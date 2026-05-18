@@ -8,10 +8,6 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
 {
-    private const string ProjectionBuilderGrainFqn = "global::Edict.Core.Grains.ProjectionBuilderGrain";
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-    private const string TaskFqn = "global::System.Threading.Tasks.Task";
-
     internal static readonly DiagnosticDescriptor WrongReturnType = new DiagnosticDescriptor(
         id: "EDICT009",
         title: "Projection Builder Handle must return Task",
@@ -22,8 +18,8 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
 
     internal static readonly DiagnosticDescriptor NonEventParameter = new DiagnosticDescriptor(
         id: "EDICT009",
-        title: "Projection Builder Handle parameter must derive from Event",
-        messageFormat: "Handle method for '{0}' in '{1}' must take an Event-derived parameter",
+        title: "Projection Builder Handle parameter must derive from EdictEvent",
+        messageFormat: "Handle method for '{0}' in '{1}' must take an EdictEvent-derived parameter",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -47,7 +43,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!DerivesFrom(method.ContainingType, ProjectionBuilderGrainFqn))
+        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictProjectionBuilderGrainFqn))
         {
             return;
         }
@@ -55,7 +51,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
         var paramType = method.Parameters[0].Type as INamedTypeSymbol;
         var returnFqn = method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        if (returnFqn != TaskFqn)
+        if (returnFqn != EdictWellKnownNames.TaskFqn)
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(WrongReturnType, method.Locations[0],
@@ -91,7 +87,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictEventFqn)
             {
                 return true;
             }

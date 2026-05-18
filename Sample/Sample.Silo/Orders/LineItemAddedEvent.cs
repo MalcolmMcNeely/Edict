@@ -6,10 +6,10 @@ using MessagePack;
 namespace Sample.Silo.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-[Stream("Orders")]
-public sealed partial record LineItemAddedEvent(Guid OrderId, string Sku, int Quantity) : Event
+[EdictStream("Orders")]
+public sealed partial record LineItemAddedEvent(Guid OrderId, string Sku, int Quantity) : EdictEvent
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
     public string Sku { get; init; } = Sku;

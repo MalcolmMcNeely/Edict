@@ -16,7 +16,7 @@ public interface IOrderProjectionAccess : IGrainWithGuidKey
 /// Test projection grain. The generator adds the grain interface,
 /// [ImplicitStreamSubscription], SubscribeToStreamAsync, and DispatchAsync.
 /// </summary>
-public sealed partial class OrderProjectionGrain : ProjectionBuilderGrain, IOrderProjectionAccess
+public sealed partial class OrderProjectionGrain : EdictProjectionBuilderGrain, IOrderProjectionAccess
 {
     private int _orderCount;
 
@@ -31,19 +31,19 @@ public sealed partial class OrderProjectionGrain : ProjectionBuilderGrain, IOrde
 
 public interface IProjectionPublisherGrain : IGrainWithGuidKey
 {
-    Task PublishToStreamAsync(string streamName, Event evt);
+    Task PublishToStreamAsync(string streamName, EdictEvent evt);
 }
 
 /// <summary>
 /// Test-only grain: publishes any event directly to a named domain stream,
-/// bypassing CommandHandlerGrain. Used to inject events with known EventIds.
+/// bypassing EdictCommandHandlerGrain. Used to inject events with known EventIds.
 /// </summary>
 public sealed class ProjectionPublisherGrain : Grain, IProjectionPublisherGrain
 {
-    public Task PublishToStreamAsync(string streamName, Event evt)
+    public Task PublishToStreamAsync(string streamName, EdictEvent evt)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<Event>(StreamId.Create(streamName, this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create(streamName, this.GetPrimaryKey()));
         return stream.OnNextAsync(evt);
     }
 }

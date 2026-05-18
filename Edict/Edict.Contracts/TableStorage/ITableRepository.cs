@@ -6,7 +6,7 @@ namespace Edict.Contracts.TableStorage;
 /// application tier binds to, mirroring <c>IEdictSender</c> for the command side.
 /// Point-get and partition-scoped query only — no change-feed or push (ADR 0012).
 /// </summary>
-public interface ITableRepository<T> where T : class
+public interface IEdictTableRepository<T> where T : class
 {
     Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default);
 

@@ -11,7 +11,7 @@ namespace Edict.Contracts.Events;
 /// the stream hop (ADR 0003).
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
-public abstract record Event
+public abstract record EdictEvent
 {
     /// <summary>Framework-assigned identity for this event instance.</summary>
     public Guid EventId { get; init; }

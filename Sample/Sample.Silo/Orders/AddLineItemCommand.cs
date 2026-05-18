@@ -6,12 +6,12 @@ using MessagePack;
 namespace Sample.Silo.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : Command
+public sealed partial record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
-    [Telemeterized]
+    [EdictTelemeterized]
     public string Sku { get; init; } = Sku;
 
     public int Quantity { get; init; } = Quantity;

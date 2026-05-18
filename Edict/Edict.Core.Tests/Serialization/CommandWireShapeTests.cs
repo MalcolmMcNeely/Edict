@@ -84,7 +84,7 @@ public sealed class CommandWireShapeTests
         return VerifyWireShape(command);
     }
 
-    private static Task VerifyWireShape<T>(T command) where T : Command
+    private static Task VerifyWireShape<T>(T command) where T : EdictCommand
     {
         var bytes = MessagePackSerializer.Serialize(command);
         var json = MessagePackSerializer.ConvertToJson(bytes);

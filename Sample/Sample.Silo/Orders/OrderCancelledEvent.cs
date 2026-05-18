@@ -6,9 +6,9 @@ using MessagePack;
 namespace Sample.Silo.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-[Stream("Orders")]
-public sealed partial record OrderCancelledEvent(Guid OrderId) : Event
+[EdictStream("Orders")]
+public sealed partial record OrderCancelledEvent(Guid OrderId) : EdictEvent
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }

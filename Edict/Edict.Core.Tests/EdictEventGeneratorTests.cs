@@ -13,18 +13,18 @@ public class EdictEventGeneratorTests
         namespace Sample;
 
         [MessagePackObject(keyAsPropertyName: true)]
-        [Stream("Orders")]
-        public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
         [MessagePackObject(keyAsPropertyName: true)]
-        [Stream("Orders")]
-        public sealed partial record OrderCancelledEvent(Guid OrderId) : Event
+        [EdictStream("Orders")]
+        public sealed partial record OrderCancelledEvent(Guid OrderId) : EdictEvent
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
         """;

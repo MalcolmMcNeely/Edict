@@ -85,7 +85,7 @@ public sealed class EventPublishingTests(EdictClusterFixture fixture)
         Assert.Equal(commandSpan.SpanId, publishSpan.ParentSpanId);
     }
 
-    private async Task<IReadOnlyList<Event>> WaitForEventsAsync(Guid orderId, int expectedCount = 1)
+    private async Task<IReadOnlyList<EdictEvent>> WaitForEventsAsync(Guid orderId, int expectedCount = 1)
     {
         var captureGrain = fixture.Cluster.GrainFactory.GetGrain<IOrderEventCaptureGrain>(orderId);
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);

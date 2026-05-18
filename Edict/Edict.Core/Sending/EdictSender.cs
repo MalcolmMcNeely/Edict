@@ -18,7 +18,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
     : IEdictSender
 {
     /// <inheritdoc />
-    public Task<CommandResult> Send(Command command)
+    public Task<EdictCommandResult> Send(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 

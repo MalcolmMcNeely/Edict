@@ -8,7 +8,7 @@ namespace Edict.Core.Tests.Grains;
 
 public interface IOrderEventCaptureGrain : IGrainWithGuidKey
 {
-    Task<IReadOnlyList<Event>> GetCapturedEventsAsync();
+    Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync();
 }
 
 /// <summary>
@@ -19,18 +19,18 @@ public interface IOrderEventCaptureGrain : IGrainWithGuidKey
 [ImplicitStreamSubscription("Orders")]
 public sealed class OrderEventCaptureGrain : Grain, IOrderEventCaptureGrain
 {
-    private readonly List<Event> _events = [];
+    private readonly List<EdictEvent> _events = [];
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<Event>(StreamId.Create("Orders", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("Orders", this.GetPrimaryKey()));
         await stream.SubscribeAsync(
             (item, _) => { _events.Add(item); return Task.CompletedTask; },
             _ => Task.CompletedTask);
         await base.OnActivateAsync(cancellationToken);
     }
 
-    public Task<IReadOnlyList<Event>> GetCapturedEventsAsync() =>
-        Task.FromResult<IReadOnlyList<Event>>(_events.AsReadOnly());
+    public Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync() =>
+        Task.FromResult<IReadOnlyList<EdictEvent>>(_events.AsReadOnly());
 }

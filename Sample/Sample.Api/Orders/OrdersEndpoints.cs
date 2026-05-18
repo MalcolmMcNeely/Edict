@@ -44,7 +44,7 @@ internal static class OrdersEndpoints
     }
 
     private static async Task<IResult> GetOrderProjection(
-        Guid id, ITableRepository<OrderStatusRow> repository)
+        Guid id, IEdictTableRepository<OrderStatusRow> repository)
     {
         var row = await repository.GetAsync(id.ToString(), "status");
 
@@ -72,11 +72,11 @@ internal static class OrdersEndpoints
         return Results.Content(html, "text/html");
     }
 
-    private static IResult MapResult(CommandResult result, Func<IResult> onAccepted) =>
+    private static IResult MapResult(EdictCommandResult result, Func<IResult> onAccepted) =>
         result switch
         {
-            CommandResult.Accepted => onAccepted(),
-            CommandResult.Rejected r => Results.UnprocessableEntity(r.Reasons),
+            EdictCommandResult.Accepted => onAccepted(),
+            EdictCommandResult.Rejected r => Results.UnprocessableEntity(r.Reasons),
             _ => throw new InvalidOperationException($"Unexpected result type: {result.GetType()}")
         };
 }

@@ -9,7 +9,7 @@ namespace Edict.Core.Serialization;
 /// <summary>
 /// Orleans serialization for the <c>Edict.Contracts</c> contract surface.
 /// <para>
-/// <c>Command</c>/<c>CommandResult</c> live in an Orleans-free assembly (ADR
+/// <c>EdictCommand</c>/<c>EdictCommandResult</c> live in an Orleans-free assembly (ADR
 /// 0005), and a generated <c>[GenerateSerializer]</c> surrogate is impossible:
 /// Orleans' serializer source generator runs as a sibling of Edict's
 /// generator and never observes its output (ADR 0006's prohibition, still
@@ -17,7 +17,7 @@ namespace Edict.Core.Serialization;
 /// bases by Edict, on concrete commands by the consumer — so they never enter
 /// that generator-ordering trap. Orleans' external-serializer integration
 /// writes the concrete type identity via its own type manifest and delegates
-/// only the body to MessagePack, so the abstract <c>Command</c> parameter on
+/// only the body to MessagePack, so the abstract <c>EdictCommand</c> parameter on
 /// <c>IEdictSender.Send</c> round-trips polymorphically with no <c>[Union]</c>
 /// on the base (ADR 0007).
 /// </para>
@@ -33,8 +33,8 @@ public static class EdictSerialization
         builder.AddMessagePackSerializer(IsEdictContract);
 
     private static bool IsEdictContract(Type type) =>
-        typeof(Command).IsAssignableFrom(type)
-        || typeof(CommandResult).IsAssignableFrom(type)
-        || type == typeof(RejectionReason)
-        || typeof(Event).IsAssignableFrom(type);
+        typeof(EdictCommand).IsAssignableFrom(type)
+        || typeof(EdictCommandResult).IsAssignableFrom(type)
+        || type == typeof(EdictRejectionReason)
+        || typeof(EdictEvent).IsAssignableFrom(type);
 }

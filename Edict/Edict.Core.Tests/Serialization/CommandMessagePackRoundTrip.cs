@@ -26,9 +26,9 @@ namespace Edict.Core.Tests.Serialization;
 // is the codec-breadth case the order commands (Guid + string only) do not
 // exercise — it folds in the rigor the #9 spike's probe command proved.
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : Command
+public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid ProbeId { get; init; } = ProbeId;
 
     public string Label { get; init; } = "";
@@ -44,12 +44,12 @@ public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : Command
     public string? Note { get; init; }
 }
 
-public partial class MixedPrimitiveGrain : Edict.Core.Grains.CommandHandlerGrain
+public partial class MixedPrimitiveGrain : Edict.Core.Grains.EdictCommandHandlerGrain
 {
-    public Task<CommandResult> Handle(MixedPrimitiveCommand command)
+    public Task<EdictCommandResult> Handle(MixedPrimitiveCommand command)
     {
         CommandRoundTripRecorder.Record(command);
-        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }
 
@@ -59,11 +59,11 @@ public partial class MixedPrimitiveGrain : Edict.Core.Grains.CommandHandlerGrain
 // any Command — every Command carries a CommandId.
 public static class CommandRoundTripRecorder
 {
-    private static readonly ConcurrentDictionary<Guid, Command> Received = new();
+    private static readonly ConcurrentDictionary<Guid, EdictCommand> Received = new();
 
-    public static void Record(Command command) => Received[command.CommandId] = command;
+    public static void Record(EdictCommand command) => Received[command.CommandId] = command;
 
-    public static Command Get(Guid commandId) => Received[commandId];
+    public static EdictCommand Get(Guid commandId) => Received[commandId];
 }
 
 [Collection(EdictClusterCollection.Name)]
@@ -86,7 +86,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
         };
 
         // Parameter is the abstract Command — proves polymorphism with no [Union].
-        Command asBase = sent;
+        EdictCommand asBase = sent;
         var result = await fixture.Sender.Send(asBase);
 
         await VerifyRoundTrip(result, CommandRoundTripRecorder.Get(sent.CommandId));
@@ -100,7 +100,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
             CommandId = CancelCommandId,
         };
 
-        Command asBase = sent;
+        EdictCommand asBase = sent;
         var result = await fixture.Sender.Send(asBase);
 
         await VerifyRoundTrip(result, CommandRoundTripRecorder.Get(sent.CommandId));
@@ -120,7 +120,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
             Note = "nullable-present",
         };
 
-        Command asBase = sent;
+        EdictCommand asBase = sent;
         var result = await fixture.Sender.Send(asBase);
 
         await VerifyRoundTrip(result, CommandRoundTripRecorder.Get(sent.CommandId));
@@ -134,7 +134,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
             CommandId = FailCommandId,
         };
 
-        Command asBase = sent;
+        EdictCommand asBase = sent;
 
         // The handler's own exception — not a CodecNotFoundException — proves
         // the body deserialized on the silo and reached Handle. The snapshot
@@ -149,7 +149,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
     // round-tripped property value. Guids and dates are left unscrubbed: the
     // inputs are fixed constants, so the literal routing id, command id and
     // timestamp are themselves the round-trip assertion.
-    private static SettingsTask VerifyRoundTrip(CommandResult result, Command received) =>
+    private static SettingsTask VerifyRoundTrip(EdictCommandResult result, EdictCommand received) =>
         Verify(new
         {
             Result = result,

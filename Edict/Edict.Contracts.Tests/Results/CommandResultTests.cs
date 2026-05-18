@@ -11,13 +11,13 @@ public class CommandResultTests
     [Fact]
     public void A_rejected_result_carries_its_reasons_through_an_exhaustive_switch()
     {
-        var reason = new RejectionReason("out_of_stock", "Item is out of stock.");
-        CommandResult result = new CommandResult.Rejected([reason]);
+        var reason = new EdictRejectionReason("out_of_stock", "Item is out of stock.");
+        EdictCommandResult result = new EdictCommandResult.Rejected([reason]);
 
         var extracted = result switch
         {
-            CommandResult.Accepted => Array.Empty<RejectionReason>(),
-            CommandResult.Rejected rejected => rejected.Reasons.ToArray(),
+            EdictCommandResult.Accepted => Array.Empty<EdictRejectionReason>(),
+            EdictCommandResult.Rejected rejected => rejected.Reasons.ToArray(),
         };
 
         Assert.Equal([reason], extracted);
@@ -26,13 +26,13 @@ public class CommandResultTests
     [Fact]
     public void Accepted_results_are_value_equal()
     {
-        Assert.Equal(new CommandResult.Accepted(), new CommandResult.Accepted());
+        Assert.Equal(new EdictCommandResult.Accepted(), new EdictCommandResult.Accepted());
     }
 
     [Fact]
     public Task CommandResult_is_a_closed_hierarchy_of_exactly_Accepted_and_Rejected()
     {
-        var baseType = typeof(CommandResult);
+        var baseType = typeof(EdictCommandResult);
 
         var shape = new
         {

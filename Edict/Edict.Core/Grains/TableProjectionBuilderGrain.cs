@@ -8,17 +8,17 @@ namespace Edict.Core.Grains;
 /// <summary>
 /// Projection builder whose read model lives in Azure Table Storage so grain
 /// activation stays small regardless of how large the model grows (ADR 0012).
-/// The <see cref="EventDeduplicationGrain"/> dedup ring stays in persisted grain
+/// The <see cref="EdictEventDeduplicationGrain"/> dedup ring stays in persisted grain
 /// state as usual — the row write and ring commit are two non-atomic stores, and
 /// the resulting crash-window double-apply is accepted until the Outbox ships.
 /// </summary>
-public abstract class TableProjectionBuilderGrain<T> : ProjectionBuilderGrain
+public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuilderGrain
     where T : class, ITableEntity, new()
 {
     private readonly TableServiceClient _tableServiceClient;
     private TableClient? _tableClient;
 
-    protected TableProjectionBuilderGrain(TableServiceClient tableServiceClient)
+    protected EdictTableProjectionBuilderGrain(TableServiceClient tableServiceClient)
     {
         _tableServiceClient = tableServiceClient;
     }
@@ -29,13 +29,13 @@ public abstract class TableProjectionBuilderGrain<T> : ProjectionBuilderGrain
     /// <summary>
     /// Derives the RowKey from the incoming event. The PartitionKey defaults to
     /// <see cref="DefaultPartitionKey"/> (the grain's primary key, which equals the
-    /// event's <c>[RouteKey]</c> value for per-aggregate projections).
+    /// event's <c>[EdictRouteKey]</c> value for per-aggregate projections).
     /// </summary>
-    protected abstract string GetRowKey(Event evt);
+    protected abstract string GetRowKey(EdictEvent evt);
 
     /// <summary>
     /// The grain's primary key as a string. For per-aggregate projections this equals
-    /// the event's <c>[RouteKey]</c> Guid, making it the natural PartitionKey.
+    /// the event's <c>[EdictRouteKey]</c> Guid, making it the natural PartitionKey.
     /// Global-singleton projections override to use a different strategy.
     /// </summary>
     protected string DefaultPartitionKey => this.GetPrimaryKey().ToString();
@@ -55,7 +55,7 @@ public abstract class TableProjectionBuilderGrain<T> : ProjectionBuilderGrain
 
     /// <summary>
     /// Wraps every handler call with load-apply-writeback. The base
-    /// <see cref="ProjectionBuilderGrain.DispatchEventAsync{TEvent}"/> default is a
+    /// <see cref="EdictProjectionBuilderGrain.DispatchEventAsync{TEvent}"/> default is a
     /// direct handler call; this override adds the table I/O around it.
     /// </summary>
     protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)

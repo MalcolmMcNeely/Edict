@@ -64,7 +64,7 @@ public sealed class ApiFixture : IAsyncLifetime
                     services.AddSingleton<IClusterClient>(_cluster.Client);
                     services.AddSingleton<IGrainFactory>(_cluster.Client);
                     services.AddSingleton(_tableServiceClient);
-                    services.AddSingleton<ITableRepository<OrderStatusRow>>(
+                    services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
                         _ => new AzureTableRepository<OrderStatusRow>(
                             _tableServiceClient, "ordersbystatus"));
                 });

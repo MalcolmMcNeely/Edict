@@ -6,11 +6,11 @@ using Edict.Contracts.TableStorage;
 namespace Edict.Core.TableStorage;
 
 /// <summary>
-/// Azure Table Storage implementation of <see cref="ITableRepository{T}"/>.
-/// Registered by the consumer's DI setup; <see cref="ITableRepository{T}"/> is
+/// Azure Table Storage implementation of <see cref="IEdictTableRepository{T}"/>.
+/// Registered by the consumer's DI setup; <see cref="IEdictTableRepository{T}"/> is
 /// the substitution seam in <c>Edict.Contracts</c> (ADR 0008 / ADR 0012).
 /// </summary>
-public sealed class AzureTableRepository<T> : ITableRepository<T>
+public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
     where T : class, ITableEntity, new()
 {
     private readonly TableClient _tableClient;

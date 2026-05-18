@@ -6,7 +6,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Contracts.Tests.Commands;
 
-file sealed record SampleCommand(Guid AccountId) : Command;
+file sealed record SampleCommand(Guid AccountId) : EdictCommand;
 
 public class CommandTests
 {
@@ -25,7 +25,7 @@ public class CommandTests
     [Fact]
     public Task Command_base_exposes_only_a_settable_CommandId_and_no_trace_fields()
     {
-        var properties = typeof(Command)
+        var properties = typeof(EdictCommand)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(property => new
             {

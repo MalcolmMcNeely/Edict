@@ -13,53 +13,53 @@ namespace Edict.Core.Tests;
 // IOrderGrain, OrderGrain.Dispatch, the Orleans surrogates and AddEdict().
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : Command
+public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
-    [Telemeterized]
+    [EdictTelemeterized]
     public string Sku { get; init; } = Sku;
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record CancelOrderCommand(Guid OrderId, string Reason) : Command
+public sealed partial record CancelOrderCommand(Guid OrderId, string Reason) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record FailOrderCommand(Guid OrderId) : Command
+public sealed partial record FailOrderCommand(Guid OrderId) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
 // Commands used by the Command Validator tests (issue #12).
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : Command
+public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
     public string Sku { get; init; } = Sku;
 }
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record StateCheckCommand(Guid OrderId) : Command
+public sealed partial record StateCheckCommand(Guid OrderId) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
 // The domain event raised when a PlaceOrderCommand is accepted.
 [MessagePackObject(keyAsPropertyName: true)]
-[Stream("Orders")]
-public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
+[EdictStream("Orders")]
+public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
     public string Sku { get; init; } = Sku;
@@ -67,39 +67,39 @@ public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
 
 // Test event for EventDeduplicationGrain integration tests.
 [MessagePackObject(keyAsPropertyName: true)]
-[Stream("DedupTest")]
-public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : Event
+[EdictStream("DedupTest")]
+public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : EdictEvent
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid AggregateId { get; init; } = AggregateId;
 
     public int Sequence { get; init; } = Sequence;
 }
 
-public partial class OrderGrain : CommandHandlerGrain
+public partial class OrderGrain : EdictCommandHandlerGrain
 {
-    public Task<CommandResult> Handle(PlaceOrderCommand command)
+    public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
     {
         CommandRoundTripRecorder.Record(command);
         Raise(new OrderPlacedEvent(command.OrderId, command.Sku));
-        return Task.FromResult<CommandResult>(new CommandResult.Accepted());
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<CommandResult> Handle(CancelOrderCommand command)
+    public Task<EdictCommandResult> Handle(CancelOrderCommand command)
     {
         CommandRoundTripRecorder.Record(command);
-        return Task.FromResult<CommandResult>(new CommandResult.Rejected(
-            [new RejectionReason("already_shipped", "Order has already shipped.")]));
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+            [new EdictRejectionReason("already_shipped", "Order has already shipped.")]));
     }
 
-    public Task<CommandResult> Handle(FailOrderCommand command) =>
+    public Task<EdictCommandResult> Handle(FailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
 
-    public Task<CommandResult> Handle(ValidateSkuCommand command) =>
-        Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    public Task<EdictCommandResult> Handle(ValidateSkuCommand command) =>
+        Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-    public Task<CommandResult> Handle(StateCheckCommand command) =>
-        Task.FromResult<CommandResult>(new CommandResult.Accepted());
+    public Task<EdictCommandResult> Handle(StateCheckCommand command) =>
+        Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
     protected override object? GetValidationState() => "grain-active";
 }

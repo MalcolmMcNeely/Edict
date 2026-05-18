@@ -10,13 +10,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
-    private const string ProjectionBuilderGrainFqn = "global::Edict.Core.Grains.ProjectionBuilderGrain";
-
     internal static readonly DiagnosticDescriptor CommandHandlerRule = new DiagnosticDescriptor(
         id: "EDICT001",
         title: "Aggregate grain must be declared partial",
-        messageFormat: "'{0}' derives from CommandHandlerGrain and must be declared partial",
+        messageFormat: "'{0}' derives from EdictCommandHandlerGrain and must be declared partial",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -24,7 +21,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor ProjectionBuilderRule = new DiagnosticDescriptor(
         id: "EDICT001",
         title: "Projection Builder grain must be declared partial",
-        messageFormat: "'{0}' derives from ProjectionBuilderGrain and must be declared partial",
+        messageFormat: "'{0}' derives from EdictProjectionBuilderGrain and must be declared partial",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -49,8 +46,8 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
 
         var isCommandHandler = type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-            == CommandHandlerGrainFqn;
-        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, ProjectionBuilderGrainFqn);
+            == EdictWellKnownNames.EdictCommandHandlerGrainFqn;
+        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderGrainFqn);
 
         if (!isCommandHandler && !isProjectionBuilder)
         {

@@ -42,7 +42,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
                                 ?? "UseDevelopmentStorage=true";
     var tableServiceClient = new TableServiceClient(tableConnectionString);
     builder.Services.AddSingleton(tableServiceClient);
-    builder.Services.AddSingleton<ITableRepository<OrderStatusRow>>(
+    builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
         _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
 }
 

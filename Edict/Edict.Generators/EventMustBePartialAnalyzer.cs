@@ -10,12 +10,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EventMustBePartialAnalyzer : DiagnosticAnalyzer
 {
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT007",
         title: "Concrete Event must be declared partial",
-        messageFormat: "'{0}' derives from Event and must be declared partial; the source generator emits the Orleans [Alias] into a second partial declaration",
+        messageFormat: "'{0}' derives from EdictEvent and must be declared partial; the source generator emits the Orleans [Alias] into a second partial declaration",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -59,7 +57,7 @@ public sealed class EventMustBePartialAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictEventFqn)
             {
                 return true;
             }

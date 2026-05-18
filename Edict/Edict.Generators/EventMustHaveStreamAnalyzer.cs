@@ -9,13 +9,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EventMustHaveStreamAnalyzer : DiagnosticAnalyzer
 {
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-    private const string StreamAttributeFqn = "global::Edict.Contracts.Events.StreamAttribute";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT008",
-        title: "Concrete Event must declare [Stream]",
-        messageFormat: "'{0}' derives from Event and must be decorated with [Stream(name)]; omitting it causes silent stream misrouting",
+        title: "Concrete Event must declare [EdictStream]",
+        messageFormat: "'{0}' derives from EdictEvent and must be decorated with [EdictStream(name)]; omitting it causes silent stream misrouting",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -41,7 +38,7 @@ public sealed class EventMustHaveStreamAnalyzer : DiagnosticAnalyzer
 
         var hasStream = type.GetAttributes()
             .Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                      == StreamAttributeFqn);
+                      == EdictWellKnownNames.EdictStreamAttributeFqn);
 
         if (!hasStream)
         {
@@ -54,7 +51,7 @@ public sealed class EventMustHaveStreamAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictEventFqn)
             {
                 return true;
             }

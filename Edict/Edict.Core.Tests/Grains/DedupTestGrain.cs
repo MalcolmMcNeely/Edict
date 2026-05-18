@@ -15,30 +15,30 @@ public interface IDedupTestGrain : IGrainWithGuidKey
 
 public interface IDedupPublisherGrain : IGrainWithGuidKey
 {
-    Task PublishAsync(Event evt);
+    Task PublishAsync(EdictEvent evt);
 }
 
 /// <summary>
 /// Test-only grain: publishes any event to the "DedupTest" domain stream.
 /// Allows tests to inject events with pre-set EventIds (bypassing the
-/// CommandHandlerGrain stamp) to exercise dedup mechanics directly.
+/// EdictCommandHandlerGrain stamp) to exercise dedup mechanics directly.
 /// </summary>
 public sealed class DedupPublisherGrain : Grain, IDedupPublisherGrain
 {
-    public Task PublishAsync(Event evt)
+    public Task PublishAsync(EdictEvent evt)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<Event>(StreamId.Create("DedupTest", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("DedupTest", this.GetPrimaryKey()));
         return stream.OnNextAsync(evt);
     }
 }
 
 /// <summary>
-/// Minimal hand-written test subclass of <see cref="EventDeduplicationGrain"/>.
+/// Minimal hand-written test subclass of <see cref="EdictEventDeduplicationGrain"/>.
 /// Ring size is 3 to make eviction behaviour easy to exercise in tests.
 /// </summary>
 [ImplicitStreamSubscription("DedupTest")]
-public sealed class DedupTestGrain : EventDeduplicationGrain, IDedupTestGrain
+public sealed class DedupTestGrain : EdictEventDeduplicationGrain, IDedupTestGrain
 {
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;
@@ -48,11 +48,11 @@ public sealed class DedupTestGrain : EventDeduplicationGrain, IDedupTestGrain
     protected override async Task SubscribeToStreamAsync(CancellationToken cancellationToken)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<Event>(StreamId.Create("DedupTest", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("DedupTest", this.GetPrimaryKey()));
         await stream.SubscribeAsync(OnStreamEventAsync, static _ => Task.CompletedTask);
     }
 
-    protected override Task<bool> DispatchAsync(Event evt)
+    protected override Task<bool> DispatchAsync(EdictEvent evt)
     {
         if (evt is not DedupTestEvent dedupEvt)
             return Task.FromResult(false);

@@ -11,7 +11,7 @@ public sealed class CommandPipelineEndToEndTests(EdictClusterFixture fixture)
         var result = await fixture.Sender.Send(
             new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
-        Assert.IsType<CommandResult.Accepted>(result);
+        Assert.IsType<EdictCommandResult.Accepted>(result);
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public sealed class CommandPipelineEndToEndTests(EdictClusterFixture fixture)
         var result = await fixture.Sender.Send(
             new CancelOrderCommand(Guid.NewGuid(), "changed mind"));
 
-        var rejected = Assert.IsType<CommandResult.Rejected>(result);
+        var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
         Assert.Equal("already_shipped", reason.Code);
     }

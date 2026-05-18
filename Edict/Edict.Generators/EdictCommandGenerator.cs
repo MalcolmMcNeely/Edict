@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the command spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Grains.CommandHandlerGrain</c>: the Orleans grain interface, the
+/// <c>Edict.Core.Grains.EdictCommandHandlerGrain</c>: the Orleans grain interface, the
 /// <c>Dispatch</c> type-switch override, an Orleans surrogate + converter per
 /// concrete command, and a single <c>AddEdict()</c> that wires the route map,
 /// sender and ActivitySource.
@@ -23,13 +23,6 @@ namespace Edict.Generators;
 [Generator]
 public sealed class EdictCommandGenerator : IIncrementalGenerator
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
-    private const string RouteKeyAttributeFqn = "global::Edict.Contracts.Commands.RouteKeyAttribute";
-    private const string TelemeterizedAttributeFqn = "global::Edict.Contracts.Telemetry.TelemeterizedAttribute";
-    private const string TaskOfCommandResult =
-        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult>";
-
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var grains = context.SyntaxProvider
@@ -72,7 +65,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (grain.BaseType?.ToDisplayString(FullyQualified) != CommandHandlerGrainFqn)
+        if (grain.BaseType?.ToDisplayString(FullyQualified) != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
         {
             return null;
         }
@@ -86,7 +79,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 continue;
             }
 
-            if (method.ReturnType.ToDisplayString(FullyQualified) != TaskOfCommandResult)
+            if (method.ReturnType.ToDisplayString(FullyQualified) != EdictWellKnownNames.TaskOfEdictCommandResultFqn)
             {
                 continue;
             }
@@ -149,13 +142,13 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 var attributes = property.GetAttributes();
 
                 if (routeKeyProperty is null &&
-                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == RouteKeyAttributeFqn))
+                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictRouteKeyAttributeFqn))
                 {
                     routeKeyProperty = property.Name;
                 }
 
                 if (IsPrimitiveType(property.Type) &&
-                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == TelemeterizedAttributeFqn))
+                    attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictTelemeterizedAttributeFqn))
                 {
                     telemeterizedProperties.Add(new TelemeterizedProperty(property.Name));
                 }
@@ -201,7 +194,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(FullyQualified) == CommandFqn)
+            if (current.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictCommandFqn)
             {
                 return true;
             }
@@ -235,10 +228,10 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
-                    public override async {{TaskOfCommandResult}} Dispatch(
-                        global::Edict.Contracts.Commands.Command command)
+                    public override async {{EdictWellKnownNames.TaskOfEdictCommandResultFqn}} Dispatch(
+                        global::Edict.Contracts.Commands.EdictCommand command)
                     {
-                        global::Edict.Contracts.Results.CommandResult result;
+                        global::Edict.Contracts.Results.EdictCommandResult result;
                         try
                         {
                             result = await (command switch
@@ -253,7 +246,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                             this.DiscardRaisedEvents();
                             throw;
                         }
-                        if (result is global::Edict.Contracts.Results.CommandResult.Accepted)
+                        if (result is global::Edict.Contracts.Results.EdictCommandResult.Accepted)
                             await this.FlushRaisedEventsAsync();
                         else
                             this.DiscardRaisedEvents();

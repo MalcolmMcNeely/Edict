@@ -35,7 +35,7 @@ public sealed class EventWireShapeTests
         return VerifyWireShape(evt);
     }
 
-    private static Task VerifyWireShape<T>(T evt) where T : Event
+    private static Task VerifyWireShape<T>(T evt) where T : EdictEvent
     {
         var bytes = MessagePackSerializer.Serialize(evt);
         var json = MessagePackSerializer.ConvertToJson(bytes);

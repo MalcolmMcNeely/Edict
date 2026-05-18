@@ -13,16 +13,16 @@ namespace Edict.Core.Grains;
 /// <summary>
 /// Abstract base for every event-consuming grain. Owns the stream-observer
 /// callback, suppresses at-least-once redeliveries via a configurable bounded
-/// ring of recently seen <see cref="Event.EventId"/>s persisted in grain
+/// ring of recently seen <see cref="EdictEvent.EventId"/>s persisted in grain
 /// state, and commits progress only after the subclass's dispatch succeeds
 /// (ADR 0002). Shaped so <c>EventHandlerGrain</c>/<c>SagaGrain</c> can inherit
 /// without rework (next slices).
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
-public abstract class EventDeduplicationGrain : Grain<DeduplicationState>
+public abstract class EdictEventDeduplicationGrain : Grain<DeduplicationState>
 {
     /// <summary>
-    /// Maximum number of distinct <see cref="Event.EventId"/>s remembered.
+    /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
     /// Override in the subclass to tune for expected redelivery volume.
     /// </summary>
     protected virtual int RingSize => 100;
@@ -45,16 +45,16 @@ public abstract class EventDeduplicationGrain : Grain<DeduplicationState>
     /// the incoming event to a strongly typed handler. Returns <c>true</c> if
     /// the event was handled (ring slot consumed on success), <c>false</c> if
     /// the event type is not handled by this consumer (no ring slot consumed).
-    /// A thrown exception leaves the <see cref="Event.EventId"/> uncommitted so
+    /// A thrown exception leaves the <see cref="EdictEvent.EventId"/> uncommitted so
     /// Orleans redelivers.
     /// </summary>
-    protected abstract Task<bool> DispatchAsync(Event evt);
+    protected abstract Task<bool> DispatchAsync(EdictEvent evt);
 
     /// <summary>
     /// The dedup-guarded stream callback. Subclasses pass this method to
     /// <c>stream.SubscribeAsync</c> from <see cref="SubscribeToStreamAsync"/>.
     /// </summary>
-    protected async Task OnStreamEventAsync(Event evt, StreamSequenceToken _)
+    protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken _)
     {
         EnsureRingInitialized();
 
@@ -98,7 +98,7 @@ public abstract class EventDeduplicationGrain : Grain<DeduplicationState>
             State.Count++;
     }
 
-    private static void EmitDedupSpan(Event evt)
+    private static void EmitDedupSpan(EdictEvent evt)
     {
         var parentContext = RestoreEventContext(evt);
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
@@ -108,7 +108,7 @@ public abstract class EventDeduplicationGrain : Grain<DeduplicationState>
         span?.SetTag("edict.deduplicated", true);
     }
 
-    protected static ActivityContext RestoreEventContext(Event evt)
+    protected static ActivityContext RestoreEventContext(EdictEvent evt)
     {
         if (evt.TraceId is { Length: 32 } && evt.SpanId is { Length: 16 })
         {

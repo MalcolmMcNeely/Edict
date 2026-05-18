@@ -9,7 +9,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits a stable <c>[Alias]</c> partial for every concrete <c>partial record</c>
-/// that derives from <c>Edict.Contracts.Events.Event</c>.
+/// that derives from <c>Edict.Contracts.Events.EdictEvent</c>.
 /// <para>
 /// Discovery is semantic and by base type (ADR 0011): the generator never
 /// scans <c>Handle</c> bodies, so the publisher's assembly gets an alias even
@@ -21,8 +21,6 @@ namespace Edict.Generators;
 [Generator]
 public sealed class EdictEventGenerator : IIncrementalGenerator
 {
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var events = context.SyntaxProvider
@@ -62,7 +60,7 @@ public sealed class EdictEventGenerator : IIncrementalGenerator
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictEventFqn)
             {
                 return true;
             }

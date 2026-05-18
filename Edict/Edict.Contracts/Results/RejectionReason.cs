@@ -10,4 +10,4 @@ namespace Edict.Contracts.Results;
 /// <param name="Code">Stable identifier a UI can branch on.</param>
 /// <param name="Message">Human-readable explanation for display.</param>
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record RejectionReason(string Code, string Message);
+public sealed record EdictRejectionReason(string Code, string Message);

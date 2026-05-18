@@ -15,15 +15,15 @@ public class EdictProjectionGeneratorTests
         namespace Sample;
 
         [MessagePackObject(keyAsPropertyName: true)]
-        [Stream("Orders")]
-        public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
             public string Sku { get; init; } = Sku;
         }
 
-        public sealed partial class OrderProjectionGrain : ProjectionBuilderGrain
+        public sealed partial class OrderProjectionGrain : EdictProjectionBuilderGrain
         {
             public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
         }
@@ -40,22 +40,22 @@ public class EdictProjectionGeneratorTests
         namespace Sample;
 
         [MessagePackObject(keyAsPropertyName: true)]
-        [Stream("Orders")]
-        public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
         [MessagePackObject(keyAsPropertyName: true)]
-        [Stream("Orders")]
-        public sealed partial record OrderCancelledEvent(Guid OrderId) : Event
+        [EdictStream("Orders")]
+        public sealed partial record OrderCancelledEvent(Guid OrderId) : EdictEvent
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed partial class OrderProjectionGrain : ProjectionBuilderGrain
+        public sealed partial class OrderProjectionGrain : EdictProjectionBuilderGrain
         {
             public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
             public Task Handle(OrderCancelledEvent evt) => Task.CompletedTask;

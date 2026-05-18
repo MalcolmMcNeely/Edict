@@ -9,12 +9,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TelemeterizedMustBePrimitiveAnalyzer : DiagnosticAnalyzer
 {
-    private const string TelemeterizedAttributeFqn = "global::Edict.Contracts.Telemetry.TelemeterizedAttribute";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT005",
-        title: "[Telemeterized] property must be a primitive type",
-        messageFormat: "[Telemeterized] property '{0}' must be a primitive type (bool, byte, sbyte, char, short, ushort, int, uint, long, ulong, float, double, decimal, string, or Guid)",
+        title: "[EdictTelemeterized] property must be a primitive type",
+        messageFormat: "[EdictTelemeterized] property '{0}' must be a primitive type (bool, byte, sbyte, char, short, ushort, int, uint, long, ulong, float, double, decimal, string, or Guid)",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -35,7 +33,7 @@ public sealed class TelemeterizedMustBePrimitiveAnalyzer : DiagnosticAnalyzer
 
         var hasTelemeterized = property.GetAttributes()
             .Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                      == TelemeterizedAttributeFqn);
+                      == EdictWellKnownNames.EdictTelemeterizedAttributeFqn);
 
         if (!hasTelemeterized)
         {

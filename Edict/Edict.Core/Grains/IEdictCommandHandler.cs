@@ -15,5 +15,5 @@ namespace Edict.Core.Grains;
 public interface IEdictCommandHandler : IGrainWithGuidKey
 {
     /// <summary>Routes a command to the matching <c>Handle</c> overload.</summary>
-    Task<CommandResult> Dispatch(Command command);
+    Task<EdictCommandResult> Dispatch(EdictCommand command);
 }

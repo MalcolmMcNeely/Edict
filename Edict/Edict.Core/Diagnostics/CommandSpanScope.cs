@@ -15,12 +15,12 @@ namespace Edict.Core.Diagnostics;
 /// </summary>
 internal static class CommandSpanScope
 {
-    internal static async Task<CommandResult> ExecuteAsync(
+    internal static async Task<EdictCommandResult> ExecuteAsync(
         string operationName,
         Guid routeKey,
-        Action<Command, Activity?>? tagWriter,
-        Command command,
-        Func<Task<CommandResult>> handler)
+        Action<EdictCommand, Activity?>? tagWriter,
+        EdictCommand command,
+        Func<Task<EdictCommandResult>> handler)
     {
         using var activity = EdictDiagnostics.ActivitySource.StartActivity(operationName);
 

@@ -15,7 +15,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     {
         var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
 
-        var rejected = Assert.IsType<CommandResult.Rejected>(result);
+        var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
         Assert.Equal("sku_required", reason.Code);
     }
@@ -25,7 +25,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     {
         var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
 
-        Assert.IsType<CommandResult.Accepted>(result);
+        Assert.IsType<EdictCommandResult.Accepted>(result);
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
         // PlaceOrderCommand has no registered validator in this cluster.
         var result = await fixture.Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
-        Assert.IsType<CommandResult.Accepted>(result);
+        Assert.IsType<EdictCommandResult.Accepted>(result);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
         // passes → Accepted proves injection happened.
         var result = await fixture.Sender.Send(new StateCheckCommand(Guid.NewGuid()));
 
-        Assert.IsType<CommandResult.Accepted>(result);
+        Assert.IsType<EdictCommandResult.Accepted>(result);
     }
 
     // Orleans' single-threaded grain activation guarantees that the validator
@@ -80,6 +80,6 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
         var t2 = fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-B"));
         var results = await Task.WhenAll(t1, t2);
 
-        Assert.All(results, r => Assert.IsType<CommandResult.Accepted>(r));
+        Assert.All(results, r => Assert.IsType<EdictCommandResult.Accepted>(r));
     }
 }

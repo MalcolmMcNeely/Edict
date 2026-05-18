@@ -5,14 +5,14 @@ using Edict.Core.Grains;
 
 namespace Sample.Silo.Orders;
 
-public sealed partial class OrdersByStatusGrain : TableProjectionBuilderGrain<OrderStatusRow>
+public sealed partial class OrdersByStatusGrain : EdictTableProjectionBuilderGrain<OrderStatusRow>
 {
     public OrdersByStatusGrain(TableServiceClient tableServiceClient)
         : base(tableServiceClient) { }
 
     protected override string TableName => "ordersbystatus";
 
-    protected override string GetRowKey(Event evt) => "status";
+    protected override string GetRowKey(EdictEvent evt) => "status";
 
     public Task Handle(OrderPlacedEvent evt)
     {

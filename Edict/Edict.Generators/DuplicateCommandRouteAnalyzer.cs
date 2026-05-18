@@ -10,9 +10,6 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT004",
         title: "Command handled by multiple grains",
@@ -39,7 +36,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
         foreach (var type in GetAllTypes(context.Compilation.GlobalNamespace))
         {
             if (type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    != CommandHandlerGrainFqn)
+                    != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
             {
                 continue;
             }
@@ -93,7 +90,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CommandFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictCommandFqn)
             {
                 return true;
             }

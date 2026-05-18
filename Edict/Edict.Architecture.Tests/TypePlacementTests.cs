@@ -21,8 +21,8 @@ public class TypePlacementTests
 {
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
-            typeof(Command).Assembly,
-            typeof(EventDeduplicationGrain).Assembly,
+            typeof(EdictCommand).Assembly,
+            typeof(EdictEventDeduplicationGrain).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -31,7 +31,7 @@ public class TypePlacementTests
     [Fact]
     public void Event_ResidiesInEdictContracts()
     {
-        var rule = Types().That().HaveNameMatching("^Event$")
+        var rule = Types().That().HaveNameMatching("^EdictEvent$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Events$");
 
         rule.Check(Architecture);
@@ -40,7 +40,7 @@ public class TypePlacementTests
     [Fact]
     public void StreamAttribute_ResidiesInEdictContracts()
     {
-        var rule = Types().That().HaveNameMatching("^StreamAttribute$")
+        var rule = Types().That().HaveNameMatching("^EdictStreamAttribute$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Events$");
 
         rule.Check(Architecture);
@@ -49,7 +49,7 @@ public class TypePlacementTests
     [Fact]
     public void RouteKeyAttribute_ResidiesInEdictContracts()
     {
-        var rule = Types().That().HaveNameMatching("^RouteKeyAttribute$")
+        var rule = Types().That().HaveNameMatching("^EdictRouteKeyAttribute$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Commands$");
 
         rule.Check(Architecture);
@@ -58,18 +58,18 @@ public class TypePlacementTests
     [Fact]
     public void ITableRepository_ResidiesInEdictContracts()
     {
-        var rule = Interfaces().That().HaveNameStartingWith("ITableRepository")
+        var rule = Interfaces().That().HaveNameStartingWith("IEdictTableRepository")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.TableStorage$");
 
         rule.Check(Architecture);
     }
 
-    // Core runtime: EventDeduplicationGrain, ProjectionBuilderGrain, TableProjectionBuilderGrain, AzureTableRepository — ADR 0008
+    // Core runtime: EdictEventDeduplicationGrain, EdictProjectionBuilderGrain, EdictTableProjectionBuilderGrain, AzureTableRepository — ADR 0008
 
     [Fact]
     public void EventDeduplicationGrain_ResidiesInEdictCore()
     {
-        var rule = Classes().That().HaveNameMatching("^EventDeduplicationGrain$")
+        var rule = Classes().That().HaveNameMatching("^EdictEventDeduplicationGrain$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
 
         rule.Check(Architecture);
@@ -78,7 +78,7 @@ public class TypePlacementTests
     [Fact]
     public void ProjectionBuilderGrain_ResidiesInEdictCore()
     {
-        var rule = Classes().That().HaveNameMatching("^ProjectionBuilderGrain$")
+        var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilderGrain$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
 
         rule.Check(Architecture);
@@ -87,7 +87,7 @@ public class TypePlacementTests
     [Fact]
     public void TableProjectionBuilderGrain_ResidiesInEdictCore()
     {
-        var rule = Classes().That().HaveNameStartingWith("TableProjectionBuilderGrain")
+        var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilderGrain")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
 
         rule.Check(Architecture);

@@ -10,7 +10,7 @@ namespace Edict.Contracts.Commands;
 /// <see cref="System.Diagnostics.Activity"/> context natively (ADR 0003).
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
-public abstract record Command
+public abstract record EdictCommand
 {
     /// <summary>Framework-assigned identity for this command instance.</summary>
     public Guid CommandId { get; init; }

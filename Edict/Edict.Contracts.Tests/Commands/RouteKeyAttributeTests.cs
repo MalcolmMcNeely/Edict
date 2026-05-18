@@ -4,9 +4,9 @@ using Edict.Contracts.Commands;
 
 namespace Edict.Contracts.Tests.Commands;
 
-file sealed record TransferFunds(Guid AccountId) : Command
+file sealed record TransferFunds(Guid AccountId) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid AccountId { get; init; } = AccountId;
 }
 
@@ -17,7 +17,7 @@ public class RouteKeyAttributeTests
     {
         var marked = typeof(TransferFunds)
             .GetProperty(nameof(TransferFunds.AccountId))!
-            .GetCustomAttribute<RouteKeyAttribute>();
+            .GetCustomAttribute<EdictRouteKeyAttribute>();
 
         Assert.NotNull(marked);
     }
@@ -25,7 +25,7 @@ public class RouteKeyAttributeTests
     [Fact]
     public void RouteKey_can_only_be_placed_on_properties()
     {
-        var usage = typeof(RouteKeyAttribute).GetCustomAttribute<AttributeUsageAttribute>()!;
+        var usage = typeof(EdictRouteKeyAttribute).GetCustomAttribute<AttributeUsageAttribute>()!;
 
         Assert.Equal(AttributeTargets.Property, usage.ValidOn);
     }

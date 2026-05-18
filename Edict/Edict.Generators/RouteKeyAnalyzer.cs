@@ -10,31 +10,28 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
-    private const string EventFqn = "global::Edict.Contracts.Events.Event";
-    private const string RouteKeyAttributeFqn = "global::Edict.Contracts.Commands.RouteKeyAttribute";
     private const string GuidFqn = "global::System.Guid";
 
     internal static readonly DiagnosticDescriptor MissingRouteKey = new DiagnosticDescriptor(
         id: "EDICT003",
-        title: "Command must have exactly one [RouteKey] property",
-        messageFormat: "'{0}' has no [RouteKey] property; exactly one Guid property must carry [RouteKey]",
+        title: "Command must have exactly one [EdictRouteKey] property",
+        messageFormat: "'{0}' has no [EdictRouteKey] property; exactly one Guid property must carry [EdictRouteKey]",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     internal static readonly DiagnosticDescriptor MultipleRouteKeys = new DiagnosticDescriptor(
         id: "EDICT003",
-        title: "Command must have exactly one [RouteKey] property",
-        messageFormat: "'{0}' has multiple [RouteKey] properties; exactly one is allowed",
+        title: "Command must have exactly one [EdictRouteKey] property",
+        messageFormat: "'{0}' has multiple [EdictRouteKey] properties; exactly one is allowed",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     internal static readonly DiagnosticDescriptor RouteKeyMustBeGuid = new DiagnosticDescriptor(
         id: "EDICT003",
-        title: "[RouteKey] property must be of type Guid",
-        messageFormat: "[RouteKey] property '{0}' on '{1}' must be of type Guid",
+        title: "[EdictRouteKey] property must be of type Guid",
+        messageFormat: "[EdictRouteKey] property '{0}' on '{1}' must be of type Guid",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -101,7 +98,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
             {
                 if (member.GetAttributes().Any(a =>
                         a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                        == RouteKeyAttributeFqn))
+                        == EdictWellKnownNames.EdictRouteKeyAttributeFqn))
                 {
                     result.Add(member);
                 }
@@ -115,7 +112,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CommandFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictCommandFqn)
             {
                 return true;
             }
@@ -128,7 +125,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictEventFqn)
             {
                 return true;
             }

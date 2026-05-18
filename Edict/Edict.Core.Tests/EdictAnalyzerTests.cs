@@ -14,15 +14,15 @@ public class EdictAnalyzerTests
         using Edict.Contracts.Results;
         using Edict.Core.Grains;
         namespace Sample;
-        public sealed record PlaceOrder(Guid OrderId) : Command
+        public sealed record PlaceOrder(Guid OrderId) : EdictCommand
         {
-            [RouteKey]
+            [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
-        public partial class OrderGrain : CommandHandlerGrain
+        public partial class OrderGrain : EdictCommandHandlerGrain
         {
-            public Task<CommandResult> Handle(PlaceOrder c) =>
-                Task.FromResult<CommandResult>(new CommandResult.Accepted());
+            public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
         """;
 
@@ -46,15 +46,15 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Results;
             using Edict.Core.Grains;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : Command
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public class OrderGrain : CommandHandlerGrain
+            public class OrderGrain : EdictCommandHandlerGrain
             {
-                public Task<CommandResult> Handle(PlaceOrder c) =>
-                    Task.FromResult<CommandResult>(new CommandResult.Accepted());
+                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                    Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
 
@@ -63,7 +63,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 11 (0-indexed): "public class OrderGrain : CommandHandlerGrain"
+        // Line 11 (0-indexed): "public class OrderGrain : EdictCommandHandlerGrain"
         Assert.Equal(11, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -77,13 +77,13 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Events;
             using Edict.Core.Grains;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : ProjectionBuilderGrain
+            public partial class OrderProjection : EdictProjectionBuilderGrain
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -104,13 +104,13 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Events;
             using Edict.Core.Grains;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public class OrderProjection : ProjectionBuilderGrain
+            public class OrderProjection : EdictProjectionBuilderGrain
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -121,14 +121,14 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
         Assert.Contains("OrderProjection", d.GetMessage());
-        // Line 12 (0-indexed): "public class OrderProjection : ProjectionBuilderGrain"
+        // Line 12 (0-indexed): "public class OrderProjection : EdictProjectionBuilderGrain"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
-    // ── EDICT002: Handle must return Task<CommandResult> ────────────────────
+    // ── EDICT002: Handle must return Task<EdictCommandResult> ────────────────────
 
     [Fact]
-    public void EDICT002_not_raised_when_handle_returns_TaskOfCommandResult()
+    public void EDICT002_not_raised_when_handle_returns_TaskOfEdictCommandResult()
     {
         var diagnostics = AnalyzerTestHarness.Run(ValidBase, new HandleReturnTypeAnalyzer());
 
@@ -145,12 +145,12 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Results;
             using Edict.Core.Grains;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : Command
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderGrain : CommandHandlerGrain
+            public partial class OrderGrain : EdictCommandHandlerGrain
             {
                 public Task<bool> Handle(PlaceOrder c) =>
                     Task.FromResult(true);
@@ -167,7 +167,7 @@ public class EdictAnalyzerTests
         Assert.Equal(13, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
-    // ── EDICT003: [RouteKey] must be exactly one Guid property ──────────────
+    // ── EDICT003: [EdictRouteKey] must be exactly one Guid property ──────────────
 
     [Fact]
     public void EDICT003_not_raised_when_command_has_one_Guid_RouteKey()
@@ -184,7 +184,7 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : Command
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
                 public Guid OrderId { get; init; } = OrderId;
             }
@@ -206,11 +206,11 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId, Guid CorrelationId) : Command
+            public sealed record PlaceOrder(Guid OrderId, Guid CorrelationId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid CorrelationId { get; init; } = CorrelationId;
             }
             """;
@@ -229,9 +229,9 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed record PlaceOrder(string OrderId) : Command
+            public sealed record PlaceOrder(string OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public string OrderId { get; init; } = OrderId;
             }
             """;
@@ -241,7 +241,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT003", d.Id);
         Assert.Contains("OrderId", d.GetMessage());
-        // Line 5 (0-indexed): "[RouteKey]"  — attribute usage; property identifier on line 6
+        // Line 5 (0-indexed): "[EdictRouteKey]"  — attribute usage; property identifier on line 6
         Assert.Equal(6, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -253,10 +253,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -273,8 +273,8 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
                 public Guid OrderId { get; init; } = OrderId;
             }
@@ -297,10 +297,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(string OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(string OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public string OrderId { get; init; } = OrderId;
             }
             """;
@@ -334,20 +334,20 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Results;
             using Edict.Core.Grains;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : Command
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderGrain : CommandHandlerGrain
+            public partial class OrderGrain : EdictCommandHandlerGrain
             {
-                public Task<CommandResult> Handle(PlaceOrder c) =>
-                    Task.FromResult<CommandResult>(new CommandResult.Accepted());
+                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                    Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
-            public partial class DuplicateGrain : CommandHandlerGrain
+            public partial class DuplicateGrain : EdictCommandHandlerGrain
             {
-                public Task<CommandResult> Handle(PlaceOrder c) =>
-                    Task.FromResult<CommandResult>(new CommandResult.Accepted());
+                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                    Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
 
@@ -357,7 +357,7 @@ public class EdictAnalyzerTests
         Assert.Equal("EDICT004", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 18 (0-indexed): "public Task<CommandResult> Handle(PlaceOrder c) =>" in DuplicateGrain
+        // Line 18 (0-indexed): "public Task<EdictCommandResult> Handle(PlaceOrder c) =>" in DuplicateGrain
         Assert.Equal(18, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -370,9 +370,9 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed partial record PlaceOrder(Guid OrderId) : Command
+            public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -389,9 +389,9 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : Command
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -412,7 +412,7 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public abstract record OrderCommand(Guid OrderId) : Command;
+            public abstract record OrderCommand(Guid OrderId) : EdictCommand;
             """;
 
         var diagnostics = AnalyzerTestHarness.Run(source, new CommandMustBePartialAnalyzer());
@@ -430,10 +430,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -450,7 +450,7 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Events;
             namespace Sample;
-            public abstract record OrderEvent(Guid OrderId) : Event;
+            public abstract record OrderEvent(Guid OrderId) : EdictEvent;
             """;
 
         var diagnostics = AnalyzerTestHarness.Run(source, new EventMustBePartialAnalyzer());
@@ -466,10 +466,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -493,10 +493,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -513,7 +513,7 @@ public class EdictAnalyzerTests
             using System;
             using Edict.Contracts.Events;
             namespace Sample;
-            public abstract record OrderEvent(Guid OrderId) : Event;
+            public abstract record OrderEvent(Guid OrderId) : EdictEvent;
             """;
 
         var diagnostics = AnalyzerTestHarness.Run(source, new EventMustHaveStreamAnalyzer());
@@ -529,9 +529,9 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
             namespace Sample;
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
             """;
@@ -557,13 +557,13 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Events;
             using Edict.Core.Grains;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : ProjectionBuilderGrain
+            public partial class OrderProjection : EdictProjectionBuilderGrain
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -584,13 +584,13 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Events;
             using Edict.Core.Grains;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : ProjectionBuilderGrain
+            public partial class OrderProjection : EdictProjectionBuilderGrain
             {
                 public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);
             }
@@ -616,7 +616,7 @@ public class EdictAnalyzerTests
             using Edict.Core.Grains;
             namespace Sample;
             public class NotAnEvent { }
-            public partial class OrderProjection : ProjectionBuilderGrain
+            public partial class OrderProjection : EdictProjectionBuilderGrain
             {
                 public Task Handle(NotAnEvent e) => Task.CompletedTask;
             }
@@ -632,7 +632,7 @@ public class EdictAnalyzerTests
         Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
-    // ── EDICT005: [Telemeterized] must be on a primitive property ────────────
+    // ── EDICT005: [EdictTelemeterized] must be on a primitive property ────────────
 
     [Fact]
     public void EDICT005_not_raised_when_Telemeterized_is_on_primitive_property_of_event()
@@ -642,10 +642,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Events;
             using Edict.Contracts.Telemetry;
             namespace Sample;
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
             {
-                [Telemeterized]
+                [EdictTelemeterized]
                 public string Sku { get; init; } = Sku;
             }
             """;
@@ -664,10 +664,10 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Telemetry;
             namespace Sample;
             public class OrderDetails { public string Info { get; set; } = ""; }
-            [Stream("Orders")]
-            public sealed partial record OrderPlacedEvent(Guid OrderId, OrderDetails Details) : Event
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId, OrderDetails Details) : EdictEvent
             {
-                [Telemeterized]
+                [EdictTelemeterized]
                 public OrderDetails Details { get; init; } = Details;
             }
             """;
@@ -689,11 +689,11 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Commands;
             using Edict.Contracts.Telemetry;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId, string Sku) : Command
+            public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
-                [Telemeterized]
+                [EdictTelemeterized]
                 public string Sku { get; init; } = Sku;
             }
             """;
@@ -712,11 +712,11 @@ public class EdictAnalyzerTests
             using Edict.Contracts.Telemetry;
             namespace Sample;
             public class OrderDetails { public string Info { get; set; } = ""; }
-            public sealed record PlaceOrder(Guid OrderId, OrderDetails Details) : Command
+            public sealed record PlaceOrder(Guid OrderId, OrderDetails Details) : EdictCommand
             {
-                [RouteKey]
+                [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
-                [Telemeterized]
+                [EdictTelemeterized]
                 public OrderDetails Details { get; init; } = Details;
             }
             """;

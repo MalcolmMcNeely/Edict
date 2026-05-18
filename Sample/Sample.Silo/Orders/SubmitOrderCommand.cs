@@ -5,8 +5,8 @@ using MessagePack;
 namespace Sample.Silo.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record SubmitOrderCommand(Guid OrderId) : Command
+public sealed partial record SubmitOrderCommand(Guid OrderId) : EdictCommand
 {
-    [RouteKey]
+    [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }

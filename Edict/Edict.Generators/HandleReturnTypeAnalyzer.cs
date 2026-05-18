@@ -8,15 +8,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
-    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
-    private const string TaskOfCommandResultFqn =
-        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.CommandResult>";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT002",
-        title: "Handle method must return Task<CommandResult>",
-        messageFormat: "Handle method for '{0}' in '{1}' must return Task<CommandResult>",
+        title: "Handle method must return Task<EdictCommandResult>",
+        messageFormat: "Handle method for '{0}' in '{1}' must return Task<EdictCommandResult>",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -41,7 +36,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
         }
 
         if (method.ContainingType.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != CommandHandlerGrainFqn)
+                != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
         {
             return;
         }
@@ -53,7 +48,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
         }
 
         if (method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != TaskOfCommandResultFqn)
+                != EdictWellKnownNames.TaskOfEdictCommandResultFqn)
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(Rule, method.Locations[0],
@@ -65,7 +60,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CommandFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictCommandFqn)
             {
                 return true;
             }

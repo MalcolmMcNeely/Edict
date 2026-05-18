@@ -10,12 +10,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CommandMustBePartialAnalyzer : DiagnosticAnalyzer
 {
-    private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
-
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT006",
         title: "Concrete Command must be declared partial",
-        messageFormat: "'{0}' derives from Command and must be declared partial; the source generator emits the Orleans [Alias] into a second partial declaration",
+        messageFormat: "'{0}' derives from EdictCommand and must be declared partial; the source generator emits the Orleans [Alias] into a second partial declaration",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -59,7 +57,7 @@ public sealed class CommandMustBePartialAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CommandFqn)
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EdictWellKnownNames.EdictCommandFqn)
             {
                 return true;
             }
