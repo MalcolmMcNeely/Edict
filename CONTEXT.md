@@ -9,7 +9,8 @@ An expression of intent to change state, addressed to exactly one grain via a **
 _Avoid_: trace fields on `Command`, past-tense command names.
 
 **Event**:
-A notification that something happened, broadcast on a stream to zero or more subscribers. Transient — delivered, handled, then discarded. Never persisted to a replayable log. Concrete events derive from the abstract base class `Event` (carries `EventId`, `TraceId`, `SpanId`, `TraceState`, `OccurredAt`).
+A notification that something happened, broadcast on a domain stream to zero or more subscribers. Transient — delivered, handled, then discarded. Never persisted to a replayable log. Concrete events derive from the abstract base class `Event` (carries `EventId`, `TraceId`, `SpanId`, `TraceState`, `OccurredAt`). A concrete event marks exactly one `Guid` property with `[RouteKey]` (the same attribute commands use); that Guid is the stream key the subscriber is activated with. An event's `[RouteKey]` is set by the consumer inside `Handle` and **may differ** from the command's `[RouteKey]` — re-keying is a first-class case (e.g. a `Sales` command raising an event consumed in the `Orders` domain).
+_Avoid_: assuming the event key equals the command key; treating the command→event Guid as a guaranteed-continuous correlation id (it is the common case, not an invariant — trace context, not the Guid, is what reliably stitches the chain).
 
 **Telemeterized**:
 An attribute placed on a primitive property of a `Command`/`Event` subclass. A source generator emits code that writes the property as an OpenTelemetry tag (`edict.{type}.{property}`) on the active span. Placing it on a non-primitive is a **compile error**.
@@ -19,8 +20,8 @@ _Avoid_: runtime reflection, auto-tagging properties that are not annotated.
 The aggregate grain — Guid-keyed — that accepts Commands, performs the state change, and may raise Events. One grain *type per aggregate* handles *many* command types; the consumer writes one strongly-typed `Handle(TCommand)` method per command on a `partial` grain class and never authors the Orleans interface (the source generator emits it, the dispatch, telemetry, and the sender).
 
 **RouteKey**:
-The `[RouteKey]` attribute marking the single `Guid` property of a concrete Command that routes it to its aggregate grain. Exactly one per command; must be `Guid` (analyzer-enforced). This same Guid becomes the grain key and, when the handler raises events, the event stream's `sourceAggregateGuid` — one correlation id, command → grain → event → handler.
-_Avoid_: `[Key]` (collides with `System.ComponentModel.DataAnnotations`), non-Guid keys, more than one per command.
+The `[RouteKey]` attribute marking the single `Guid` property that addresses a message. One framework concept, two transports: on a **Command** it selects the aggregate grain (the grain key); on an **Event** it selects the stream key the subscriber is activated with. Exactly one per message; must be `Guid` (analyzer-enforced). The command key and the event key it raises *often* coincide (the in-domain case) but are **independent addressing concerns** — the event may carry a different Guid (the cross-domain re-keying case). The continuous command→event correlation is provided by trace context (ADR 0003), not by a guaranteed-equal Guid.
+_Avoid_: `[Key]` (collides with `System.ComponentModel.DataAnnotations`), non-Guid keys, more than one per message, assuming the event key equals the command key.
 
 **Command Result**:
 The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with reasons). Rejection is a first-class *outcome*, never an exception (exceptions across the grain boundary are reserved for *infrastructure* faults — timeout, dead grain). Produced in two places that share this one envelope: a **Command Validator** (precondition failure) or `Handle` (transition-time outcome). Carries no domain data.
@@ -44,6 +45,20 @@ _Avoid_: implying replay, rehydration, or "rebuild the projection".
 The DI-injected `IEdictSender` with a single `Task<CommandResult> Send(Command)`. The source generator backs it: it reads the command's `[RouteKey]`, resolves the one owning aggregate grain, and dispatches. It is the substitution seam — `Edict.Testing` registers an in-memory implementation so consumer code is identical under test and in production.
 _Avoid_: static/extension-method send (bypasses DI, defeats the in-memory test swap), per-command overloads.
 
+**Domain Stream**:
+A named Orleans stream that carries *all* event types for one domain (e.g. `Sales`, `Orders`) — streams are domain-scoped, not event-type-scoped. The name is declared once via a `[Stream("Name")]` attribute on the concrete event type — the single token both the publisher (`Raise` flush target) and every subscriber (generator-emitted `[ImplicitStreamSubscription]`) derive from. There is **no default**: omitting `[Stream]` is an analyzer error. An event may belong to a stream outside its producer's domain (cross-domain: a `Sales` handler raising an `Orders`-stream event). A subscriber to a domain stream is activated for *every* event type on it and only acts on the types it has a `Handle` overload for.
+_Avoid_: per-event-type streams; inferring the stream name from the CLR namespace; a publisher and subscriber naming the stream independently.
+
+**Table Projection Builder**:
+A **Projection Builder** whose read model lives in Azure Table Storage instead of grain state, so grain activation stays small no matter how large the read model grows. Authored like any projection (`partial`, `Handle(TEvent)`); per event it loads the affected row, applies, writes back. The application reads the result only through the framework-provided read-only **Table Repository** — never the grain. PartitionKey defaults to the event's `[RouteKey]`; RowKey is consumer-specified. Its dedup ring stays in persisted grain state (not the table), so the row write and the ring commit are **two non-atomic stores**: a crash between them double-applies on redelivery. This gap is **knowingly accepted for now** and closed later by the **Outbox**.
+_Avoid_: assuming exactly-once table writes before the Outbox exists; reading the table directly instead of via the Table Repository; putting the read model in grain state "to be safe".
+
+**Table Repository**:
+The framework-provided **read-only** interface (`ITableRepository`) the application uses to read a **Table Projection Builder**'s output: point-get by (PartitionKey, RowKey) and a partition-scoped query. All writes are owned by the projection builder; the application never writes.
+
+**Outbox** _(planned, not yet built)_:
+The future mechanism that will make a **Table Projection Builder**'s row write and dedup-ring commit a single atomic unit, closing the accepted double-apply gap. Explicitly deferred — its absence is a known, documented limitation, not an oversight.
+
 **Event Deduplication Grain**:
 The abstract base grain that Event Handlers, Sagas, and Projection Builders inherit. Its sole job is idempotency: a bounded per-grain ring of recently seen `EventId`s that suppresses at-least-once redeliveries. It does **not** decide which stream to subscribe to — the consuming grain declares that itself.
 _Avoid_: implying it owns or configures stream subscription.
@@ -57,7 +72,7 @@ _Avoid_: implying it owns or configures stream subscription.
 - A consumer issues a **Command** through the **Sender**; the **Sender** is the seam `Edict.Testing` swaps for an in-memory implementation
 - **Event Handlers**, **Sagas**, and **Projection Builders** subscribe to **Events** via implicit stream subscriptions and all inherit the **Event Deduplication Grain**
 - A **Saga** reacts to **Events** and issues **Commands**
-- An **Event** is published to stream `(eventTypeName, sourceAggregateGuid)`; the subscriber is activated with that same Guid, so consumers are per-aggregate by default. A fixed-Guid singleton is the explicit escape hatch for a global read model.
+- An **Event** is published to its **Domain Stream** (named by `[Stream]` on the event), keyed by the event's `[RouteKey]` Guid; every subscriber to that stream is activated with that Guid and acts only on event types it has a `Handle` overload for. A fixed-Guid singleton is the explicit escape hatch for a global read model.
 
 ## Example dialogue
 
@@ -74,4 +89,7 @@ _Avoid_: implying it owns or configures stream subscription.
 - "Projection" implied event-sourcing replay — resolved: Edict projections only consume the live stream forward; no event store, no replay, no rebuild.
 - Events called both "transient" and inputs to projections/sagas/idempotency — resolved: events are transient (discarded after handling); durability/replay is never assumed.
 - `Command` was said to carry "trace correlation" — resolved: it does not. Direct grain calls propagate `Activity` context natively (ADR 0003); only `Event` carries trace fields because only the stream hop loses context.
+- "One command produces one event" — clarified: a **simplifying assumption**, not an enforced constraint. `Raise` buffers and the flush handles N events mechanically; nothing analyzer-enforces single-event. `Raise` is the *only* sanctioned publish API — a handler reaching Orleans streams directly is caught in code review, not by an analyzer.
+- A domain stream carries many event types, so a subscriber is woken for event types it has no `Handle` for — resolved: an unhandled type is a **pure no-op that consumes no dedup-ring slot and is never recorded as seen**. The bounded ring (ADR 0002) is reserved for events the subscriber actually handled, so ignored types cannot evict real entries and let genuine duplicates of handled events slip.
+- "Single correlation id command → grain → event → handler" implied the same Guid flows end-to-end — resolved: the command's `[RouteKey]` and the event's `[RouteKey]` are independent addressing keys that coincide in the in-domain case but diverge on cross-domain re-keying (`Sales` raising an `Orders` event). The reliably continuous correlation is **trace context** (ADR 0003), not the Guid. The retired term `sourceAggregateGuid` is replaced by "the event's route key".
 - "Validation" conflated structural input checks with business rejection — resolved: a **Command Validator** is a no-mutation *precondition gate* (admissibility against current state, *before* the transition); `Handle` owns the *state transition* and returns `Rejected` only for outcomes discoverable while mutating. Same `Rejected` envelope, two distinct homes, distinguished by *when they run* and *whether they mutate* — not by structural-vs-business.
