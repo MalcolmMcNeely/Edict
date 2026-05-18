@@ -67,6 +67,64 @@ public class EdictAnalyzerTests
         Assert.Equal(11, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
+    [Fact]
+    public void EDICT001_not_raised_when_projection_builder_grain_is_partial()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            using Edict.Core.Grains;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public partial class OrderProjection : ProjectionBuilderGrain
+            {
+                public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new GrainMustBePartialAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT001_raised_on_class_identifier_when_projection_builder_grain_is_not_partial()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            using Edict.Core.Grains;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public class OrderProjection : ProjectionBuilderGrain
+            {
+                public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new GrainMustBePartialAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT001", d.Id);
+        Assert.Contains("OrderProjection", d.GetMessage());
+        // Line 12 (0-indexed): "public class OrderProjection : ProjectionBuilderGrain"
+        Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
     // ── EDICT002: Handle must return Task<CommandResult> ────────────────────
 
     [Fact]
@@ -187,6 +245,75 @@ public class EdictAnalyzerTests
         Assert.Equal(6, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
+    [Fact]
+    public void EDICT003_not_raised_when_event_has_one_Guid_RouteKey()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new RouteKeyAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT003_raised_on_class_when_event_has_no_RouteKey()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new RouteKeyAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT003", d.Id);
+        Assert.Contains("OrderPlacedEvent", d.GetMessage());
+        // Line 4 (0-indexed): "public sealed partial record OrderPlacedEvent..."
+        Assert.Equal(4, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    [Fact]
+    public void EDICT003_raised_on_property_when_event_RouteKey_is_not_Guid()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(string OrderId) : Event
+            {
+                [RouteKey]
+                public string OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new RouteKeyAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT003", d.Id);
+        Assert.Contains("OrderId", d.GetMessage());
+        // Line 8 (0-indexed): "public string OrderId { get; init; } = OrderId;"
+        Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
     // ── EDICT004: each command must route to exactly one grain ───────────────
 
     [Fact]
@@ -293,7 +420,266 @@ public class EdictAnalyzerTests
         Assert.Empty(diagnostics);
     }
 
+    // ── EDICT007: concrete Event must be declared partial ───────────────────
+
+    [Fact]
+    public void EDICT007_not_raised_when_event_is_partial()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustBePartialAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT007_not_raised_on_abstract_event_subtype()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            public abstract record OrderEvent(Guid OrderId) : Event;
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustBePartialAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT007_raised_on_type_when_concrete_event_is_not_partial()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustBePartialAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT007", d.Id);
+        Assert.Contains("OrderPlacedEvent", d.GetMessage());
+        // Line 5 (0-indexed): "public sealed record OrderPlacedEvent..."
+        Assert.Equal(5, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    // ── EDICT008: concrete Event must declare [Stream] ──────────────────────
+
+    [Fact]
+    public void EDICT008_not_raised_when_event_has_Stream_attribute()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustHaveStreamAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT008_not_raised_on_abstract_event_subtype()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            public abstract record OrderEvent(Guid OrderId) : Event;
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustHaveStreamAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT008_raised_on_type_when_event_has_no_Stream_attribute()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new EventMustHaveStreamAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT008", d.Id);
+        Assert.Contains("OrderPlacedEvent", d.GetMessage());
+        // Line 4 (0-indexed): "public sealed partial record OrderPlacedEvent..."
+        Assert.Equal(4, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    // ── EDICT009: Projection Builder Handle must return Task with Event param ─
+
+    [Fact]
+    public void EDICT009_not_raised_when_projection_Handle_returns_Task_with_Event_param()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            using Edict.Core.Grains;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public partial class OrderProjection : ProjectionBuilderGrain
+            {
+                public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new ProjectionHandleSignatureAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT009_raised_on_method_when_projection_Handle_returns_wrong_type()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            using Edict.Core.Grains;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : Event
+            {
+                [RouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public partial class OrderProjection : ProjectionBuilderGrain
+            {
+                public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new ProjectionHandleSignatureAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT009", d.Id);
+        Assert.Contains("OrderPlacedEvent", d.GetMessage());
+        Assert.Contains("OrderProjection", d.GetMessage());
+        // Line 14 (0-indexed): "public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);"
+        Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    [Fact]
+    public void EDICT009_raised_on_method_when_projection_Handle_param_is_not_Event()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Events;
+            using Edict.Core.Grains;
+            namespace Sample;
+            public class NotAnEvent { }
+            public partial class OrderProjection : ProjectionBuilderGrain
+            {
+                public Task Handle(NotAnEvent e) => Task.CompletedTask;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new ProjectionHandleSignatureAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT009", d.Id);
+        Assert.Contains("NotAnEvent", d.GetMessage());
+        Assert.Contains("OrderProjection", d.GetMessage());
+        // Line 8 (0-indexed): "public Task Handle(NotAnEvent e) => Task.CompletedTask;"
+        Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
     // ── EDICT005: [Telemeterized] must be on a primitive property ────────────
+
+    [Fact]
+    public void EDICT005_not_raised_when_Telemeterized_is_on_primitive_property_of_event()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            using Edict.Contracts.Telemetry;
+            namespace Sample;
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
+            {
+                [Telemeterized]
+                public string Sku { get; init; } = Sku;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new TelemeterizedMustBePrimitiveAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT005_raised_on_property_when_Telemeterized_is_on_non_primitive_event_property()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            using Edict.Contracts.Telemetry;
+            namespace Sample;
+            public class OrderDetails { public string Info { get; set; } = ""; }
+            [Stream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId, OrderDetails Details) : Event
+            {
+                [Telemeterized]
+                public OrderDetails Details { get; init; } = Details;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new TelemeterizedMustBePrimitiveAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT005", d.Id);
+        Assert.Contains("Details", d.GetMessage());
+        // Line 9 (0-indexed): "public OrderDetails Details { get; init; } = Details;"
+        Assert.Equal(9, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
 
     [Fact]
     public void EDICT005_not_raised_when_Telemeterized_is_on_primitive_property()

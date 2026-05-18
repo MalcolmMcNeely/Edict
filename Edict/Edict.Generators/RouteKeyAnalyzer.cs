@@ -11,6 +11,7 @@ namespace Edict.Generators;
 public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 {
     private const string CommandFqn = "global::Edict.Contracts.Commands.Command";
+    private const string EventFqn = "global::Edict.Contracts.Events.Event";
     private const string RouteKeyAttributeFqn = "global::Edict.Contracts.Commands.RouteKeyAttribute";
     private const string GuidFqn = "global::System.Guid";
 
@@ -52,7 +53,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
-        if (type.IsAbstract || !DerivesFromCommand(type))
+        if (type.IsAbstract || (!DerivesFromCommand(type) && !DerivesFromEvent(type)))
         {
             return;
         }
@@ -115,6 +116,19 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
             if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CommandFqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool DerivesFromEvent(INamedTypeSymbol type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == EventFqn)
             {
                 return true;
             }

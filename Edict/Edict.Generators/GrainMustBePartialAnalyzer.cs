@@ -10,7 +10,10 @@ namespace Edict.Generators;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
 {
-    internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
+    private const string CommandHandlerGrainFqn = "global::Edict.Core.Grains.CommandHandlerGrain";
+    private const string ProjectionBuilderGrainFqn = "global::Edict.Core.Grains.ProjectionBuilderGrain";
+
+    internal static readonly DiagnosticDescriptor CommandHandlerRule = new DiagnosticDescriptor(
         id: "EDICT001",
         title: "Aggregate grain must be declared partial",
         messageFormat: "'{0}' derives from CommandHandlerGrain and must be declared partial",
@@ -18,8 +21,16 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    internal static readonly DiagnosticDescriptor ProjectionBuilderRule = new DiagnosticDescriptor(
+        id: "EDICT001",
+        title: "Projection Builder grain must be declared partial",
+        messageFormat: "'{0}' derives from ProjectionBuilderGrain and must be declared partial",
+        category: "Edict",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+        ImmutableArray.Create(CommandHandlerRule, ProjectionBuilderRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -37,8 +48,11 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != "global::Edict.Core.Grains.CommandHandlerGrain")
+        var isCommandHandler = type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            == CommandHandlerGrainFqn;
+        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, ProjectionBuilderGrainFqn);
+
+        if (!isCommandHandler && !isProjectionBuilder)
         {
             return;
         }
@@ -50,8 +64,22 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
 
         if (!isPartial)
         {
-            context.ReportDiagnostic(
-                Diagnostic.Create(Rule, type.Locations[0], type.Name));
+            var rule = isCommandHandler ? CommandHandlerRule : ProjectionBuilderRule;
+            context.ReportDiagnostic(Diagnostic.Create(rule, type.Locations[0], type.Name));
         }
+    }
+
+    private static bool DerivesFrom(INamedTypeSymbol type, string fqn)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn
+                || current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
