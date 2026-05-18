@@ -1,0 +1,5 @@
+{
+  PartitionKey: Guid_1,
+  RowKey: summary,
+  OrderCount: 1
+}

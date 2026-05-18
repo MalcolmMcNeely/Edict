@@ -46,4 +46,18 @@ public class BoundaryTests
 
         rule.Check(Architecture);
     }
+
+    // ADR 0012: ITableRepository lives in Edict.Contracts; Azure.Data.Tables is Core-only.
+    [Fact]
+    public void EdictContracts_DoesNotDependOnAzureDataTables()
+    {
+        var rule = Types().That()
+            .ResideInAssembly(typeof(Command).Assembly.GetName().Name!)
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(@"^Azure\.Data\.Tables")
+            .WithoutRequiringPositiveResults();
+
+        rule.Check(Architecture);
+    }
 }

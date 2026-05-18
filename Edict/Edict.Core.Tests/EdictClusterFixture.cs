@@ -1,3 +1,4 @@
+using Azure.Data.Tables;
 using Azure.Storage.Queues;
 
 using Edict.Contracts.Sending;
@@ -30,6 +31,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 {
     // Set before cluster construction so the nested configurator classes can read it.
     private static string _queueConnectionString = "";
+    private static TableServiceClient _tableServiceClient = null!;
 
     private AzuriteContainer _azurite = null!;
 
@@ -37,6 +39,8 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public TableServiceClient TableServiceClient => _tableServiceClient;
 
     public async Task InitializeAsync()
     {
@@ -50,6 +54,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             .Build();
         await _azurite.StartAsync();
         _queueConnectionString = _azurite.GetConnectionString();
+        _tableServiceClient = new TableServiceClient(_queueConnectionString);
 
         var builder = new TestClusterBuilder();
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
@@ -80,6 +85,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
+            siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddAzureQueueStreams("edict", configure =>

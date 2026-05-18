@@ -37,7 +37,7 @@ namespace Sample
                         "edict.event.handle OrderPlacedEvent",
                         global::System.Diagnostics.ActivityKind.Consumer,
                         parentContext);
-                    await Handle(typed);
+                    await DispatchEventAsync(typed, Handle);
                     return true;
                 }
                 default:

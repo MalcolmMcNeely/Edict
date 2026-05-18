@@ -48,7 +48,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
         if (model.GetDeclaredSymbol(syntax) is not INamedTypeSymbol grain)
             return null;
 
-        if (grain.BaseType?.ToDisplayString(FullyQualified) != ProjectionBuilderGrainFqn)
+        if (!DerivesFromProjectionBuilder(grain))
             return null;
 
         var handlers = new List<HandlerModel>();
@@ -112,6 +112,19 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
         return false;
     }
 
+    private static bool DerivesFromProjectionBuilder(INamedTypeSymbol type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            var fqn = current.IsGenericType
+                ? current.OriginalDefinition.ToDisplayString(FullyQualified)
+                : current.ToDisplayString(FullyQualified);
+            if (fqn == ProjectionBuilderGrainFqn)
+                return true;
+        }
+        return false;
+    }
+
     private static string EmitGrain(GrainModel grain)
     {
         var interfaceName = "I" + grain.GrainName;
@@ -155,7 +168,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
                 .Append("                        \"edict.event.handle ").Append(handler.EventSimpleName).Append("\",\n")
                 .Append("                        global::System.Diagnostics.ActivityKind.Consumer,\n")
                 .Append("                        parentContext);\n")
-                .Append("                    await Handle(typed);\n")
+                .Append("                    await DispatchEventAsync(typed, Handle);\n")
                 .Append("                    return true;\n")
                 .Append("                }\n");
         }

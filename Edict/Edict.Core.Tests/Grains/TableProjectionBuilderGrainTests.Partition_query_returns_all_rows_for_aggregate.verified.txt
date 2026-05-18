@@ -1,0 +1,7 @@
+[
+  {
+    PartitionKey: Guid_1,
+    RowKey: Guid_1,
+    OrderCount: 2
+  }
+]

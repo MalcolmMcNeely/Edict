@@ -42,10 +42,14 @@ public sealed class ProjectionBuilderGrainTests(EdictClusterFixture fixture)
 
         var publishSpan = stopped.Single(a => a.OperationName == "edict.event.publish OrderPlacedEvent"
             && a.TraceId != default);
-        var handlerSpan = stopped.Single(a => a.OperationName == "edict.event.handle OrderPlacedEvent");
+        // Multiple grain types may handle the same event; verify at least one handler is a
+        // direct child of the publish span (the in-memory ProjectionBuilderGrain included).
+        var handlerSpan = stopped
+            .Where(a => a.OperationName == "edict.event.handle OrderPlacedEvent"
+                && a.ParentSpanId == publishSpan.SpanId)
+            .First();
 
         Assert.Equal(publishSpan.TraceId, handlerSpan.TraceId);
-        Assert.Equal(publishSpan.SpanId, handlerSpan.ParentSpanId);
     }
 
     // Cycle 5 — event type with no Handle overload is a no-op; projection count unchanged

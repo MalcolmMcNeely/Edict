@@ -37,7 +37,7 @@ namespace Sample
                         "edict.event.handle OrderCancelledEvent",
                         global::System.Diagnostics.ActivityKind.Consumer,
                         parentContext);
-                    await Handle(typed);
+                    await DispatchEventAsync(typed, Handle);
                     return true;
                 }
                 case global::Sample.OrderPlacedEvent typed:
@@ -47,7 +47,7 @@ namespace Sample
                         "edict.event.handle OrderPlacedEvent",
                         global::System.Diagnostics.ActivityKind.Consumer,
                         parentContext);
-                    await Handle(typed);
+                    await DispatchEventAsync(typed, Handle);
                     return true;
                 }
                 default:
