@@ -1,11 +1,11 @@
 using System.Diagnostics;
 
-namespace Edict.Core.Diagnostics;
+namespace Edict.Telemetry;
 
 /// <summary>
-/// The single <see cref="ActivitySource"/> for all Edict instrumentation
-/// (ADR 0003). Registered by <c>AddEdict()</c>. Spans are wired in a later
-/// slice; this slice only owns the source's identity.
+/// The single <see cref="ActivitySource"/> identity for all Edict instrumentation (ADR 0003).
+/// Registered by the generated <c>AddEdict()</c>. Keys for the stream-hop
+/// <see cref="Orleans.Runtime.RequestContext"/> capture are internal to this assembly.
 /// </summary>
 public static class EdictDiagnostics
 {
@@ -15,8 +15,6 @@ public static class EdictDiagnostics
     /// <summary>The shared activity source used across the command/event spine.</summary>
     public static readonly ActivitySource ActivitySource = new(SourceName);
 
-    // Keys used to carry command-span context through Orleans RequestContext so that
-    // FlushRaisedEventsAsync can create publish spans as direct children (ADR 0003).
     internal const string TraceIdKey = "edict.cmd-trace-id";
     internal const string SpanIdKey = "edict.cmd-span-id";
     internal const string TraceStateKey = "edict.cmd-trace-state";

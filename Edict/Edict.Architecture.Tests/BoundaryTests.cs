@@ -3,6 +3,7 @@ using ArchUnitNET.xUnit;
 
 using Edict.Contracts.Commands;
 using Edict.Core.Grains;
+using Edict.Telemetry;
 
 using Sample.Orders;
 
@@ -20,6 +21,7 @@ public class BoundaryTests
         .LoadAssemblies(
             typeof(EdictCommand).Assembly,
             typeof(EdictEventDeduplicationGrain).Assembly,
+            typeof(EdictDiagnostics).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -44,6 +46,21 @@ public class BoundaryTests
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Orleans")
+            .WithoutRequiringPositiveResults();
+
+        rule.Check(Architecture);
+    }
+
+    // ADR 0014: Edict.Telemetry may reference Orleans.Core (RequestContext) but must never
+    // pull in the Orleans server runtime (grain bases, hosting, etc.).
+    [Fact]
+    public void EdictTelemetry_DoesNotDependOnOrleansGrainBase()
+    {
+        var rule = Types().That()
+            .ResideInAssembly(typeof(EdictDiagnostics).Assembly.GetName().Name!)
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .HaveFullNameMatching(@"^Orleans\.Grain$")
             .WithoutRequiringPositiveResults();
 
         rule.Check(Architecture);

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Events;
-using Edict.Core.Diagnostics;
 using Edict.Core.Tests.Grains;
+using Edict.Telemetry;
 
 namespace Edict.Core.Tests.Events;
 

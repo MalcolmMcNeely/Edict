@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Events;
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 
 using Orleans;
 using Orleans.Providers;
@@ -100,24 +100,9 @@ public abstract class EdictEventDeduplicationGrain : Grain<DeduplicationState>
 
     private static void EmitDedupSpan(EdictEvent evt)
     {
-        var parentContext = RestoreEventContext(evt);
-        using var span = EdictDiagnostics.ActivitySource.StartActivity(
-            $"edict.event.deduplicated {evt.GetType().Name}",
-            ActivityKind.Consumer,
-            parentContext);
+        var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
+        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(
+            evt.GetType().Name, parentContext);
         span?.SetTag("edict.deduplicated", true);
-    }
-
-    protected static ActivityContext RestoreEventContext(EdictEvent evt)
-    {
-        if (evt.TraceId is { Length: 32 } && evt.SpanId is { Length: 16 })
-        {
-            return new ActivityContext(
-                ActivityTraceId.CreateFromString(evt.TraceId),
-                ActivitySpanId.CreateFromString(evt.SpanId),
-                ActivityTraceFlags.Recorded,
-                evt.TraceState);
-        }
-        return default;
     }
 }

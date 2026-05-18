@@ -355,7 +355,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                                 services);
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
                             .AddSingleton<global::System.Diagnostics.ActivitySource>(
-                                services, global::Edict.Core.Diagnostics.EdictDiagnostics.ActivitySource);
+                                services, {{EdictWellKnownNames.EdictDiagnosticsActivitySourceFqn}});
 
                         return services;
                     }

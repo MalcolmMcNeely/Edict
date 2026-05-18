@@ -1,7 +1,7 @@
 using Azure.Data.Tables;
 
 using Edict.Contracts.TableStorage;
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;

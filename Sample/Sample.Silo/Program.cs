@@ -1,7 +1,7 @@
 using Azure.Data.Tables;
 using Azure.Storage.Queues;
 
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 

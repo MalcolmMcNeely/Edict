@@ -1,8 +1,10 @@
+using System.Diagnostics;
+
 using Edict.Contracts.Commands;
 using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
-using Edict.Core.Diagnostics;
 using Edict.Core.Grains;
+using Edict.Telemetry;
 
 using Orleans;
 
@@ -18,7 +20,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
     : IEdictSender
 {
     /// <inheritdoc />
-    public Task<EdictCommandResult> Send(EdictCommand command)
+    public async Task<EdictCommandResult> Send(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -26,11 +28,23 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
         var key = route.RouteKeySelector(command);
         var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
 
-        return CommandSpanScope.ExecuteAsync(
-            $"edict.command {command.GetType().Name}",
-            key,
-            route.TagWriter,
-            command,
-            () => grain.Dispatch(command));
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand(
+            $"edict.command {command.GetType().Name}");
+        if (activity is not null)
+        {
+            activity.SetEdictCommandTags(key);
+            route.TagWriter?.Invoke(command, activity);
+            activity.CaptureToRequestContext();
+        }
+
+        try
+        {
+            return await grain.Dispatch(command);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 }

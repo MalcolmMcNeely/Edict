@@ -30,6 +30,16 @@ internal static class EdictWellKnownNames
     public const string EdictTelemeterizedAttributeFqn =
         "global::Edict.Contracts.Telemetry.EdictTelemeterizedAttribute";
 
+    // ── Edict.Telemetry ──────────────────────────────────────────────────────
+    public const string EdictDiagnosticsActivitySourceFqn =
+        "global::Edict.Telemetry.EdictDiagnostics.ActivitySource";
+
+    public const string ActivitySourceExtensionsFqn =
+        "global::Edict.Telemetry.ActivitySourceExtensions";
+
+    public const string ActivityExtensionsFqn =
+        "global::Edict.Telemetry.ActivityExtensions";
+
     // ── Edict.Core.Grains ────────────────────────────────────────────────────
     public const string EdictCommandHandlerGrainFqn =
         "global::Edict.Core.Grains.EdictCommandHandlerGrain";

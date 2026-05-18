@@ -4,15 +4,14 @@ using System.Reflection;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Results;
-using Edict.Core.Diagnostics;
 using Edict.Core.Validation;
+using Edict.Telemetry;
 
 using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans;
-using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Edict.Core.Grains;
@@ -61,29 +60,16 @@ public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
 
         // Restore the command span as explicit parent so publish spans are direct children
         // even across the Orleans grain call boundary (ADR 0003).
-        var cmdTraceId = RequestContext.Get(EdictDiagnostics.TraceIdKey) as string;
-        var cmdSpanId = RequestContext.Get(EdictDiagnostics.SpanIdKey) as string;
-        var cmdTraceState = RequestContext.Get(EdictDiagnostics.TraceStateKey) as string;
-
-        ActivityContext parentContext = default;
-        if (cmdTraceId is { Length: 32 } && cmdSpanId is { Length: 16 })
-        {
-            parentContext = new ActivityContext(
-                ActivityTraceId.CreateFromString(cmdTraceId),
-                ActivitySpanId.CreateFromString(cmdSpanId),
-                ActivityTraceFlags.Recorded,
-                cmdTraceState);
-        }
+        var (cmdTraceId, cmdSpanId, cmdTraceState) = ActivityExtensions.ReadRequestContext();
+        var parentContext = ActivityExtensions.RestoreFromStrings(cmdTraceId, cmdSpanId, cmdTraceState);
 
         foreach (var evt in _raisedEvents)
         {
             var (streamName, routeKey) = GetEventStreamAddress(evt);
             var stream = provider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
-            using var publishActivity = EdictDiagnostics.ActivitySource.StartActivity(
-                $"edict.event.publish {evt.GetType().Name}",
-                ActivityKind.Producer,
-                parentContext);
+            using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
+                evt.GetType().Name, parentContext);
 
             var stamped = evt with
             {

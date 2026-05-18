@@ -17,6 +17,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+        <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
     </ItemGroup>
 
 </Project>

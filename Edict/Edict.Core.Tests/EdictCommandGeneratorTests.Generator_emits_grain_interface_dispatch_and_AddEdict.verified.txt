@@ -25,7 +25,7 @@ namespace Edict.Generated
                     services);
             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
                 .AddSingleton<global::System.Diagnostics.ActivitySource>(
-                    services, global::Edict.Core.Diagnostics.EdictDiagnostics.ActivitySource);
+                    services, global::Edict.Telemetry.EdictDiagnostics.ActivitySource);
 
             return services;
         }

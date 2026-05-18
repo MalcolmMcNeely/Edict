@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!--
+          Orleans.Core provides Orleans.Runtime.RequestContext (client abstractions).
+          Edict.Telemetry must never reference the Orleans server runtime / grain bases
+          (ADR 0014).
+        -->
+        <PackageReference Include="Microsoft.Orleans.Core" Version="10.1.0" />
+    </ItemGroup>
+
+</Project>

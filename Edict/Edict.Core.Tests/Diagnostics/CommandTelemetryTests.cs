@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Commands;
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 
 namespace Edict.Core.Tests.Diagnostics;
 

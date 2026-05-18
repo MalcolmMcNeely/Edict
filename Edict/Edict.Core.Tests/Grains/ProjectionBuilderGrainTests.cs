@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 using Edict.Core.Tests.Grains;
 
 namespace Edict.Core.Tests.Grains;

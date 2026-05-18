@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Results;
-using Edict.Core.Diagnostics;
+using Edict.Telemetry;
 
 namespace Edict.Core.Tests.Grains;
 
