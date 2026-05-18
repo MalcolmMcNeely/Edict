@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
         <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
@@ -21,6 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sample.Api/Sample.Api.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
     </ItemGroup>
 

@@ -2,14 +2,8 @@ using System.Reflection;
 
 using Azure.Data.Tables;
 
-namespace Edict.Core.TableStorage;
+namespace Edict.Azure.TableStorage;
 
-/// <summary>
-/// Reflection-based mapper between a plain POCO and an Azure <see cref="TableEntity"/>.
-/// Supports the primitive Azure Table Storage types (string, int, long, double, bool,
-/// Guid, DateTime, DateTimeOffset, byte[]). ADR 0015: rows are plain POCOs; the
-/// provider handles all Azure plumbing.
-/// </summary>
 internal static class AzureTablePocoMapper
 {
     private static readonly BindingFlags PublicInstance =

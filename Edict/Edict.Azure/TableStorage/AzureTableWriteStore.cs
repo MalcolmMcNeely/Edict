@@ -3,13 +3,8 @@ using Azure.Data.Tables;
 
 using Edict.Contracts.TableStorage;
 
-namespace Edict.Core.TableStorage;
+namespace Edict.Azure.TableStorage;
 
-/// <summary>
-/// Azure Table Storage implementation of <see cref="IEdictTableWriteStore{T}"/> (ADR 0015).
-/// Maps plain POCO rows to/from <see cref="TableEntity"/> so the grain base stays
-/// provider-neutral. Constructed per table by <see cref="AzureTableWriteStoreFactory"/>.
-/// </summary>
 internal sealed class AzureTableWriteStore<T> : IEdictTableWriteStore<T>
     where T : class, new()
 {

@@ -1,11 +1,11 @@
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 
+using Edict.Azure.TableStorage;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Grains;
-using Edict.Core.TableStorage;
 
 using Sample.Orders;
 
@@ -21,6 +21,7 @@ public class TypePlacementTests
 {
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
+            typeof(AzureTableWriteStoreFactory).Assembly,
             typeof(EdictCommand).Assembly,
             typeof(EdictEventDeduplicationGrain).Assembly,
             typeof(PlaceOrderCommand).Assembly)
@@ -73,7 +74,7 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Core runtime: EdictEventDeduplicationGrain, EdictProjectionBuilderGrain, EdictTableProjectionBuilderGrain, AzureTableRepository — ADR 0008
+    // Core runtime: EdictEventDeduplicationGrain, EdictProjectionBuilderGrain, EdictTableProjectionBuilderGrain — ADR 0008
 
     [Fact]
     public void EventDeduplicationGrain_ResidiesInEdictCore()
@@ -102,11 +103,22 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014
+
     [Fact]
-    public void AzureTableRepository_ResidiesInEdictCore()
+    public void AzureTableRepository_ResidiesInEdictAzure()
     {
         var rule = Classes().That().HaveNameStartingWith("AzureTableRepository")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.TableStorage$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void AzureTableWriteStoreFactory_ResidiesInEdictAzure()
+    {
+        var rule = Classes().That().HaveNameMatching("^AzureTableWriteStoreFactory$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
 
         rule.Check(Architecture);
     }

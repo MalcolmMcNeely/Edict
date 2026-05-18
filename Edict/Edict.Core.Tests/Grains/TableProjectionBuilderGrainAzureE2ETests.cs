@@ -1,4 +1,4 @@
-using Edict.Core.TableStorage;
+using Edict.Azure.TableStorage;
 
 namespace Edict.Core.Tests.Grains;
 

@@ -1,8 +1,9 @@
 using Azure.Data.Tables;
 
 using Edict.Contracts.TableStorage;
+using Edict.Core.TableStorage;
 
-namespace Edict.Core.TableStorage;
+namespace Edict.Azure.TableStorage;
 
 /// <summary>
 /// Azure Table Storage implementation of <see cref="IEdictTableStoreFactory"/> (ADR 0015).

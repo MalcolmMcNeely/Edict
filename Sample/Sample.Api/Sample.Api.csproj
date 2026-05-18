@@ -21,6 +21,7 @@
           grain-interfaces library; for this sample the silo assembly serves that role.
         -->
         <ProjectReference Include="../Sample.Silo/Sample.Silo.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
     </ItemGroup>
 
