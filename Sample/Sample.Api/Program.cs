@@ -1,10 +1,17 @@
+using Azure.Data.Tables;
+
+using Edict.Contracts.TableStorage;
 using Edict.Core.Diagnostics;
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
+using Edict.Core.TableStorage;
 using Edict.Generated;
+
 using OpenTelemetry;
 using OpenTelemetry.Trace;
+
 using Orleans.Serialization;
+
 using Sample.Api.Orders;
 using Sample.Silo.Orders;
 
@@ -30,6 +37,13 @@ if (!builder.Environment.IsEnvironment("Testing"))
             tracing.AddAspNetCoreInstrumentation();
         })
         .UseOtlpExporter();
+
+    var tableConnectionString = builder.Configuration.GetConnectionString("AzureStorage")
+                                ?? "UseDevelopmentStorage=true";
+    var tableServiceClient = new TableServiceClient(tableConnectionString);
+    builder.Services.AddSingleton(tableServiceClient);
+    builder.Services.AddSingleton<ITableRepository<OrderStatusRow>>(
+        _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
 }
 
 builder.Services.AddEdict();

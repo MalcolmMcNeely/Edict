@@ -1,17 +1,38 @@
+using Azure.Data.Tables;
+using Azure.Storage.Queues;
+
 using Edict.Core.Diagnostics;
 using Edict.Core.Serialization;
+
 using OpenTelemetry;
+
 using Orleans.Serialization;
+
 using Sample.Silo.Orders;
 
 var host = Host.CreateDefaultBuilder(args)
-    .UseOrleans(silo =>
+    .UseOrleans((context, silo) =>
     {
         silo.UseLocalhostClustering();
         silo.Services.AddSerializer(ser =>
         {
             ser.AddAssembly(typeof(OrderGrain).Assembly);
             ser.AddEdictContractSerializer();
+        });
+
+        var connStr = context.Configuration.GetConnectionString("AzureStorage")
+                      ?? "UseDevelopmentStorage=true";
+
+        silo.Services.AddSingleton(new TableServiceClient(connStr));
+
+        silo.AddMemoryGrainStorage("PubSubStore");
+        silo.AddMemoryGrainStorage("edict-dedup");
+        silo.AddAzureQueueStreams("edict", configure =>
+        {
+            configure.ConfigureAzureQueue(opt => opt.Configure(o =>
+                o.QueueServiceClient = new QueueServiceClient(connStr)));
+            configure.ConfigurePullingAgent(opt => opt.Configure(o =>
+                o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(500)));
         });
     })
     .ConfigureServices(services =>

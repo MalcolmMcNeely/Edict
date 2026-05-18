@@ -1,20 +1,35 @@
+using Azure.Data.Tables;
+using Azure.Storage.Queues;
+
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
+using Edict.Core.TableStorage;
+using Edict.Contracts.TableStorage;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
 using Orleans;
 using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
+
 using Sample.Silo.Orders;
+
+using Testcontainers.Azurite;
+
 using Xunit;
 
 namespace Sample.Api.Tests;
 
 public sealed class ApiFixture : IAsyncLifetime
 {
+    private static string _queueConnectionString = "";
+    private static TableServiceClient _tableServiceClient = null!;
+
+    private AzuriteContainer _azurite = null!;
     private TestCluster _cluster = null!;
     private WebApplicationFactory<Program> _factory = null!;
 
@@ -22,6 +37,18 @@ public sealed class ApiFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        _azurite = new AzuriteBuilder()
+            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+            .WithCreateParameterModifier(p =>
+            {
+                p.Cmd ??= [];
+                p.Cmd.Add("--skipApiVersionCheck");
+            })
+            .Build();
+        await _azurite.StartAsync();
+        _queueConnectionString = _azurite.GetConnectionString();
+        _tableServiceClient = new TableServiceClient(_queueConnectionString);
+
         var clusterBuilder = new TestClusterBuilder();
         clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
         clusterBuilder.AddClientBuilderConfigurator<ClientConfigurator>();
@@ -36,6 +63,10 @@ public sealed class ApiFixture : IAsyncLifetime
                 {
                     services.AddSingleton<IClusterClient>(_cluster.Client);
                     services.AddSingleton<IGrainFactory>(_cluster.Client);
+                    services.AddSingleton(_tableServiceClient);
+                    services.AddSingleton<ITableRepository<OrderStatusRow>>(
+                        _ => new AzureTableRepository<OrderStatusRow>(
+                            _tableServiceClient, "ordersbystatus"));
                 });
             });
 
@@ -47,6 +78,7 @@ public sealed class ApiFixture : IAsyncLifetime
         Client.Dispose();
         await _factory.DisposeAsync();
         await _cluster.DisposeAsync();
+        await _azurite.DisposeAsync();
     }
 
     private static void ConfigureEdictSerialization(ISerializerBuilder ser)
@@ -58,8 +90,20 @@ public sealed class ApiFixture : IAsyncLifetime
 
     private sealed class SiloConfigurator : ISiloConfigurator
     {
-        public void Configure(ISiloBuilder siloBuilder) =>
+        public void Configure(ISiloBuilder siloBuilder)
+        {
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            siloBuilder.Services.AddSingleton(_tableServiceClient);
+            siloBuilder.AddMemoryGrainStorage("PubSubStore");
+            siloBuilder.AddMemoryGrainStorage("edict-dedup");
+            siloBuilder.AddAzureQueueStreams("edict", configure =>
+            {
+                configure.ConfigureAzureQueue(opt => opt.Configure(o =>
+                    o.QueueServiceClient = new QueueServiceClient(_queueConnectionString)));
+                configure.ConfigurePullingAgent(opt => opt.Configure(o =>
+                    o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(200)));
+            });
+        }
     }
 
     private sealed class ClientConfigurator : IClientBuilderConfigurator

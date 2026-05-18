@@ -8,13 +8,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
         <PackageReference Include="Microsoft.Orleans.Server" Version="9.2.1" />
+        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Sample.Orders/Sample.Orders.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
         <!--
           Generator runs over this assembly — emits IOrderGrain, Dispatch, and AddEdict().

@@ -1,0 +1,18 @@
+using Edict.Contracts.Commands;
+using Edict.Contracts.Telemetry;
+
+using MessagePack;
+
+namespace Sample.Silo.Orders;
+
+[MessagePackObject(keyAsPropertyName: true)]
+public sealed partial record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : Command
+{
+    [RouteKey]
+    public Guid OrderId { get; init; } = OrderId;
+
+    [Telemeterized]
+    public string Sku { get; init; } = Sku;
+
+    public int Quantity { get; init; } = Quantity;
+}

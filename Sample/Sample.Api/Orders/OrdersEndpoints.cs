@@ -1,6 +1,8 @@
 using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
-using Sample.Orders;
+using Edict.Contracts.TableStorage;
+
+using Sample.Silo.Orders;
 
 namespace Sample.Api.Orders;
 
@@ -12,6 +14,7 @@ internal static class OrdersEndpoints
         app.MapPost("/orders/{id:guid}/lines", AddLineItem);
         app.MapPost("/orders/{id:guid}/submit", SubmitOrder);
         app.MapPost("/orders/{id:guid}/cancel", CancelOrder);
+        app.MapGet("/orders/{id:guid}/projection", GetOrderProjection);
     }
 
     private static async Task<IResult> PlaceOrder(IEdictSender sender)
@@ -38,6 +41,35 @@ internal static class OrdersEndpoints
     {
         var result = await sender.Send(new CancelOrderCommand(id));
         return MapResult(result, () => Results.Accepted());
+    }
+
+    private static async Task<IResult> GetOrderProjection(
+        Guid id, ITableRepository<OrderStatusRow> repository)
+    {
+        var row = await repository.GetAsync(id.ToString(), "status");
+
+        var statusCell = row is not null
+            ? $"<td>{row.Status}</td><td>{row.ItemCount}</td>"
+            : "<td colspan=\"2\">Not yet projected</td>";
+
+        var html = $"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta http-equiv="refresh" content="2">
+                <title>Order {id} — Projection</title>
+            </head>
+            <body>
+                <h2>Order {id}</h2>
+                <table border="1" cellpadding="4">
+                    <tr><th>Status</th><th>Item Count</th></tr>
+                    <tr>{statusCell}</tr>
+                </table>
+            </body>
+            </html>
+            """;
+
+        return Results.Content(html, "text/html");
     }
 
     private static IResult MapResult(CommandResult result, Func<IResult> onAccepted) =>

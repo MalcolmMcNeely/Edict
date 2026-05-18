@@ -4,7 +4,8 @@ using Xunit;
 
 namespace Sample.Api.Tests.Orders;
 
-public sealed class OrdersEndpointsTests(ApiFixture fixture) : IClassFixture<ApiFixture>
+[Collection(ApiClusterCollection.Name)]
+public sealed class OrdersEndpointsTests(ApiFixture fixture)
 {
     [Fact]
     public async Task PlaceOrder_returns_202_with_new_orderId()
