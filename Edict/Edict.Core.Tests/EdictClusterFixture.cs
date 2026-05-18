@@ -1,24 +1,38 @@
+using Azure.Storage.Queues;
+
 using Edict.Contracts.Sending;
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.Grains;
 using Edict.Generated;
+
 using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
+
+using Orleans.Configuration;
 using Orleans.Serialization;
 using Orleans.TestingHost;
+
+using Testcontainers.Azurite;
 
 namespace Edict.Core.Tests;
 
 /// <summary>
-/// A real in-memory Orleans cluster. This slice has no streams, so a plain
-/// TestCluster (no Azurite) is the right tool — Azurite/Testcontainers enters
-/// with the event-stream slice. The client gets the generated
-/// <c>AddEdict()</c>, so a test resolves <see cref="IEdictSender"/> exactly as
-/// a consumer would.
+/// A real in-memory Orleans cluster backed by a local Azurite container for
+/// Azure Queue Storage streams. Starting with this slice the cluster uses the
+/// "edict" stream provider so Command Handlers can <c>Raise</c> events that
+/// land on real domain streams (Azurite/Testcontainers). The client gets the
+/// generated <c>AddEdict()</c>, so a test resolves <see cref="IEdictSender"/>
+/// exactly as a consumer would.
 /// </summary>
 public sealed class EdictClusterFixture : IAsyncLifetime
 {
+    // Set before cluster construction so the nested configurator classes can read it.
+    private static string _queueConnectionString = "";
+
+    private AzuriteContainer _azurite = null!;
+
     public TestCluster Cluster { get; private set; } = null!;
 
     public IEdictSender Sender =>
@@ -26,6 +40,12 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        _azurite = new AzuriteBuilder()
+            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+            .Build();
+        await _azurite.StartAsync();
+        _queueConnectionString = _azurite.GetConnectionString();
+
         var builder = new TestClusterBuilder();
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
@@ -36,15 +56,11 @@ public sealed class EdictClusterFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         if (Cluster is not null)
-        {
             await Cluster.DisposeAsync();
-        }
+        if (_azurite is not null)
+            await _azurite.DisposeAsync();
     }
 
-    // Both hosts must see the Orleans metadata generated into the sample
-    // (test) assembly and Edict.Core — TestCluster doesn't discover them by
-    // default — and route the Edict contract types through MessagePack
-    // (ADR 0007, superseding ADR 0006's JSON).
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(OrderGrain).Assembly)
@@ -55,9 +71,18 @@ public sealed class EdictClusterFixture : IAsyncLifetime
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
+            siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
+            siloBuilder.AddMemoryGrainStorage("PubSubStore");
+            siloBuilder.AddAzureQueueStreams("edict", configure =>
+            {
+                configure.ConfigureAzureQueue(opt => opt.Configure(o =>
+                    o.QueueServiceClient = new QueueServiceClient(_queueConnectionString)));
+                configure.ConfigurePullingAgent(opt => opt.Configure(o =>
+                    o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(200)));
+            });
         }
     }
 
@@ -67,6 +92,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             Microsoft.Extensions.Configuration.IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
+            clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
         }

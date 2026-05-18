@@ -1,5 +1,10 @@
+using System.Diagnostics;
+using System.Reflection;
+
 using Edict.Contracts.Commands;
+using Edict.Contracts.Events;
 using Edict.Contracts.Results;
+using Edict.Core.Diagnostics;
 using Edict.Core.Validation;
 
 using FluentValidation;
@@ -7,6 +12,8 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans;
+using Orleans.Runtime;
+using Orleans.Streams;
 
 namespace Edict.Core.Grains;
 
@@ -21,8 +28,80 @@ namespace Edict.Core.Grains;
 /// </summary>
 public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
 {
+    private List<Event>? _raisedEvents;
+
     /// <inheritdoc />
     public abstract Task<CommandResult> Dispatch(Command command);
+
+    /// <summary>
+    /// Buffers an event to be flushed to its domain stream after the current
+    /// command returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler
+    /// throw. Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context
+    /// at flush time (ADR 0011).
+    /// </summary>
+    protected void Raise(Event theEvent)
+    {
+        ArgumentNullException.ThrowIfNull(theEvent);
+        (_raisedEvents ??= []).Add(theEvent);
+    }
+
+    /// <summary>
+    /// Stamps and publishes all buffered events to their domain streams.
+    /// Called by the generated <c>Dispatch</c> after <c>Handle</c> returns
+    /// <c>Accepted</c> and the validator passed. A publication failure surfaces
+    /// as an infrastructure exception to the command caller — no outbox exists
+    /// yet, so a dropped event must never be silent.
+    /// </summary>
+    protected async Task FlushRaisedEventsAsync()
+    {
+        if (_raisedEvents is null || _raisedEvents.Count == 0)
+            return;
+
+        var provider = this.GetStreamProvider("edict");
+
+        // Restore the command span as explicit parent so publish spans are direct children
+        // even across the Orleans grain call boundary (ADR 0003).
+        var cmdTraceId = RequestContext.Get(EdictDiagnostics.TraceIdKey) as string;
+        var cmdSpanId = RequestContext.Get(EdictDiagnostics.SpanIdKey) as string;
+        var cmdTraceState = RequestContext.Get(EdictDiagnostics.TraceStateKey) as string;
+
+        ActivityContext parentContext = default;
+        if (cmdTraceId is { Length: 32 } && cmdSpanId is { Length: 16 })
+        {
+            parentContext = new ActivityContext(
+                ActivityTraceId.CreateFromString(cmdTraceId),
+                ActivitySpanId.CreateFromString(cmdSpanId),
+                ActivityTraceFlags.Recorded,
+                cmdTraceState);
+        }
+
+        foreach (var evt in _raisedEvents)
+        {
+            var (streamName, routeKey) = GetEventStreamAddress(evt);
+            var stream = provider.GetStream<Event>(StreamId.Create(streamName, routeKey));
+
+            using var publishActivity = EdictDiagnostics.ActivitySource.StartActivity(
+                $"edict.event.publish {evt.GetType().Name}",
+                ActivityKind.Producer,
+                parentContext);
+
+            var stamped = evt with
+            {
+                EventId = Guid.NewGuid(),
+                OccurredAt = DateTimeOffset.UtcNow,
+                TraceId = publishActivity?.TraceId.ToHexString() ?? cmdTraceId,
+                SpanId = publishActivity?.SpanId.ToHexString() ?? cmdSpanId,
+                TraceState = publishActivity?.TraceStateString ?? cmdTraceState,
+            };
+
+            await stream.OnNextAsync(stamped);
+        }
+
+        _raisedEvents = null;
+    }
+
+    /// <summary>Discards all buffered events. Called on <c>Rejected</c> or handler throw.</summary>
+    protected void DiscardRaisedEvents() => _raisedEvents = null;
 
     /// <summary>
     /// Resolves <see cref="IValidator{TCommand}"/> from grain DI, runs it with
@@ -66,4 +145,21 @@ public abstract class CommandHandlerGrain : Grain, IEdictCommandHandler
     /// The default returns <c>null</c> (no state injected).
     /// </summary>
     protected virtual object? GetValidationState() => null;
+
+    private static (string StreamName, Guid RouteKey) GetEventStreamAddress(Event evt)
+    {
+        var type = evt.GetType();
+
+        var streamAttr = (StreamAttribute?)Attribute.GetCustomAttribute(type, typeof(StreamAttribute))
+            ?? throw new InvalidOperationException(
+                $"Event {type.Name} is missing [Stream] — every concrete event must declare its domain stream (ADR 0011).");
+
+        var routeKeyProp = Array.Find(
+            type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
+            p => Attribute.IsDefined(p, typeof(RouteKeyAttribute)))
+            ?? throw new InvalidOperationException(
+                $"Event {type.Name} is missing a [RouteKey] Guid property (ADR 0011).");
+
+        return (streamAttr.Name, (Guid)routeKeyProp.GetValue(evt)!);
+    }
 }

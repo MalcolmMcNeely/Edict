@@ -238,12 +238,26 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                     public override async {{TaskOfCommandResult}} Dispatch(
                         global::Edict.Contracts.Commands.Command command)
                     {
-                        return await (command switch
+                        global::Edict.Contracts.Results.CommandResult result;
+                        try
                         {
+                            result = await (command switch
+                            {
             {{arms.ToString().TrimEnd('\n')}}
-                            _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
-                                command.GetType()),
-                        });
+                                _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
+                                    command.GetType()),
+                            });
+                        }
+                        catch
+                        {
+                            this.DiscardRaisedEvents();
+                            throw;
+                        }
+                        if (result is global::Edict.Contracts.Results.CommandResult.Accepted)
+                            await this.FlushRaisedEventsAsync();
+                        else
+                            this.DiscardRaisedEvents();
+                        return result;
                     }
                 }
             }

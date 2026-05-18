@@ -1,0 +1,20 @@
+# TableProjectionBuilder: configurable persisted dedup ring, double-apply gap accepted until the Outbox
+
+**Status:** accepted — amends ADR 0002 ("bounded" → "configurable bounded" ring) and softens ADR 0001's implicit "no outbox, ever" to "Outbox planned, not yet built"
+
+A `TableProjectionBuilder` stores its read model in Azure Table Storage (not grain state) so grain activation stays small no matter how large the read model grows over time — the >2MB-activation problem in a long-running production system. Its `EventId` dedup ring nonetheless stays in **persisted** `EventDeduplicationGrain` state (ADR 0002's choice retained — volatile dedup would silently degrade to "no dedup across a deactivation", the exact failure the in-base design exists to prevent), and the ring size becomes **configurable** (sensible default) because a global-singleton table projection consumes a far larger event firehose than the per-aggregate default.
+
+Because the projected row (in the table) and the dedup ring (in grain state) are **two non-atomic stores**, a crash between the table write and the ring commit double-applies the event on redelivery. This gap is **knowingly accepted for now** and will be closed by the **Outbox** (planned, not yet built), which will make the row write and ring commit a single atomic unit. With the ring in grain state rather than co-located in a table partition, the single-partition-transaction limit does not apply, so a global-singleton `TableProjectionBuilder` is *not* blocked — it is the same accepted gap as the per-aggregate case, just a larger firehose the configurable ring must cover.
+
+## Considered Options
+
+- **Co-locate the dedup ring in the table partition, atomic with the row write** — rejected for now: it eliminates the gap for the per-aggregate case but blocks the global-singleton case (Azure Table transactions are single-partition) and front-loads complexity the Outbox will subsume anyway. Simpler to accept the gap and build the Outbox once, properly.
+- **Volatile in-memory ring (no per-event state write)** — rejected: cheaper, but dedup is silently lost on deactivation/silo recycle; contradicts the whole point of unskippable in-base idempotency (ADR 0002).
+- **Build the Outbox now** — deferred by scope; the gap is documented and bounded (redelivery double-apply, not data loss) and acceptable in the interim.
+
+## Consequences
+
+- Documented limitation: until the Outbox ships, a `TableProjectionBuilder` is *not* exactly-once across a crash between its row write and ring commit; consumers must not assume it. The in-memory `ProjectionBuilder` is unaffected (single store).
+- ADR 0002's ring is now configurable in size; persistence and commit-after-success are unchanged.
+- `ITableRepository` is a **read-only** framework interface living in `Edict.Contracts` (shared kernel, the `IEdictSender` precedent in ADR 0008); its Azure-Table implementation lives in `Edict.Core`; an architecture test forbids `Edict.Contracts` from referencing the Azure Table SDK.
+- The Outbox becomes a tracked future dependency (recorded in `CONTEXT.md`), not an open-ended "out of scope".

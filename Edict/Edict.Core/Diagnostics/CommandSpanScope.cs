@@ -3,6 +3,8 @@ using System.Diagnostics;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Results;
 
+using Orleans.Runtime;
+
 namespace Edict.Core.Diagnostics;
 
 /// <summary>
@@ -26,6 +28,10 @@ internal static class CommandSpanScope
         {
             activity.SetTag("edict.command.route_key", routeKey);
             tagWriter?.Invoke(command, activity);
+            RequestContext.Set(EdictDiagnostics.TraceIdKey, activity.TraceId.ToHexString());
+            RequestContext.Set(EdictDiagnostics.SpanIdKey, activity.SpanId.ToHexString());
+            if (activity.TraceStateString is { } traceState)
+                RequestContext.Set(EdictDiagnostics.TraceStateKey, traceState);
         }
 
         try

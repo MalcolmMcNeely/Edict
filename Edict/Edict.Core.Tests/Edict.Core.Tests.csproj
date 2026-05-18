@@ -16,6 +16,8 @@
         <PackageReference Include="Microsoft.Orleans.TestingHost" Version="9.2.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="9.2.1" />
+        <PackageReference Include="Testcontainers.Azurite" Version="3.10.0" />
     </ItemGroup>
 
     <ItemGroup>

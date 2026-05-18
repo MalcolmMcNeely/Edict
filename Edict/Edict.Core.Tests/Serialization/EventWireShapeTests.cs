@@ -1,5 +1,5 @@
-using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Core.Tests;
 
 using MessagePack;
 
@@ -12,16 +12,8 @@ namespace Edict.Core.Tests.Serialization;
 // snapshots the result. A renamed or removed property changes the string key
 // and fails CI before the breaking wire change can ship silently. Fixed inputs
 // keep the snapshot deterministic.
-
-[MessagePackObject(keyAsPropertyName: true)]
-[Stream("Orders")]
-public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : Event
-{
-    [RouteKey]
-    public Guid OrderId { get; init; } = OrderId;
-
-    public string Sku { get; init; } = Sku;
-}
+//
+// OrderPlacedEvent lives in Edict.Core.Tests (SampleOrderAggregate.cs).
 
 public sealed class EventWireShapeTests
 {
