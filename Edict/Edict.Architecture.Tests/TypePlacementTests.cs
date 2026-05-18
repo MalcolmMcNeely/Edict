@@ -64,6 +64,15 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    [Fact]
+    public void ITableWriteStore_ResidiesInEdictContracts()
+    {
+        var rule = Interfaces().That().HaveNameStartingWith("IEdictTableWriteStore")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.TableStorage$");
+
+        rule.Check(Architecture);
+    }
+
     // Core runtime: EdictEventDeduplicationGrain, EdictProjectionBuilderGrain, EdictTableProjectionBuilderGrain, AzureTableRepository — ADR 0008
 
     [Fact]

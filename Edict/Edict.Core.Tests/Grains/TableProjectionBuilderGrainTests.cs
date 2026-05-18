@@ -1,27 +1,23 @@
-using Edict.Core.TableStorage;
-using Edict.Core.Tests.Grains;
+using Edict.Core.Tests.TableStorage;
 
 namespace Edict.Core.Tests.Grains;
 
 [Collection(EdictClusterCollection.Name)]
 public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture)
 {
-    // Cycle 1 — tracer bullet: event delivery writes row; ITableRepository point-get returns it
+    // Cycle 3 — tracer bullet: event delivery writes row; in-memory GetAsync returns it
     [Fact]
-    public async Task Event_delivery_writes_row_readable_via_point_get()
+    public async Task Event_delivery_writes_row_via_in_memory_store()
     {
         var orderId = Guid.NewGuid();
-        var repository = new AzureTableRepository<OrderTableRow>(
-            fixture.TableServiceClient, "orderprojection");
-
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
 
-        await WaitForTableRowAsync(repository, orderId.ToString(), orderId.ToString());
-        var row = await repository.GetAsync(orderId.ToString(), orderId.ToString());
+        await WaitForRowAsync<OrderTableRow>("orderprojection", orderId.ToString(), orderId.ToString());
+        var store = fixture.TableStoreFactory.GetStore<OrderTableRow>("orderprojection");
+        var row = store.Get(orderId.ToString(), orderId.ToString());
 
-        await Verify(row)
-            .ScrubMember<OrderTableRow>(r => r.ETag)
-            .ScrubMember<OrderTableRow>(r => r.Timestamp);
+        await Verify(new { OrderCount = row!.OrderCount })
+            .UseParameters(orderId);
     }
 
     // Cycle 3 — RowKey is consumer-specified and independent of PartitionKey
@@ -29,29 +25,24 @@ public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture
     public async Task Consumer_specified_row_key_determines_row_coordinates()
     {
         var orderId = Guid.NewGuid();
-        var repository = new AzureTableRepository<OrderTableRow>(
-            fixture.TableServiceClient, "ordersummary");
-
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-C"));
 
         // PartitionKey = orderId (grain key), RowKey = "summary" (consumer-specified fixed key)
-        await WaitForTableRowAsync(repository, orderId.ToString(), "summary");
-        var row = await repository.GetAsync(orderId.ToString(), "summary");
+        await WaitForRowAsync<OrderTableRow>("ordersummary", orderId.ToString(), "summary");
+        var store = fixture.TableStoreFactory.GetStore<OrderTableRow>("ordersummary");
+        var row = store.Get(orderId.ToString(), "summary");
 
-        await Verify(new { row!.PartitionKey, row.RowKey, row.OrderCount })
+        await Verify(new { OrderCount = row!.OrderCount })
             .UseParameters(orderId);
     }
 
-    // Cycle 4 — global-singleton projection: fixed grain key, many aggregates → separate rows
+    // Cycle 3 — global-singleton projection: fixed grain key, many aggregates → separate rows
     [Fact]
     public async Task Global_singleton_stores_distinct_row_per_source_aggregate()
     {
         var orderIdA = Guid.NewGuid();
         var orderIdB = Guid.NewGuid();
-        var repository = new AzureTableRepository<OrderTableRow>(
-            fixture.TableServiceClient, "globalorderprojection");
 
-        // Publish directly to the singleton's stream key (bypassing CommandHandlerGrain routing)
         var publisher = fixture.Cluster.GrainFactory
             .GetGrain<IProjectionPublisherGrain>(GlobalOrderTableProjectionGrain.SingletonKey);
 
@@ -67,70 +58,80 @@ public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture
         });
 
         var singletonPk = GlobalOrderTableProjectionGrain.SingletonKey.ToString();
-        await WaitForPartitionRowCountAsync(repository, singletonPk, expectedRowCount: 2);
-        var rows = await repository.QueryPartitionAsync(singletonPk);
+        await WaitForPartitionCountAsync<OrderTableRow>("globalorderprojection", singletonPk, 2);
+        var store = fixture.TableStoreFactory.GetStore<OrderTableRow>("globalorderprojection");
+        var rows = store.GetPartition(singletonPk);
 
         await Verify(rows
-            .OrderBy(row => row.RowKey)
-            .Select(row => new { row.RowKey, row.OrderCount }));
+            .OrderBy(r => r.OrderCount)
+            .Select(r => new { r.OrderCount }));
     }
 
-    // Cycle 2 — partition query returns all rows written under the same PartitionKey
+    // Cycle 4 — second event loads existing row and writes back delta
     [Fact]
-    public async Task Partition_query_returns_all_rows_for_aggregate()
+    public async Task Second_event_loads_existing_row_and_increments_count()
     {
         var orderId = Guid.NewGuid();
-        var repository = new AzureTableRepository<OrderTableRow>(
-            fixture.TableServiceClient, "orderprojection");
-
-        // Two commands → two events → both increment the same row (same PK+RK)
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-A"));
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-B"));
 
-        await WaitForTableRowAsync(repository, orderId.ToString(), orderId.ToString(),
-            minimumCount: 2);
+        await WaitForRowAsync<OrderTableRow>(
+            "orderprojection",
+            orderId.ToString(),
+            orderId.ToString(),
+            row => row.OrderCount >= 2);
 
-        var rows = await repository.QueryPartitionAsync(orderId.ToString());
-        await Verify(rows.Select(row => new { row.PartitionKey, row.RowKey, row.OrderCount }));
+        var store = fixture.TableStoreFactory.GetStore<OrderTableRow>("orderprojection");
+        var row = store.Get(orderId.ToString(), orderId.ToString());
+
+        await Verify(new { OrderCount = row!.OrderCount })
+            .UseParameters(orderId);
     }
 
-    // Cycle 5 — double-apply gap: knowingly accepted until the Outbox ships (ADR 0012).
-    // A crash between WriteToTableAsync and Commit in EventDeduplicationGrain means the
-    // event is redelivered and applied a second time. This is NOT exactly-once; do not
-    // assert it as such. This test documents the known limitation rather than asserting
-    // correct behaviour, so it is skipped until the Outbox is implemented.
-    [Fact(Skip = "Known limitation: table row write and dedup ring commit are non-atomic. " +
-                 "Double-apply on redelivery is accepted until the Outbox ships. See ADR 0012.")]
+    // Known limitation: table row write and dedup ring commit are non-atomic.
+    // Double-apply on redelivery is accepted until the Outbox ships. See ADR 0012.
+    [Fact(Skip = "Known limitation: accepted double-apply gap until the Outbox ships (ADR 0012).")]
     public Task Double_apply_on_crash_between_row_write_and_ring_commit_is_accepted_limitation()
         => Task.CompletedTask;
 
-    private static async Task WaitForPartitionRowCountAsync(
-        AzureTableRepository<OrderTableRow> repository,
+    private async Task WaitForRowAsync<T>(
+        string tableName,
         string partitionKey,
-        int expectedRowCount)
+        string rowKey,
+        Func<T, bool>? predicate = null)
+        where T : class, new()
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var rows = await repository.QueryPartitionAsync(partitionKey);
-            if (rows.Count >= expectedRowCount)
-                return;
+            try
+            {
+                var store = fixture.TableStoreFactory.GetStore<T>(tableName);
+                var row = store.Get(partitionKey, rowKey);
+                if (row is not null && (predicate is null || predicate(row)))
+                    return;
+            }
+            catch (KeyNotFoundException) { }
             await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
     }
 
-    private static async Task WaitForTableRowAsync(
-        AzureTableRepository<OrderTableRow> repository,
+    private async Task WaitForPartitionCountAsync<T>(
+        string tableName,
         string partitionKey,
-        string rowKey,
-        int minimumCount = 1)
+        int expectedCount)
+        where T : class, new()
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var row = await repository.GetAsync(partitionKey, rowKey);
-            if (row is not null && row.OrderCount >= minimumCount)
-                return;
+            try
+            {
+                var store = fixture.TableStoreFactory.GetStore<T>(tableName);
+                if (store.GetPartition(partitionKey).Count >= expectedCount)
+                    return;
+            }
+            catch (KeyNotFoundException) { }
             await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
     }

@@ -1,14 +1,13 @@
-using Azure.Data.Tables;
-
 using Edict.Contracts.Events;
 using Edict.Core.Grains;
+using Edict.Core.TableStorage;
 
 namespace Sample.Silo.Orders;
 
 public sealed partial class OrdersByStatusGrain : EdictTableProjectionBuilderGrain<OrderStatusRow>
 {
-    public OrdersByStatusGrain(TableServiceClient tableServiceClient)
-        : base(tableServiceClient) { }
+    public OrdersByStatusGrain(IEdictTableStoreFactory storeFactory)
+        : base(storeFactory) { }
 
     protected override string TableName => "ordersbystatus";
 

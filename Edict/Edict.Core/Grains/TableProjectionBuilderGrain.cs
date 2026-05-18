@@ -1,29 +1,30 @@
-using Azure;
-using Azure.Data.Tables;
-
 using Edict.Contracts.Events;
+using Edict.Contracts.TableStorage;
+using Edict.Core.TableStorage;
 
 namespace Edict.Core.Grains;
 
 /// <summary>
-/// Projection builder whose read model lives in Azure Table Storage so grain
-/// activation stays small regardless of how large the model grows (ADR 0012).
-/// The <see cref="EdictEventDeduplicationGrain"/> dedup ring stays in persisted grain
-/// state as usual — the row write and ring commit are two non-atomic stores, and
-/// the resulting crash-window double-apply is accepted until the Outbox ships.
+/// Projection builder whose read model lives in an external keyed store so grain
+/// activation stays small regardless of how large the model grows (ADR 0012 / ADR 0015).
+/// The backing store is supplied via <see cref="IEdictTableStoreFactory"/>; Azure is
+/// one implementation — a future DynamoDB or in-memory provider implements the same seam.
+/// The dedup ring stays in persisted grain state as usual — the row write and ring commit
+/// are two non-atomic stores, and the resulting crash-window double-apply is accepted
+/// until the Outbox ships.
 /// </summary>
 public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuilderGrain
-    where T : class, ITableEntity, new()
+    where T : class, new()
 {
-    private readonly TableServiceClient _tableServiceClient;
-    private TableClient? _tableClient;
+    private readonly IEdictTableStoreFactory _writeStoreFactory;
+    private IEdictTableWriteStore<T>? _writeStore;
 
-    protected EdictTableProjectionBuilderGrain(TableServiceClient tableServiceClient)
+    protected EdictTableProjectionBuilderGrain(IEdictTableStoreFactory writeStoreFactory)
     {
-        _tableServiceClient = tableServiceClient;
+        _writeStoreFactory = writeStoreFactory;
     }
 
-    /// <summary>The Azure Table Storage table name for this projection.</summary>
+    /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
 
     /// <summary>
@@ -41,8 +42,8 @@ public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuild
     protected string DefaultPartitionKey => this.GetPrimaryKey().ToString();
 
     /// <summary>
-    /// The entity loaded (or freshly constructed) before each handler invocation.
-    /// Modifications the handler makes to this instance are written back to the table
+    /// The row loaded (or freshly constructed) before each handler invocation.
+    /// Modifications the handler makes to this instance are written back to the store
     /// after the handler returns.
     /// </summary>
     protected T CurrentRow { get; private set; } = new();
@@ -50,43 +51,23 @@ public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuild
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
-        await GetTableClient().CreateIfNotExistsAsync(cancellationToken);
+        _writeStore = await _writeStoreFactory.CreateAsync<T>(TableName, cancellationToken);
     }
 
     /// <summary>
     /// Wraps every handler call with load-apply-writeback. The base
     /// <see cref="EdictProjectionBuilderGrain.DispatchEventAsync{TEvent}"/> default is a
-    /// direct handler call; this override adds the table I/O around it.
+    /// direct handler call; this override adds the store I/O around it.
     /// </summary>
     protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
     {
         var partitionKey = DefaultPartitionKey;
         var rowKey = GetRowKey(evt);
 
-        var existing = await LoadFromTableAsync(partitionKey, rowKey);
-        CurrentRow = existing ?? new T { PartitionKey = partitionKey, RowKey = rowKey };
+        CurrentRow = await _writeStore!.GetAsync(partitionKey, rowKey) ?? new T();
 
         await handler(evt);
 
-        await WriteToTableAsync(CurrentRow);
+        await _writeStore!.UpsertAsync(partitionKey, rowKey, CurrentRow);
     }
-
-    private async Task<T?> LoadFromTableAsync(string partitionKey, string rowKey)
-    {
-        try
-        {
-            var response = await GetTableClient().GetEntityAsync<T>(partitionKey, rowKey);
-            return response.Value;
-        }
-        catch (RequestFailedException exception) when (exception.Status == 404)
-        {
-            return null;
-        }
-    }
-
-    private Task WriteToTableAsync(T entity) =>
-        GetTableClient().UpsertEntityAsync(entity, TableUpdateMode.Replace);
-
-    private TableClient GetTableClient() =>
-        _tableClient ??= _tableServiceClient.GetTableClient(TableName);
 }

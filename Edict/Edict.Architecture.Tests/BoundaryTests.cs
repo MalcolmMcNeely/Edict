@@ -2,6 +2,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 
 using Edict.Contracts.Commands;
+using Edict.Core.Grains;
 
 using Sample.Orders;
 
@@ -18,6 +19,7 @@ public class BoundaryTests
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(EdictCommand).Assembly,
+            typeof(EdictEventDeduplicationGrain).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -56,6 +58,21 @@ public class BoundaryTests
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Azure\.Data\.Tables")
+            .WithoutRequiringPositiveResults();
+
+        rule.Check(Architecture);
+    }
+
+    // ADR 0015: EdictTableProjectionBuilderGrain is provider-neutral; Azure stays in the
+    // write-store implementation, not in the grain base.
+    [Fact]
+    public void TableProjectionBuilderGrain_DoesNotDependOnAzure()
+    {
+        var rule = Classes().That()
+            .HaveNameStartingWith("EdictTableProjectionBuilderGrain")
+            .Should()
+            .NotDependOnAnyTypesThat()
+            .ResideInNamespaceMatching(@"^Azure")
             .WithoutRequiringPositiveResults();
 
         rule.Check(Architecture);

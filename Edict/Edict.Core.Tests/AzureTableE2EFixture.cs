@@ -1,39 +1,42 @@
 using Azure.Data.Tables;
 using Azure.Storage.Queues;
 
-using Edict.Contracts.TableStorage;
+using Edict.Contracts.Sending;
 using Edict.Core.Grains;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Core.Tests.Grains;
+using Edict.Generated;
 
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
+using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
 
-using Orleans;
-using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
-using Sample.Silo.Orders;
-
 using Testcontainers.Azurite;
 
-using Xunit;
+namespace Edict.Core.Tests;
 
-namespace Sample.Api.Tests;
-
-public sealed class ApiFixture : IAsyncLifetime
+/// <summary>
+/// Separate fixture that wires <see cref="AzureTableWriteStoreFactory"/> into the silo
+/// so end-to-end tests can prove the Azure Table Storage path without replacing the
+/// shared in-memory cluster used by grain behaviour tests.
+/// </summary>
+public sealed class AzureTableE2EFixture : IAsyncLifetime
 {
     private static string _queueConnectionString = "";
     private static TableServiceClient _tableServiceClient = null!;
 
     private AzuriteContainer _azurite = null!;
-    private TestCluster _cluster = null!;
-    private WebApplicationFactory<Program> _factory = null!;
 
-    public HttpClient Client { get; private set; } = null!;
+    public TestCluster Cluster { get; private set; } = null!;
+
+    public IEdictSender Sender =>
+        Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public TableServiceClient TableServiceClient => _tableServiceClient;
 
     public async Task InitializeAsync()
     {
@@ -49,50 +52,35 @@ public sealed class ApiFixture : IAsyncLifetime
         _queueConnectionString = _azurite.GetConnectionString();
         _tableServiceClient = new TableServiceClient(_queueConnectionString);
 
-        var clusterBuilder = new TestClusterBuilder();
-        clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
-        clusterBuilder.AddClientBuilderConfigurator<ClientConfigurator>();
-        _cluster = clusterBuilder.Build();
-        await _cluster.DeployAsync();
-
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(host =>
-            {
-                host.UseEnvironment("Testing");
-                host.ConfigureServices(services =>
-                {
-                    services.AddSingleton<IClusterClient>(_cluster.Client);
-                    services.AddSingleton<IGrainFactory>(_cluster.Client);
-                    services.AddSingleton(_tableServiceClient);
-                    services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
-                        _ => new AzureTableRepository<OrderStatusRow>(
-                            _tableServiceClient, "ordersbystatus"));
-                });
-            });
-
-        Client = _factory.CreateClient();
+        var builder = new TestClusterBuilder();
+        builder.AddSiloBuilderConfigurator<SiloConfigurator>();
+        builder.AddClientBuilderConfigurator<ClientConfigurator>();
+        Cluster = builder.Build();
+        await Cluster.DeployAsync();
     }
 
     public async Task DisposeAsync()
     {
-        Client.Dispose();
-        await _factory.DisposeAsync();
-        await _cluster.DisposeAsync();
-        await _azurite.DisposeAsync();
+        if (Cluster is not null)
+            await Cluster.DisposeAsync();
+        if (_azurite is not null)
+            await _azurite.DisposeAsync();
     }
 
-    private static void ConfigureEdictSerialization(ISerializerBuilder ser)
-    {
-        ser.AddAssembly(typeof(OrderGrain).Assembly);
-        ser.AddAssembly(typeof(IEdictCommandHandler).Assembly);
-        ser.AddEdictContractSerializer();
-    }
+    private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
+        serializer
+            .AddAssembly(typeof(OrderGrain).Assembly)
+            .AddAssembly(typeof(IEdictCommandHandler).Assembly)
+            .AddEdictContractSerializer();
 
     private sealed class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
+            siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
+            siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
@@ -110,7 +98,19 @@ public sealed class ApiFixture : IAsyncLifetime
 
     private sealed class ClientConfigurator : IClientBuilderConfigurator
     {
-        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder) =>
+        public void Configure(
+            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IClientBuilder clientBuilder)
+        {
+            clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            clientBuilder.Services.AddEdict();
+        }
     }
+}
+
+[CollectionDefinition(Name)]
+public sealed class AzureTableE2ECollection : ICollectionFixture<AzureTableE2EFixture>
+{
+    public const string Name = "AzureTableE2E";
 }

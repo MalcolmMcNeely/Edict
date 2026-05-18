@@ -8,10 +8,11 @@ namespace Edict.Core.TableStorage;
 /// <summary>
 /// Azure Table Storage implementation of <see cref="IEdictTableRepository{T}"/>.
 /// Registered by the consumer's DI setup; <see cref="IEdictTableRepository{T}"/> is
-/// the substitution seam in <c>Edict.Contracts</c> (ADR 0008 / ADR 0012).
+/// the substitution seam in <c>Edict.Contracts</c> (ADR 0008 / ADR 0012 / ADR 0015).
+/// Maps plain POCO rows via <see cref="AzureTablePocoMapper"/>.
 /// </summary>
 public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
-    where T : class, ITableEntity, new()
+    where T : class, new()
 {
     private readonly TableClient _tableClient;
 
@@ -27,9 +28,9 @@ public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
     {
         try
         {
-            var response = await _tableClient.GetEntityAsync<T>(
+            var response = await _tableClient.GetEntityAsync<TableEntity>(
                 partitionKey, rowKey, cancellationToken: cancellationToken);
-            return response.Value;
+            return AzureTablePocoMapper.FromTableEntity<T>(response.Value);
         }
         catch (RequestFailedException exception) when (exception.Status == 404)
         {
@@ -44,11 +45,11 @@ public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
         var results = new List<T>();
         try
         {
-            await foreach (var entity in _tableClient.QueryAsync<T>(
+            await foreach (var entity in _tableClient.QueryAsync<TableEntity>(
                 filter: $"PartitionKey eq '{partitionKey}'",
                 cancellationToken: cancellationToken))
             {
-                results.Add(entity);
+                results.Add(AzureTablePocoMapper.FromTableEntity<T>(entity));
             }
         }
         catch (RequestFailedException exception) when (exception.Status == 404)

@@ -3,6 +3,7 @@ using Azure.Storage.Queues;
 
 using Edict.Core.Diagnostics;
 using Edict.Core.Serialization;
+using Edict.Core.TableStorage;
 
 using OpenTelemetry;
 
@@ -23,7 +24,10 @@ var host = Host.CreateDefaultBuilder(args)
         var connStr = context.Configuration.GetConnectionString("AzureStorage")
                       ?? "UseDevelopmentStorage=true";
 
-        silo.Services.AddSingleton(new TableServiceClient(connStr));
+        var tableServiceClient = new TableServiceClient(connStr);
+        silo.Services.AddSingleton(tableServiceClient);
+        silo.Services.AddSingleton<IEdictTableStoreFactory>(
+            _ => new AzureTableWriteStoreFactory(tableServiceClient));
 
         silo.AddMemoryGrainStorage("PubSubStore");
         silo.AddMemoryGrainStorage("edict-dedup");

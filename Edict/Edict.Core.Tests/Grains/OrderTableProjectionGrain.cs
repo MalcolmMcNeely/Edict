@@ -1,30 +1,23 @@
-using Azure;
-using Azure.Data.Tables;
-
 using Edict.Contracts.Events;
 using Edict.Core.Grains;
+using Edict.Core.TableStorage;
 
 namespace Edict.Core.Tests.Grains;
 
-/// <summary>Table entity for the order table projection test.</summary>
-public sealed class OrderTableRow : ITableEntity
+/// <summary>Table row for the order table projection test — plain POCO, no storage keys.</summary>
+public sealed class OrderTableRow
 {
-    public string PartitionKey { get; set; } = "";
-    public string RowKey { get; set; } = "";
-    public DateTimeOffset? Timestamp { get; set; }
-    public ETag ETag { get; set; }
-
     public int OrderCount { get; set; }
 }
 
 /// <summary>
-/// Test-only table projection grain. Counts orders per aggregate via Azure Table Storage.
+/// Test-only table projection grain. Counts orders per aggregate.
 /// RowKey = OrderId (same as PartitionKey for per-aggregate projections).
 /// </summary>
 public sealed partial class OrderTableProjectionGrain : EdictTableProjectionBuilderGrain<OrderTableRow>
 {
-    public OrderTableProjectionGrain(Azure.Data.Tables.TableServiceClient tableServiceClient)
-        : base(tableServiceClient) { }
+    public OrderTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+        : base(storeFactory) { }
 
     protected override string TableName => "orderprojection";
 
@@ -48,8 +41,8 @@ public sealed partial class OrderTableProjectionGrain : EdictTableProjectionBuil
 /// </summary>
 public sealed partial class OrderSummaryTableProjectionGrain : EdictTableProjectionBuilderGrain<OrderTableRow>
 {
-    public OrderSummaryTableProjectionGrain(Azure.Data.Tables.TableServiceClient tableServiceClient)
-        : base(tableServiceClient) { }
+    public OrderSummaryTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+        : base(storeFactory) { }
 
     protected override string TableName => "ordersummary";
 
@@ -71,8 +64,8 @@ public sealed partial class GlobalOrderTableProjectionGrain : EdictTableProjecti
 {
     public static readonly Guid SingletonKey = new("00000000-0000-0000-0000-000000000001");
 
-    public GlobalOrderTableProjectionGrain(Azure.Data.Tables.TableServiceClient tableServiceClient)
-        : base(tableServiceClient) { }
+    public GlobalOrderTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+        : base(storeFactory) { }
 
     protected override string TableName => "globalorderprojection";
 
