@@ -10,7 +10,7 @@ namespace Edict.Telemetry.Tests;
 public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 {
     [Fact]
-    public async Task Send_opens_one_edict_span_per_command_dispatch()
+    public async Task Send_ShouldOpenOneEdictSpanPerCommandDispatch()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -29,7 +29,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Send_records_error_status_when_handler_throws()
+    public async Task Send_ShouldRecordErrorStatus_WhenHandlerThrows()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -49,7 +49,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Send_writes_telemeterized_properties_as_edict_tags()
+    public async Task Send_ShouldWriteTelemeterizedPropertiesAsEdictTags()
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-TELEM-1";
@@ -69,7 +69,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Publish_span_is_parent_child_under_command_span()
+    public async Task PublishSpan_ShouldBeParentChildUnderCommandSpan()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -94,7 +94,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Published_event_is_stamped_with_trace_context_from_publish_span()
+    public async Task PublishedEvent_ShouldBeStampedWithTraceContextFromPublishSpan()
     {
         var orderId = Guid.NewGuid();
         using var listener = new ActivityListener

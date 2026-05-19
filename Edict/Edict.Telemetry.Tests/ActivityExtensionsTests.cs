@@ -30,14 +30,14 @@ public sealed class ActivityExtensionsTests : IDisposable
 
     // Cycle 1 — tracer bullet: SourceName identity
     [Fact]
-    public void EdictDiagnostics_SourceName_is_Edict()
+    public void EdictDiagnostics_ShouldHaveSourceNameEdict()
     {
         Assert.Equal("Edict", EdictDiagnostics.SourceName);
     }
 
     // Cycle 2 — StartEdictCommand starts an activity with the given name
     [Fact]
-    public void StartEdictCommand_starts_activity_with_given_operation_name()
+    public void StartEdictCommand_ShouldStartActivityWithGivenOperationName()
     {
         using (EdictDiagnostics.ActivitySource.StartEdictCommand("edict.command TestCommand"))
         { }
@@ -47,7 +47,7 @@ public sealed class ActivityExtensionsTests : IDisposable
 
     // Cycle 3 — SetEdictCommandTags writes edict.command.route_key
     [Fact]
-    public void SetEdictCommandTags_sets_edict_command_route_key_tag()
+    public void SetEdictCommandTags_ShouldSetEdictCommandRouteKeyTag()
     {
         var routeKey = Guid.NewGuid();
 
@@ -62,7 +62,7 @@ public sealed class ActivityExtensionsTests : IDisposable
 
     // Cycle 4 — CaptureToRequestContext + ReadRequestContext round-trip
     [Fact]
-    public void CaptureToRequestContext_then_ReadRequestContext_returns_same_trace_ids()
+    public void ReadRequestContext_ShouldReturnSameTraceIds_WhenPreviouslyCaptured()
     {
         string? capturedTraceId, capturedSpanId;
 
@@ -79,7 +79,7 @@ public sealed class ActivityExtensionsTests : IDisposable
 
     // Cycle 4b — RestoreFromStrings reconstructs ActivityContext from hex strings
     [Fact]
-    public void RestoreFromStrings_reconstructs_ActivityContext_from_valid_strings()
+    public void RestoreFromStrings_ShouldReconstructActivityContext_WhenStringsAreValid()
     {
         ActivityContext original;
         using (var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test"))
@@ -97,7 +97,7 @@ public sealed class ActivityExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void RestoreFromStrings_returns_default_when_strings_are_null()
+    public void RestoreFromStrings_ShouldReturnDefault_WhenStringsAreNull()
     {
         var result = ActivityExtensions.RestoreFromStrings(null, null, null);
         Assert.Equal(default, result);
