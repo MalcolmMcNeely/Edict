@@ -26,7 +26,7 @@ public class BoundaryTests
         .Build();
 
     [Fact]
-    public void EdictContracts_DoesNotDependOnOrleansRuntime()
+    public void EdictContracts_ShouldNotDependOnOrleansRuntime()
     {
         var rule = Types().That()
             .ResideInAssembly(typeof(EdictCommand).Assembly.GetName().Name!)
@@ -39,7 +39,7 @@ public class BoundaryTests
     }
 
     [Fact]
-    public void SampleOrders_DoesNotDependOnGrainBases()
+    public void SampleOrders_ShouldNotDependOnGrainBases()
     {
         var rule = Types().That()
             .ResideInAssembly(typeof(PlaceOrderCommand).Assembly.GetName().Name!)
@@ -54,7 +54,7 @@ public class BoundaryTests
     // ADR 0014: Edict.Telemetry may reference Orleans.Core (RequestContext) but must never
     // pull in the Orleans server runtime (grain bases, hosting, etc.).
     [Fact]
-    public void EdictTelemetry_DoesNotDependOnOrleansGrainBase()
+    public void EdictTelemetry_ShouldNotDependOnOrleansGrainBase()
     {
         var rule = Types().That()
             .ResideInAssembly(typeof(EdictDiagnostics).Assembly.GetName().Name!)
@@ -68,7 +68,7 @@ public class BoundaryTests
 
     // ADR 0012: ITableRepository lives in Edict.Contracts; Azure.Data.Tables is Azure-provider-only.
     [Fact]
-    public void EdictContracts_DoesNotDependOnAzureDataTables()
+    public void EdictContracts_ShouldNotDependOnAzureDataTables()
     {
         var rule = Types().That()
             .ResideInAssembly(typeof(EdictCommand).Assembly.GetName().Name!)
@@ -83,7 +83,7 @@ public class BoundaryTests
     // ADR 0015: EdictTableProjectionBuilder is provider-neutral; Azure stays in the
     // write-store implementation, not in the grain base.
     [Fact]
-    public void TableProjectionBuilderGrain_DoesNotDependOnAzure()
+    public void EdictTableProjectionBuilder_ShouldNotDependOnAzure()
     {
         var rule = Classes().That()
             .HaveNameStartingWith("EdictTableProjectionBuilder")
@@ -98,7 +98,7 @@ public class BoundaryTests
     // ADR 0014: Azure implementations live in Edict.Azure, not Edict.Core — so taking
     // Core does not drag any Azure SDK into a non-Azure deployment.
     [Fact]
-    public void EdictCore_DoesNotDependOnAnyAzureSdkPackages()
+    public void EdictCore_ShouldNotDependOnAnyAzureSdkPackages()
     {
         var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var referenced = coreAssembly.GetReferencedAssemblies();
@@ -111,7 +111,7 @@ public class BoundaryTests
     // The prefix signals "consumer contract with the framework"; unprefixed public types
     // would dilute that signal and risk naming collisions.
     [Fact]
-    public void All_public_Edict_Contracts_types_are_brand_prefixed()
+    public void EdictContracts_ShouldHaveAllPublicTypesBrandPrefixed()
     {
         var contractsAssembly = typeof(EdictCommand).Assembly;
         var violations = contractsAssembly
@@ -129,7 +129,7 @@ public class BoundaryTests
     // A .gitkeep indicates an empty directory placeholder; when real content arrives
     // the file must be deleted. Leaving it in causes confusion and bloats the index.
     [Fact]
-    public void No_gitkeep_files_exist_in_solution()
+    public void Solution_ShouldContainNoGitkeepFiles()
     {
         var solutionRoot = GetSolutionRoot();
         var gitkeepFiles = Directory

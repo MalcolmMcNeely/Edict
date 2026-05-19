@@ -31,7 +31,7 @@ public class TypePlacementTests
     // Contracts: Event, [Stream], [RouteKey], ITableRepository — ADR 0008 / ADR 0012
 
     [Fact]
-    public void Event_ResidiesInEdictContracts()
+    public void EdictEvent_ShouldResideInEdictContracts()
     {
         var rule = Types().That().HaveNameMatching("^EdictEvent$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Events$");
@@ -40,7 +40,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void StreamAttribute_ResidiesInEdictContracts()
+    public void EdictStreamAttribute_ShouldResideInEdictContracts()
     {
         var rule = Types().That().HaveNameMatching("^EdictStreamAttribute$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Events$");
@@ -49,7 +49,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void RouteKeyAttribute_ResidiesInEdictContracts()
+    public void EdictRouteKeyAttribute_ShouldResideInEdictContracts()
     {
         var rule = Types().That().HaveNameMatching("^EdictRouteKeyAttribute$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Commands$");
@@ -58,7 +58,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void ITableRepository_ResidiesInEdictContracts()
+    public void IEdictTableRepository_ShouldResideInEdictContracts()
     {
         var rule = Interfaces().That().HaveNameStartingWith("IEdictTableRepository")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.TableStorage$");
@@ -67,7 +67,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void ITableWriteStore_ResidiesInEdictContracts()
+    public void IEdictTableWriteStore_ShouldResideInEdictContracts()
     {
         var rule = Interfaces().That().HaveNameStartingWith("IEdictTableWriteStore")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.TableStorage$");
@@ -87,7 +87,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void ProjectionBuilderGrain_ResidiesInEdictCore()
+    public void EdictProjectionBuilder_ShouldResideInEdictCore()
     {
         var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilder$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
@@ -96,7 +96,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void TableProjectionBuilderGrain_ResidiesInEdictCore()
+    public void EdictTableProjectionBuilder_ShouldResideInEdictCore()
     {
         var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilder")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
@@ -107,7 +107,7 @@ public class TypePlacementTests
     // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014
 
     [Fact]
-    public void AzureTableRepository_ResidiesInEdictAzure()
+    public void AzureTableRepository_ShouldResideInEdictAzure()
     {
         var rule = Classes().That().HaveNameStartingWith("AzureTableRepository")
             .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
@@ -116,7 +116,7 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void AzureTableWriteStoreFactory_ResidiesInEdictAzure()
+    public void AzureTableWriteStoreFactory_ShouldResideInEdictAzure()
     {
         var rule = Classes().That().HaveNameMatching("^AzureTableWriteStoreFactory$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
