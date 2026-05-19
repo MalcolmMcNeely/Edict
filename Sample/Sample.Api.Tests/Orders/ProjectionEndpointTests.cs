@@ -10,7 +10,7 @@ public sealed class ProjectionEndpointTests(ApiFixture fixture)
 {
     // Cycle 1 — tracer bullet: placed order appears as Open
     [Fact]
-    public async Task PlacedOrder_appears_as_Open_in_projection()
+    public async Task PlacedOrder_ShouldAppearAsOpenInProjection()
     {
         var orderId = await PlaceNewOrder();
 
@@ -21,7 +21,7 @@ public sealed class ProjectionEndpointTests(ApiFixture fixture)
 
     // Cycle 2 — submitted order transitions to Submitted
     [Fact]
-    public async Task SubmittedOrder_appears_as_Submitted_in_projection()
+    public async Task SubmittedOrder_ShouldAppearAsSubmittedInProjection()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsJsonAsync(
@@ -35,7 +35,7 @@ public sealed class ProjectionEndpointTests(ApiFixture fixture)
 
     // Cycle 3 — cancelled order transitions to Cancelled
     [Fact]
-    public async Task CancelledOrder_appears_as_Cancelled_in_projection()
+    public async Task CancelledOrder_ShouldAppearAsCancelledInProjection()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsync($"/orders/{orderId}/cancel", null);
@@ -47,7 +47,7 @@ public sealed class ProjectionEndpointTests(ApiFixture fixture)
 
     // Cycle 4 — adding a line item increments the item count
     [Fact]
-    public async Task AddingLineItem_increments_item_count_in_projection()
+    public async Task AddLineItem_ShouldIncrementItemCountInProjection()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsJsonAsync(

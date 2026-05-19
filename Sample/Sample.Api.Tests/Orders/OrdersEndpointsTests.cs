@@ -8,7 +8,7 @@ namespace Sample.Api.Tests.Orders;
 public sealed class OrdersEndpointsTests(ApiFixture fixture)
 {
     [Fact]
-    public async Task PlaceOrder_returns_202_with_new_orderId()
+    public async Task PlaceOrder_ShouldReturn202WithNewOrderId()
     {
         var response = await fixture.Client.PostAsync("/orders", null);
 
@@ -18,7 +18,7 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task AddLineItem_to_open_order_returns_202()
+    public async Task AddLineItem_ShouldReturn202_WhenOrderIsOpen()
     {
         var orderId = await PlaceNewOrder();
 
@@ -30,7 +30,7 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task SubmitOrder_with_items_returns_202()
+    public async Task SubmitOrder_ShouldReturn202_WhenOrderHasItems()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsJsonAsync($"/orders/{orderId}/lines", new { sku = "ITEM-1", quantity = 1 });
@@ -41,7 +41,7 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task SubmitOrder_with_no_items_returns_422_with_no_items_reason()
+    public async Task SubmitOrder_ShouldReturn422WithNoItemsReason_WhenOrderHasNoItems()
     {
         var orderId = await PlaceNewOrder();
 
@@ -54,7 +54,7 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task CancelOrder_returns_202()
+    public async Task CancelOrder_ShouldReturn202()
     {
         var orderId = await PlaceNewOrder();
 
@@ -64,7 +64,7 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task CancelOrder_after_submit_returns_422_with_already_submitted_reason()
+    public async Task CancelOrder_ShouldReturn422WithAlreadySubmittedReason_WhenAlreadySubmitted()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsJsonAsync($"/orders/{orderId}/lines", new { sku = "ITEM-1", quantity = 1 });
