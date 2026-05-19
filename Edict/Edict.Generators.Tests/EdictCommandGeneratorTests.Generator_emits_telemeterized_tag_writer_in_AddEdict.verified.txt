@@ -11,10 +11,10 @@ namespace Edict.Generated
             this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
         {
             var routes = new global::System.Collections.Generic.Dictionary<
-                global::System.Type, global::Edict.Core.Sending.CommandRoute>
+                global::System.Type, global::Edict.Core.Commands.CommandRoute>
             {
-                [typeof(global::Sample.CancelOrder)] = new global::Edict.Core.Sending.CommandRoute(typeof(global::Sample.CancelOrder), typeof(global::Sample.IOrderGrain), "Sample.OrderGrain", command => ((global::Sample.CancelOrder)command).OrderId),
-                [typeof(global::Sample.PlaceOrder)] = new global::Edict.Core.Sending.CommandRoute(
+                [typeof(global::Sample.CancelOrder)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.CancelOrder), typeof(global::Sample.IOrderGrain), "Sample.OrderGrain", command => ((global::Sample.CancelOrder)command).OrderId),
+                [typeof(global::Sample.PlaceOrder)] = new global::Edict.Core.Commands.CommandRoute(
                     typeof(global::Sample.PlaceOrder),
                     typeof(global::Sample.IOrderGrain),
                     "Sample.OrderGrain",
@@ -27,10 +27,10 @@ namespace Edict.Generated
             };
 
             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                .AddSingleton<global::Edict.Core.Sending.CommandRouteResolver>(
-                    services, new global::Edict.Core.Sending.CommandRouteResolver(routes));
+                .AddSingleton<global::Edict.Core.Commands.CommandRouteResolver>(
+                    services, new global::Edict.Core.Commands.CommandRouteResolver(routes));
             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Sending.EdictSender>(
+                .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Commands.EdictSender>(
                     services);
             global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
                 .AddSingleton<global::System.Diagnostics.ActivitySource>(
@@ -58,7 +58,7 @@ namespace Sample
 namespace Sample
 {
     /// <summary>Generated Orleans grain interface for OrderGrain.</summary>
-    public partial interface IOrderGrain : global::Edict.Core.Grains.IEdictCommandHandler
+    public partial interface IOrderGrain : global::Edict.Core.Commands.IEdictCommandHandler
     {
     }
 
@@ -74,7 +74,7 @@ namespace Sample
                 {
                 global::Sample.CancelOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
                 global::Sample.PlaceOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
-                    _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
+                    _ => throw new global::Edict.Core.Commands.UnroutableCommandException(
                         command.GetType()),
                 });
             }

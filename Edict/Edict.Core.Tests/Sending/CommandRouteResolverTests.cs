@@ -1,5 +1,5 @@
 using Edict.Contracts.Commands;
-using Edict.Core.Sending;
+using Edict.Core.Commands;
 
 namespace Edict.Core.Tests.Sending;
 

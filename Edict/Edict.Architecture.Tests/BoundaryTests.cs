@@ -2,7 +2,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 
 using Edict.Contracts.Commands;
-using Edict.Core.Grains;
+using Edict.Core.Dedup;
 using Edict.Telemetry;
 
 using Sample.Orders;

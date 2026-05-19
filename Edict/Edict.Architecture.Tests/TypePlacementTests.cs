@@ -5,7 +5,8 @@ using Edict.Azure.TableStorage;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
-using Edict.Core.Grains;
+using Edict.Core.Dedup;
+using Edict.Core.Projections;
 
 using Sample.Orders;
 
@@ -80,7 +81,7 @@ public class TypePlacementTests
     public void EventDeduplicationGrain_ResidiesInEdictCore()
     {
         var rule = Classes().That().HaveNameMatching("^EdictEventDeduplicationGrain$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Dedup$");
 
         rule.Check(Architecture);
     }
@@ -89,7 +90,7 @@ public class TypePlacementTests
     public void ProjectionBuilderGrain_ResidiesInEdictCore()
     {
         var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilderGrain$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);
     }
@@ -98,7 +99,7 @@ public class TypePlacementTests
     public void TableProjectionBuilderGrain_ResidiesInEdictCore()
     {
         var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilderGrain")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Grains$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);
     }

@@ -8,7 +8,7 @@ using Orleans.Streams;
 namespace Sample
 {
     /// <summary>Generated Orleans grain interface for OrderProjectionGrain.</summary>
-    public partial interface IOrderProjectionGrain : global::Edict.Core.Grains.IEdictProjectionBuilder
+    public partial interface IOrderProjectionGrain : global::Edict.Core.Projections.IEdictProjectionBuilder
     {
     }
 

@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the command spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Grains.EdictCommandHandlerGrain</c>: the Orleans grain interface, the
+/// <c>Edict.Core.Commands.EdictCommandHandlerGrain</c>: the Orleans grain interface, the
 /// <c>Dispatch</c> type-switch override, an Orleans surrogate + converter per
 /// concrete command, and a single <c>AddEdict()</c> that wires the route map,
 /// sender and ActivitySource.
@@ -222,7 +222,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             namespace {{grain.Namespace}}
             {
                 /// <summary>Generated Orleans grain interface for {{grain.GrainName}}.</summary>
-                public partial interface {{interfaceName}} : global::Edict.Core.Grains.IEdictCommandHandler
+                public partial interface {{interfaceName}} : global::Edict.Core.Commands.IEdictCommandHandler
                 {
                 }
 
@@ -237,7 +237,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                             result = await (command switch
                             {
             {{arms.ToString().TrimEnd('\n')}}
-                                _ => throw new global::Edict.Core.Sending.UnroutableCommandException(
+                                _ => throw new global::Edict.Core.Commands.UnroutableCommandException(
                                     command.GetType()),
                             });
                         }
@@ -289,7 +289,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 {
                     entries.Append("                [typeof(")
                         .Append(command.Fqn)
-                        .Append(")] = new global::Edict.Core.Sending.CommandRoute(typeof(")
+                        .Append(")] = new global::Edict.Core.Commands.CommandRoute(typeof(")
                         .Append(command.Fqn)
                         .Append("), typeof(")
                         .Append(interfaceFqn)
@@ -316,7 +316,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
                     entries.Append("                [typeof(")
                         .Append(command.Fqn)
-                        .Append(")] = new global::Edict.Core.Sending.CommandRoute(\n")
+                        .Append(")] = new global::Edict.Core.Commands.CommandRoute(\n")
                         .Append("                    typeof(").Append(command.Fqn).Append("),\n")
                         .Append("                    typeof(").Append(interfaceFqn).Append("),\n")
                         .Append("                    \"").Append(grain.GrainTypeName).Append("\",\n")
@@ -342,16 +342,16 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                         this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                     {
                         var routes = new global::System.Collections.Generic.Dictionary<
-                            global::System.Type, global::Edict.Core.Sending.CommandRoute>
+                            global::System.Type, global::Edict.Core.Commands.CommandRoute>
                         {
             {{entries.ToString().TrimEnd('\n')}}
                         };
 
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Core.Sending.CommandRouteResolver>(
-                                services, new global::Edict.Core.Sending.CommandRouteResolver(routes));
+                            .AddSingleton<global::Edict.Core.Commands.CommandRouteResolver>(
+                                services, new global::Edict.Core.Commands.CommandRouteResolver(routes));
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Sending.EdictSender>(
+                            .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Commands.EdictSender>(
                                 services);
                         global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
                             .AddSingleton<global::System.Diagnostics.ActivitySource>(

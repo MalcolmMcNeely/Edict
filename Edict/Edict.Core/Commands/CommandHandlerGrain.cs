@@ -4,7 +4,6 @@ using System.Reflection;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Results;
-using Edict.Core.Validation;
 using Edict.Telemetry;
 
 using FluentValidation;
@@ -14,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans;
 using Orleans.Streams;
 
-namespace Edict.Core.Grains;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// Base for an aggregate grain. A Command is a direct grain call, so there is

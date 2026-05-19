@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
-using Edict.Core.Grains;
+using Edict.Core.Commands;
 
 using MessagePack;
 
@@ -44,7 +44,7 @@ public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
     public string? Note { get; init; }
 }
 
-public partial class MixedPrimitiveGrain : Edict.Core.Grains.EdictCommandHandlerGrain
+public partial class MixedPrimitiveGrain : Edict.Core.Commands.EdictCommandHandlerGrain
 {
     public Task<EdictCommandResult> Handle(MixedPrimitiveCommand command)
     {

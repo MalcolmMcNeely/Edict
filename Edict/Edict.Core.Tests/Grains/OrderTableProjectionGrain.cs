@@ -1,5 +1,5 @@
 using Edict.Contracts.Events;
-using Edict.Core.Grains;
+using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
 namespace Edict.Core.Tests.Grains;

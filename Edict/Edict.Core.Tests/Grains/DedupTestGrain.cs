@@ -1,5 +1,5 @@
 using Edict.Contracts.Events;
-using Edict.Core.Grains;
+using Edict.Core.Dedup;
 
 using Orleans;
 using Orleans.Streams;

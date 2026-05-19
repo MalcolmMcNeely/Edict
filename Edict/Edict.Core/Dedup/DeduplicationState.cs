@@ -1,4 +1,4 @@
-namespace Edict.Core.Grains;
+namespace Edict.Core.Dedup;
 
 [GenerateSerializer]
 public sealed class DeduplicationState

@@ -2,7 +2,7 @@ using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
 
-namespace Edict.Core.Grains;
+namespace Edict.Core.Projections;
 
 /// <summary>
 /// Projection builder whose read model lives in an external keyed store so grain

@@ -1,4 +1,4 @@
-namespace Edict.Core.Validation;
+namespace Edict.Core.Commands;
 
 public static class EdictValidationKeys
 {

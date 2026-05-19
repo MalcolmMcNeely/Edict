@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the projection spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Grains.EdictProjectionBuilderGrain</c>: the Orleans grain interface,
+/// <c>Edict.Core.Projections.EdictProjectionBuilderGrain</c>: the Orleans grain interface,
 /// one <c>[ImplicitStreamSubscription]</c> per unique stream across the grain's
 /// <c>Handle(TEvent)</c> overloads, a <c>SubscribeToStreamAsync</c> override,
 /// and a <c>DispatchAsync</c> type-switch with per-event handler spans (ADR 0003).
@@ -180,7 +180,7 @@ public sealed class EdictProjectionGenerator : IIncrementalGenerator
             namespace {{grain.Namespace}}
             {
                 /// <summary>Generated Orleans grain interface for {{grain.GrainName}}.</summary>
-                public partial interface {{interfaceName}} : global::Edict.Core.Grains.IEdictProjectionBuilder
+                public partial interface {{interfaceName}} : global::Edict.Core.Projections.IEdictProjectionBuilder
                 {
                 }
 

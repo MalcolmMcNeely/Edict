@@ -3,7 +3,7 @@ using Edict.Contracts.Results;
 
 using Orleans;
 
-namespace Edict.Core.Grains;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// The untyped marshalling surface every Edict aggregate grain exposes. The

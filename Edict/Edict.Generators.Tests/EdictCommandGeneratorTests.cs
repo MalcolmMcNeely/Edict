@@ -10,7 +10,7 @@ public class EdictCommandGeneratorTests
 
         using Edict.Contracts.Commands;
         using Edict.Contracts.Results;
-        using Edict.Core.Grains;
+        using Edict.Core.Commands;
 
         namespace Sample;
 
@@ -43,7 +43,7 @@ public class EdictCommandGeneratorTests
         using Edict.Contracts.Commands;
         using Edict.Contracts.Results;
         using Edict.Contracts.Telemetry;
-        using Edict.Core.Grains;
+        using Edict.Core.Commands;
 
         namespace Sample;
 

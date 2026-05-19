@@ -1,6 +1,7 @@
 using Edict.Contracts.Events;
+using Edict.Core.Dedup;
 
-namespace Edict.Core.Grains;
+namespace Edict.Core.Projections;
 
 public abstract class EdictProjectionBuilderGrain : EdictEventDeduplicationGrain
 {

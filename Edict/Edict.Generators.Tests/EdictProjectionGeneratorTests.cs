@@ -9,7 +9,7 @@ public class EdictProjectionGeneratorTests
         using System.Threading.Tasks;
 
         using Edict.Contracts.Events;
-        using Edict.Core.Grains;
+        using Edict.Core.Projections;
         using MessagePack;
 
         namespace Sample;
@@ -34,7 +34,7 @@ public class EdictProjectionGeneratorTests
         using System.Threading.Tasks;
 
         using Edict.Contracts.Events;
-        using Edict.Core.Grains;
+        using Edict.Core.Projections;
         using MessagePack;
 
         namespace Sample;

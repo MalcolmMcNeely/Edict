@@ -3,7 +3,7 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
-using Edict.Core.Grains;
+using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 

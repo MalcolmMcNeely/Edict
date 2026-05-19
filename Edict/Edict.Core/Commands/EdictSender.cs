@@ -3,12 +3,11 @@ using System.Diagnostics;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
-using Edict.Core.Grains;
 using Edict.Telemetry;
 
 using Orleans;
 
-namespace Edict.Core.Sending;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// The thin Orleans shell behind <see cref="IEdictSender"/>: resolve the route

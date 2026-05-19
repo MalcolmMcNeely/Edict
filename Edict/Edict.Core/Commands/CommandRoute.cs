@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 using Edict.Contracts.Commands;
 
-namespace Edict.Core.Sending;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// One generator-emitted routing entry: the concrete command type, the
@@ -16,11 +16,11 @@ namespace Edict.Core.Sending;
 /// resolver returns. Note: Orleans never addresses by this type (Roslyn
 /// generators cannot see each other's output, so Orleans' codegen never sees a
 /// generated interface). The Orleans hop instead uses the real
-/// <see cref="Grains.IEdictCommandHandler"/> plus <paramref name="GrainClassName"/>.
+/// <see cref="IEdictCommandHandler"/> plus <paramref name="GrainClassName"/>.
 /// </param>
 /// <param name="GrainClassName">
 /// The aggregate grain class name, used to disambiguate the many grain classes
-/// that share the <see cref="Grains.IEdictCommandHandler"/> interface.
+/// that share the <see cref="IEdictCommandHandler"/> interface.
 /// </param>
 /// <param name="RouteKeySelector">Reads the command's <c>[EdictRouteKey]</c> Guid.</param>
 /// <param name="TagWriter">

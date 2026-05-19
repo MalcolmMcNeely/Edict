@@ -8,7 +8,7 @@ using Orleans.Providers;
 using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Core.Grains;
+namespace Edict.Core.Dedup;
 
 /// <summary>
 /// Abstract base for every event-consuming grain. Owns the stream-observer

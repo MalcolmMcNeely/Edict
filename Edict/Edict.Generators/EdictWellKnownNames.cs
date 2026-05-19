@@ -40,12 +40,13 @@ internal static class EdictWellKnownNames
     public const string ActivityExtensionsFqn =
         "global::Edict.Telemetry.ActivityExtensions";
 
-    // ── Edict.Core.Grains ────────────────────────────────────────────────────
+    // ── Edict.Core.Commands ──────────────────────────────────────────────────
     public const string EdictCommandHandlerGrainFqn =
-        "global::Edict.Core.Grains.EdictCommandHandlerGrain";
+        "global::Edict.Core.Commands.EdictCommandHandlerGrain";
 
+    // ── Edict.Core.Projections ───────────────────────────────────────────────
     public const string EdictProjectionBuilderGrainFqn =
-        "global::Edict.Core.Grains.EdictProjectionBuilderGrain";
+        "global::Edict.Core.Projections.EdictProjectionBuilderGrain";
 
     // ── System ───────────────────────────────────────────────────────────────
     public const string TaskFqn =

@@ -1,6 +1,6 @@
 using Edict.Contracts.Commands;
 
-namespace Edict.Core.Sending;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// Thrown when a <see cref="Command"/> has no generator-emitted route — i.e.

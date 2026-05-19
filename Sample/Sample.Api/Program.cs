@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
 using Edict.Telemetry;
-using Edict.Core.Grains;
+using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Generated;
 

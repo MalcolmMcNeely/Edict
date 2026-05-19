@@ -13,7 +13,7 @@ public class EdictAnalyzerTests
         using System.Threading.Tasks;
         using Edict.Contracts.Commands;
         using Edict.Contracts.Results;
-        using Edict.Core.Grains;
+        using Edict.Core.Commands;
         namespace Sample;
         public sealed record PlaceOrder(Guid OrderId) : EdictCommand
         {
@@ -45,7 +45,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Results;
-            using Edict.Core.Grains;
+            using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
@@ -76,7 +76,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
-            using Edict.Core.Grains;
+            using Edict.Core.Projections;
             namespace Sample;
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
@@ -103,7 +103,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
-            using Edict.Core.Grains;
+            using Edict.Core.Projections;
             namespace Sample;
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
@@ -144,7 +144,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Results;
-            using Edict.Core.Grains;
+            using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
@@ -333,7 +333,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Results;
-            using Edict.Core.Grains;
+            using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
             {
@@ -556,7 +556,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
-            using Edict.Core.Grains;
+            using Edict.Core.Projections;
             namespace Sample;
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
@@ -583,7 +583,7 @@ public class EdictAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
-            using Edict.Core.Grains;
+            using Edict.Core.Projections;
             namespace Sample;
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
@@ -614,7 +614,7 @@ public class EdictAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Events;
-            using Edict.Core.Grains;
+            using Edict.Core.Projections;
             namespace Sample;
             public class NotAnEvent { }
             public partial class OrderProjection : EdictProjectionBuilderGrain

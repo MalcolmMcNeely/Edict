@@ -1,4 +1,4 @@
-using Edict.Core.Validation;
+using Edict.Core.Commands;
 
 using FluentValidation;
 using FluentValidation.Results;

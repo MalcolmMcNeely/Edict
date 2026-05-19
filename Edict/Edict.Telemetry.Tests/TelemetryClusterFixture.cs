@@ -1,7 +1,7 @@
 using Azure.Storage.Queues;
 
 using Edict.Contracts.Sending;
-using Edict.Core.Grains;
+using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Generated;
 

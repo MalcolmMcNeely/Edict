@@ -1,6 +1,6 @@
 using Edict.Contracts.Commands;
 
-namespace Edict.Core.Sending;
+namespace Edict.Core.Commands;
 
 /// <summary>
 /// Pure routing core: given a <see cref="EdictCommand"/> instance, returns the
@@ -25,7 +25,7 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     /// <summary>
     /// Resolves the full Orleans addressing target — interface token, grain
     /// class name (for disambiguation across the shared
-    /// <see cref="Grains.IEdictCommandHandler"/> interface) and Guid key.
+    /// <see cref="IEdictCommandHandler"/> interface) and Guid key.
     /// </summary>
     public (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(
         EdictCommand command)
