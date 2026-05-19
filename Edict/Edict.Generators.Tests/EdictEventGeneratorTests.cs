@@ -30,7 +30,7 @@ public class EdictEventGeneratorTests
         """;
 
     [Fact]
-    public Task Generator_emits_alias_declaration_per_concrete_event()
+    public Task EdictEventGenerator_ShouldEmitAliasDeclarationPerConcreteEvent()
     {
         var generated = GeneratorTestHarness.RunEventGenerator(SampleEventConsumer)
             .Where(kvp => kvp.Key.EndsWith(".Alias.g.cs", StringComparison.Ordinal))

@@ -63,14 +63,14 @@ public class EdictProjectionGeneratorTests
         """;
 
     [Fact]
-    public Task Generator_emits_interface_subscription_and_dispatch()
+    public Task EdictProjectionGenerator_ShouldEmitInterfaceSubscriptionAndDispatch()
     {
         var generated = GeneratorTestHarness.RunProjectionGenerator(SingleStreamConsumer);
         return Verify(generated);
     }
 
     [Fact]
-    public Task Generator_deduplicates_ImplicitStreamSubscription_for_same_stream()
+    public Task EdictProjectionGenerator_ShouldDeduplicateImplicitStreamSubscription_WhenSameStream()
     {
         var generated = GeneratorTestHarness.RunProjectionGenerator(MultiEventSameStreamConsumer);
         return Verify(generated);

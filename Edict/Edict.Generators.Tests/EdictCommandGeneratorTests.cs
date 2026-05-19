@@ -71,7 +71,7 @@ public class EdictCommandGeneratorTests
         """;
 
     [Fact]
-    public Task Generator_emits_grain_interface_dispatch_and_AddEdict()
+    public Task EdictCommandGenerator_ShouldEmitGrainInterfaceDispatchAndAddEdict()
     {
         var generated = GeneratorTestHarness.Run(SampleConsumer);
 
@@ -79,7 +79,7 @@ public class EdictCommandGeneratorTests
     }
 
     [Fact]
-    public Task Generator_emits_telemeterized_tag_writer_in_AddEdict()
+    public Task EdictCommandGenerator_ShouldEmitTelemeterizedTagWriterInAddEdict()
     {
         var generated = GeneratorTestHarness.Run(TelemeterizedConsumer);
 
@@ -87,7 +87,7 @@ public class EdictCommandGeneratorTests
     }
 
     [Fact]
-    public Task Generator_emits_alias_declaration_per_concrete_command()
+    public Task EdictCommandGenerator_ShouldEmitAliasDeclarationPerConcreteCommand()
     {
         var generated = GeneratorTestHarness.Run(SampleConsumer)
             .Where(kvp => kvp.Key.EndsWith(".Alias.g.cs", StringComparison.Ordinal))
