@@ -9,9 +9,12 @@ internal static class AzureTablePocoMapper
 
     internal static TableEntity ToTableEntity<T>(string partitionKey, string rowKey, T row)
         where T : class
+        => ToTableEntity(partitionKey, rowKey, (object)row);
+
+    internal static TableEntity ToTableEntity(string partitionKey, string rowKey, object row)
     {
         var entity = new TableEntity(partitionKey, rowKey);
-        foreach (var prop in typeof(T).GetProperties(PublicInstance).Where(p => p.CanRead))
+        foreach (var prop in row.GetType().GetProperties(PublicInstance).Where(p => p.CanRead))
         {
             entity[prop.Name] = prop.GetValue(row);
         }

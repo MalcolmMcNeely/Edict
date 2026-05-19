@@ -1,6 +1,15 @@
+using System.Diagnostics;
+using System.Text.Json;
+
 using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
+using Edict.Core.Outbox;
 using Edict.Core.TableStorage;
+using Edict.Telemetry;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Orleans.Serialization;
 
 namespace Edict.Core.Projections;
 
@@ -9,14 +18,20 @@ namespace Edict.Core.Projections;
 /// activation stays small regardless of how large the model grows (ADR 0012 / ADR 0015).
 /// The backing store is supplied via <see cref="IEdictTableStoreFactory"/>; Azure is
 /// one implementation — a future DynamoDB or in-memory provider implements the same seam.
-/// The dedup ring stays in persisted grain state as usual — the row write and ring commit
-/// are two non-atomic stores, and the resulting crash-window double-apply is accepted
-/// until the Outbox ships.
+/// <para>
+/// The row write is expressed as an <see cref="OutboxEffectKind.UpsertRow"/>
+/// effect committed atomically with the dedup-ring commit in the one
+/// grain-state write, then drained at-least-once (ADR 0018). The upsert is
+/// idempotent by pk/rk (a full-row replace), so at-least-once redelivery of the
+/// effect does not double-apply. This <b>closes</b> ADR 0012's former
+/// double-apply gap — it is no longer an accepted limitation.
+/// </para>
 /// </summary>
 public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
     where T : class, new()
 {
     IEdictTableWriteStore<T>? _writeStore;
+    OutboxEntry? _pendingUpsert;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -37,8 +52,8 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
 
     /// <summary>
     /// The row loaded (or freshly constructed) before each handler invocation.
-    /// Modifications the handler makes to this instance are written back to the store
-    /// after the handler returns.
+    /// Modifications the handler makes to this instance are captured into the
+    /// <see cref="OutboxEffectKind.UpsertRow"/> effect after the handler returns.
     /// </summary>
     protected T CurrentRow { get; private set; } = new();
 
@@ -49,9 +64,12 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     }
 
     /// <summary>
-    /// Wraps every handler call with load-apply-writeback. The base
+    /// Wraps every handler call with load-apply-stage. The base
     /// <see cref="EdictProjectionBuilder.DispatchEventAsync{TEvent}"/> default is a
-    /// direct handler call; this override adds the store I/O around it.
+    /// direct handler call; this override loads the row, runs the handler, then
+    /// stages the computed row as an <see cref="OutboxEffectKind.UpsertRow"/>
+    /// effect (the actual store write happens in the engine drain, atomic with
+    /// the dedup-ring commit — ADR 0018).
     /// </summary>
     protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
     {
@@ -62,6 +80,49 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
 
         await handler(evt);
 
-        await _writeStore!.UpsertAsync(partitionKey, rowKey, CurrentRow);
+        _pendingUpsert = BuildUpsertEntry(partitionKey, rowKey, CurrentRow);
+    }
+
+    /// <inheritdoc />
+    protected override IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries()
+    {
+        if (_pendingUpsert is null)
+        {
+            return [];
+        }
+
+        var entry = _pendingUpsert;
+        _pendingUpsert = null;
+        return [entry];
+    }
+
+    OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, T row)
+    {
+        var effect = new UpsertRowEffect
+        {
+            TableName = TableName,
+            PartitionKey = partitionKey,
+            RowKey = rowKey,
+            RowTypeName = typeof(T).AssemblyQualifiedName!,
+            RowJson = JsonSerializer.SerializeToUtf8Bytes(row),
+        };
+
+        // Nest the deferred upsert under the live handle span as parent-child,
+        // even when a crash-recovery drain runs much later (ADR 0003).
+        var current = Activity.Current;
+        var traceParent = current is not null
+            ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
+            : null;
+
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+
+        return new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.UpsertRow,
+            Payload = serializer.SerializeToArray(effect),
+            TraceParent = traceParent,
+            TraceState = current?.TraceStateString,
+        };
     }
 }

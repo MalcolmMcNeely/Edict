@@ -1,0 +1,4 @@
+﻿{
+  EffectAppliedTwice: true,
+  FinalOrderCount: OrderCount=1
+}

@@ -88,11 +88,9 @@ public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
             .UseParameters(orderId);
     }
 
-    // Known limitation: table row write and dedup ring commit are non-atomic.
-    // Double-apply on redelivery is accepted until the Outbox ships. See ADR 0012.
-    [Fact(Skip = "Known limitation: accepted double-apply gap until the Outbox ships (ADR 0012).")]
-    public Task Double_apply_on_crash_between_row_write_and_ring_commit_is_accepted_limitation()
-        => Task.CompletedTask;
+    // The former accepted double-apply gap (ADR 0012) is now closed by the
+    // UpsertRow outbox effect; its mechanism proof lives in GapClosureTests and
+    // the Azurite conformance proof in Edict.Azure.Tests (ADR 0018 / 0016).
 
     private async Task WaitForRowAsync<T>(
         string tableName,

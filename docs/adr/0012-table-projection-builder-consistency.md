@@ -1,6 +1,6 @@
-# TableProjectionBuilder: configurable persisted dedup ring, double-apply gap accepted until the Outbox
+# TableProjectionBuilder: configurable persisted dedup ring, double-apply gap (now closed by the Outbox)
 
-**Status:** accepted — amends ADR 0002 ("bounded" → "configurable bounded" ring) and softens ADR 0001's implicit "no outbox, ever" to "Outbox planned, not yet built"
+**Status:** accepted — amends ADR 0002 ("bounded" → "configurable bounded" ring) and softens ADR 0001's implicit "no outbox, ever" to "Outbox planned, not yet built". **The double-apply gap recorded below is now CLOSED, not merely accepted: superseded by ADR 0018, delivered in issue #50 — `EdictTableProjectionBuilder` expresses its row write as a `UpsertRow` outbox effect committed atomically with the dedup-ring commit in the one grain-state write, then drained at-least-once (idempotent by pk/rk). The "knowingly accepted for now" wording is historical.**
 
 A `TableProjectionBuilder` stores its read model in Azure Table Storage (not grain state) so grain activation stays small no matter how large the read model grows over time — the >2MB-activation problem in a long-running production system. Its `EventId` dedup ring nonetheless stays in **persisted** `EventDeduplicationGrain` state (ADR 0002's choice retained — volatile dedup would silently degrade to "no dedup across a deactivation", the exact failure the in-base design exists to prevent), and the ring size becomes **configurable** (sensible default) because a global-singleton table projection consumes a far larger event firehose than the per-aggregate default.
 
@@ -14,7 +14,7 @@ Because the projected row (in the table) and the dedup ring (in grain state) are
 
 ## Consequences
 
-- Documented limitation: until the Outbox ships, a `TableProjectionBuilder` is *not* exactly-once across a crash between its row write and ring commit; consumers must not assume it. The in-memory `ProjectionBuilder` is unaffected (single store).
+- ~~Documented limitation: until the Outbox ships, a `TableProjectionBuilder` is *not* exactly-once across a crash between its row write and ring commit; consumers must not assume it.~~ **Closed by ADR 0018 / issue #50: the row write is a `UpsertRow` outbox effect committed atomically with the ring; a crash between commit and drain recovers effectively-once (proven in `Edict.Core.Tests` `GapClosureTests` and the `Edict.Azure.Tests` Azurite conformance proof).** The in-memory `ProjectionBuilder` is unaffected (single store).
 - ADR 0002's ring is now configurable in size; persistence and commit-after-success are unchanged.
 - `ITableRepository` is a **read-only** framework interface living in `Edict.Contracts` (shared kernel, the `IEdictSender` precedent in ADR 0008); its Azure-Table implementation lives in `Edict.Core`; an architecture test forbids `Edict.Contracts` from referencing the Azure Table SDK.
 - The Outbox becomes a tracked future dependency (recorded in `CONTEXT.md`), not an open-ended "out of scope".

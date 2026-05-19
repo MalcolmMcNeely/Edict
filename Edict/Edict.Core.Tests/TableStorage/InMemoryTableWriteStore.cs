@@ -8,10 +8,20 @@ namespace Edict.Core.Tests.TableStorage;
 /// <see cref="InMemoryTableStoreFactory"/> static singleton so tests can inspect
 /// rows written by grains without Azure.
 /// </summary>
-public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>
+/// <summary>Non-generic upsert seam so the factory can write a row whose
+/// concrete type is only known at drain time (the Outbox UpsertRow path).</summary>
+public interface IInMemoryUpsert
+{
+    void UpsertObject(string partitionKey, string rowKey, object row);
+}
+
+public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IInMemoryUpsert
     where T : class, new()
 {
     private readonly Dictionary<(string pk, string rk), T> _rows = new();
+
+    public void UpsertObject(string partitionKey, string rowKey, object row) =>
+        _rows[(partitionKey, rowKey)] = (T)row;
 
     public T? Get(string partitionKey, string rowKey) =>
         _rows.TryGetValue((partitionKey, rowKey), out var row) ? row : null;
@@ -57,6 +67,25 @@ public sealed class InMemoryTableStoreFactory : IEdictTableStoreFactory
             _stores[key] = existing;
         }
         return Task.FromResult((IEdictTableWriteStore<T>)existing);
+    }
+
+    public Task UpsertRowAsync(
+        string tableName,
+        string partitionKey,
+        string rowKey,
+        object row,
+        CancellationToken cancellationToken = default)
+    {
+        var rowType = row.GetType();
+        var key = $"{tableName}:{rowType.FullName}";
+        if (!_stores.TryGetValue(key, out var existing))
+        {
+            existing = Activator.CreateInstance(
+                typeof(InMemoryTableWriteStore<>).MakeGenericType(rowType))!;
+            _stores[key] = existing;
+        }
+        ((IInMemoryUpsert)existing).UpsertObject(partitionKey, rowKey, row);
+        return Task.CompletedTask;
     }
 
     public InMemoryTableWriteStore<T> GetStore<T>(string tableName)

@@ -19,4 +19,17 @@ public sealed class AzureTableWriteStoreFactory(TableServiceClient tableServiceC
         await tableClient.CreateIfNotExistsAsync(cancellationToken);
         return new AzureTableWriteStore<T>(tableClient);
     }
+
+    public async Task UpsertRowAsync(
+        string tableName,
+        string partitionKey,
+        string rowKey,
+        object row,
+        CancellationToken cancellationToken = default)
+    {
+        var tableClient = tableServiceClient.GetTableClient(tableName);
+        await tableClient.CreateIfNotExistsAsync(cancellationToken);
+        var entity = AzureTablePocoMapper.ToTableEntity(partitionKey, rowKey, row);
+        await tableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken);
+    }
 }

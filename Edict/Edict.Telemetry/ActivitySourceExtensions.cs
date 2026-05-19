@@ -37,4 +37,13 @@ public static class ActivitySourceExtensions
             $"edict.event.deduplicated {eventTypeName}",
             ActivityKind.Consumer,
             parentContext);
+
+    public static Activity? StartEdictTableUpsert(
+        this ActivitySource source,
+        string tableName,
+        ActivityContext parentContext)
+        => source.StartActivity(
+            $"edict.table.upsert {tableName}",
+            ActivityKind.Client,
+            parentContext);
 }

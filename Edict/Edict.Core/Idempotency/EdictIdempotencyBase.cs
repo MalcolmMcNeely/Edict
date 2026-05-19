@@ -9,6 +9,7 @@ using Edict.Core.Outbox;
 using Edict.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Providers;
+using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Edict.Core.Idempotency;
@@ -27,9 +28,13 @@ namespace Edict.Core.Idempotency;
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
 public abstract class EdictIdempotencyBase<TPayload>
-    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>, IEdictDeadLetterAdmin
+    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>, IEdictDeadLetterAdmin, IRemindable, IOutboxHost
     where TPayload : new()
 {
+    const string DrainReminderName = "edict-outbox-drain";
+
+    bool _drainReminderRegistered;
+
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
     /// Override in the subclass to tune for expected redelivery volume.
@@ -38,10 +43,21 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     IdempotencyState Ring => State.Payload.Ring;
 
+    OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
+
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
         await SubscribeToStreamAsync(cancellationToken);
+
+        // Drain-on-activation (ADR 0018): recover anything a crash left between
+        // the ring/outbox commit and the drain — the durable half of the
+        // ADR-0012 gap closure. Steady state has nothing pending, so this is a
+        // cheap check.
+        if (State.Outbox.Pending.Count > 0)
+        {
+            await Engine.DrainAsync(this);
+        }
     }
 
     /// <summary>
@@ -90,9 +106,34 @@ public abstract class EdictIdempotencyBase<TPayload>
         if (handled)
         {
             Commit(evt.EventId);
-            await WriteStateAsync();
+
+            // The ring slot and any outbox effect the subclass staged commit
+            // in the SAME one WriteStateAsync (ADR 0018): a Table Projection
+            // Builder's row write is an UpsertRow effect atomic with this ring
+            // commit, then drained at-least-once — closing the ADR-0012
+            // double-apply gap. Plain consumers stage nothing, so the path
+            // stays a single ring-only write with no engine/reminder churn.
+            var entries = CollectPendingOutboxEntries();
+            if (entries.Count == 0)
+            {
+                await WriteStateAsync();
+            }
+            else
+            {
+                await Engine.EnqueueAndDrainAsync(this, entries);
+            }
         }
     }
+
+    /// <summary>
+    /// Hook for a subclass to contribute durable side-effects staged during
+    /// dispatch (the Table Projection Builder's <see cref="OutboxEffectKind.UpsertRow"/>
+    /// entry). Returning a non-empty list routes the ring commit through the
+    /// Outbox engine so the ring slot and the effect commit atomically in one
+    /// write. The default is empty — event handlers and the in-memory
+    /// projection builder keep the ring-only commit unchanged.
+    /// </summary>
+    protected virtual IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries() => [];
 
     /// <summary>
     /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry
@@ -110,6 +151,52 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <inheritdoc />
     Task<IReadOnlyList<EdictDeadLetterEntry>> IEdictDeadLetterAdmin.ListDeadLetterAsync() =>
         Task.FromResult(DeadLetterProjection.From(State.Outbox));
+
+    /// <inheritdoc />
+    public Task ReceiveReminder(string reminderName, TickStatus status)
+    {
+        // A tick proves a reminder exists; record that so the post-drain
+        // reconcile authoritatively unregisters it once the Outbox is empty.
+        _drainReminderRegistered = true;
+        return Engine.DrainAsync(this);
+    }
+
+    // IOutboxHost — implemented explicitly so the engine seam stays off the
+    // consumer surface (mirrors EdictCommandHandler<TState>); the grain owns
+    // the single WriteStateAsync, the stream provider, and the lazy Reminder.
+
+    OutboxSlice IOutboxHost.Outbox
+    {
+        get => State.Outbox;
+        set => State.Outbox = value;
+    }
+
+    IStreamProvider IOutboxHost.StreamProvider => this.GetStreamProvider("edict");
+
+    Task IOutboxHost.CommitAsync() => WriteStateAsync();
+
+    async Task IOutboxHost.RegisterDrainReminderAsync()
+    {
+        await this.RegisterOrUpdateReminder(
+            DrainReminderName, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _drainReminderRegistered = true;
+    }
+
+    async Task IOutboxHost.UnregisterDrainReminderAsync()
+    {
+        if (!_drainReminderRegistered)
+        {
+            return; // never registered — keep the happy path off the reminder subsystem
+        }
+
+        var reminder = await this.GetReminder(DrainReminderName);
+        if (reminder is not null)
+        {
+            await this.UnregisterReminder(reminder);
+        }
+
+        _drainReminderRegistered = false;
+    }
 
     void EnsureRingInitialized()
     {

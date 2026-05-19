@@ -24,6 +24,7 @@ public static class OutboxServiceCollectionExtensions
         services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
+        services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
         services.AddSingleton<OutboxDrainEngine>();
         return services;
     }
