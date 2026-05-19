@@ -265,7 +265,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                             throw;
                         }
                         if (result is global::Edict.Contracts.Commands.EdictCommandResult.Accepted)
-                            await this.FlushRaisedEventsAsync();
+                            await this.CommitAndDrainRaisedEventsAsync();
                         else
                             this.DiscardRaisedEvents();
                         return result;

@@ -1,0 +1,157 @@
+using Edict.Core.Outbox;
+
+using Microsoft.Extensions.Time.Testing;
+
+using Orleans.Streams;
+
+using static VerifyXunit.Verifier;
+
+namespace Edict.Core.Tests.Outbox;
+
+// Engine drain logic against a fake host + virtual clock — no cluster, no
+// backend (ADR 0016). Fixed Guids/time so the Verify snapshot is the
+// assertion. Proves: success → AckHead + Unregister; post-commit failure →
+// FailHeadWithBackoff, stop-at-head, Register, no throw; backoff-gated head
+// stops the drain; empty outbox reconciles to Unregister.
+public sealed class OutboxDrainEngineTests
+{
+    static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
+    static readonly Guid EntryB = new("bbbbbbbb-0000-0000-0000-000000000002");
+    static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+
+    static OutboxEntry Entry(Guid id) => new()
+    {
+        EntryId = id,
+        Kind = OutboxEffectKind.PublishEvent,
+        Payload = [1, 2, 3],
+    };
+
+    static OutboxDrainEngine Engine(IOutboxEffectExecutor executor, FakeTimeProvider clock) =>
+        new([executor], clock);
+
+    [Fact]
+    public async Task DrainAsync_ShouldExecuteAckAndUnregister_WhenAllEffectsSucceed()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var host = new FakeOutboxHost
+        {
+            Outbox = new OutboxSlice().Enqueue(Entry(EntryA)).Enqueue(Entry(EntryB)),
+        };
+
+        await Engine(executor, clock).DrainAsync(host);
+
+        await Verify(new { executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldFailBackoffStopAndRegister_WhenEffectThrows()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new ThrowingExecutor();
+        var host = new FakeOutboxHost
+        {
+            Outbox = new OutboxSlice().Enqueue(Entry(EntryA)).Enqueue(Entry(EntryB)),
+        };
+
+        // Must not surface: the post-commit failure stays inside the engine.
+        await Engine(executor, clock).DrainAsync(host);
+
+        await Verify(new { executor.Attempts, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldStopAtHead_WhenHeadBackoffGated()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var gated = Entry(EntryA) with { AttemptCount = 1, NextAttemptUtc = Now.AddMinutes(1) };
+        var host = new FakeOutboxHost
+        {
+            Outbox = new OutboxSlice().Enqueue(gated).Enqueue(Entry(EntryB)),
+        };
+
+        await Engine(executor, clock).DrainAsync(host);
+
+        await Verify(new { executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldUnregister_WhenNothingPending()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var host = new FakeOutboxHost { Outbox = new OutboxSlice() };
+
+        await Engine(executor, clock).DrainAsync(host);
+
+        await Verify(new { executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task EnqueueAndDrainAsync_ShouldCommitOnceThenDrainFifo()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var host = new FakeOutboxHost();
+
+        await Engine(executor, clock)
+            .EnqueueAndDrainAsync(host, [Entry(EntryA), Entry(EntryB)]);
+
+        await Verify(new { executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    sealed class RecordingExecutor : IOutboxEffectExecutor
+    {
+        public List<Guid> Executed { get; } = [];
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+
+        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        {
+            Executed.Add(entry.EntryId);
+            return Task.CompletedTask;
+        }
+    }
+
+    sealed class ThrowingExecutor : IOutboxEffectExecutor
+    {
+        public int Attempts { get; private set; }
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+
+        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        {
+            Attempts++;
+            throw new InvalidOperationException("downstream unavailable");
+        }
+    }
+
+    sealed class FakeOutboxHost : IOutboxHost
+    {
+        public List<string> Log { get; } = [];
+        public OutboxSlice Outbox { get; set; } = new();
+        public IStreamProvider StreamProvider => null!; // never touched by fake executors
+
+        public Task CommitAsync()
+        {
+            Log.Add($"commit[{string.Join(",", Outbox.Pending.Select(p => p.EntryId))}]");
+            return Task.CompletedTask;
+        }
+
+        public Task RegisterDrainReminderAsync()
+        {
+            Log.Add("register");
+            return Task.CompletedTask;
+        }
+
+        public Task UnregisterDrainReminderAsync()
+        {
+            Log.Add("unregister");
+            return Task.CompletedTask;
+        }
+    }
+}

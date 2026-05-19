@@ -10,6 +10,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
         <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Reminders.AzureStorage" Version="10.1.0" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
         <PackageReference Include="Testcontainers.Azurite" Version="3.10.0" />

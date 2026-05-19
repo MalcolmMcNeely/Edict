@@ -4,6 +4,7 @@ using Azure.Storage.Queues;
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Commands;
+using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 
@@ -102,6 +103,9 @@ public sealed class ApiFixture : IAsyncLifetime
             siloBuilder.AddAzureTableGrainStorage("edict-dedup", options =>
                 options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureTableGrainStorage("edict-state", options =>
+                options.TableServiceClient = _tableServiceClient);
+            siloBuilder.Services.AddEdictOutbox();
+            siloBuilder.UseAzureTableReminderService(options =>
                 options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {

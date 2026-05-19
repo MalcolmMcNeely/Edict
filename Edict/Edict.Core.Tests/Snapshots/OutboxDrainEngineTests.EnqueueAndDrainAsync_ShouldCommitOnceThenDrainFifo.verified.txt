@@ -1,0 +1,13 @@
+﻿{
+  Executed: [
+    aaaaaaaa-0000-0000-0000-000000000001,
+    bbbbbbbb-0000-0000-0000-000000000002
+  ],
+  Log: [
+    commit[aaaaaaaa-0000-0000-0000-000000000001,bbbbbbbb-0000-0000-0000-000000000002],
+    commit[bbbbbbbb-0000-0000-0000-000000000002],
+    commit[],
+    unregister
+  ],
+  Outbox: {}
+}

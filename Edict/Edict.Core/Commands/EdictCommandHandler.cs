@@ -1,12 +1,17 @@
-using System.Reflection;
 using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
+
 using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using Orleans.Providers;
+using Orleans.Runtime;
+using Orleans.Serialization;
+using Orleans.Streams;
 
 namespace Edict.Core.Commands;
 
@@ -23,12 +28,25 @@ namespace Edict.Core.Commands;
 /// command; the source generator emits the matching <see cref="DispatchAsync"/>
 /// override that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
+/// <para>
+/// After <c>Accepted</c>, raised events become <see cref="OutboxEffectKind.PublishEvent"/>
+/// entries staged onto the Outbox and committed in the same write as
+/// <typeparamref name="TState"/>; the <see cref="OutboxDrainEngine"/> then
+/// publishes them via the inline FIFO drain. A lazy Orleans Reminder is the
+/// crash-recovery net — registered only while the Outbox is non-empty,
+/// unregistered on full drain, plus drain-on-activation — so steady state holds
+/// zero reminders (ADR 0018).
+/// </para>
 /// </summary>
 [StorageProvider(ProviderName = "edict-state")]
-public abstract class EdictCommandHandler<TState> : Grain<GrainEnvelope<TState>>, IEdictCommandHandler
+public abstract class EdictCommandHandler<TState>
+    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable, IOutboxHost
     where TState : new()
 {
+    const string DrainReminderName = "edict-outbox-drain";
+
     List<EdictEvent>? _raisedEvents;
+    bool _drainReminderRegistered;
 
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
@@ -37,14 +55,30 @@ public abstract class EdictCommandHandler<TState> : Grain<GrainEnvelope<TState>>
     /// </summary>
     protected new TState State => base.State.Payload;
 
+    OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
+
     /// <inheritdoc />
     public abstract Task<EdictCommandResult> DispatchAsync(EdictCommand command);
 
     /// <summary>
-    /// Buffers an event to be flushed to its domain stream after the current
-    /// command returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler
-    /// throw. Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context
-    /// at flush time (ADR 0011).
+    /// Drains anything left from a crash before the grain serves traffic
+    /// (drain-on-activation, ADR 0018). Steady state has nothing pending so
+    /// this is a cheap check.
+    /// </summary>
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        await base.OnActivateAsync(cancellationToken);
+        if (base.State.Outbox.Pending.Count > 0)
+        {
+            await Engine.DrainAsync(this);
+        }
+    }
+
+    /// <summary>
+    /// Buffers an event to be staged onto the Outbox after the current command
+    /// returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler throw.
+    /// Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context when
+    /// the drain publishes it (ADR 0011).
     /// </summary>
     protected void Raise(EdictEvent theEvent)
     {
@@ -53,50 +87,95 @@ public abstract class EdictCommandHandler<TState> : Grain<GrainEnvelope<TState>>
     }
 
     /// <summary>
-    /// Stamps and publishes all buffered events to their domain streams.
-    /// Called by the generated <c>Dispatch</c> after <c>Handle</c> returns
-    /// <c>Accepted</c> and the validator passed. A publication failure surfaces
-    /// as an infrastructure exception to the command caller — no outbox exists
-    /// yet, so a dropped event must never be silent.
+    /// Stages buffered events as <see cref="OutboxEffectKind.PublishEvent"/>
+    /// entries, commits <c>{ State, Outbox }</c> in one write, then awaits the
+    /// inline FIFO drain. Called by the generated <c>Dispatch</c> after
+    /// <c>Handle</c> returns <c>Accepted</c>. A post-commit publish failure does
+    /// not roll back and does not surface — the Reminder retries (ADR 0018).
     /// </summary>
-    protected async Task FlushRaisedEventsAsync()
+    protected async Task CommitAndDrainRaisedEventsAsync()
+    {
+        var entries = BuildPendingEntries();
+        _raisedEvents = null;
+        await Engine.EnqueueAndDrainAsync(this, entries);
+    }
+
+    IReadOnlyList<OutboxEntry> BuildPendingEntries()
     {
         if (_raisedEvents is null || _raisedEvents.Count == 0)
         {
-            return;
+            return [];
         }
 
-        var provider = this.GetStreamProvider("edict");
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
-        // Restore the command span as explicit parent so publish spans are direct children
-        // even across the Orleans grain call boundary (ADR 0003).
-        var (cmdTraceId, cmdSpanId, cmdTraceState) = ActivityExtensions.ReadRequestContext();
-        var parentContext = ActivityExtensions.RestoreFromStrings(cmdTraceId, cmdSpanId, cmdTraceState);
+        // Capture the live command trace so the publish span nests under it as
+        // parent-child even when a crash-recovery drain runs much later (ADR 0003).
+        var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
+        var traceParent = traceId is not null && spanId is not null
+            ? ActivityExtensions.BuildTraceParent(traceId, spanId)
+            : null;
 
+        var entries = new List<OutboxEntry>(_raisedEvents.Count);
         foreach (var evt in _raisedEvents)
         {
-            var (streamName, routeKey) = GetEventStreamAddress(evt);
-            var stream = provider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
-
-            using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(evt.GetType().Name, parentContext);
-
-            var stamped = evt with
+            entries.Add(new OutboxEntry
             {
-                EventId = Guid.NewGuid(),
-                OccurredAt = DateTimeOffset.UtcNow,
-                TraceId = publishActivity?.TraceId.ToHexString() ?? cmdTraceId,
-                SpanId = publishActivity?.SpanId.ToHexString() ?? cmdSpanId,
-                TraceState = publishActivity?.TraceStateString ?? cmdTraceState,
-            };
-
-            await stream.OnNextAsync(stamped);
+                EntryId = Guid.NewGuid(),
+                Kind = OutboxEffectKind.PublishEvent,
+                Payload = serializer.SerializeToArray<EdictEvent>(evt),
+                TraceParent = traceParent,
+                TraceState = traceState,
+            });
         }
 
-        _raisedEvents = null;
+        return entries;
     }
 
     /// <summary>Discards all buffered events. Called on <c>Rejected</c> or handler throw.</summary>
     protected void DiscardRaisedEvents() => _raisedEvents = null;
+
+    /// <inheritdoc />
+    public Task ReceiveReminder(string reminderName, TickStatus status)
+    {
+        // A tick proves a reminder exists; record that so the post-drain
+        // reconcile authoritatively unregisters it once the Outbox is empty.
+        _drainReminderRegistered = true;
+        return Engine.DrainAsync(this);
+    }
+
+    OutboxSlice IOutboxHost.Outbox
+    {
+        get => base.State.Outbox;
+        set => base.State.Outbox = value;
+    }
+
+    IStreamProvider IOutboxHost.StreamProvider => this.GetStreamProvider("edict");
+
+    Task IOutboxHost.CommitAsync() => WriteStateAsync();
+
+    async Task IOutboxHost.RegisterDrainReminderAsync()
+    {
+        await this.RegisterOrUpdateReminder(
+            DrainReminderName, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _drainReminderRegistered = true;
+    }
+
+    async Task IOutboxHost.UnregisterDrainReminderAsync()
+    {
+        if (!_drainReminderRegistered)
+        {
+            return; // never registered — keep the happy path off the reminder subsystem
+        }
+
+        var reminder = await this.GetReminder(DrainReminderName);
+        if (reminder is not null)
+        {
+            await this.UnregisterReminder(reminder);
+        }
+
+        _drainReminderRegistered = false;
+    }
 
     /// <summary>
     /// Resolves <see cref="IValidator{TCommand}"/> from grain DI, runs it with
@@ -144,21 +223,6 @@ public abstract class EdictCommandHandler<TState> : Grain<GrainEnvelope<TState>>
     /// The default returns <c>null</c> (no state injected).
     /// </summary>
     protected virtual object? GetValidationState() => null;
-
-    static (string StreamName, Guid RouteKey) GetEventStreamAddress(EdictEvent evt)
-    {
-        var type = evt.GetType();
-
-        var streamAttr = (EdictStreamAttribute?)Attribute.GetCustomAttribute(type, typeof(EdictStreamAttribute))
-            ?? throw new InvalidOperationException($"Event {type.Name} is missing [EdictStream] — every concrete event must declare its domain stream (ADR 0011).");
-
-        var routeKeyProp = Array.Find(
-            type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
-            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
-            ?? throw new InvalidOperationException($"Event {type.Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
-
-        return (streamAttr.Name, (Guid)routeKeyProp.GetValue(evt)!);
-    }
 }
 
 /// <summary>

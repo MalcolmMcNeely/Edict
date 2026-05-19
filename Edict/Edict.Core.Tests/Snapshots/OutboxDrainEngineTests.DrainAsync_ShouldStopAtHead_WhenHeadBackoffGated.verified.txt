@@ -1,0 +1,19 @@
+﻿{
+  Log: [
+    register
+  ],
+  Outbox: {
+    Pending: [
+      {
+        EntryId: aaaaaaaa-0000-0000-0000-000000000001,
+        Payload: AQID,
+        AttemptCount: 1,
+        NextAttemptUtc: 2026-05-19 12:01 +0
+      },
+      {
+        EntryId: bbbbbbbb-0000-0000-0000-000000000002,
+        Payload: AQID
+      }
+    ]
+  }
+}

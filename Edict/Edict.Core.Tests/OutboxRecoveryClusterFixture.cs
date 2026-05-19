@@ -2,18 +2,30 @@ using Edict.Contracts.Sending;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.Grains;
+using Edict.Core.Tests.Outbox;
 using Edict.Generated;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
-namespace Edict.Telemetry.Tests;
+namespace Edict.Core.Tests;
 
-public sealed class TelemetryClusterFixture : IAsyncLifetime
+/// <summary>
+/// In-memory cluster wired with a flippable <see cref="ControllableOutboxExecutor"/>
+/// and a virtual clock, so tests can drive a post-commit publish failure and a
+/// recovery (drain-on-activation) under a deterministic backoff (ADR 0016/0018).
+/// </summary>
+public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
 {
+    static readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 5, 19, 12, 0, 0, TimeSpan.Zero));
+
     public TestCluster Cluster { get; private set; } = null!;
+
+    public FakeTimeProvider Clock => _clock;
 
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
@@ -27,22 +39,27 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public Task DisposeAsync() =>
-        Cluster is not null ? Cluster.DisposeAsync().AsTask() : Task.CompletedTask;
+    public async Task DisposeAsync()
+    {
+        if (Cluster is not null)
+            await Cluster.DisposeAsync();
+    }
 
-    private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
+    static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(TelOrderCommandHandler).Assembly)
+            .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
-    private sealed class SiloConfigurator : ISiloConfigurator
+    sealed class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
-            siloBuilder.Services.AddEdictOutbox();
+            siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
+            siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
@@ -51,7 +68,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
         }
     }
 
-    private sealed class ClientConfigurator : IClientBuilderConfigurator
+    sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
             Microsoft.Extensions.Configuration.IConfiguration configuration,
@@ -62,4 +79,10 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
             clientBuilder.Services.AddEdict();
         }
     }
+}
+
+[CollectionDefinition(Name)]
+public sealed class OutboxRecoveryClusterCollection : ICollectionFixture<OutboxRecoveryClusterFixture>
+{
+    public const string Name = "OutboxRecoveryCluster";
 }

@@ -3,6 +3,7 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Telemetry;
+using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 
@@ -38,6 +39,9 @@ var host = Host.CreateDefaultBuilder(args)
         silo.AddAzureTableGrainStorage("edict-dedup", options =>
             options.TableServiceClient = tableServiceClient);
         silo.AddAzureTableGrainStorage("edict-state", options =>
+            options.TableServiceClient = tableServiceClient);
+        silo.Services.AddEdictOutbox();
+        silo.UseAzureTableReminderService(options =>
             options.TableServiceClient = tableServiceClient);
         silo.AddAzureQueueStreams("edict", configure =>
         {

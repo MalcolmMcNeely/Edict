@@ -4,6 +4,7 @@ using Azure.Storage.Queues;
 using Edict.Azure.TableStorage;
 using Edict.Contracts.Sending;
 using Edict.Core.Commands;
+using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Generated;
@@ -80,6 +81,8 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
+            siloBuilder.Services.AddEdictOutbox();
+            siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddMemoryGrainStorage("edict-state");

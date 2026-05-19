@@ -1,0 +1,21 @@
+﻿{
+  Attempts: 1,
+  Log: [
+    commit[aaaaaaaa-0000-0000-0000-000000000001,bbbbbbbb-0000-0000-0000-000000000002],
+    register
+  ],
+  Outbox: {
+    Pending: [
+      {
+        EntryId: aaaaaaaa-0000-0000-0000-000000000001,
+        Payload: AQID,
+        AttemptCount: 1,
+        NextAttemptUtc: 2026-05-19 12:00:02 +0
+      },
+      {
+        EntryId: bbbbbbbb-0000-0000-0000-000000000002,
+        Payload: AQID
+      }
+    ]
+  }
+}

@@ -66,4 +66,30 @@ public static class ActivityExtensions
         var (traceId, spanId, traceState) = ReadRequestContext();
         return RestoreFromStrings(traceId, spanId, traceState);
     }
+
+    /// <summary>
+    /// Builds a W3C <c>traceparent</c> (sampled) from raw hex trace/span ids,
+    /// captured onto an <see cref="Orleans.Runtime"/>-free Outbox entry so a
+    /// crash-recovery drain still nests under the originating span (ADR 0003).
+    /// </summary>
+    public static string BuildTraceParent(string traceId, string spanId)
+        => $"00-{traceId}-{spanId}-01";
+
+    /// <summary>
+    /// Reconstitutes an <see cref="ActivityContext"/> from a W3C
+    /// <c>traceparent</c> produced by <see cref="BuildTraceParent"/>. Returns
+    /// <see langword="default"/> when absent or malformed.
+    /// </summary>
+    public static ActivityContext RestoreFromTraceParent(string? traceParent, string? traceState)
+    {
+        if (traceParent is null)
+        {
+            return default;
+        }
+
+        var parts = traceParent.Split('-');
+        return parts.Length == 4
+            ? RestoreFromStrings(parts[1], parts[2], traceState)
+            : default;
+    }
 }
