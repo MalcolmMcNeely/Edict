@@ -1,3 +1,4 @@
+using Edict.Contracts.Configuration;
 using Edict.Core.DeadLetter;
 
 namespace Edict.Core.Outbox;
@@ -20,6 +21,15 @@ public sealed record OutboxSlice
     [Id(1)]
     public List<DeadLetterEntry> DeadLetter { get; init; } = [];
 
+    /// <summary>
+    /// True once the <see cref="DeadLetter"/> slice has reached the configured
+    /// cap (ADR 0019). The grain blocks intake while this holds — commands
+    /// surface an infrastructure fault and redelivered events are not acked —
+    /// so nothing is ever silently dropped until an operator redrives. Pure,
+    /// total: a plain count comparison, no I/O.
+    /// </summary>
+    public bool IsIntakeBlocked(int deadLetterCap) => DeadLetter.Count >= deadLetterCap;
+
     /// <summary>Appends an effect to the FIFO tail.</summary>
     public OutboxSlice Enqueue(OutboxEntry entry) =>
         this with { Pending = [.. Pending, entry] };
@@ -38,7 +48,7 @@ public sealed record OutboxSlice
     /// separate decision once attempts are exhausted. Total: a no-op when
     /// nothing is pending.
     /// </summary>
-    public OutboxSlice FailHeadWithBackoff(DateTimeOffset now, TimeSpan baseDelay)
+    public OutboxSlice FailHeadWithBackoff(DateTimeOffset now, EdictOutboxOptions options)
     {
         if (Pending.Count == 0)
         {
@@ -50,7 +60,7 @@ public sealed record OutboxSlice
         var bumped = head with
         {
             AttemptCount = attempt,
-            NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attempt, now, baseDelay),
+            NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attempt, now, head.EntryId, options),
         };
 
         return this with { Pending = [bumped, .. Pending.Skip(1)] };

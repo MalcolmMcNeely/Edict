@@ -16,8 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- ADR 0016: the internal/bare Outbox engine is unit-tested in Core.Tests -->
+        <!-- ADR 0016: the internal/bare Outbox engine is unit-tested in Core.Tests;
+             the Azure provider conformance suite reuses the publish executor -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Tests" />
     </ItemGroup>
 
     <ItemGroup>

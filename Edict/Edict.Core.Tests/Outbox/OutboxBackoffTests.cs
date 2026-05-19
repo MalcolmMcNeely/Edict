@@ -1,3 +1,4 @@
+using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
 using static VerifyXunit.Verifier;
@@ -5,23 +6,67 @@ using static VerifyXunit.Verifier;
 namespace Edict.Core.Tests.Outbox;
 
 // Backoff is a pure function of AttemptCount (ADR 0019): exponential from a
-// base delay, clamped to a ceiling so a long outage cannot push NextAttemptUtc
-// arbitrarily far out. Fixed inputs; the literal timestamps are the assertion.
+// configured base delay, clamped to a configured ceiling, then spread by a
+// deterministic per-entry jitter so a fleet of entries that fail together do
+// not stampede the same retry instant. Pure and reproducible — the jitter is a
+// stable hash of EntryId, never a clock or RNG, so the literal timestamps in
+// the snapshot are themselves the assertion.
 
 public sealed class OutboxBackoffTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+    static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+    static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
+    static readonly Guid EntryB = new("bbbbbbbb-0000-0000-0000-000000000002");
 
     [Fact]
     public Task NextAttemptUtc_ShouldGrowExponentiallyThenClampToCeiling()
     {
-        var baseDelay = TimeSpan.FromSeconds(2);
+        var options = new EdictOutboxOptions();
 
         var schedule = Enumerable.Range(0, 12)
             .Select(attemptCount => new
             {
                 attemptCount,
-                NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attemptCount, Now, baseDelay),
+                NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attemptCount, Now, EntryA, options),
+            })
+            .ToArray();
+
+        return Verify(schedule).DontScrubDateTimes();
+    }
+
+    [Fact]
+    public Task NextAttemptUtc_ShouldSpreadEntriesByDeterministicJitter_PreventingStampede()
+    {
+        var options = new EdictOutboxOptions();
+
+        // Same attempt count, two different entries: identical exponential
+        // term, different jitter offset — proves the anti-stampede spread.
+        var spread = new
+        {
+            EntryA_attempt5 = OutboxBackoff.NextAttemptUtc(5, Now, EntryA, options),
+            EntryB_attempt5 = OutboxBackoff.NextAttemptUtc(5, Now, EntryB, options),
+            // Reproducible: the same entry+attempt always yields the same instant.
+            EntryA_attempt5_again = OutboxBackoff.NextAttemptUtc(5, Now, EntryA, options),
+        };
+
+        return Verify(spread).DontScrubDateTimes();
+    }
+
+    [Fact]
+    public Task NextAttemptUtc_ShouldHonourConsumerConfiguredBaseAndCeiling()
+    {
+        var options = new EdictOutboxOptions
+        {
+            BaseDelay = TimeSpan.FromSeconds(10),
+            MaxDelay = TimeSpan.FromMinutes(2),
+            JitterFraction = 0,
+        };
+
+        var schedule = Enumerable.Range(0, 10)
+            .Select(attemptCount => new
+            {
+                attemptCount,
+                NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attemptCount, Now, EntryA, options),
             })
             .ToArray();
 

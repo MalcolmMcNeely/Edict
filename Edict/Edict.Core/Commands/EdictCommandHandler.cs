@@ -1,6 +1,11 @@
 using Edict.Contracts;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Configuration;
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Core;
+using Edict.Core.Administration;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -40,7 +45,7 @@ namespace Edict.Core.Commands;
 /// </summary>
 [StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictCommandHandler<TState>
-    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable, IOutboxHost
+    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable, IOutboxHost, IEdictDeadLetterAdmin
     where TState : new()
 {
     const string DrainReminderName = "edict-outbox-drain";
@@ -135,6 +140,23 @@ public abstract class EdictCommandHandler<TState>
     /// <summary>Discards all buffered events. Called on <c>Rejected</c> or handler throw.</summary>
     protected void DiscardRaisedEvents() => _raisedEvents = null;
 
+    /// <summary>
+    /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry
+    /// back to the Outbox tail with <c>AttemptCount</c> reset, then drains.
+    /// This is the only mutation path for a dead-lettered entry.
+    /// </summary>
+    async Task IEdictDeadLetterAdmin.RedriveAsync(Guid entryId)
+    {
+        var clock = ServiceProvider.GetRequiredService<TimeProvider>();
+        base.State.Outbox = base.State.Outbox.Redrive(entryId, clock.GetUtcNow());
+        await WriteStateAsync();
+        await Engine.DrainAsync(this);
+    }
+
+    /// <inheritdoc />
+    Task<IReadOnlyList<EdictDeadLetterEntry>> IEdictDeadLetterAdmin.ListDeadLetterAsync() =>
+        Task.FromResult(DeadLetterProjection.From(base.State.Outbox));
+
     /// <inheritdoc />
     public Task ReceiveReminder(string reminderName, TickStatus status)
     {
@@ -189,6 +211,15 @@ public abstract class EdictCommandHandler<TState>
         Func<Task<EdictCommandResult>> handle)
         where TCommand : EdictCommand
     {
+        // Block-intake (ADR 0019): a saturated DeadLetter slice surfaces an
+        // infrastructure fault (thrown, never a business Rejected) so the
+        // effect is never silently dropped until an operator redrives.
+        var outboxOptions = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
+        if (base.State.Outbox.IsIntakeBlocked(outboxOptions.DeadLetterCap))
+        {
+            throw new EdictOutboxSaturatedException();
+        }
+
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
         if (validator is null)

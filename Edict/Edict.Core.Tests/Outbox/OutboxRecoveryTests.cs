@@ -6,7 +6,7 @@ namespace Edict.Core.Tests.Outbox;
 // Post-commit publish failure isolation + recovery, end-to-end on an in-memory
 // cluster with a virtual clock (ADR 0016/0018). Proves the failure neither
 // rolls back nor surfaces, and that the Reminder's drain recovers it.
-[Collection(OutboxRecoveryClusterCollection.Name)]
+[Collection(DeadLetterCapClusterCollection.Name)]
 public sealed class OutboxRecoveryTests(OutboxRecoveryClusterFixture fixture)
 {
     // Cycle 4/5 — a failing post-commit publish: Send still returns Accepted,

@@ -16,11 +16,12 @@ using Orleans.TestingHost;
 namespace Edict.Core.Tests;
 
 /// <summary>
-/// In-memory cluster wired with a flippable <see cref="ControllableOutboxExecutor"/>
-/// and a virtual clock, so tests can drive a post-commit publish failure and a
-/// recovery (drain-on-activation) under a deterministic backoff (ADR 0016/0018).
+/// In-memory cluster tuned to dead-letter on the very first failure and cap the
+/// DeadLetter slice at one entry, so a test can drive a grain into the
+/// block-intake state deterministically (ADR 0019). Reuses the flippable
+/// <see cref="ControllableOutboxExecutor"/> and a virtual clock.
 /// </summary>
-public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
+public sealed class DeadLetterCapClusterFixture : IAsyncLifetime
 {
     static readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 5, 19, 12, 0, 0, TimeSpan.Zero));
 
@@ -59,7 +60,13 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions());
+            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            {
+                MaxAttempts = 1,
+                DeadLetterCap = 1,
+                JitterFraction = 0,
+                BaseDelay = TimeSpan.FromSeconds(1),
+            });
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
@@ -83,8 +90,14 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
     }
 }
 
-// The OutboxRecovery + DeadLetterCap tests share one xUnit collection
-// (DeadLetterCapClusterCollection) so the process-wide
-// ControllableOutboxExecutor static is never raced across parallel
-// collections. This fixture is contributed there as a second collection
-// fixture; it intentionally no longer defines its own collection.
+// One collection for every test that flips the process-wide
+// ControllableOutboxExecutor static. xUnit serialises a single collection, so
+// the OutboxRecovery and DeadLetterCap fixtures never drive the shared
+// failure flag concurrently (cross-collection parallelism would race it).
+[CollectionDefinition(Name)]
+public sealed class DeadLetterCapClusterCollection
+    : ICollectionFixture<DeadLetterCapClusterFixture>,
+      ICollectionFixture<OutboxRecoveryClusterFixture>
+{
+    public const string Name = "ControllableOutboxCluster";
+}

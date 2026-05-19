@@ -1,3 +1,4 @@
+using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
 using Microsoft.Extensions.Time.Testing;
@@ -26,8 +27,10 @@ public sealed class OutboxDrainEngineTests
         Payload = [1, 2, 3],
     };
 
+    static readonly EdictOutboxOptions Options = new();
+
     static OutboxDrainEngine Engine(IOutboxEffectExecutor executor, FakeTimeProvider clock) =>
-        new([executor], clock);
+        new([executor], clock, Options);
 
     [Fact]
     public async Task DrainAsync_ShouldExecuteAckAndUnregister_WhenAllEffectsSucceed()
@@ -104,6 +107,77 @@ public sealed class OutboxDrainEngineTests
 
         await Verify(new { executor.Executed, host.Log, host.Outbox })
             .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    // ADR 0019: a permanently failing head is retried with backoff, then at
+    // MaxAttempts moves Outbox→DeadLetter in the same one commit and the drain
+    // CONTINUES — the tail (EntryB) is no longer blocked (self-healing).
+    [Fact]
+    public async Task DrainAsync_ShouldDeadLetterPoisonHeadAndFreeTail_WhenMaxAttemptsExhausted()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var options = new EdictOutboxOptions
+        {
+            MaxAttempts = 3,
+            BaseDelay = TimeSpan.FromSeconds(2),
+            JitterFraction = 0,
+        };
+        var executor = new SelectiveExecutor(poison: EntryA);
+        var host = new FakeOutboxHost
+        {
+            Outbox = new OutboxSlice().Enqueue(Entry(EntryA)).Enqueue(Entry(EntryB)),
+        };
+        var engine = new OutboxDrainEngine([executor], clock, options);
+
+        // Each pass: poison head throws, backoff-gated; advance past the gate
+        // and drain again. The 3rd failure exhausts MaxAttempts → dead-letter.
+        for (var pass = 0; pass < 3; pass++)
+        {
+            await engine.DrainAsync(host);
+            clock.Advance(TimeSpan.FromMinutes(10));
+        }
+
+        await Verify(new { executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    // ADR 0019: the same one Reminder gates retries on NextAttemptUtc — an
+    // entry not yet due is skipped (not executed); once the virtual clock
+    // advances past its gate the very next drain publishes it.
+    [Fact]
+    public async Task DrainAsync_ShouldSkipGatedEntryThenPublish_WhenClockAdvancesPastNextAttempt()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var gated = Entry(EntryA) with { AttemptCount = 1, NextAttemptUtc = Now.AddMinutes(5) };
+        var host = new FakeOutboxHost { Outbox = new OutboxSlice().Enqueue(gated) };
+        var engine = new OutboxDrainEngine([executor], clock, Options);
+
+        await engine.DrainAsync(host);          // gated: skipped, not executed
+        var skippedExecuted = executor.Executed.Count;
+
+        clock.Advance(TimeSpan.FromMinutes(6));  // past NextAttemptUtc
+        await engine.DrainAsync(host);          // now due: published
+
+        await Verify(new { skippedExecuted, executor.Executed, host.Log, host.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    sealed class SelectiveExecutor(Guid poison) : IOutboxEffectExecutor
+    {
+        public List<Guid> Executed { get; } = [];
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+
+        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        {
+            if (entry.EntryId == poison)
+            {
+                throw new InvalidOperationException("poison entry");
+            }
+
+            Executed.Add(entry.EntryId);
+            return Task.CompletedTask;
+        }
     }
 
     sealed class RecordingExecutor : IOutboxEffectExecutor

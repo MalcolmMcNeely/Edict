@@ -1,3 +1,5 @@
+using Edict.Contracts.Configuration;
+
 namespace Edict.Core.Outbox;
 
 /// <summary>
@@ -13,15 +15,18 @@ namespace Edict.Core.Outbox;
 /// </summary>
 sealed class OutboxDrainEngine
 {
-    static readonly TimeSpan BaseBackoff = TimeSpan.FromSeconds(2);
-
     readonly IReadOnlyDictionary<OutboxEffectKind, IOutboxEffectExecutor> _executors;
     readonly TimeProvider _timeProvider;
+    readonly EdictOutboxOptions _options;
 
-    public OutboxDrainEngine(IEnumerable<IOutboxEffectExecutor> executors, TimeProvider timeProvider)
+    public OutboxDrainEngine(
+        IEnumerable<IOutboxEffectExecutor> executors,
+        TimeProvider timeProvider,
+        EdictOutboxOptions options)
     {
         _executors = executors.ToDictionary(static e => e.Kind);
         _timeProvider = timeProvider;
+        _options = options;
     }
 
     /// <summary>
@@ -62,11 +67,24 @@ sealed class OutboxDrainEngine
             {
                 await _executors[head.Kind].ExecuteAsync(head, host.StreamProvider);
             }
-            catch
+            catch (Exception exception)
             {
                 // Post-commit failure: do not roll back, do not surface. Bump
-                // backoff, stop at the head (causal order), let the Reminder retry.
-                host.Outbox = host.Outbox.FailHeadWithBackoff(now, BaseBackoff);
+                // backoff; if attempts are now exhausted move the head
+                // Outbox→DeadLetter in the SAME one commit (atomic by
+                // construction, ADR 0019) and CONTINUE — the poison head has
+                // left the FIFO, so the tail is no longer blocked
+                // (self-healing). Otherwise stop at the head (causal order)
+                // and let the lazy Reminder retry once backoff elapses.
+                host.Outbox = host.Outbox.FailHeadWithBackoff(now, _options);
+
+                if (host.Outbox.Pending[0].AttemptCount >= _options.MaxAttempts)
+                {
+                    host.Outbox = host.Outbox.DeadLetterHead(now, exception.Message);
+                    await host.CommitAsync();
+                    continue;
+                }
+
                 await host.CommitAsync();
                 break;
             }

@@ -1,7 +1,13 @@
 using Edict.Contracts;
+using Edict.Contracts.Configuration;
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Core;
+using Edict.Core.Administration;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
+using Microsoft.Extensions.DependencyInjection;
 using Orleans.Providers;
 using Orleans.Streams;
 
@@ -20,7 +26,8 @@ namespace Edict.Core.Idempotency;
 /// atomically in one write (ADR 0018).
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
-public abstract class EdictIdempotencyBase<TPayload> : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>
+public abstract class EdictIdempotencyBase<TPayload>
+    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>, IEdictDeadLetterAdmin
     where TPayload : new()
 {
     /// <summary>
@@ -60,6 +67,16 @@ public abstract class EdictIdempotencyBase<TPayload> : Grain<GrainEnvelope<Idemp
     /// </summary>
     protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken _)
     {
+        // Block-intake (ADR 0019): a saturated DeadLetter slice must not
+        // silently drop a redelivered event. Throw before the dedup check so
+        // the EventId is never committed to the ring — Orleans redelivers it
+        // until an operator redrives and the cap clears.
+        var outboxOptions = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
+        if (State.Outbox.IsIntakeBlocked(outboxOptions.DeadLetterCap))
+        {
+            throw new EdictOutboxSaturatedException();
+        }
+
         EnsureRingInitialized();
 
         if (Contains(evt.EventId))
@@ -76,6 +93,23 @@ public abstract class EdictIdempotencyBase<TPayload> : Grain<GrainEnvelope<Idemp
             await WriteStateAsync();
         }
     }
+
+    /// <summary>
+    /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry
+    /// back to the Outbox tail with <c>AttemptCount</c> reset. The same one
+    /// grain-state write clears the cap, so a previously blocked consumer
+    /// resumes acking redelivered events.
+    /// </summary>
+    async Task IEdictDeadLetterAdmin.RedriveAsync(Guid entryId)
+    {
+        var clock = ServiceProvider.GetRequiredService<TimeProvider>();
+        State.Outbox = State.Outbox.Redrive(entryId, clock.GetUtcNow());
+        await WriteStateAsync();
+    }
+
+    /// <inheritdoc />
+    Task<IReadOnlyList<EdictDeadLetterEntry>> IEdictDeadLetterAdmin.ListDeadLetterAsync() =>
+        Task.FromResult(DeadLetterProjection.From(State.Outbox));
 
     void EnsureRingInitialized()
     {

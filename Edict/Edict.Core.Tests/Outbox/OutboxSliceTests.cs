@@ -1,3 +1,4 @@
+using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
 using static VerifyXunit.Verifier;
@@ -14,6 +15,7 @@ public sealed class OutboxSliceTests
     private static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid EntryB = new("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+    private static readonly EdictOutboxOptions Options = new();
 
     private static OutboxEntry Entry(Guid id, OutboxEffectKind kind) => new()
     {
@@ -55,13 +57,11 @@ public sealed class OutboxSliceTests
     [Fact]
     public Task FailHeadWithBackoff_ShouldBumpAttemptAndGateNextAttempt()
     {
-        var baseDelay = TimeSpan.FromSeconds(2);
-
         var slice = new OutboxSlice()
             .Enqueue(Entry(EntryA, OutboxEffectKind.PublishEvent))
             .Enqueue(Entry(EntryB, OutboxEffectKind.SendCommand))
-            .FailHeadWithBackoff(Now, baseDelay)
-            .FailHeadWithBackoff(Now, baseDelay);
+            .FailHeadWithBackoff(Now, Options)
+            .FailHeadWithBackoff(Now, Options);
 
         return Verify(slice).DontScrubGuids().DontScrubDateTimes();
     }
@@ -69,7 +69,7 @@ public sealed class OutboxSliceTests
     [Fact]
     public Task FailHeadWithBackoff_ShouldBeNoOp_WhenPendingEmpty()
     {
-        var slice = new OutboxSlice().FailHeadWithBackoff(Now, TimeSpan.FromSeconds(2));
+        var slice = new OutboxSlice().FailHeadWithBackoff(Now, Options);
 
         return Verify(slice).DontScrubGuids().DontScrubDateTimes();
     }
@@ -80,7 +80,7 @@ public sealed class OutboxSliceTests
         var slice = new OutboxSlice()
             .Enqueue(Entry(EntryA, OutboxEffectKind.PublishEvent))
             .Enqueue(Entry(EntryB, OutboxEffectKind.SendCommand))
-            .FailHeadWithBackoff(Now, TimeSpan.FromSeconds(2))
+            .FailHeadWithBackoff(Now, Options)
             .DeadLetterHead(Now, "max attempts exhausted");
 
         return Verify(slice).DontScrubGuids().DontScrubDateTimes();
@@ -100,11 +100,32 @@ public sealed class OutboxSliceTests
         var slice = new OutboxSlice()
             .Enqueue(Entry(EntryA, OutboxEffectKind.PublishEvent))
             .Enqueue(Entry(EntryB, OutboxEffectKind.SendCommand))
-            .FailHeadWithBackoff(Now, TimeSpan.FromSeconds(2))
+            .FailHeadWithBackoff(Now, Options)
             .DeadLetterHead(Now, "downstream outage")
             .Redrive(EntryA, Now.AddHours(1));
 
         return Verify(slice).DontScrubGuids().DontScrubDateTimes();
+    }
+
+    // Block-intake gate (ADR 0019): a single behavioral fact — blocked iff the
+    // DeadLetter slice has reached the configured cap — so a targeted Theory,
+    // not a Verify snapshot.
+    [Theory]
+    [InlineData(0, 2, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(2, 2, true)]
+    [InlineData(3, 2, true)]
+    public void IsIntakeBlocked_ShouldBeTrue_WhenDeadLetterAtOrAboveCap(
+        int deadLetterCount, int cap, bool expected)
+    {
+        var slice = new OutboxSlice();
+        for (var i = 0; i < deadLetterCount; i++)
+        {
+            slice = slice.Enqueue(Entry(Guid.NewGuid(), OutboxEffectKind.PublishEvent))
+                .DeadLetterHead(Now, "exhausted");
+        }
+
+        Assert.Equal(expected, slice.IsIntakeBlocked(cap));
     }
 
     [Fact]

@@ -137,6 +137,57 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // ADR 0019 consumer surface: the read-only repository + its DTO are
+    // consumer-facing, so they are brand-prefixed and live in Edict.Contracts
+    // (mirroring IEdictTableRepository); redrive is the only mutation path and
+    // is a grain method, so IEdictDeadLetterAdmin is a grain interface in
+    // Edict.Core (it cannot sit in the bare-named Edict.Core.DeadLetter ns).
+
+    [Fact]
+    public void IEdictDeadLetterRepository_ShouldResideInEdictContracts()
+    {
+        var rule = Interfaces().That().HaveNameStartingWith("IEdictDeadLetterRepository")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.DeadLetter$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictDeadLetterEntry_ShouldResideInEdictContracts()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictDeadLetterEntry$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.DeadLetter$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void IEdictDeadLetterAdmin_ShouldResideInEdictCoreAdministration()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^IEdictDeadLetterAdmin$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Administration$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictOutboxSaturatedException_ShouldResideInEdictCoreRoot()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictOutboxSaturatedException$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictOutboxOptions_ShouldResideInEdictContractsConfiguration()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictOutboxOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Configuration$");
+
+        rule.Check(Architecture);
+    }
+
     [Fact]
     public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
     {
