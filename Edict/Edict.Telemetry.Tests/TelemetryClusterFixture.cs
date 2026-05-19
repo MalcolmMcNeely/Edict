@@ -1,5 +1,3 @@
-using Azure.Storage.Queues;
-
 using Edict.Contracts.Sending;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
@@ -7,19 +5,13 @@ using Edict.Generated;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using Orleans.Configuration;
 using Orleans.Serialization;
 using Orleans.TestingHost;
-
-using Testcontainers.Azurite;
 
 namespace Edict.Telemetry.Tests;
 
 public sealed class TelemetryClusterFixture : IAsyncLifetime
 {
-    private static string _queueConnectionString = "";
-    private AzuriteContainer _azurite = null!;
-
     public TestCluster Cluster { get; private set; } = null!;
 
     public IEdictSender Sender =>
@@ -27,17 +19,6 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _azurite = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
-            .WithCreateParameterModifier(p =>
-            {
-                p.Cmd ??= [];
-                p.Cmd.Add("--skipApiVersionCheck");
-            })
-            .Build();
-        await _azurite.StartAsync();
-        _queueConnectionString = _azurite.GetConnectionString();
-
         var builder = new TestClusterBuilder();
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
@@ -45,13 +26,8 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
-    {
-        if (Cluster is not null)
-            await Cluster.DisposeAsync();
-        if (_azurite is not null)
-            await _azurite.DisposeAsync();
-    }
+    public Task DisposeAsync() =>
+        Cluster is not null ? Cluster.DisposeAsync().AsTask() : Task.CompletedTask;
 
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
@@ -67,13 +43,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
-            siloBuilder.AddAzureQueueStreams("edict", configure =>
-            {
-                configure.ConfigureAzureQueue(opt => opt.Configure(o =>
-                    o.QueueServiceClient = new QueueServiceClient(_queueConnectionString)));
-                configure.ConfigurePullingAgent(opt => opt.Configure(o =>
-                    o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(200)));
-            });
+            siloBuilder.AddMemoryStreams("edict");
         }
     }
 

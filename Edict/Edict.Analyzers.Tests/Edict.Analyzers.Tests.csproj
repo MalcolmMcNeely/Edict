@@ -18,6 +18,8 @@
         <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" ReferenceOutputAssembly="true" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <!-- Needed for EdictWellKnownNames cross-assembly parity test -->
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" ReferenceOutputAssembly="true" />
     </ItemGroup>
 
 </Project>

@@ -6,10 +6,7 @@ using Edict.Contracts.Sending;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Core.Tests.Grains;
 using Edict.Generated;
-
-using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,16 +15,16 @@ using Orleans.TestingHost;
 
 using Testcontainers.Azurite;
 
-namespace Edict.Core.Tests;
+namespace Edict.Azure.Tests;
 
 /// <summary>
-/// Separate fixture that wires <see cref="AzureTableWriteStoreFactory"/> into the silo
-/// so end-to-end tests can prove the Azure Table Storage path without replacing the
-/// shared in-memory cluster used by grain behaviour tests.
+/// Full-stack Azurite-backed cluster fixture for the Azure provider test suite
+/// (ADR 0016). Uses real Azure Queue Storage streams and Azure Table Storage so
+/// tests prove the full at-least-once + dedup path and the table write seam.
 /// </summary>
-public sealed class AzureTableE2EFixture : IAsyncLifetime
+public sealed class AzureClusterFixture : IAsyncLifetime
 {
-    private static string _queueConnectionString = "";
+    private static string _connectionString = "";
     private static TableServiceClient _tableServiceClient = null!;
 
     private AzuriteContainer _azurite = null!;
@@ -50,8 +47,8 @@ public sealed class AzureTableE2EFixture : IAsyncLifetime
             })
             .Build();
         await _azurite.StartAsync();
-        _queueConnectionString = _azurite.GetConnectionString();
-        _tableServiceClient = new TableServiceClient(_queueConnectionString);
+        _connectionString = _azurite.GetConnectionString();
+        _tableServiceClient = new TableServiceClient(_connectionString);
 
         var builder = new TestClusterBuilder();
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
@@ -70,7 +67,7 @@ public sealed class AzureTableE2EFixture : IAsyncLifetime
 
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(OrderGrain).Assembly)
+            .AddAssembly(typeof(AzureOrderGrain).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
@@ -80,8 +77,6 @@ public sealed class AzureTableE2EFixture : IAsyncLifetime
         {
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
-            siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
-            siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
@@ -90,7 +85,12 @@ public sealed class AzureTableE2EFixture : IAsyncLifetime
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>
-                    o.QueueServiceClient = new QueueServiceClient(_queueConnectionString)));
+                {
+                    o.QueueServiceClient = new QueueServiceClient(_connectionString);
+                    // Short visibility timeout lets the at-least-once redelivery
+                    // test observe a real queue re-queue within seconds.
+                    o.MessageVisibilityTimeout = TimeSpan.FromSeconds(5);
+                }));
                 configure.ConfigurePullingAgent(opt => opt.Configure(o =>
                     o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(200)));
             });
@@ -111,7 +111,7 @@ public sealed class AzureTableE2EFixture : IAsyncLifetime
 }
 
 [CollectionDefinition(Name)]
-public sealed class AzureTableE2ECollection : ICollectionFixture<AzureTableE2EFixture>
+public sealed class AzureClusterCollection : ICollectionFixture<AzureClusterFixture>
 {
-    public const string Name = "AzureTableE2E";
+    public const string Name = "AzureCluster";
 }

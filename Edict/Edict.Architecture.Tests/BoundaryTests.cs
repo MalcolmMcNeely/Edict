@@ -96,12 +96,56 @@ public class BoundaryTests
     }
 
     // ADR 0014: Azure implementations live in Edict.Azure, not Edict.Core — so taking
-    // Core does not drag Azure SDKs into a non-Azure deployment.
+    // Core does not drag any Azure SDK into a non-Azure deployment.
     [Fact]
-    public void EdictCore_DoesNotDependOnAzureDataTables()
+    public void EdictCore_DoesNotDependOnAnyAzureSdkPackages()
     {
         var coreAssembly = typeof(EdictEventDeduplicationGrain).Assembly;
         var referenced = coreAssembly.GetReferencedAssemblies();
-        Assert.DoesNotContain(referenced, a => a.Name == "Azure.Data.Tables");
+        Assert.DoesNotContain(referenced,
+            a => a.Name is not null
+                 && a.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ADR 0013: every public, non-nested type in Edict.Contracts is Edict-prefixed.
+    // The prefix signals "consumer contract with the framework"; unprefixed public types
+    // would dilute that signal and risk naming collisions.
+    [Fact]
+    public void All_public_Edict_Contracts_types_are_brand_prefixed()
+    {
+        var contractsAssembly = typeof(EdictCommand).Assembly;
+        var violations = contractsAssembly
+            .GetExportedTypes()
+            .Where(t => !t.IsNested)
+            .Where(t => !t.Name.StartsWith("Edict", StringComparison.Ordinal)
+                     && !t.Name.StartsWith("IEdict", StringComparison.Ordinal))
+            .Select(t => t.FullName!)
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    // No stray .gitkeep placeholder files left in the solution tree.
+    // A .gitkeep indicates an empty directory placeholder; when real content arrives
+    // the file must be deleted. Leaving it in causes confusion and bloats the index.
+    [Fact]
+    public void No_gitkeep_files_exist_in_solution()
+    {
+        var solutionRoot = GetSolutionRoot();
+        var gitkeepFiles = Directory
+            .EnumerateFiles(solutionRoot, ".gitkeep", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar))
+            .ToList();
+
+        Assert.Empty(gitkeepFiles);
+    }
+
+    private static string GetSolutionRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !dir.EnumerateFiles("*.slnx").Any())
+            dir = dir.Parent;
+        return dir?.FullName ?? AppContext.BaseDirectory;
     }
 }
