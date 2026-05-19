@@ -7,7 +7,7 @@ public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
 {
     // Cycle 3 — tracer bullet: event delivery writes row; in-memory GetAsync returns it
     [Fact]
-    public async Task Event_delivery_writes_row_via_in_memory_store()
+    public async Task HandleAsync_ShouldWriteRowViaInMemoryStore_WhenEventIsDelivered()
     {
         var orderId = Guid.NewGuid();
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
@@ -22,7 +22,7 @@ public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
 
     // Cycle 3 — RowKey is consumer-specified and independent of PartitionKey
     [Fact]
-    public async Task Consumer_specified_row_key_determines_row_coordinates()
+    public async Task HandleAsync_ShouldUseConsumerSpecifiedRowKeyForRowCoordinates()
     {
         var orderId = Guid.NewGuid();
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-C"));
@@ -38,7 +38,7 @@ public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
 
     // Cycle 3 — global-singleton projection: fixed grain key, many aggregates → separate rows
     [Fact]
-    public async Task Global_singleton_stores_distinct_row_per_source_aggregate()
+    public async Task HandleAsync_ShouldStoreDistinctRowPerAggregate_WhenSingleton()
     {
         var orderIdA = Guid.NewGuid();
         var orderIdB = Guid.NewGuid();
@@ -69,7 +69,7 @@ public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
 
     // Cycle 4 — second event loads existing row and writes back delta
     [Fact]
-    public async Task Second_event_loads_existing_row_and_increments_count()
+    public async Task HandleAsync_ShouldIncrementRowCount_WhenSubsequentEventArrives()
     {
         var orderId = Guid.NewGuid();
         await fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-A"));

@@ -11,7 +11,7 @@ public sealed class EventPublishingTests(EdictClusterFixture fixture)
 {
     // Cycle 1 — tracer bullet: accepted command → event on domain stream
     [Fact]
-    public async Task Accepted_command_publishes_event_to_domain_stream()
+    public async Task AcceptedCommand_ShouldPublishEventToDomainStream()
     {
         var orderId = Guid.NewGuid();
 
@@ -25,7 +25,7 @@ public sealed class EventPublishingTests(EdictClusterFixture fixture)
 
     // Cycle 2 — rejected command discards buffer; nothing reaches the stream
     [Fact]
-    public async Task Rejected_command_publishes_no_events()
+    public async Task RejectedCommand_ShouldPublishNoEvents()
     {
         var orderId = Guid.NewGuid();
 
@@ -38,7 +38,7 @@ public sealed class EventPublishingTests(EdictClusterFixture fixture)
 
     // Cycle 3 — flushed event is stamped with EventId, OccurredAt, and trace context
     [Fact]
-    public async Task Published_event_is_stamped_with_EventId_OccurredAt_and_trace_context()
+    public async Task PublishedEvent_ShouldBeStampedWithEventIdOccurredAtAndTraceContext()
     {
         var orderId = Guid.NewGuid();
         using var listener = new ActivityListener
@@ -61,7 +61,7 @@ public sealed class EventPublishingTests(EdictClusterFixture fixture)
 
     // Cycle 4 — publish span is a child of the command span (ADR 0003)
     [Fact]
-    public async Task Publish_span_is_parent_child_under_command_span()
+    public async Task PublishSpan_ShouldBeParentChildUnderCommandSpan()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();

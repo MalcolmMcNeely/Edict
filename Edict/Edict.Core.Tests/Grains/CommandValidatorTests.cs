@@ -10,7 +10,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     // Tracer bullet: the core contract — validator failure → Rejected envelope,
     // not a thrown exception.
     [Fact]
-    public async Task Validator_that_fails_returns_Rejected_with_mapped_reasons()
+    public async Task Validator_ShouldReturnRejectedWithMappedReasons_WhenValidationFails()
     {
         var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
 
@@ -20,7 +20,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Validator_that_passes_allows_Handle_to_run_and_returns_Accepted()
+    public async Task Validator_ShouldAllowHandleToRunAndReturnAccepted_WhenValidationPasses()
     {
         var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
 
@@ -28,7 +28,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Absent_validator_dispatches_command_to_Handle_normally()
+    public async Task Handle_ShouldDispatchCommandNormally_WhenNoValidatorPresent()
     {
         // PlaceOrderCommand has no registered validator in this cluster.
         var result = await fixture.Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
@@ -37,7 +37,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Rejected_command_does_not_set_Error_status_on_span()
+    public async Task RejectedCommand_ShouldNotSetErrorStatusOnSpan()
     {
         var stopped = new List<Activity>();
         using var listener = new ActivityListener
@@ -56,7 +56,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Grain_state_is_passed_to_validator_via_RootContextData()
+    public async Task Validator_ShouldReceiveGrainStateViaRootContextData()
     {
         // GrainStateRequiredValidator rejects with "missing_state" if
         // RootContextData[GrainState] is absent or null. OrderCommandHandler overrides
@@ -72,7 +72,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     // messages. This test exercises concurrent sends to the same grain and
     // asserts both complete correctly — a regression guard for that guarantee.
     [Fact]
-    public async Task Concurrent_commands_to_same_grain_complete_without_interleaving()
+    public async Task ConcurrentCommands_ShouldCompleteWithoutInterleaving_WhenTargetingSameGrain()
     {
         var orderId = Guid.NewGuid();
         var t1 = fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-A"));

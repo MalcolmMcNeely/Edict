@@ -9,7 +9,7 @@ namespace Edict.Core.Tests.Diagnostics;
 public sealed class CommandTelemetryTests(EdictClusterFixture fixture)
 {
     [Fact]
-    public async Task Send_opens_one_edict_span_per_command_dispatch()
+    public async Task Send_ShouldOpenOneEdictSpanPerCommandDispatch()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -28,7 +28,7 @@ public sealed class CommandTelemetryTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Send_records_error_on_span_when_handler_throws()
+    public async Task Send_ShouldRecordErrorOnSpan_WhenHandlerThrows()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -48,7 +48,7 @@ public sealed class CommandTelemetryTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Send_writes_telemeterized_properties_as_edict_tags()
+    public async Task Send_ShouldWriteTelemeterizedPropertiesAsEdictTags()
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-TELEM-1";

@@ -10,7 +10,7 @@ public sealed class ProjectionBuilderTests(EdictClusterFixture fixture)
 {
     // Cycle 3 — tracer bullet: command acceptance delivers event to projection grain
     [Fact]
-    public async Task Command_acceptance_delivers_event_to_projection_grain()
+    public async Task HandleAsync_ShouldDeliverEventToProjectionGrain_WhenCommandIsAccepted()
     {
         var orderId = Guid.NewGuid();
 
@@ -23,7 +23,7 @@ public sealed class ProjectionBuilderTests(EdictClusterFixture fixture)
 
     // Cycle 4 — handler span is a child of the publish span (ADR 0003)
     [Fact]
-    public async Task Handler_span_is_child_of_publish_span()
+    public async Task HandlerSpan_ShouldBeChildOfPublishSpan()
     {
         var orderId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -54,7 +54,7 @@ public sealed class ProjectionBuilderTests(EdictClusterFixture fixture)
 
     // Cycle 5 — event type with no Handle overload is a no-op; projection count unchanged
     [Fact]
-    public async Task Unhandled_event_type_is_no_op()
+    public async Task HandleAsync_ShouldBeNoOp_WhenEventTypeIsUnhandled()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IProjectionPublisherGrain>(grainId);

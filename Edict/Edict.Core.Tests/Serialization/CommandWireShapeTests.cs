@@ -19,7 +19,7 @@ public sealed class CommandWireShapeTests
     private static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
 
     [Fact]
-    public Task PlaceOrderCommand_wire_shape_is_stable()
+    public Task PlaceOrderCommand_ShouldHaveStableWireShape()
     {
         var command = new PlaceOrderCommand(FixedAggregateId, "ITEM-1")
         {
@@ -29,7 +29,7 @@ public sealed class CommandWireShapeTests
     }
 
     [Fact]
-    public Task CancelOrderCommand_wire_shape_is_stable()
+    public Task CancelOrderCommand_ShouldHaveStableWireShape()
     {
         var command = new CancelOrderCommand(FixedAggregateId, "customer-request")
         {
@@ -39,7 +39,7 @@ public sealed class CommandWireShapeTests
     }
 
     [Fact]
-    public Task FailOrderCommand_wire_shape_is_stable()
+    public Task FailOrderCommand_ShouldHaveStableWireShape()
     {
         var command = new FailOrderCommand(FixedAggregateId)
         {
@@ -49,7 +49,7 @@ public sealed class CommandWireShapeTests
     }
 
     [Fact]
-    public Task ValidateSkuCommand_wire_shape_is_stable()
+    public Task ValidateSkuCommand_ShouldHaveStableWireShape()
     {
         var command = new ValidateSkuCommand(FixedAggregateId, "SKU-001")
         {
@@ -59,7 +59,7 @@ public sealed class CommandWireShapeTests
     }
 
     [Fact]
-    public Task StateCheckCommand_wire_shape_is_stable()
+    public Task StateCheckCommand_ShouldHaveStableWireShape()
     {
         var command = new StateCheckCommand(FixedAggregateId)
         {
@@ -69,7 +69,7 @@ public sealed class CommandWireShapeTests
     }
 
     [Fact]
-    public Task MixedPrimitiveCommand_wire_shape_is_stable()
+    public Task MixedPrimitiveCommand_ShouldHaveStableWireShape()
     {
         var command = new MixedPrimitiveCommand(FixedAggregateId)
         {

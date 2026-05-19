@@ -6,7 +6,7 @@ namespace Edict.Core.Tests.Grains;
 public sealed class CommandPipelineEndToEndTests(EdictClusterFixture fixture)
 {
     [Fact]
-    public async Task Send_routes_a_command_through_to_its_handler_and_returns_Accepted()
+    public async Task Send_ShouldRouteCommandToHandlerAndReturnAccepted()
     {
         var result = await fixture.Sender.Send(
             new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
@@ -15,7 +15,7 @@ public sealed class CommandPipelineEndToEndTests(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task Send_returns_the_handlers_Rejected_outcome_with_its_reasons()
+    public async Task Send_ShouldReturnRejectedOutcomeWithReasons()
     {
         var result = await fixture.Sender.Send(
             new CancelOrderCommand(Guid.NewGuid(), "changed mind"));

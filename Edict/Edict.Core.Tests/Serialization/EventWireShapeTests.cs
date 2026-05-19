@@ -21,7 +21,7 @@ public sealed class EventWireShapeTests
     private static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
 
     [Fact]
-    public Task OrderPlacedEvent_wire_shape_is_stable()
+    public Task OrderPlacedEvent_ShouldHaveStableWireShape()
     {
         var evt = new OrderPlacedEvent(FixedAggregateId, "ITEM-1")
         {

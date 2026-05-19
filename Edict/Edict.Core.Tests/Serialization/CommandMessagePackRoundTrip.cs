@@ -77,7 +77,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
     private static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
 
     [Fact]
-    public async Task PlaceOrderCommand_round_trips_through_abstract_base_intact()
+    public async Task PlaceOrderCommand_ShouldRoundTripThroughAbstractBaseIntact()
     {
         var sent = new PlaceOrderCommand(FixedAggregateId, "ITEM-1")
         {
@@ -92,7 +92,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task CancelOrderCommand_round_trips_through_abstract_base_intact()
+    public async Task CancelOrderCommand_ShouldRoundTripThroughAbstractBaseIntact()
     {
         var sent = new CancelOrderCommand(FixedAggregateId, "customer-request")
         {
@@ -106,7 +106,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task MixedPrimitiveCommand_round_trips_every_primitive_intact()
+    public async Task MixedPrimitiveCommand_ShouldRoundTripEveryPrimitiveIntact()
     {
         var sent = new MixedPrimitiveCommand(FixedAggregateId)
         {
@@ -126,7 +126,7 @@ public sealed class CommandMessagePackRoundTrip(EdictClusterFixture fixture)
     }
 
     [Fact]
-    public async Task FailOrderCommand_round_trips_to_the_handler_then_faults()
+    public async Task FailOrderCommand_ShouldRoundTripToHandlerThenFault()
     {
         var sent = new FailOrderCommand(FixedAggregateId)
         {

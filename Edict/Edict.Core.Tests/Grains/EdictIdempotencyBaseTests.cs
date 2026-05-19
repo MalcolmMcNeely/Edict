@@ -8,7 +8,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 {
     // Cycle 1 — tracer bullet: event delivered to dedup grain is dispatched
     [Fact]
-    public async Task Event_delivered_to_dedup_grain_is_dispatched()
+    public async Task HandleAsync_ShouldDispatch_WhenEventIsDelivered()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
@@ -24,7 +24,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 
     // Cycle 2 — duplicate EventId is suppressed
     [Fact]
-    public async Task Duplicate_EventId_is_suppressed()
+    public async Task HandleAsync_ShouldSuppressDuplicate_WhenEventIdIsRepeated()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
@@ -47,7 +47,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
     // Cycle 3 — EventId committed only after dispatch succeeds;
     //           simulated redelivery (same EventId) is accepted when dispatch previously threw
     [Fact]
-    public async Task EventId_committed_only_after_dispatch_succeeds()
+    public async Task HandleAsync_ShouldCommitEventIdOnlyAfterDispatchSucceeds()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
@@ -76,7 +76,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 
     // Cycle 4 — unhandled event type consumes no ring slot
     [Fact]
-    public async Task Unhandled_event_type_consumes_no_ring_slot()
+    public async Task HandleAsync_ShouldConsumeNoRingSlot_WhenEventTypeIsUnhandled()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
@@ -107,7 +107,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 
     // Cycle 5 — dedup-suppressed redelivery emits span tagged edict.deduplicated=true
     [Fact]
-    public async Task Suppressed_redelivery_emits_span_tagged_deduplicated()
+    public async Task HandleAsync_ShouldEmitSpanTaggedDeduplicated_WhenRedeliveryIsSuppressed()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
@@ -143,7 +143,7 @@ public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 
     // Cycle 6 — ring survives grain deactivation (persisted state)
     [Fact]
-    public async Task Ring_survives_grain_deactivation()
+    public async Task DedupRing_ShouldSurviveGrainDeactivation()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);

@@ -20,7 +20,7 @@ public class CommandRouteResolverTests
         new(routes.ToDictionary(route => route.CommandType));
 
     [Fact]
-    public void Resolve_returns_the_mapped_grain_interface_and_the_RouteKey_value()
+    public void Resolve_ShouldReturnMappedGrainInterfaceAndRouteKeyValue()
     {
         var orderId = Guid.NewGuid();
         var resolver = ResolverFor(
@@ -34,7 +34,7 @@ public class CommandRouteResolverTests
     }
 
     [Fact]
-    public void Resolve_passes_an_empty_RouteKey_through_unchanged()
+    public void Resolve_ShouldPassEmptyRouteKeyThroughUnchanged()
     {
         var resolver = ResolverFor(
             new CommandRoute(typeof(PlaceOrder), typeof(IOrderCommandHandler), "OrderCommandHandler",
@@ -46,7 +46,7 @@ public class CommandRouteResolverTests
     }
 
     [Fact]
-    public void Resolve_throws_an_unroutable_command_exception_for_an_unmapped_command()
+    public void Resolve_ShouldThrowUnroutableCommandException_WhenCommandIsUnmapped()
     {
         var resolver = ResolverFor();
 
