@@ -5,7 +5,7 @@ namespace Edict.Contracts.Tests.Results;
 public class RejectionReasonTests
 {
     [Fact]
-    public void Reasons_with_the_same_code_and_message_are_equal()
+    public void EdictRejectionReason_ShouldBeEqual_WhenSameCodeAndMessage()
     {
         var first = new EdictRejectionReason("out_of_stock", "Item is out of stock.");
         var second = new EdictRejectionReason("out_of_stock", "Item is out of stock.");
@@ -14,7 +14,7 @@ public class RejectionReasonTests
     }
 
     [Fact]
-    public void Code_and_message_are_addressable_independently()
+    public void EdictRejectionReason_ShouldAddressCodeAndMessageIndependently()
     {
         var reason = new EdictRejectionReason("out_of_stock", "Item is out of stock.");
 

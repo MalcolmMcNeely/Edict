@@ -5,7 +5,7 @@ namespace Edict.Contracts.Tests.Events;
 public class StreamAttributeTests
 {
     [Fact]
-    public void StreamAttribute_stores_its_name()
+    public void EdictStreamAttribute_ShouldStoreItsName()
     {
         var attr = new EdictStreamAttribute("Orders");
 

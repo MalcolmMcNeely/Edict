@@ -11,7 +11,7 @@ file sealed record SampleCommand(Guid AccountId) : EdictCommand;
 public class CommandTests
 {
     [Fact]
-    public void Commands_with_the_same_state_are_equal()
+    public void EdictCommand_ShouldBeEqual_WhenSameState()
     {
         var accountId = Guid.NewGuid();
         var commandId = Guid.NewGuid();
@@ -23,7 +23,7 @@ public class CommandTests
     }
 
     [Fact]
-    public Task Command_base_exposes_only_a_settable_CommandId_and_no_trace_fields()
+    public Task EdictCommand_ShouldExposeOnlySettableCommandIdAndNoTraceFields()
     {
         var properties = typeof(EdictCommand)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)

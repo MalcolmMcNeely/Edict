@@ -13,7 +13,7 @@ file sealed record TransferFunds(Guid AccountId) : EdictCommand
 public class RouteKeyAttributeTests
 {
     [Fact]
-    public void RouteKey_marks_the_property_it_is_applied_to()
+    public void EdictRouteKeyAttribute_ShouldMarkThePropertyItIsAppliedTo()
     {
         var marked = typeof(TransferFunds)
             .GetProperty(nameof(TransferFunds.AccountId))!
@@ -23,7 +23,7 @@ public class RouteKeyAttributeTests
     }
 
     [Fact]
-    public void RouteKey_can_only_be_placed_on_properties()
+    public void EdictRouteKeyAttribute_ShouldOnlyBePlaceableOnProperties()
     {
         var usage = typeof(EdictRouteKeyAttribute).GetCustomAttribute<AttributeUsageAttribute>()!;
 
