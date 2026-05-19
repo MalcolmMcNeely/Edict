@@ -5,14 +5,14 @@ namespace Edict.Azure.Tests;
 /// Proves the dedup ring works end-to-end with Azure Queue Storage streams,
 /// including the commit-on-success invariant under simulated redelivery.
 /// Real queue redelivery (visibility-timeout expiry) is exercised by
-/// <see cref="Real_queue_visibility_timeout_redelivery_is_handled_once"/>.
+/// <see cref="HandleAsync_ShouldHandleRedeliveryOnce_WhenQueueVisibilityTimeoutExpires"/>.
 /// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
 {
     // Cycle 1 — dedup ring accepts new event via Azure Queue provider
     [Fact]
-    public async Task Event_delivered_via_azure_queue_is_dispatched()
+    public async Task HandleAsync_ShouldDispatch_WhenEventDeliveredViaAzureQueue()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
@@ -32,7 +32,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
 
     // Cycle 2 — duplicate EventId is suppressed via Azure Queue provider
     [Fact]
-    public async Task Duplicate_EventId_via_azure_queue_is_suppressed()
+    public async Task HandleAsync_ShouldSuppressDuplicate_WhenEventIdDuplicatedViaAzureQueue()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
@@ -64,7 +64,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     // the dedup ring must accept the retry (EventId not yet committed after the throw)
     // and commit on the successful attempt. Subsequent deliveries must be suppressed.
     [Fact]
-    public async Task EventId_committed_only_after_dispatch_succeeds_azure_provider()
+    public async Task HandleAsync_ShouldCommitEventIdOnlyAfterDispatchSucceeds()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
@@ -99,7 +99,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     // the silo receives a message but does not ack it (dispatch throws), the queue
     // makes the message visible again automatically without any test republishing.
     [Fact]
-    public async Task Real_queue_visibility_timeout_redelivery_is_handled_once()
+    public async Task HandleAsync_ShouldHandleRedeliveryOnce_WhenQueueVisibilityTimeoutExpires()
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);

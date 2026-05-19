@@ -12,7 +12,7 @@ namespace Edict.Azure.Tests;
 public sealed class TableProjectionBuilderAzureE2ETests(AzureClusterFixture fixture)
 {
     [Fact]
-    public async Task Event_delivery_writes_row_readable_via_azure_table_repository()
+    public async Task HandleAsync_ShouldWriteRowReadableViaAzureTableRepository()
     {
         var orderId = Guid.NewGuid();
         var repository = new AzureTableRepository<AzureOrderTableRow>(
