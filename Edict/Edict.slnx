@@ -10,10 +10,13 @@
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Azure/Edict.Azure.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
+    <Project Path="Edict.Analyzers/Edict.Analyzers.csproj" />
     <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />
     <Project Path="Edict.Contracts.Tests/Edict.Contracts.Tests.csproj" />
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
     <Project Path="Edict.Telemetry.Tests/Edict.Telemetry.Tests.csproj" />
+    <Project Path="Edict.Generators.Tests/Edict.Generators.Tests.csproj" />
+    <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Orders/Sample.Orders.csproj" />

@@ -1,9 +1,11 @@
 using System.Collections.Immutable;
 
+using Edict.Generators;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Edict.Generators;
+namespace Edict.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer

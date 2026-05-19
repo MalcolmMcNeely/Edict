@@ -1,6 +1,6 @@
 using static VerifyXunit.Verifier;
 
-namespace Edict.Core.Tests;
+namespace Edict.Generators.Tests;
 
 public class EdictCommandGeneratorTests
 {

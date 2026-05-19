@@ -1,6 +1,7 @@
-using Edict.Generators;
+using Edict.Analyzers;
+using Xunit;
 
-namespace Edict.Core.Tests;
+namespace Edict.Analyzers.Tests;
 
 public class EdictAnalyzerTests
 {

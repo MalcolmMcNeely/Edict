@@ -5,7 +5,7 @@ using Edict.Generators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace Edict.Core.Tests;
+namespace Edict.Generators.Tests;
 
 /// <summary>
 /// Runs an Edict source generator over a snippet of consumer source and

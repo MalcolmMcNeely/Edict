@@ -1,11 +1,13 @@
 using System.Collections.Immutable;
 using System.Linq;
 
+using Edict.Generators;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Edict.Generators;
+namespace Edict.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CommandMustBePartialAnalyzer : DiagnosticAnalyzer

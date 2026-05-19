@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <!-- RS2008: release tracking not required for internal library -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
+    </PropertyGroup>
+
+    <!--
+      ADR 0005: this analyzer assembly deliberately does NOT reference
+      Edict.Abstractions (net10.0). It recognises Edict's annotations and base
+      types by fully-qualified name in the consumer's compilation.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- ADR 0014: FQN constants single-sourced; compile-linked into both Roslyn assemblies -->
+    <ItemGroup>
+        <Compile Include="../Edict.Generators/EdictWellKnownNames.cs" />
+    </ItemGroup>
+
+</Project>
