@@ -1,0 +1,18 @@
+﻿{
+  Entries: [
+    {
+      Kind: Command,
+      Type: PlaceOrderCommand,
+      Data: {
+        OrderId: Guid_1
+      }
+    },
+    {
+      Kind: Event,
+      Type: OrderPlacedEvent,
+      Data: {
+        OrderId: Guid_1
+      }
+    }
+  ]
+}

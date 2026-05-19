@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- Shipped to consumers as the in-memory Test Framework (ADR 0016). -->
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.10.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Edict.Contracts/Edict.Contracts.csproj" />
+        <ProjectReference Include="../Edict.Core/Edict.Core.csproj" />
+        <ProjectReference Include="../Edict.Telemetry/Edict.Telemetry.csproj" />
+    </ItemGroup>
+
+</Project>

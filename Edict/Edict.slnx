@@ -8,6 +8,7 @@
     <Project Path="Edict.Contracts/Edict.Contracts.csproj" />
     <Project Path="Edict.Telemetry/Edict.Telemetry.csproj" />
     <Project Path="Edict.Core/Edict.Core.csproj" />
+    <Project Path="Edict.Testing/Edict.Testing.csproj" />
     <Project Path="Edict.Azure/Edict.Azure.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
     <Project Path="Edict.Analyzers/Edict.Analyzers.csproj" />
@@ -24,6 +25,7 @@
     <Project Path="../Sample/Sample.Silo/Sample.Silo.csproj" />
     <Project Path="../Sample/Sample.Api/Sample.Api.csproj" />
     <Project Path="../Sample/Sample.Api.Tests/Sample.Api.Tests.csproj" />
+    <Project Path="../Sample/Sample.Silo.Tests/Sample.Silo.Tests.csproj" />
     <Project Path="../Sample/Sample.AppHost/Sample.AppHost.csproj" />
   </Folder>
 </Solution>

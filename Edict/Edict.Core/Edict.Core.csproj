@@ -20,6 +20,10 @@
              the Azure provider conformance suite reuses the publish executor -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <!-- The shipped in-memory Test Framework wraps the bare Outbox engine
+             (decorating the internal PublishEvent executor) so consumer code
+             runs the *real* engine under test (ADR 0016/0018). -->
+        <InternalsVisibleTo Include="Edict.Testing" />
     </ItemGroup>
 
     <ItemGroup>
