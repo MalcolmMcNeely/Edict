@@ -15,7 +15,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor CommandHandlerRule = new DiagnosticDescriptor(
         id: "EDICT001",
         title: "Aggregate grain must be declared partial",
-        messageFormat: "'{0}' derives from EdictCommandHandlerGrain and must be declared partial",
+        messageFormat: "'{0}' derives from EdictCommandHandler and must be declared partial",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -23,7 +23,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor ProjectionBuilderRule = new DiagnosticDescriptor(
         id: "EDICT001",
         title: "Projection Builder grain must be declared partial",
-        messageFormat: "'{0}' derives from EdictProjectionBuilderGrain and must be declared partial",
+        messageFormat: "'{0}' derives from EdictProjectionBuilder and must be declared partial",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -48,8 +48,8 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
 
         var isCommandHandler = type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-            == EdictWellKnownNames.EdictCommandHandlerGrainFqn;
-        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderGrainFqn);
+            == EdictWellKnownNames.EdictCommandHandlerFqn;
+        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderFqn);
 
         if (!isCommandHandler && !isProjectionBuilder)
         {

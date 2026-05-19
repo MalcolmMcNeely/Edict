@@ -1,0 +1,18 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+max_line_length = 170
+
+# ADR 0017 / csharp skill: omit redundant access modifiers (no explicit `private`
+# where private is already the default). This flags `private`/`internal` only when
+# the modifier equals the default — it does NOT flag `private set;` on a wider
+# property, where `private` changes accessibility and is required.
+dotnet_style_require_accessibility_modifiers = never:warning
+
+# Always use braces, even for single-line if/for/while bodies.
+csharp_prefer_braces = true:warning

@@ -35,7 +35,7 @@ public sealed partial record AzureOrderPlacedEvent(Guid OrderId, string Sku) : E
     public string Sku { get; init; } = Sku;
 }
 
-public partial class AzureOrderGrain : EdictCommandHandlerGrain
+public partial class AzureOrderCommandHandler : EdictCommandHandler
 {
     public Task<EdictCommandResult> Handle(AzurePlaceOrderCommand command)
     {
@@ -49,9 +49,9 @@ public sealed class AzureOrderTableRow
     public int OrderCount { get; set; }
 }
 
-public sealed partial class AzureOrderTableProjectionGrain : EdictTableProjectionBuilderGrain<AzureOrderTableRow>
+public sealed partial class AzureOrderTableProjectionBuilder : EdictTableProjectionBuilder<AzureOrderTableRow>
 {
-    public AzureOrderTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+    public AzureOrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "azureorderprojection";
@@ -82,7 +82,7 @@ public sealed partial record AzureDedupTestEvent(Guid AggregateId, int Sequence)
     public int Sequence { get; init; } = Sequence;
 }
 
-public interface IAzureDedupTestGrain : IGrainWithGuidKey
+public interface IAzureDedupTestConsumer : IGrainWithGuidKey
 {
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
     Task ArmThrowOnNextAsync();
@@ -104,7 +104,7 @@ public sealed class AzureDedupPublisherGrain : Grain, IAzureDedupPublisherGrain
 }
 
 [ImplicitStreamSubscription("AzureDedupTest")]
-public sealed class AzureDedupTestGrain : EdictEventIdempotentGrain, IAzureDedupTestGrain
+public sealed class AzureDedupTestConsumer : EdictIdempotencyBase, IAzureDedupTestConsumer
 {
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;

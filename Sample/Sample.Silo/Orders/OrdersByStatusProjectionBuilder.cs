@@ -4,9 +4,9 @@ using Edict.Core.TableStorage;
 
 namespace Sample.Silo.Orders;
 
-public sealed partial class OrdersByStatusGrain : EdictTableProjectionBuilderGrain<OrderStatusRow>
+public sealed partial class OrdersByStatusProjectionBuilder : EdictTableProjectionBuilder<OrderStatusRow>
 {
-    public OrdersByStatusGrain(IEdictTableStoreFactory storeFactory)
+    public OrdersByStatusProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "ordersbystatus";

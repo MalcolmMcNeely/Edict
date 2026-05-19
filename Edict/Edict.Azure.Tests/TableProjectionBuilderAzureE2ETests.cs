@@ -9,7 +9,7 @@ namespace Edict.Azure.Tests;
 /// Relocated from Edict.Core.Tests per ADR 0016 (provider-scoped test layering).
 /// </summary>
 [Collection(AzureClusterCollection.Name)]
-public sealed class TableProjectionBuilderGrainAzureE2ETests(AzureClusterFixture fixture)
+public sealed class TableProjectionBuilderAzureE2ETests(AzureClusterFixture fixture)
 {
     [Fact]
     public async Task Event_delivery_writes_row_readable_via_azure_table_repository()

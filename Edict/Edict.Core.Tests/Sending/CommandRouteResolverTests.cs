@@ -12,7 +12,7 @@ file sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
 // A stand-in for the generated aggregate grain interface. The resolver only
 // ever stores and returns this as a Type, so a plain marker (deliberately not
 // an Orleans grain interface) keeps this a pure unit test.
-file interface IOrderGrain;
+file interface IOrderCommandHandler;
 
 public class CommandRouteResolverTests
 {
@@ -24,12 +24,12 @@ public class CommandRouteResolverTests
     {
         var orderId = Guid.NewGuid();
         var resolver = ResolverFor(
-            new CommandRoute(typeof(PlaceOrder), typeof(IOrderGrain), "OrderGrain",
+            new CommandRoute(typeof(PlaceOrder), typeof(IOrderCommandHandler), "OrderCommandHandler",
                 command => ((PlaceOrder)command).OrderId));
 
         var (grainInterfaceType, key) = resolver.Resolve(new PlaceOrder(orderId));
 
-        Assert.Equal(typeof(IOrderGrain), grainInterfaceType);
+        Assert.Equal(typeof(IOrderCommandHandler), grainInterfaceType);
         Assert.Equal(orderId, key);
     }
 
@@ -37,7 +37,7 @@ public class CommandRouteResolverTests
     public void Resolve_passes_an_empty_RouteKey_through_unchanged()
     {
         var resolver = ResolverFor(
-            new CommandRoute(typeof(PlaceOrder), typeof(IOrderGrain), "OrderGrain",
+            new CommandRoute(typeof(PlaceOrder), typeof(IOrderCommandHandler), "OrderCommandHandler",
                 command => ((PlaceOrder)command).OrderId));
 
         var (_, key) = resolver.Resolve(new PlaceOrder(Guid.Empty));

@@ -19,7 +19,7 @@ public class EdictAnalyzerTests
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
-        public partial class OrderGrain : EdictCommandHandlerGrain
+        public partial class OrderCommandHandler : EdictCommandHandler
         {
             public Task<EdictCommandResult> Handle(PlaceOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -50,7 +50,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public class OrderGrain : EdictCommandHandlerGrain
+            public class OrderCommandHandler : EdictCommandHandler
             {
                 public Task<EdictCommandResult> Handle(PlaceOrder c) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -61,8 +61,8 @@ public class EdictAnalyzerTests
 
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
-        Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 10 (0-indexed): "public class OrderGrain : EdictCommandHandlerGrain"
+        Assert.Contains("OrderCommandHandler", d.GetMessage());
+        // Line 10 (0-indexed): "public class OrderCommandHandler : EdictCommandHandler"
         Assert.Equal(10, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -82,7 +82,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : EdictProjectionBuilderGrain
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -109,7 +109,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public class OrderProjection : EdictProjectionBuilderGrain
+            public class OrderProjectionBuilder : EdictProjectionBuilder
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -119,8 +119,8 @@ public class EdictAnalyzerTests
 
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
-        Assert.Contains("OrderProjection", d.GetMessage());
-        // Line 12 (0-indexed): "public class OrderProjection : EdictProjectionBuilderGrain"
+        Assert.Contains("OrderProjectionBuilder", d.GetMessage());
+        // Line 12 (0-indexed): "public class OrderProjectionBuilder : EdictProjectionBuilder"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -148,7 +148,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderGrain : EdictCommandHandlerGrain
+            public partial class OrderCommandHandler : EdictCommandHandler
             {
                 public Task<bool> Handle(PlaceOrder c) =>
                     Task.FromResult(true);
@@ -160,7 +160,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT002", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
-        Assert.Contains("OrderGrain", d.GetMessage());
+        Assert.Contains("OrderCommandHandler", d.GetMessage());
         // Line 12 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
@@ -337,12 +337,12 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderGrain : EdictCommandHandlerGrain
+            public partial class OrderCommandHandler : EdictCommandHandler
             {
                 public Task<EdictCommandResult> Handle(PlaceOrder c) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
-            public partial class DuplicateGrain : EdictCommandHandlerGrain
+            public partial class DuplicateOrderCommandHandler : EdictCommandHandler
             {
                 public Task<EdictCommandResult> Handle(PlaceOrder c) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -354,8 +354,8 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT004", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
-        Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 18 (0-indexed): "public Task<EdictCommandResult> Handle(PlaceOrder c) =>" in DuplicateGrain
+        Assert.Contains("OrderCommandHandler", d.GetMessage());
+        // Line 18 (0-indexed): "public Task<EdictCommandResult> Handle(PlaceOrder c) =>" in DuplicateOrderCommandHandler
         Assert.Equal(18, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -561,7 +561,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : EdictProjectionBuilderGrain
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -588,7 +588,7 @@ public class EdictAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjection : EdictProjectionBuilderGrain
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
                 public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);
             }
@@ -599,7 +599,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("OrderPlacedEvent", d.GetMessage());
-        Assert.Contains("OrderProjection", d.GetMessage());
+        Assert.Contains("OrderProjectionBuilder", d.GetMessage());
         // Line 14 (0-indexed): "public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);"
         Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
     }
@@ -614,7 +614,7 @@ public class EdictAnalyzerTests
             using Edict.Core.Projections;
             namespace Sample;
             public class NotAnEvent { }
-            public partial class OrderProjection : EdictProjectionBuilderGrain
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
                 public Task Handle(NotAnEvent e) => Task.CompletedTask;
             }
@@ -625,7 +625,7 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("NotAnEvent", d.GetMessage());
-        Assert.Contains("OrderProjection", d.GetMessage());
+        Assert.Contains("OrderProjectionBuilder", d.GetMessage());
         // Line 8 (0-indexed): "public Task Handle(NotAnEvent e) => Task.CompletedTask;"
         Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
     }

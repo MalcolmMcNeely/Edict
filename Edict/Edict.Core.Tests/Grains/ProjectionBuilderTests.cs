@@ -6,7 +6,7 @@ using Edict.Core.Tests.Grains;
 namespace Edict.Core.Tests.Grains;
 
 [Collection(EdictClusterCollection.Name)]
-public sealed class ProjectionBuilderGrainTests(EdictClusterFixture fixture)
+public sealed class ProjectionBuilderTests(EdictClusterFixture fixture)
 {
     // Cycle 3 — tracer bullet: command acceptance delivers event to projection grain
     [Fact]
@@ -60,7 +60,7 @@ public sealed class ProjectionBuilderGrainTests(EdictClusterFixture fixture)
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IProjectionPublisherGrain>(grainId);
         var projection = fixture.Cluster.GrainFactory.GetGrain<IOrderProjectionAccess>(grainId);
 
-        // DedupTestEvent has no Handle in OrderProjectionGrain → DispatchAsync returns false
+        // DedupTestEvent has no Handle in OrderProjectionBuilder → DispatchAsync returns false
         var unhandled = new DedupTestEvent(grainId, 1) with
         {
             EventId = Guid.NewGuid(),

@@ -5,7 +5,7 @@ using Orleans.Streams;
 
 namespace Edict.Core.Tests.Grains;
 
-public interface IDedupTestGrain : IGrainWithGuidKey
+public interface IDedupTestConsumer : IGrainWithGuidKey
 {
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
     Task ArmThrowOnNextAsync();
@@ -20,7 +20,7 @@ public interface IDedupPublisherGrain : IGrainWithGuidKey
 /// <summary>
 /// Test-only grain: publishes any event to the "DedupTest" domain stream.
 /// Allows tests to inject events with pre-set EventIds (bypassing the
-/// EdictCommandHandlerGrain stamp) to exercise dedup mechanics directly.
+/// EdictCommandHandler stamp) to exercise dedup mechanics directly.
 /// </summary>
 public sealed class DedupPublisherGrain : Grain, IDedupPublisherGrain
 {
@@ -33,11 +33,11 @@ public sealed class DedupPublisherGrain : Grain, IDedupPublisherGrain
 }
 
 /// <summary>
-/// Minimal hand-written test subclass of <see cref="EdictEventIdempotentGrain"/>.
+/// Minimal hand-written test subclass of <see cref="EdictIdempotencyBase"/>.
 /// Ring size is 3 to make eviction behaviour easy to exercise in tests.
 /// </summary>
 [ImplicitStreamSubscription("DedupTest")]
-public sealed class DedupTestGrain : EdictEventIdempotentGrain, IDedupTestGrain
+public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
 {
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;

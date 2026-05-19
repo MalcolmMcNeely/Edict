@@ -1,6 +1,6 @@
 # Edict brand naming: consumer-facing surface is `Edict`-prefixed, internals stay bare
 
-**Status:** accepted — supersedes the "no prefix" decision asserted in ADR 0004's and ADR 0008's prose and in CLAUDE.md ("Base classes are named `Event` and `Command`, no prefix")
+**Status:** superseded by [ADR 0017](0017-drop-grain-suffix-and-refine-brand-rule.md) — originally superseded the "no prefix" decision asserted in ADR 0004's and ADR 0008's prose and in CLAUDE.md ("Base classes are named `Event` and `Command`, no prefix"). ADR 0017 drops the `Grain` suffix from the base names listed below and adds clause (b) (shared inheritance roots) to the brand rule.
 
 Edict is treated as a brand. A type carries the **`Edict` prefix if and only if a consumer types it** — derives from it, applies it as an attribute, or receives/returns it. Infrastructure a consumer never names stays unprefixed and descriptively named, so the prefix keeps signalling "this is your contract with the framework" rather than degrading to noise on every type. The original decision deliberately chose bare `Command`/`Event` with `EdictCommand`/`EdictEvent` as the *explicitly rejected* alternative; that is reversed now, while there are no external consumers and the churn is cheap.
 

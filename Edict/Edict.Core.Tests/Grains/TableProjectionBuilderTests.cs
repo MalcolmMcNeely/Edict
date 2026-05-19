@@ -3,7 +3,7 @@ using Edict.Core.Tests.TableStorage;
 namespace Edict.Core.Tests.Grains;
 
 [Collection(EdictClusterCollection.Name)]
-public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture)
+public sealed class TableProjectionBuilderTests(EdictClusterFixture fixture)
 {
     // Cycle 3 — tracer bullet: event delivery writes row; in-memory GetAsync returns it
     [Fact]
@@ -44,7 +44,7 @@ public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture
         var orderIdB = Guid.NewGuid();
 
         var publisher = fixture.Cluster.GrainFactory
-            .GetGrain<IProjectionPublisherGrain>(GlobalOrderTableProjectionGrain.SingletonKey);
+            .GetGrain<IProjectionPublisherGrain>(GlobalOrderTableProjectionBuilder.SingletonKey);
 
         await publisher.PublishToStreamAsync("Orders", new OrderPlacedEvent(orderIdA, "SKU-X") with
         {
@@ -57,7 +57,7 @@ public sealed class TableProjectionBuilderGrainTests(EdictClusterFixture fixture
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
-        var singletonPk = GlobalOrderTableProjectionGrain.SingletonKey.ToString();
+        var singletonPk = GlobalOrderTableProjectionBuilder.SingletonKey.ToString();
         await WaitForPartitionCountAsync<OrderTableRow>("globalorderprojection", singletonPk, 2);
         var store = fixture.TableStoreFactory.GetStore<OrderTableRow>("globalorderprojection");
         var rows = store.GetPartition(singletonPk);

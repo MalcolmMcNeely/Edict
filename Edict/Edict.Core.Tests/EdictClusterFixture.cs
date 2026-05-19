@@ -48,7 +48,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
 
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(OrderGrain).Assembly)
+            .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 

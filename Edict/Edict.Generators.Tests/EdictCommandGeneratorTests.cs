@@ -25,7 +25,7 @@ public class EdictCommandGeneratorTests
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public partial class OrderGrain : EdictCommandHandlerGrain
+        public partial class OrderCommandHandler : EdictCommandHandler
         {
             public Task<EdictCommandResult> Handle(PlaceOrder command) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -60,7 +60,7 @@ public class EdictCommandGeneratorTests
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public partial class OrderGrain : EdictCommandHandlerGrain
+        public partial class OrderCommandHandler : EdictCommandHandler
         {
             public Task<EdictCommandResult> Handle(PlaceOrder command) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());

@@ -1,5 +1,6 @@
 namespace Edict.Core.Idempotency;
 
+[Alias("IdempotencyState")]
 [GenerateSerializer]
 public sealed class IdempotencyState
 {

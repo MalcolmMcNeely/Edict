@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the command spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Commands.EdictCommandHandlerGrain</c>: the Orleans grain interface, the
+/// <c>Edict.Core.Commands.EdictCommandHandler</c>: the Orleans grain interface, the
 /// <c>Dispatch</c> type-switch override, an Orleans surrogate + converter per
 /// concrete command, and a single <c>AddEdict()</c> that wires the route map,
 /// sender and ActivitySource.
@@ -65,7 +65,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (grain.BaseType?.ToDisplayString(FullyQualified) != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
+        if (grain.BaseType?.ToDisplayString(FullyQualified) != EdictWellKnownNames.EdictCommandHandlerFqn)
         {
             return null;
         }

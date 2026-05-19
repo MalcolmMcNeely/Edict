@@ -14,9 +14,9 @@ public sealed class OrderTableRow
 /// Test-only table projection grain. Counts orders per aggregate.
 /// RowKey = OrderId (same as PartitionKey for per-aggregate projections).
 /// </summary>
-public sealed partial class OrderTableProjectionGrain : EdictTableProjectionBuilderGrain<OrderTableRow>
+public sealed partial class OrderTableProjectionBuilder : EdictTableProjectionBuilder<OrderTableRow>
 {
-    public OrderTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+    public OrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "orderprojection";
@@ -39,9 +39,9 @@ public sealed partial class OrderTableProjectionGrain : EdictTableProjectionBuil
 /// Test-only grain with a consumer-specified fixed RowKey ("summary"), showing that
 /// the RowKey is independent of the PartitionKey.
 /// </summary>
-public sealed partial class OrderSummaryTableProjectionGrain : EdictTableProjectionBuilderGrain<OrderTableRow>
+public sealed partial class OrderSummaryTableProjectionBuilder : EdictTableProjectionBuilder<OrderTableRow>
 {
-    public OrderSummaryTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+    public OrderSummaryTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "ordersummary";
@@ -60,11 +60,11 @@ public sealed partial class OrderSummaryTableProjectionGrain : EdictTableProject
 /// receives events published directly to its stream key. RowKey = source aggregate ID,
 /// so each aggregate's order is a distinct row under the singleton PartitionKey.
 /// </summary>
-public sealed partial class GlobalOrderTableProjectionGrain : EdictTableProjectionBuilderGrain<OrderTableRow>
+public sealed partial class GlobalOrderTableProjectionBuilder : EdictTableProjectionBuilder<OrderTableRow>
 {
     public static readonly Guid SingletonKey = new("00000000-0000-0000-0000-000000000001");
 
-    public GlobalOrderTableProjectionGrain(IEdictTableStoreFactory storeFactory)
+    public GlobalOrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "globalorderprojection";

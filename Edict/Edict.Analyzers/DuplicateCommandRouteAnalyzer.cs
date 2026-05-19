@@ -38,7 +38,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
         foreach (var type in GetAllTypes(context.Compilation.GlobalNamespace))
         {
             if (type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
+                    != EdictWellKnownNames.EdictCommandHandlerFqn)
             {
                 continue;
             }

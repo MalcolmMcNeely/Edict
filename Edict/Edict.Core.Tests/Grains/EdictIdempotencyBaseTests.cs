@@ -4,7 +4,7 @@ using Edict.Telemetry;
 namespace Edict.Core.Tests.Grains;
 
 [Collection(EdictClusterCollection.Name)]
-public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
+public sealed class EdictIdempotencyBaseTests(EdictClusterFixture fixture)
 {
     // Cycle 1 — tracer bullet: event delivered to dedup grain is dispatched
     [Fact]
@@ -12,7 +12,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var evt = new DedupTestEvent(grainId, 1) with { EventId = Guid.NewGuid(), OccurredAt = DateTimeOffset.UtcNow };
         await publisher.PublishAsync(evt);
@@ -28,7 +28,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var sharedEventId = Guid.NewGuid();
         var first = new DedupTestEvent(grainId, 1) with { EventId = sharedEventId, OccurredAt = DateTimeOffset.UtcNow };
@@ -51,7 +51,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
         var evt = new DedupTestEvent(grainId, 1) with { EventId = eventId, OccurredAt = DateTimeOffset.UtcNow };
@@ -80,7 +80,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         // Fill ring (size 3) with handled events
         var id1 = Guid.NewGuid();
@@ -111,7 +111,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var stopped = new List<Activity>();
         using var listener = new ActivityListener
@@ -147,7 +147,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         // Deliver first event, wait for it to be handled and state persisted
         var idX = Guid.NewGuid();
@@ -167,7 +167,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
         await publisher.PublishAsync(evtY);
 
         // Wait for evtY to be dispatched (confirms grain is alive and processing)
-        var reactivatedGrain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestGrain>(grainId);
+        var reactivatedGrain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
         while (DateTimeOffset.UtcNow < deadline)
         {
@@ -183,7 +183,7 @@ public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)
         Assert.DoesNotContain(idX, handled); // ring suppressed the redelivery
     }
 
-    private async Task<IReadOnlyList<Guid>> WaitForHandledAsync(IDedupTestGrain grain, int expectedCount = 1)
+    private async Task<IReadOnlyList<Guid>> WaitForHandledAsync(IDedupTestConsumer grain, int expectedCount = 1)
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
         while (DateTimeOffset.UtcNow < deadline)

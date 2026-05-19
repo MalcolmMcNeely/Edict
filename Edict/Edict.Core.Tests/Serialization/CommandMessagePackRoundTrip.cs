@@ -43,7 +43,7 @@ public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
     public string? Note { get; init; }
 }
 
-public partial class MixedPrimitiveGrain : Edict.Core.Commands.EdictCommandHandlerGrain
+public partial class MixedPrimitiveGrain : Edict.Core.Commands.EdictCommandHandler
 {
     public Task<EdictCommandResult> Handle(MixedPrimitiveCommand command)
     {

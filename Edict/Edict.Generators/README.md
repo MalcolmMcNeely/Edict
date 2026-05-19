@@ -10,15 +10,15 @@ Roslyn incremental source generators for the Edict framework. All generators mat
 
 **ADR:** ADR 0005, ADR 0004
 
-**Trigger predicate:** `partial class` whose direct base type is `Edict.Core.Grains.EdictCommandHandlerGrain` and that has at least one `Handle(TCommand)` method returning `Task<EdictCommandResult>`.
+**Trigger predicate:** `partial class` whose direct base type is `Edict.Core.Grains.EdictCommandHandler` and that has at least one `Handle(TCommand)` method returning `Task<EdictCommandResult>`.
 
 **Emitted shape (per grain):**
 
 ```csharp
-// {Namespace}.{GrainName}.g.cs
-public partial interface I{GrainName} : global::Edict.Core.Grains.IEdictCommandHandler { }
+// {Namespace}.{TypeName}.g.cs
+public partial interface I{TypeName} : global::Edict.Core.Grains.IEdictCommandHandler { }
 
-public partial class {GrainName} : I{GrainName}
+public partial class {TypeName} : I{TypeName}
 {
     public override async Task<EdictCommandResult> DispatchAsync(EdictCommand command) { … }
 }
@@ -58,16 +58,16 @@ Discovery is semantic and assembly-wide: the generator emits an alias even when 
 
 **ADR:** ADR 0011, ADR 0005
 
-**Trigger predicate:** `partial class` whose base type chain includes `Edict.Core.Grains.EdictProjectionBuilderGrain` and that has at least one `Handle(TEvent)` method returning `Task`.
+**Trigger predicate:** `partial class` whose base type chain includes `Edict.Core.Grains.EdictProjectionBuilder` and that has at least one `Handle(TEvent)` method returning `Task`.
 
 **Emitted shape (per projection grain):**
 
 ```csharp
-// {Namespace}.{GrainName}.g.cs
-public partial interface I{GrainName} : global::Edict.Core.Grains.IEdictProjectionBuilder { }
+// {Namespace}.{TypeName}.g.cs
+public partial interface I{TypeName} : global::Edict.Core.Grains.IEdictProjectionBuilder { }
 
 [global::Orleans.ImplicitStreamSubscriptionAttribute("{StreamName}")]
-public partial class {GrainName} : I{GrainName}
+public partial class {TypeName} : I{TypeName}
 {
     protected override async Task SubscribeToStreamAsync(CancellationToken ct) { … }
     protected override async Task<bool> DispatchAsync(EdictEvent evt) { … }

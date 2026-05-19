@@ -14,7 +14,7 @@ namespace Edict.Core.Idempotency;
 /// without rework (next slices).
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
-public abstract class EdictEventIdempotentGrain : Grain<IdempotencyState>
+public abstract class EdictIdempotencyBase : Grain<IdempotencyState>
 {
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.

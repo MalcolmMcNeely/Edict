@@ -20,7 +20,7 @@ public class BoundaryTests
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(EdictCommand).Assembly,
-            typeof(EdictEventIdempotentGrain).Assembly,
+            typeof(EdictIdempotencyBase).Assembly,
             typeof(EdictDiagnostics).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
@@ -80,13 +80,13 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // ADR 0015: EdictTableProjectionBuilderGrain is provider-neutral; Azure stays in the
+    // ADR 0015: EdictTableProjectionBuilder is provider-neutral; Azure stays in the
     // write-store implementation, not in the grain base.
     [Fact]
     public void TableProjectionBuilderGrain_DoesNotDependOnAzure()
     {
         var rule = Classes().That()
-            .HaveNameStartingWith("EdictTableProjectionBuilderGrain")
+            .HaveNameStartingWith("EdictTableProjectionBuilder")
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Azure")
@@ -100,7 +100,7 @@ public class BoundaryTests
     [Fact]
     public void EdictCore_DoesNotDependOnAnyAzureSdkPackages()
     {
-        var coreAssembly = typeof(EdictEventIdempotentGrain).Assembly;
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var referenced = coreAssembly.GetReferencedAssemblies();
         Assert.DoesNotContain(referenced,
             a => a.Name is not null

@@ -16,7 +16,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
 
         var evt = new AzureDedupTestEvent(grainId, 1) with
         {
@@ -36,7 +36,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
 
         var sharedEventId = Guid.NewGuid();
         var first = new AzureDedupTestEvent(grainId, 1) with
@@ -68,7 +68,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
         var evt = new AzureDedupTestEvent(grainId, 1) with
@@ -103,7 +103,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     {
         var grainId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
         var evt = new AzureDedupTestEvent(grainId, 1) with
@@ -127,7 +127,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     }
 
     private static async Task<IReadOnlyList<Guid>> WaitForHandledAsync(
-        IAzureDedupTestGrain grain,
+        IAzureDedupTestConsumer grain,
         int expectedCount = 1,
         int timeoutSeconds = 15)
     {

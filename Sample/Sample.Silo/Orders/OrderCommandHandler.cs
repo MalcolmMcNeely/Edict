@@ -3,12 +3,12 @@ using Edict.Core.Commands;
 
 namespace Sample.Silo.Orders;
 
-public partial class OrderGrain : EdictCommandHandlerGrain
+public partial class OrderCommandHandler : EdictCommandHandler
 {
-    private enum OrderStatus { Open, Submitted, Cancelled }
+    enum OrderStatus { Open, Submitted, Cancelled }
 
-    private OrderStatus _status = OrderStatus.Open;
-    private readonly List<(string Sku, int Quantity)> _items = [];
+    OrderStatus _status = OrderStatus.Open;
+    readonly List<(string Sku, int Quantity)> _items = [];
 
     public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
     {

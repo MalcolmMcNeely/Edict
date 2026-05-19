@@ -23,7 +23,7 @@ public class EdictProjectionGeneratorTests
             public string Sku { get; init; } = Sku;
         }
 
-        public sealed partial class OrderProjectionGrain : EdictProjectionBuilderGrain
+        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
         {
             public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
         }
@@ -55,7 +55,7 @@ public class EdictProjectionGeneratorTests
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed partial class OrderProjectionGrain : EdictProjectionBuilderGrain
+        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
         {
             public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
             public Task Handle(OrderCancelledEvent evt) => Task.CompletedTask;

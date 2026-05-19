@@ -45,7 +45,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictProjectionBuilderGrainFqn))
+        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictProjectionBuilderFqn))
         {
             return;
         }

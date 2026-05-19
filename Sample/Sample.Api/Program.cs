@@ -20,7 +20,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
         client.UseLocalhostClustering();
         client.Services.AddSerializer(ser =>
         {
-            ser.AddAssembly(typeof(IOrderGrain).Assembly);
+            ser.AddAssembly(typeof(IOrderCommandHandler).Assembly);
             ser.AddAssembly(typeof(IEdictCommandHandler).Assembly);
             ser.AddEdictContractSerializer();
         });
@@ -34,7 +34,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
         })
         .UseOtlpExporter();
 
-    var tableConnectionString = builder.Configuration.GetConnectionString("AzureStorage")
+    var tableConnectionString = builder.Configuration.GetConnectionString("tables")
                                 ?? "UseDevelopmentStorage=true";
     var tableServiceClient = new TableServiceClient(tableConnectionString);
     builder.Services.AddSingleton(tableServiceClient);

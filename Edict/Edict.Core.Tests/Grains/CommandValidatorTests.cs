@@ -59,7 +59,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     public async Task Grain_state_is_passed_to_validator_via_RootContextData()
     {
         // GrainStateRequiredValidator rejects with "missing_state" if
-        // RootContextData[GrainState] is absent or null. OrderGrain overrides
+        // RootContextData[GrainState] is absent or null. OrderCommandHandler overrides
         // GetValidationState() to return a non-null marker, so the command
         // passes → Accepted proves injection happened.
         var result = await fixture.Sender.Send(new StateCheckCommand(Guid.NewGuid()));

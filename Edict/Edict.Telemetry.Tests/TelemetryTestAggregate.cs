@@ -12,7 +12,7 @@ using Orleans.Streams;
 namespace Edict.Telemetry.Tests;
 
 // Minimal consumer-shaped grains for telemetry integration tests.
-// The generator runs over this assembly and emits IOrderGrain, Dispatch, and AddEdict().
+// The generator runs over this assembly and emits IOrderCommandHandler, Dispatch, and AddEdict().
 
 [MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record TelPlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
@@ -41,7 +41,7 @@ public sealed partial record TelOrderPlacedEvent(Guid OrderId, string Sku) : Edi
     public string Sku { get; init; } = Sku;
 }
 
-public partial class TelOrderGrain : EdictCommandHandlerGrain
+public partial class TelOrderCommandHandler : EdictCommandHandler
 {
     public Task<EdictCommandResult> Handle(TelPlaceOrderCommand command)
     {

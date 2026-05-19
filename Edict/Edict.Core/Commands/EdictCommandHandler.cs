@@ -16,7 +16,7 @@ namespace Edict.Core.Commands;
 /// override that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
 /// </summary>
-public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
+public abstract class EdictCommandHandler : Grain, IEdictCommandHandler
 {
     List<EdictEvent>? _raisedEvents;
 

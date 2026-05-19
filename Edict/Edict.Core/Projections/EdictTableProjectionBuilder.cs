@@ -13,7 +13,7 @@ namespace Edict.Core.Projections;
 /// are two non-atomic stores, and the resulting crash-window double-apply is accepted
 /// until the Outbox ships.
 /// </summary>
-public abstract class EdictTableProjectionBuilderGrain<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilderGrain
+public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
     where T : class, new()
 {
     IEdictTableWriteStore<T>? _writeStore;
@@ -50,7 +50,7 @@ public abstract class EdictTableProjectionBuilderGrain<T>(IEdictTableStoreFactor
 
     /// <summary>
     /// Wraps every handler call with load-apply-writeback. The base
-    /// <see cref="EdictProjectionBuilderGrain.DispatchEventAsync{TEvent}"/> default is a
+    /// <see cref="EdictProjectionBuilder.DispatchEventAsync{TEvent}"/> default is a
     /// direct handler call; this override adds the store I/O around it.
     /// </summary>
     protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)

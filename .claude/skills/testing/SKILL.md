@@ -1,94 +1,62 @@
 ---
 name: testing
-description: Use this skill when creating, modifying, or reviewing tests in this repo — including xUnit integration tests, bUnit Blazor component tests, and Testcontainers fixtures. Covers test philosophy, project structure, approved libraries, and what not to do.
+description: Use this skill when creating, modifying, or reviewing tests in the Edict repo — xUnit, Verify snapshots, Testcontainers/Azurite, generator & analyzer tests. Covers the ADR 0016 project layering, naming, Verify path rules, and what not to do.
 ---
 
-# Test Philosophy
+# Test Philosophy (Edict)
 
 ## Guiding principle
 
-Test external behaviour, not implementation details. A test should remain valid even if the internal structure of the code under test changes entirely. If a test breaks because of a rename or a refactor that doesn't change observable behaviour, the test was written at the wrong level.
+Test external behaviour, not implementation details. A test should survive a rename or refactor that does not change observable behaviour. If it breaks on a pure rename, it was written at the wrong level.
 
-## Integration-first
+## Project layering (ADR 0016)
 
-Prefer integration tests over unit tests. Infrastructure — EF Core, blob storage, background jobs — must be tested through the full stack, not mocked away. Mocking infrastructure hides the bugs that matter most.
+Each suite has a single, non-overlapping job. Putting a test in the wrong project is the most common mistake here.
 
-- Use `WebApplicationFactory` to host the application in-process.
-- Use **Testcontainers** to spin up real Postgres and Azurite (Azure Blob Storage) containers per test run.
-- Never mock `DbContext`, `IBlobRepository`, or any infrastructure interface that has a real Testcontainers equivalent.
+| Project | What it tests | Backend |
+|---|---|---|
+| `Edict.Core.Tests` | Mechanism *logic*: dedup-ring semantics, projection orchestration, command routing | In-memory streams/stores. **No Testcontainers** — fast inner loop. Reaching for Azurite here is a smell. |
+| `Edict.Azure.Tests` | Full mechanism battery against real infra: at-least-once redelivery + dedup realism (the ADR-0002 proof), table-projection persistence | **Azurite via Testcontainers** — the provider conformance suite |
+| `Edict.Telemetry.Tests` | Span tree + `edict.*` tags | `ActivityListener` |
+| `Edict.Generators.Tests` | Generator output shape | Verify snapshots of emitted source |
+| `Edict.Analyzers.Tests` | `EDICT00x` diagnostic coverage | analyzer test harness; assert diagnostic **line** positions |
+| `Edict.Architecture.Tests` | `BoundaryTests`, `TypePlacementTests` | reflection over assemblies |
 
-## What to test in isolation
+The shipped Test Framework (`Edict.Testing`) is the *only* place in-memory wiring is correct for consumer-facing scenarios. The Sample app never uses in-memory infra.
 
-Pure domain logic — value objects, state machines, validation rules — may be tested in isolation when the test is meaningfully simpler and the logic has no infrastructure dependency.
+## Test naming
 
-## Test project naming and structure
+`Subject_Should{Outcome}[_When{Condition}]`.
 
-Each feature module gets one test project: `Covenant.{Module}.Tests`. Integration tests, domain unit tests, and **bUnit component tests** for that feature's Blazor pages all live together in that project.
+- `Subject` is the method under test when one exists, else a scenario noun (`EDICT001`, `CommandPipeline`, `ClosedHierarchy`).
+- `_When{Condition}` only when there *is* a condition — drop it for unconditional facts.
+- Examples: `Send_ShouldReturnRejected_WhenValidatorFails`, `EDICT001_ShouldNotRaise_WhenGrainIsPartial`, `CommandResult_ShouldBeClosedHierarchy`.
 
-Cross-cutting UI that belongs to no single feature domain (app shell, layout, navigation, theme, and app-level aggregation pages such as the home dashboard) lives in `Covenant.Web.Tests`. That project references `Covenant.Web` and any feature projects whose interfaces are directly mocked in tests. Do **not** add a `Covenant.Web` reference to a feature test project to host misplaced shell tests.
+Structure every test Arrange / Act / Assert.
 
-The folder structure inside a test project must mirror the source project it tests:
-
-```
-Covenant.Templates/          Covenant.Templates.Tests/
-  Entities/                    Services/
-  Services/                    Components/
-  Models/                      Infrastructure/
-
-Covenant.Web/                Covenant.Web.Tests/
-  Components/Layout/           Components/Layout/
-  Components/Features/Home/    Components/Features/Home/
-  Theme/                       Theme/
-```
-
-Shared test infrastructure (fixtures, stubs) goes in an `Infrastructure/` subfolder — create it lazily when the first shared fixture is needed.
-
-## Evaluation harness (AI features)
-
-AI-driven features (merge field extraction, contract generation, redlining) are tested with a separate evaluation harness:
-
-- Fixtures are `(input, template, expected_output)` triples stored as files.
-- Scoring: **field accuracy** (exact match for structured fields, LLM-as-judge for free-text), **no hallucinated clauses**, **no dropped clauses**, **format integrity** (DOCX round-trip check).
-- The harness runs in CI and outputs a JSON report per run. A regression in score is a failing build.
-- LLM-as-judge assertions go in `Covenant.Eval` — never mixed into feature test projects.
-
-## Arrange / Act / Assert
-
-Structure every test with a clear Arrange / Act / Assert separation. Name tests in the form `{Method or scenario}_{context}_{expected outcome}`.
-
-## Approved libraries
+## Verify
 
 | Purpose | Library |
 |---|---|
 | Test framework | **xUnit** |
 | Assertions | **xUnit built-ins** (`Assert.*`) |
-| Snapshot testing | **Verify** (`Verify.Xunit`) |
-| Blazor component testing | **bUnit** |
+| Snapshot | **Verify** (`Verify.Xunit`) |
 | Containers | **Testcontainers** |
 
-**FluentAssertions is banned** — it moved to a commercial license. Do not add it or any wrapper around it.
-
-Use **Verify** when a return value has more than one field to assert. Do not write `Assert.Equal` chains and add Verify later — use it on first write.
-
-Verify scrubs Guids and DateTimes **by default**, replacing them with deterministic placeholders (`Guid_1`, `DateTime_1`, etc.). Do not add `.IgnoreMembersWithType<Guid>()` or `.IgnoreMembersWithType<DateTimeOffset>()` — ignoring removes fields from the snapshot entirely, which means the snapshot never verifies those fields exist. Let the default scrubbing work. Use `DontScrubGuids()` only when you explicitly want raw Guid values in a snapshot.
-
-If a Guid is semantically important (e.g. ownership or a foreign-key link), assert it separately with `Assert.Equal` alongside the plain `Verify(...)` call.
-
-Never commit `.received.*` files — only `.verified.*` files are committed.
-
-Use **bUnit** for Blazor component tests where you need to verify rendering, event handling, or component interaction in isolation. Any component that uses MudBlazor components requires `ctx.Services.AddMudServices()` in the test setup:
-
-```csharp
-using var ctx = new TestContext();
-ctx.Services.AddMudServices();
-// render component under test
-```
+- Use **Verify** when a return value has more than one field to assert. Don't write `Assert.Equal` chains and add Verify later — use it on first write.
+- Verify scrubs Guids/DateTimes by default (`Guid_1`, `DateTime_1`). Do **not** add `.IgnoreMembersWithType<Guid>()` — ignoring removes the field from the snapshot so its existence is no longer verified. Let default scrubbing work; use `DontScrubGuids()` only when raw values matter.
+- If a Guid is semantically load-bearing (ownership, FK link), assert it separately with `Assert.Equal` alongside the `Verify(...)`.
+- Snapshots live in a **flat `{TestProject}/Snapshots/` directory** — a `ModuleInitializer` sets `Verifier.DerivePathInfo` so deep folder nesting never eats the Windows path budget. Contributors run `git config core.longpaths true` once.
+- **Soft length cap:** if `{Class}.{Method}` would push a `.verified.txt` filename past ~90 chars, the test scope is too broad — split the test. Never truncate or hash snapshot filenames (they must stay greppable and rename-stable).
+- Never commit `.received.*` files — only `.verified.*`.
 
 ## What not to do
 
-- Do not test that a method was called (verify outcomes, not interactions).
-- Do not use `Moq` or any mocking library for infrastructure boundaries — use real containers.
-- Do not share mutable state between tests.
-- Do not assert on log output or internal exception messages unless the message is part of the public contract.
-- Do not use FluentAssertions — it is commercially licensed.
-- Do not add section divider comments (e.g. `// ── Cycle 2 ──`) inside test files. If you feel the need to separate groups of tests with a divider, split them into separate files instead.
+- Don't test that a method was called — verify outcomes, not interactions.
+- Don't use **Moq** or any mocking library for infrastructure boundaries — use real Azurite containers in `Edict.Azure.Tests`.
+- Don't mock away streams/stores in `Edict.Azure.Tests`; don't pull Azurite into `Edict.Core.Tests`.
+- Don't share mutable state between tests.
+- Don't assert on log output or internal exception messages unless the message is part of the public contract.
+- **FluentAssertions is banned** (commercial license) — do not add it or a wrapper.
+- Don't add section-divider comments inside test files. If you want to separate groups, split into separate files.
+- Don't add lines when renaming identifiers in analyzer test fixtures — diagnostic assertions key on line numbers.

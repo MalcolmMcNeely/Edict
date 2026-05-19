@@ -38,7 +38,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
         }
 
         if (method.ContainingType.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != EdictWellKnownNames.EdictCommandHandlerGrainFqn)
+                != EdictWellKnownNames.EdictCommandHandlerFqn)
         {
             return;
         }

@@ -31,7 +31,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
 
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(TelOrderGrain).Assembly)
+            .AddAssembly(typeof(TelOrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 

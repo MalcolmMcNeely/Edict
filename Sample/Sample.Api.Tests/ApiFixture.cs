@@ -84,7 +84,7 @@ public sealed class ApiFixture : IAsyncLifetime
 
     private static void ConfigureEdictSerialization(ISerializerBuilder ser)
     {
-        ser.AddAssembly(typeof(OrderGrain).Assembly);
+        ser.AddAssembly(typeof(OrderCommandHandler).Assembly);
         ser.AddAssembly(typeof(IEdictCommandHandler).Assembly);
         ser.AddEdictContractSerializer();
     }
@@ -97,8 +97,10 @@ public sealed class ApiFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
-            siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            siloBuilder.AddMemoryGrainStorage("edict-dedup");
+            siloBuilder.AddAzureTableGrainStorage("PubSubStore", options =>
+                options.TableServiceClient = _tableServiceClient);
+            siloBuilder.AddAzureTableGrainStorage("edict-dedup", options =>
+                options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>

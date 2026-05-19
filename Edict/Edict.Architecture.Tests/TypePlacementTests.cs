@@ -24,7 +24,7 @@ public class TypePlacementTests
         .LoadAssemblies(
             typeof(AzureTableWriteStoreFactory).Assembly,
             typeof(EdictCommand).Assembly,
-            typeof(EdictEventIdempotentGrain).Assembly,
+            typeof(EdictIdempotencyBase).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -75,13 +75,13 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Core runtime: EdictEventDeduplicationGrain, EdictProjectionBuilderGrain, EdictTableProjectionBuilderGrain — ADR 0008
+    // Core runtime: EdictIdempotencyBase, EdictProjectionBuilder, EdictTableProjectionBuilder — ADR 0008 / ADR 0017
 
     [Fact]
-    public void EventDeduplicationGrain_ResidiesInEdictCore()
+    public void EdictIdempotencyBase_ShouldResideInEdictCoreIdempotency()
     {
-        var rule = Classes().That().HaveNameMatching("^EdictEventDeduplicationGrain$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Dedup$");
+        var rule = Classes().That().HaveNameMatching("^EdictIdempotencyBase$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Idempotency$");
 
         rule.Check(Architecture);
     }
@@ -89,7 +89,7 @@ public class TypePlacementTests
     [Fact]
     public void ProjectionBuilderGrain_ResidiesInEdictCore()
     {
-        var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilderGrain$")
+        var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilder$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);
@@ -98,7 +98,7 @@ public class TypePlacementTests
     [Fact]
     public void TableProjectionBuilderGrain_ResidiesInEdictCore()
     {
-        var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilderGrain")
+        var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilder")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);

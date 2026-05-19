@@ -17,33 +17,33 @@ internal static class OrdersEndpoints
         app.MapGet("/orders/{id:guid}/projection", GetOrderProjection);
     }
 
-    private static async Task<IResult> PlaceOrder(IEdictSender sender)
+    static async Task<IResult> PlaceOrder(IEdictSender sender)
     {
         var orderId = Guid.NewGuid();
         var result = await sender.Send(new PlaceOrderCommand(orderId));
         return MapResult(result, () => Results.Accepted(value: new { orderId }));
     }
 
-    private static async Task<IResult> AddLineItem(
+    static async Task<IResult> AddLineItem(
         Guid id, AddLineItemRequest request, IEdictSender sender)
     {
         var result = await sender.Send(new AddLineItemCommand(id, request.Sku, request.Quantity));
         return MapResult(result, () => Results.Accepted());
     }
 
-    private static async Task<IResult> SubmitOrder(Guid id, IEdictSender sender)
+    static async Task<IResult> SubmitOrder(Guid id, IEdictSender sender)
     {
         var result = await sender.Send(new SubmitOrderCommand(id));
         return MapResult(result, () => Results.Accepted());
     }
 
-    private static async Task<IResult> CancelOrder(Guid id, IEdictSender sender)
+    static async Task<IResult> CancelOrder(Guid id, IEdictSender sender)
     {
         var result = await sender.Send(new CancelOrderCommand(id));
         return MapResult(result, () => Results.Accepted());
     }
 
-    private static async Task<IResult> GetOrderProjection(
+    static async Task<IResult> GetOrderProjection(
         Guid id, IEdictTableRepository<OrderStatusRow> repository)
     {
         var row = await repository.GetAsync(id.ToString(), "status");
@@ -72,7 +72,7 @@ internal static class OrdersEndpoints
         return Results.Content(html, "text/html");
     }
 
-    private static IResult MapResult(EdictCommandResult result, Func<IResult> onAccepted) =>
+    static IResult MapResult(EdictCommandResult result, Func<IResult> onAccepted) =>
         result switch
         {
             EdictCommandResult.Accepted => onAccepted(),

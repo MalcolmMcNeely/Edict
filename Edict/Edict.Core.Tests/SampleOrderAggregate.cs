@@ -9,7 +9,7 @@ using MessagePack;
 namespace Edict.Core.Tests;
 
 // Sample-shaped consumer code. The generator runs over this assembly and emits
-// IOrderGrain, OrderGrain.Dispatch, the Orleans surrogates and AddEdict().
+// IOrderCommandHandler, OrderCommandHandler.Dispatch, the Orleans surrogates and AddEdict().
 
 [MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
@@ -75,7 +75,7 @@ public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : Ed
     public int Sequence { get; init; } = Sequence;
 }
 
-public partial class OrderGrain : EdictCommandHandlerGrain
+public partial class OrderCommandHandler : EdictCommandHandler
 {
     public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
     {

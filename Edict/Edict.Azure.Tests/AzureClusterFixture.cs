@@ -67,7 +67,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
 
     private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(AzureOrderGrain).Assembly)
+            .AddAssembly(typeof(AzureOrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
