@@ -101,6 +101,8 @@ public sealed class ApiFixture : IAsyncLifetime
                 options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureTableGrainStorage("edict-dedup", options =>
                 options.TableServiceClient = _tableServiceClient);
+            siloBuilder.AddAzureTableGrainStorage("edict-state", options =>
+                options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>

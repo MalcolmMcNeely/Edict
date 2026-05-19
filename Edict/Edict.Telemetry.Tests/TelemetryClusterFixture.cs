@@ -43,6 +43,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
+            siloBuilder.AddMemoryGrainStorage("edict-state");
             siloBuilder.AddMemoryStreams("edict");
         }
     }

@@ -70,6 +70,44 @@ public class EdictCommandGeneratorTests
         }
         """;
 
+    private const string StatefulConsumer = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Commands;
+        using Edict.Core.Commands;
+
+        namespace Sample;
+
+        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed class OrderState
+        {
+            public string Status { get; set; } = "Open";
+        }
+
+        public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
+        {
+            public Task<EdictCommandResult> Handle(PlaceOrder command)
+            {
+                State.Status = "Placed";
+                return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+            }
+        }
+        """;
+
+    [Fact]
+    public Task EdictCommandGenerator_ShouldEmitSpine_WhenHandlerDerivesFromGenericStatefulBase()
+    {
+        var generated = GeneratorTestHarness.Run(StatefulConsumer);
+
+        return Verify(generated);
+    }
+
     [Fact]
     public Task EdictCommandGenerator_ShouldEmitGrainInterfaceDispatchAndAddEdict()
     {

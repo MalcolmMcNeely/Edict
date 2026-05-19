@@ -82,6 +82,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
+            siloBuilder.AddMemoryGrainStorage("edict-state");
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>

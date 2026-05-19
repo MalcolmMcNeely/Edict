@@ -1,4 +1,6 @@
+using Edict.Contracts;
 using Edict.Contracts.Events;
+using Edict.Core.Outbox;
 using Edict.Telemetry;
 using Orleans.Providers;
 using Orleans.Streams;
@@ -6,21 +8,28 @@ using Orleans.Streams;
 namespace Edict.Core.Idempotency;
 
 /// <summary>
-/// Abstract base for every event-consuming grain. Owns the stream-observer
-/// callback, suppresses at-least-once redeliveries via a configurable bounded
-/// ring of recently seen <see cref="EdictEvent.EventId"/>s persisted in grain
-/// state, and commits progress only after the subclass's dispatch succeeds
-/// (ADR 0002). Shaped so <c>EventHandlerGrain</c>/<c>SagaGrain</c> can inherit
-/// without rework (next slices).
+/// Abstract generic base for every event-consuming grain (event handlers,
+/// projection builders, sagas — the shared inheritance root, brand-rule clause
+/// (b)). Owns the stream-observer callback, suppresses at-least-once
+/// redeliveries via a configurable bounded ring of recently seen
+/// <see cref="EdictEvent.EventId"/>s, and commits progress only after the
+/// subclass's dispatch succeeds (ADR 0002). The persisted document is the
+/// single-write <see cref="GrainEnvelope{TPayload}"/> over
+/// <see cref="IdempotencyPayload{TPayload}"/> <c>{ Ring, TPayload }</c>, so the
+/// dedup ring, consumer payload, and Outbox/DeadLetter slice all commit
+/// atomically in one write (ADR 0018).
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
-public abstract class EdictIdempotencyBase : Grain<IdempotencyState>
+public abstract class EdictIdempotencyBase<TPayload> : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>
+    where TPayload : new()
 {
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
     /// Override in the subclass to tune for expected redelivery volume.
     /// </summary>
     protected virtual int RingSize => 100;
+
+    IdempotencyState Ring => State.Payload.Ring;
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
@@ -70,32 +79,32 @@ public abstract class EdictIdempotencyBase : Grain<IdempotencyState>
 
     void EnsureRingInitialized()
     {
-        if (State.Ring.Length != RingSize)
+        if (Ring.Ring.Length != RingSize)
         {
-            State.Ring = new Guid[RingSize];
-            State.Head = 0;
-            State.Count = 0;
+            Ring.Ring = new Guid[RingSize];
+            Ring.Head = 0;
+            Ring.Count = 0;
         }
     }
 
     bool Contains(Guid eventId)
     {
-        if (State.Count < State.Ring.Length)
+        if (Ring.Count < Ring.Ring.Length)
         {
-            return Array.IndexOf(State.Ring, eventId, 0, State.Count) >= 0;
+            return Array.IndexOf(Ring.Ring, eventId, 0, Ring.Count) >= 0;
         }
 
-        return Array.IndexOf(State.Ring, eventId) >= 0;
+        return Array.IndexOf(Ring.Ring, eventId) >= 0;
     }
 
     void Commit(Guid eventId)
     {
-        State.Ring[State.Head] = eventId;
-        State.Head = (State.Head + 1) % RingSize;
+        Ring.Ring[Ring.Head] = eventId;
+        Ring.Head = (Ring.Head + 1) % RingSize;
 
-        if (State.Count < RingSize)
+        if (Ring.Count < RingSize)
         {
-            State.Count++;
+            Ring.Count++;
         }
     }
 
@@ -106,3 +115,11 @@ public abstract class EdictIdempotencyBase : Grain<IdempotencyState>
         span?.SetTag("edict.deduplicated", true);
     }
 }
+
+/// <summary>
+/// Payload-free convenience shim over <see cref="EdictIdempotencyBase{TPayload}"/>
+/// closed on <see cref="EdictUnit"/>. Event handlers and projection builders
+/// ride this so their consumer-visible signatures never sprout
+/// <c>&lt;EdictUnit&gt;</c>; a saga closes the generic base on its progress type.
+/// </summary>
+public abstract class EdictIdempotencyBase : EdictIdempotencyBase<EdictUnit>;

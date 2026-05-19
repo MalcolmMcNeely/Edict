@@ -1,24 +1,41 @@
 using System.Reflection;
+using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Core.Outbox;
 using Edict.Telemetry;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Orleans.Providers;
 
 namespace Edict.Core.Commands;
 
 /// <summary>
-/// Base for an aggregate grain. A Command is a direct grain call, so there is
-/// deliberately no deduplication here (dedup is for at-least-once stream
-/// delivery, which Commands never use — ADR 0004). The consumer writes a
+/// Base for an aggregate grain. The framework owns durable aggregate state: the
+/// persisted document is the single-write <see cref="GrainEnvelope{TState}"/>
+/// <c>{ TState, Outbox, DeadLetter }</c>, so a state change and its outbound
+/// effect commit atomically in one write (ADR 0018, amends ADR 0004). The
+/// consumer mutates <see cref="State"/> — its own <typeparamref name="TState"/>
+/// POCO — and never hand-persists fields. A Command is a direct grain call, so
+/// there is deliberately no deduplication here (dedup is for at-least-once
+/// stream delivery, which Commands never use — ADR 0004). The consumer writes a
 /// <c>partial</c> grain with one strongly typed <c>Handle(TCommand)</c> per
 /// command; the source generator emits the matching <see cref="DispatchAsync"/>
 /// override that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
 /// </summary>
-public abstract class EdictCommandHandler : Grain, IEdictCommandHandler
+[StorageProvider(ProviderName = "edict-state")]
+public abstract class EdictCommandHandler<TState> : Grain<GrainEnvelope<TState>>, IEdictCommandHandler
+    where TState : new()
 {
     List<EdictEvent>? _raisedEvents;
+
+    /// <summary>
+    /// The framework-owned durable aggregate state. The consumer mutates this
+    /// inside <c>Handle</c>; it is the payload slot of the persisted envelope,
+    /// committed atomically with the Outbox (ADR 0018).
+    /// </summary>
+    protected new TState State => base.State.Payload;
 
     /// <inheritdoc />
     public abstract Task<EdictCommandResult> DispatchAsync(EdictCommand command);
@@ -143,3 +160,12 @@ public abstract class EdictCommandHandler : Grain, IEdictCommandHandler
         return (streamAttr.Name, (Guid)routeKeyProp.GetValue(evt)!);
     }
 }
+
+/// <summary>
+/// Stateless-handler convenience shim over <see cref="EdictCommandHandler{TState}"/>
+/// closed on <see cref="EdictUnit"/>, so a handler that needs no aggregate state
+/// derives from a bare <c>EdictCommandHandler</c> without writing
+/// <c>&lt;EdictUnit&gt;</c> across hundreds of handlers. The Outbox/DeadLetter
+/// slice still exists on the envelope; only the payload is empty.
+/// </summary>
+public abstract class EdictCommandHandler : EdictCommandHandler<EdictUnit>;

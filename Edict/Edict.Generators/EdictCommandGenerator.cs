@@ -65,7 +65,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (grain.BaseType?.ToDisplayString(FullyQualified) != EdictWellKnownNames.EdictCommandHandlerFqn)
+        if (!DerivesFromCommandHandler(grain))
         {
             return null;
         }
@@ -189,6 +189,24 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             SpecialType.System_Decimal or
             SpecialType.System_Char
         || type.ToDisplayString(FullyQualified) == "global::System.Guid";
+
+    // Matches both the non-generic shim (EdictCommandHandler : EdictCommandHandler<EdictUnit>)
+    // and a consumer's own stateful base (EdictCommandHandler<MyState>). Mirrors the
+    // projection generator's OriginalDefinition base-chain walk; the generics-stripped
+    // FQN keeps the single ADR-0005 well-known-name comparison (no Edict assembly ref).
+    private static bool DerivesFromCommandHandler(INamedTypeSymbol type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics)
+                == EdictWellKnownNames.EdictCommandHandlerFqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static bool DerivesFromCommand(INamedTypeSymbol type)
     {
@@ -367,6 +385,9 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
     private static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
+
+    private static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 
     private sealed record GrainModel(
         string Namespace,

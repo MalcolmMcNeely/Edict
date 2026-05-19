@@ -1,0 +1,49 @@
+﻿[
+  {
+    NextAttemptUtc: 2026-05-19 12:00 +0
+  },
+  {
+    attemptCount: 1,
+    NextAttemptUtc: 2026-05-19 12:00:02 +0
+  },
+  {
+    attemptCount: 2,
+    NextAttemptUtc: 2026-05-19 12:00:04 +0
+  },
+  {
+    attemptCount: 3,
+    NextAttemptUtc: 2026-05-19 12:00:08 +0
+  },
+  {
+    attemptCount: 4,
+    NextAttemptUtc: 2026-05-19 12:00:16 +0
+  },
+  {
+    attemptCount: 5,
+    NextAttemptUtc: 2026-05-19 12:00:32 +0
+  },
+  {
+    attemptCount: 6,
+    NextAttemptUtc: 2026-05-19 12:01:04 +0
+  },
+  {
+    attemptCount: 7,
+    NextAttemptUtc: 2026-05-19 12:02:08 +0
+  },
+  {
+    attemptCount: 8,
+    NextAttemptUtc: 2026-05-19 12:04:16 +0
+  },
+  {
+    attemptCount: 9,
+    NextAttemptUtc: 2026-05-19 12:05 +0
+  },
+  {
+    attemptCount: 10,
+    NextAttemptUtc: 2026-05-19 12:05 +0
+  },
+  {
+    attemptCount: 11,
+    NextAttemptUtc: 2026-05-19 12:05 +0
+  }
+]

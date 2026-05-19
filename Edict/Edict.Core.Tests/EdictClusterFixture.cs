@@ -63,6 +63,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-dedup");
+            siloBuilder.AddMemoryGrainStorage("edict-state");
             siloBuilder.AddMemoryStreams("edict");
         }
     }

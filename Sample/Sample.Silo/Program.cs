@@ -37,6 +37,8 @@ var host = Host.CreateDefaultBuilder(args)
             options.TableServiceClient = tableServiceClient);
         silo.AddAzureTableGrainStorage("edict-dedup", options =>
             options.TableServiceClient = tableServiceClient);
+        silo.AddAzureTableGrainStorage("edict-state", options =>
+            options.TableServiceClient = tableServiceClient);
         silo.AddAzureQueueStreams("edict", configure =>
         {
             configure.ConfigureAzureQueue(opt => opt.Configure(o =>

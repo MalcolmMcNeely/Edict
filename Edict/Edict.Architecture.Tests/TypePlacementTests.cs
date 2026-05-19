@@ -104,6 +104,50 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // EdictUnit: the stateless-payload shim type — consumer-visible surface, ADR 0008 / 0017
+
+    [Fact]
+    public void EdictUnit_ShouldResideInEdictContracts()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictUnit$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts$");
+
+        rule.Check(Architecture);
+    }
+
+    // Outbox/DeadLetter engine: ADR 0018 / 0019 — folders Outbox/ and DeadLetter/,
+    // bare-named (no consumer types it; the engine stays internal).
+
+    [Fact]
+    public void OutboxTypes_ShouldResideInEdictCoreOutbox()
+    {
+        var rule = Types().That()
+            .HaveNameMatching("^(OutboxEntry|OutboxSlice|OutboxEffectKind|OutboxBackoff|GrainEnvelope)")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Outbox$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void DeadLetterEntry_ShouldResideInEdictCoreDeadLetter()
+    {
+        var rule = Types().That().HaveNameMatching("^DeadLetterEntry$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.DeadLetter$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
+    {
+        var rule = Types().That()
+            .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
+            .Should().HaveNameMatching("^(?!Edict)")
+            .AndShould().HaveNameMatching("^(?!IEdict)");
+
+        rule.Check(Architecture);
+    }
+
     // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014
 
     [Fact]
