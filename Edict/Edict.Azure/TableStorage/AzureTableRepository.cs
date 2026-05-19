@@ -11,25 +11,16 @@ namespace Edict.Azure.TableStorage;
 /// the substitution seam in <c>Edict.Contracts</c> (ADR 0008 / ADR 0012 / ADR 0015).
 /// Maps plain POCO rows via <see cref="AzureTablePocoMapper"/>.
 /// </summary>
-public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
+public sealed class AzureTableRepository<T>(TableServiceClient tableServiceClient, string tableName) : IEdictTableRepository<T>
     where T : class, new()
 {
-    private readonly TableClient _tableClient;
+    readonly TableClient _tableClient = tableServiceClient.GetTableClient(tableName);
 
-    public AzureTableRepository(TableServiceClient tableServiceClient, string tableName)
-    {
-        _tableClient = tableServiceClient.GetTableClient(tableName);
-    }
-
-    public async Task<T?> GetAsync(
-        string partitionKey,
-        string rowKey,
-        CancellationToken cancellationToken = default)
+    public async Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _tableClient.GetEntityAsync<TableEntity>(
-                partitionKey, rowKey, cancellationToken: cancellationToken);
+            var response = await _tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken);
             return AzureTablePocoMapper.FromTableEntity<T>(response.Value);
         }
         catch (RequestFailedException exception) when (exception.Status == 404)
@@ -38,9 +29,7 @@ public sealed class AzureTableRepository<T> : IEdictTableRepository<T>
         }
     }
 
-    public async Task<IReadOnlyList<T>> QueryPartitionAsync(
-        string partitionKey,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default)
     {
         var results = new List<T>();
         try

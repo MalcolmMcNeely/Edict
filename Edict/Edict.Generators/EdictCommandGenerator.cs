@@ -228,10 +228,10 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
-                    public override async {{EdictWellKnownNames.TaskOfEdictCommandResultFqn}} Dispatch(
+                    public override async {{EdictWellKnownNames.TaskOfEdictCommandResultFqn}} DispatchAsync(
                         global::Edict.Contracts.Commands.EdictCommand command)
                     {
-                        global::Edict.Contracts.Results.EdictCommandResult result;
+                        global::Edict.Contracts.Commands.EdictCommandResult result;
                         try
                         {
                             result = await (command switch
@@ -246,7 +246,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                             this.DiscardRaisedEvents();
                             throw;
                         }
-                        if (result is global::Edict.Contracts.Results.EdictCommandResult.Accepted)
+                        if (result is global::Edict.Contracts.Commands.EdictCommandResult.Accepted)
                             await this.FlushRaisedEventsAsync();
                         else
                             this.DiscardRaisedEvents();

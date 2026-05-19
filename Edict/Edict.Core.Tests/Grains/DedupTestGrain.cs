@@ -1,6 +1,5 @@
 using Edict.Contracts.Events;
-using Edict.Core.Dedup;
-
+using Edict.Core.Idempotency;
 using Orleans;
 using Orleans.Streams;
 
@@ -34,11 +33,11 @@ public sealed class DedupPublisherGrain : Grain, IDedupPublisherGrain
 }
 
 /// <summary>
-/// Minimal hand-written test subclass of <see cref="EdictEventDeduplicationGrain"/>.
+/// Minimal hand-written test subclass of <see cref="EdictEventIdempotentGrain"/>.
 /// Ring size is 3 to make eviction behaviour easy to exercise in tests.
 /// </summary>
 [ImplicitStreamSubscription("DedupTest")]
-public sealed class DedupTestGrain : EdictEventDeduplicationGrain, IDedupTestGrain
+public sealed class DedupTestGrain : EdictEventIdempotentGrain, IDedupTestGrain
 {
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;

@@ -1,17 +1,13 @@
 using Azure.Data.Tables;
-
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
-using Edict.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Generated;
-
+using Edict.Telemetry;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
-
 using Orleans.Serialization;
-
 using Sample.Api.Orders;
 using Sample.Silo.Orders;
 
@@ -52,4 +48,7 @@ var app = builder.Build();
 app.MapOrdersEndpoints();
 app.Run();
 
-public partial class Program { }
+namespace Sample.Api
+{
+    public partial class Program { }
+}

@@ -27,8 +27,7 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     /// class name (for disambiguation across the shared
     /// <see cref="IEdictCommandHandler"/> interface) and Guid key.
     /// </summary>
-    public (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(
-        EdictCommand command)
+    (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(EdictCommand command)
     {
         var route = GetRoute(command);
         return (route.GrainInterfaceType, route.GrainClassName, route.RouteKeySelector(command));
@@ -39,11 +38,6 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (!routes.TryGetValue(command.GetType(), out var route))
-        {
-            throw new UnroutableCommandException(command.GetType());
-        }
-
-        return route;
+        return !routes.TryGetValue(command.GetType(), out var route) ? throw new UnroutableCommandException(command.GetType()) : route;
     }
 }

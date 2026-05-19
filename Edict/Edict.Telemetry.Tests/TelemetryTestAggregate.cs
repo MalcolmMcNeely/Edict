@@ -1,6 +1,5 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
-using Edict.Contracts.Results;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 

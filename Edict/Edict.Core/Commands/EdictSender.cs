@@ -1,11 +1,7 @@
 using System.Diagnostics;
-
 using Edict.Contracts.Commands;
-using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
 using Edict.Telemetry;
-
-using Orleans;
 
 namespace Edict.Core.Commands;
 
@@ -27,8 +23,8 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
         var key = route.RouteKeySelector(command);
         var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
 
-        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand(
-            $"edict.command {command.GetType().Name}");
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"edict.command {command.GetType().Name}");
+
         if (activity is not null)
         {
             activity.SetEdictCommandTags(key);
@@ -38,7 +34,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
 
         try
         {
-            return await grain.Dispatch(command);
+            return await grain.DispatchAsync(command);
         }
         catch (Exception ex)
         {

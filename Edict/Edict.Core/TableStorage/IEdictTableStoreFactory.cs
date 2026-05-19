@@ -9,8 +9,5 @@ namespace Edict.Core.TableStorage;
 /// </summary>
 public interface IEdictTableStoreFactory
 {
-    Task<IEdictTableWriteStore<T>> CreateAsync<T>(
-        string tableName,
-        CancellationToken cancellationToken = default)
-        where T : class, new();
+    Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default) where T : class, new();
 }

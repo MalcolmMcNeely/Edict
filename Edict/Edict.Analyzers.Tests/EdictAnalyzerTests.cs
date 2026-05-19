@@ -12,7 +12,6 @@ public class EdictAnalyzerTests
         using System;
         using System.Threading.Tasks;
         using Edict.Contracts.Commands;
-        using Edict.Contracts.Results;
         using Edict.Core.Commands;
         namespace Sample;
         public sealed record PlaceOrder(Guid OrderId) : EdictCommand
@@ -44,7 +43,6 @@ public class EdictAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
-            using Edict.Contracts.Results;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
@@ -64,8 +62,8 @@ public class EdictAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 11 (0-indexed): "public class OrderGrain : EdictCommandHandlerGrain"
-        Assert.Equal(11, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 10 (0-indexed): "public class OrderGrain : EdictCommandHandlerGrain"
+        Assert.Equal(10, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
     [Fact]
@@ -143,7 +141,6 @@ public class EdictAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
-            using Edict.Contracts.Results;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
@@ -164,8 +161,8 @@ public class EdictAnalyzerTests
         Assert.Equal("EDICT002", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderGrain", d.GetMessage());
-        // Line 13 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
-        Assert.Equal(13, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 12 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
+        Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
     // ── EDICT003: [EdictRouteKey] must be exactly one Guid property ──────────────

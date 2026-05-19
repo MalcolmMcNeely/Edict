@@ -10,21 +10,12 @@ namespace Edict.Azure.TableStorage;
 /// Creates a <see cref="AzureTableWriteStore{T}"/> for each named table and ensures the
 /// table exists before the grain starts consuming events.
 /// </summary>
-public sealed class AzureTableWriteStoreFactory : IEdictTableStoreFactory
+public sealed class AzureTableWriteStoreFactory(TableServiceClient tableServiceClient) : IEdictTableStoreFactory
 {
-    private readonly TableServiceClient _tableServiceClient;
-
-    public AzureTableWriteStoreFactory(TableServiceClient tableServiceClient)
-    {
-        _tableServiceClient = tableServiceClient;
-    }
-
-    public async Task<IEdictTableWriteStore<T>> CreateAsync<T>(
-        string tableName,
-        CancellationToken cancellationToken = default)
+    public async Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
         where T : class, new()
     {
-        var tableClient = _tableServiceClient.GetTableClient(tableName);
+        var tableClient = tableServiceClient.GetTableClient(tableName);
         await tableClient.CreateIfNotExistsAsync(cancellationToken);
         return new AzureTableWriteStore<T>(tableClient);
     }

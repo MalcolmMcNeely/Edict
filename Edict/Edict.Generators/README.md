@@ -20,7 +20,7 @@ public partial interface I{GrainName} : global::Edict.Core.Grains.IEdictCommandH
 
 public partial class {GrainName} : I{GrainName}
 {
-    public override async Task<EdictCommandResult> Dispatch(EdictCommand command) { … }
+    public override async Task<EdictCommandResult> DispatchAsync(EdictCommand command) { … }
 }
 
 // {Namespace}.{CommandName}.Alias.g.cs  (one per handled command)

@@ -13,16 +13,10 @@ namespace Edict.Core.Projections;
 /// are two non-atomic stores, and the resulting crash-window double-apply is accepted
 /// until the Outbox ships.
 /// </summary>
-public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuilderGrain
+public abstract class EdictTableProjectionBuilderGrain<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilderGrain
     where T : class, new()
 {
-    private readonly IEdictTableStoreFactory _writeStoreFactory;
-    private IEdictTableWriteStore<T>? _writeStore;
-
-    protected EdictTableProjectionBuilderGrain(IEdictTableStoreFactory writeStoreFactory)
-    {
-        _writeStoreFactory = writeStoreFactory;
-    }
+    IEdictTableWriteStore<T>? _writeStore;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -51,7 +45,7 @@ public abstract class EdictTableProjectionBuilderGrain<T> : EdictProjectionBuild
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
-        _writeStore = await _writeStoreFactory.CreateAsync<T>(TableName, cancellationToken);
+        _writeStore = await writeStoreFactory.CreateAsync<T>(TableName, cancellationToken);
     }
 
     /// <summary>

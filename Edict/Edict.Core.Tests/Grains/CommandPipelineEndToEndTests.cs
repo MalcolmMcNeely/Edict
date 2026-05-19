@@ -1,4 +1,4 @@
-using Edict.Contracts.Results;
+using Edict.Contracts.Commands;
 
 namespace Edict.Core.Tests.Grains;
 

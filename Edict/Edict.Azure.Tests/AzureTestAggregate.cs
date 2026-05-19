@@ -1,9 +1,8 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
-using Edict.Contracts.Results;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
-using Edict.Core.Dedup;
+using Edict.Core.Idempotency;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
@@ -105,7 +104,7 @@ public sealed class AzureDedupPublisherGrain : Grain, IAzureDedupPublisherGrain
 }
 
 [ImplicitStreamSubscription("AzureDedupTest")]
-public sealed class AzureDedupTestGrain : EdictEventDeduplicationGrain, IAzureDedupTestGrain
+public sealed class AzureDedupTestGrain : EdictEventIdempotentGrain, IAzureDedupTestGrain
 {
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;

@@ -8,22 +8,18 @@ namespace Edict.Azure.TableStorage;
 internal sealed class AzureTableWriteStore<T> : IEdictTableWriteStore<T>
     where T : class, new()
 {
-    private readonly TableClient _tableClient;
+    readonly TableClient _tableClient;
 
     internal AzureTableWriteStore(TableClient tableClient)
     {
         _tableClient = tableClient;
     }
 
-    public async Task<T?> GetAsync(
-        string partitionKey,
-        string rowKey,
-        CancellationToken cancellationToken = default)
+    public async Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _tableClient.GetEntityAsync<TableEntity>(
-                partitionKey, rowKey, cancellationToken: cancellationToken);
+            var response = await _tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken);
             return AzureTablePocoMapper.FromTableEntity<T>(response.Value);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -32,11 +28,7 @@ internal sealed class AzureTableWriteStore<T> : IEdictTableWriteStore<T>
         }
     }
 
-    public Task UpsertAsync(
-        string partitionKey,
-        string rowKey,
-        T row,
-        CancellationToken cancellationToken = default)
+    public Task UpsertAsync(string partitionKey, string rowKey, T row, CancellationToken cancellationToken = default)
     {
         var entity = AzureTablePocoMapper.ToTableEntity(partitionKey, rowKey, row);
         return _tableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken);

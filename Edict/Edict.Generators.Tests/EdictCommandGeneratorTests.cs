@@ -9,7 +9,6 @@ public class EdictCommandGeneratorTests
         using System.Threading.Tasks;
 
         using Edict.Contracts.Commands;
-        using Edict.Contracts.Results;
         using Edict.Core.Commands;
 
         namespace Sample;
@@ -41,7 +40,6 @@ public class EdictCommandGeneratorTests
         using System.Threading.Tasks;
 
         using Edict.Contracts.Commands;
-        using Edict.Contracts.Results;
         using Edict.Contracts.Telemetry;
         using Edict.Core.Commands;
 

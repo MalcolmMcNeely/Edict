@@ -1,7 +1,5 @@
 using System.Reflection;
-
-using Edict.Contracts.Results;
-
+using Edict.Contracts.Commands;
 using static VerifyXunit.Verifier;
 
 namespace Edict.Contracts.Tests.Results;

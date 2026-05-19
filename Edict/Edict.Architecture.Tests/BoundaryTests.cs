@@ -2,7 +2,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 
 using Edict.Contracts.Commands;
-using Edict.Core.Dedup;
+using Edict.Core.Idempotency;
 using Edict.Telemetry;
 
 using Sample.Orders;
@@ -20,7 +20,7 @@ public class BoundaryTests
     private static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(EdictCommand).Assembly,
-            typeof(EdictEventDeduplicationGrain).Assembly,
+            typeof(EdictEventIdempotentGrain).Assembly,
             typeof(EdictDiagnostics).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
@@ -100,7 +100,7 @@ public class BoundaryTests
     [Fact]
     public void EdictCore_DoesNotDependOnAnyAzureSdkPackages()
     {
-        var coreAssembly = typeof(EdictEventDeduplicationGrain).Assembly;
+        var coreAssembly = typeof(EdictEventIdempotentGrain).Assembly;
         var referenced = coreAssembly.GetReferencedAssemblies();
         Assert.DoesNotContain(referenced,
             a => a.Name is not null

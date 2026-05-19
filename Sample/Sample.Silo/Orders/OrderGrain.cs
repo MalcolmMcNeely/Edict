@@ -1,4 +1,4 @@
-using Edict.Contracts.Results;
+using Edict.Contracts.Commands;
 using Edict.Core.Commands;
 
 namespace Sample.Silo.Orders;

@@ -13,6 +13,6 @@ A Command is an immutable `record` deriving from base `Command` (which carries o
 
 ## Consequences
 
-- The generated grain interface is "untyped" (`Dispatch(Command)`); type safety lives on the consumer's `Handle` overloads, not the marshalling surface. Acceptable — no human authors or reads that interface.
+- The generated grain interface is "untyped" (`DispatchAsync(Command)`); type safety lives on the consumer's `Handle` overloads, not the marshalling surface. Acceptable — no human authors or reads that interface.
 - An analyzer must error on: non-`partial` grain; `Handle` not returning `Task<CommandResult>`; zero/multiple `[RouteKey]` or a non-Guid `[RouteKey]`; two grain types claiming the same command (ambiguous routing must die at compile time).
 - Consumers must understand the two-channel failure split: `Rejected` for business, exception for infrastructure.

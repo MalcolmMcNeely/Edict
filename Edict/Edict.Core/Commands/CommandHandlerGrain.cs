@@ -1,17 +1,9 @@
-using System.Diagnostics;
 using System.Reflection;
-
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
-using Edict.Contracts.Results;
 using Edict.Telemetry;
-
 using FluentValidation;
-
 using Microsoft.Extensions.DependencyInjection;
-
-using Orleans;
-using Orleans.Streams;
 
 namespace Edict.Core.Commands;
 
@@ -20,16 +12,16 @@ namespace Edict.Core.Commands;
 /// deliberately no deduplication here (dedup is for at-least-once stream
 /// delivery, which Commands never use — ADR 0004). The consumer writes a
 /// <c>partial</c> grain with one strongly typed <c>Handle(TCommand)</c> per
-/// command; the source generator emits the matching <see cref="Dispatch"/>
+/// command; the source generator emits the matching <see cref="DispatchAsync"/>
 /// override that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
 /// </summary>
 public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
 {
-    private List<EdictEvent>? _raisedEvents;
+    List<EdictEvent>? _raisedEvents;
 
     /// <inheritdoc />
-    public abstract Task<EdictCommandResult> Dispatch(EdictCommand command);
+    public abstract Task<EdictCommandResult> DispatchAsync(EdictCommand command);
 
     /// <summary>
     /// Buffers an event to be flushed to its domain stream after the current
@@ -53,7 +45,9 @@ public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
     protected async Task FlushRaisedEventsAsync()
     {
         if (_raisedEvents is null || _raisedEvents.Count == 0)
+        {
             return;
+        }
 
         var provider = this.GetStreamProvider("edict");
 
@@ -67,8 +61,7 @@ public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
             var (streamName, routeKey) = GetEventStreamAddress(evt);
             var stream = provider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
-            using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-                evt.GetType().Name, parentContext);
+            using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(evt.GetType().Name, parentContext);
 
             var stamped = evt with
             {
@@ -102,23 +95,27 @@ public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
     {
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
-        if (validator is not null)
+        if (validator is null)
         {
-            var context = new ValidationContext<TCommand>(command);
-            var state = GetValidationState();
-            if (state is not null)
-                context.RootContextData[EdictValidationKeys.GrainState] = state;
+            return await handle();
+        }
 
-            var result = await validator.ValidateAsync(context);
-            if (!result.IsValid)
-            {
-                return new EdictCommandResult.Rejected(
-                    result.Errors
-                        .Select(static e => new EdictRejectionReason(
-                            e.ErrorCode ?? "validation_error",
-                            e.ErrorMessage))
-                        .ToArray());
-            }
+        var context = new ValidationContext<TCommand>(command);
+        var state = GetValidationState();
+        if (state is not null)
+        {
+            context.RootContextData[EdictValidationKeys.GrainState] = state;
+        }
+
+        var result = await validator.ValidateAsync(context);
+        if (!result.IsValid)
+        {
+            return new EdictCommandResult.Rejected(
+                result.Errors
+                    .Select(static e => new EdictRejectionReason(
+                        e.ErrorCode ?? "validation_error",
+                        e.ErrorMessage))
+                    .ToArray());
         }
 
         return await handle();
@@ -131,19 +128,17 @@ public abstract class EdictCommandHandlerGrain : Grain, IEdictCommandHandler
     /// </summary>
     protected virtual object? GetValidationState() => null;
 
-    private static (string StreamName, Guid RouteKey) GetEventStreamAddress(EdictEvent evt)
+    static (string StreamName, Guid RouteKey) GetEventStreamAddress(EdictEvent evt)
     {
         var type = evt.GetType();
 
         var streamAttr = (EdictStreamAttribute?)Attribute.GetCustomAttribute(type, typeof(EdictStreamAttribute))
-            ?? throw new InvalidOperationException(
-                $"Event {type.Name} is missing [EdictStream] — every concrete event must declare its domain stream (ADR 0011).");
+            ?? throw new InvalidOperationException($"Event {type.Name} is missing [EdictStream] — every concrete event must declare its domain stream (ADR 0011).");
 
         var routeKeyProp = Array.Find(
             type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
             p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
-            ?? throw new InvalidOperationException(
-                $"Event {type.Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
+            ?? throw new InvalidOperationException($"Event {type.Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
 
         return (streamAttr.Name, (Guid)routeKeyProp.GetValue(evt)!);
     }

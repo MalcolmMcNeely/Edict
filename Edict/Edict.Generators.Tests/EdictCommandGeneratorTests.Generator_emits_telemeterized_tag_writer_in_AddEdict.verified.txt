@@ -64,10 +64,10 @@ namespace Sample
 
     public partial class OrderGrain : IOrderGrain
     {
-        public override async global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.EdictCommandResult> Dispatch(
+        public override async global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> DispatchAsync(
             global::Edict.Contracts.Commands.EdictCommand command)
         {
-            global::Edict.Contracts.Results.EdictCommandResult result;
+            global::Edict.Contracts.Commands.EdictCommandResult result;
             try
             {
                 result = await (command switch
@@ -83,7 +83,7 @@ namespace Sample
                 this.DiscardRaisedEvents();
                 throw;
             }
-            if (result is global::Edict.Contracts.Results.EdictCommandResult.Accepted)
+            if (result is global::Edict.Contracts.Commands.EdictCommandResult.Accepted)
                 await this.FlushRaisedEventsAsync();
             else
                 this.DiscardRaisedEvents();

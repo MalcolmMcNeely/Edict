@@ -1,5 +1,4 @@
 using Edict.Contracts.Commands;
-using Edict.Contracts.Results;
 
 namespace Edict.Contracts.Sending;
 

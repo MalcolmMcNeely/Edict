@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 
 using Edict.Contracts.Commands;
-using Edict.Contracts.Results;
 using Edict.Contracts.Sending;
 using Edict.Core.Commands;
 

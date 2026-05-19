@@ -1,14 +1,9 @@
-using System.Diagnostics;
-
 using Edict.Contracts.Events;
 using Edict.Telemetry;
-
-using Orleans;
 using Orleans.Providers;
-using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Core.Dedup;
+namespace Edict.Core.Idempotency;
 
 /// <summary>
 /// Abstract base for every event-consuming grain. Owns the stream-observer
@@ -19,7 +14,7 @@ namespace Edict.Core.Dedup;
 /// without rework (next slices).
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
-public abstract class EdictEventDeduplicationGrain : Grain<DeduplicationState>
+public abstract class EdictEventIdempotentGrain : Grain<IdempotencyState>
 {
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
@@ -73,7 +68,7 @@ public abstract class EdictEventDeduplicationGrain : Grain<DeduplicationState>
         }
     }
 
-    private void EnsureRingInitialized()
+    void EnsureRingInitialized()
     {
         if (State.Ring.Length != RingSize)
         {
@@ -83,26 +78,31 @@ public abstract class EdictEventDeduplicationGrain : Grain<DeduplicationState>
         }
     }
 
-    private bool Contains(Guid eventId)
+    bool Contains(Guid eventId)
     {
         if (State.Count < State.Ring.Length)
+        {
             return Array.IndexOf(State.Ring, eventId, 0, State.Count) >= 0;
+        }
+
         return Array.IndexOf(State.Ring, eventId) >= 0;
     }
 
-    private void Commit(Guid eventId)
+    void Commit(Guid eventId)
     {
         State.Ring[State.Head] = eventId;
         State.Head = (State.Head + 1) % RingSize;
+
         if (State.Count < RingSize)
+        {
             State.Count++;
+        }
     }
 
-    private static void EmitDedupSpan(EdictEvent evt)
+    static void EmitDedupSpan(EdictEvent evt)
     {
         var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
-        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(
-            evt.GetType().Name, parentContext);
+        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(evt.GetType().Name, parentContext);
         span?.SetTag("edict.deduplicated", true);
     }
 }

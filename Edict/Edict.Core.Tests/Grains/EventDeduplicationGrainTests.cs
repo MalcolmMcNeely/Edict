@@ -1,10 +1,7 @@
 using System.Diagnostics;
-
-using Edict.Contracts.Events;
 using Edict.Telemetry;
-using Edict.Core.Tests.Grains;
 
-namespace Edict.Core.Tests.Events;
+namespace Edict.Core.Tests.Grains;
 
 [Collection(EdictClusterCollection.Name)]
 public sealed class EventDeduplicationGrainTests(EdictClusterFixture fixture)

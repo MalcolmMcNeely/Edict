@@ -15,16 +15,15 @@ internal static class EdictWellKnownNames
     public const string EdictRouteKeyAttributeFqn =
         "global::Edict.Contracts.Commands.EdictRouteKeyAttribute";
 
+    public const string EdictCommandResultFqn =
+        "global::Edict.Contracts.Commands.EdictCommandResult";
+
     // ── Edict.Contracts.Events ───────────────────────────────────────────────
     public const string EdictEventFqn =
         "global::Edict.Contracts.Events.EdictEvent";
 
     public const string EdictStreamAttributeFqn =
         "global::Edict.Contracts.Events.EdictStreamAttribute";
-
-    // ── Edict.Contracts.Results ──────────────────────────────────────────────
-    public const string EdictCommandResultFqn =
-        "global::Edict.Contracts.Results.EdictCommandResult";
 
     // ── Edict.Contracts.Telemetry ────────────────────────────────────────────
     public const string EdictTelemeterizedAttributeFqn =
@@ -53,5 +52,5 @@ internal static class EdictWellKnownNames
         "global::System.Threading.Tasks.Task";
 
     public const string TaskOfEdictCommandResultFqn =
-        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Results.EdictCommandResult>";
+        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult>";
 }

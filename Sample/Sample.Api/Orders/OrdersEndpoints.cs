@@ -1,4 +1,4 @@
-using Edict.Contracts.Results;
+using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 

@@ -1,7 +1,7 @@
-namespace Edict.Core.Dedup;
+namespace Edict.Core.Idempotency;
 
 [GenerateSerializer]
-public sealed class DeduplicationState
+public sealed class IdempotencyState
 {
     [Id(0)]
     public Guid[] Ring { get; set; } = [];

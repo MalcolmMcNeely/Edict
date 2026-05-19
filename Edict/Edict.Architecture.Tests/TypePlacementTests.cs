@@ -5,7 +5,7 @@ using Edict.Azure.TableStorage;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
-using Edict.Core.Dedup;
+using Edict.Core.Idempotency;
 using Edict.Core.Projections;
 
 using Sample.Orders;
@@ -24,7 +24,7 @@ public class TypePlacementTests
         .LoadAssemblies(
             typeof(AzureTableWriteStoreFactory).Assembly,
             typeof(EdictCommand).Assembly,
-            typeof(EdictEventDeduplicationGrain).Assembly,
+            typeof(EdictEventIdempotentGrain).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 

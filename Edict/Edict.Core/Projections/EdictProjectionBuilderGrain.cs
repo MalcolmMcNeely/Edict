@@ -1,9 +1,9 @@
 using Edict.Contracts.Events;
-using Edict.Core.Dedup;
+using Edict.Core.Idempotency;
 
 namespace Edict.Core.Projections;
 
-public abstract class EdictProjectionBuilderGrain : EdictEventDeduplicationGrain
+public abstract class EdictProjectionBuilderGrain : EdictEventIdempotentGrain
 {
     /// <summary>
     /// Called by the generated <c>DispatchAsync</c> for each matched event type.

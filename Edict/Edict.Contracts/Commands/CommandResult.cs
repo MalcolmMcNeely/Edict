@@ -1,6 +1,6 @@
 using MessagePack;
 
-namespace Edict.Contracts.Results;
+namespace Edict.Contracts.Commands;
 
 /// <summary>
 /// The outcome envelope a Command Handler returns. A closed hierarchy of

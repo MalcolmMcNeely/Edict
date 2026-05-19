@@ -8,9 +8,7 @@ namespace Edict.Contracts.Events;
 /// events rather than failing at compile time (ADR 0011).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public sealed class EdictStreamAttribute : Attribute
+public sealed class EdictStreamAttribute(string name) : Attribute
 {
-    public EdictStreamAttribute(string name) => Name = name;
-
-    public string Name { get; }
+    public string Name { get; } = name;
 }

@@ -1,7 +1,4 @@
 using Edict.Contracts.Commands;
-using Edict.Contracts.Results;
-
-using Orleans;
 
 namespace Edict.Core.Commands;
 
@@ -15,5 +12,5 @@ namespace Edict.Core.Commands;
 public interface IEdictCommandHandler : IGrainWithGuidKey
 {
     /// <summary>Routes a command to the matching <c>Handle</c> overload.</summary>
-    Task<EdictCommandResult> Dispatch(EdictCommand command);
+    Task<EdictCommandResult> DispatchAsync(EdictCommand command);
 }

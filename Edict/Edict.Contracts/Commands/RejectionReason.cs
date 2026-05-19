@@ -1,6 +1,6 @@
 using MessagePack;
 
-namespace Edict.Contracts.Results;
+namespace Edict.Contracts.Commands;
 
 /// <summary>
 /// A single structured reason a Command Handler rejected a command. The
