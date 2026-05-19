@@ -125,6 +125,18 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // The shared brand-prefixed grain-interface root for every event-consuming
+    // grain (sagas, projection builders) — brand clause (b), co-located with
+    // the base that implements it (#53).
+    [Fact]
+    public void IEdictEventConsumer_ShouldResideInEdictCoreIdempotency()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^IEdictEventConsumer$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Idempotency$");
+
+        rule.Check(Architecture);
+    }
+
     // EdictUnit: the stateless-payload shim type — consumer-visible surface, ADR 0008 / 0017
 
     [Fact]

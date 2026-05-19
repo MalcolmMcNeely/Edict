@@ -1,0 +1,9 @@
+﻿{
+  progress: {
+    Stage: Compensated
+  },
+  row: {
+    Status: Cancelled,
+    ItemCount: 1
+  }
+}

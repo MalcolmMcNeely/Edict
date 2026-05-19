@@ -7,6 +7,7 @@ using Edict.Core.Outbox;
 using MessagePack;
 
 using Orleans;
+using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Edict.Core.Tests.Grains;
@@ -49,13 +50,6 @@ public sealed class BlockIntakePublisher : Grain, IBlockIntakePublisher
 public sealed class BlockableConsumer : EdictIdempotencyBase, IBlockableConsumer
 {
     int _handledCount;
-
-    protected override Task SubscribeToStreamAsync(CancellationToken cancellationToken)
-    {
-        var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("BlockIntake", this.GetPrimaryKey()));
-        return stream.SubscribeAsync(OnStreamEventAsync, static _ => Task.CompletedTask);
-    }
 
     protected override Task<bool> DispatchAsync(EdictEvent evt)
     {

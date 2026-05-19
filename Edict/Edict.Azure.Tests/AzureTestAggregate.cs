@@ -111,13 +111,6 @@ public sealed class AzureDedupTestConsumer : EdictIdempotencyBase, IAzureDedupTe
 
     protected override int RingSize => 3;
 
-    protected override async Task SubscribeToStreamAsync(CancellationToken cancellationToken)
-    {
-        var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureDedupTest", this.GetPrimaryKey()));
-        await stream.SubscribeAsync(OnStreamEventAsync, static _ => Task.CompletedTask);
-    }
-
     protected override Task<bool> DispatchAsync(EdictEvent evt)
     {
         if (evt is not AzureDedupTestEvent dedupEvt)

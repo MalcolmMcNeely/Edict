@@ -16,12 +16,16 @@ sealed class EdictTestHarnessContext(
     Assembly consumerAssembly,
     EdictTimelineRecorder recorder,
     FakeTimeProvider clock,
-    InMemoryEdictTableStoreFactory tableStoreFactory)
+    InMemoryEdictTableStoreFactory tableStoreFactory,
+    InProcImplicitSubscriberMap subscriberMap,
+    ChaosOptions chaos)
 {
     public Assembly ConsumerAssembly => consumerAssembly;
     public EdictTimelineRecorder Recorder => recorder;
     public FakeTimeProvider Clock => clock;
     public InMemoryEdictTableStoreFactory TableStoreFactory => tableStoreFactory;
+    public InProcImplicitSubscriberMap SubscriberMap => subscriberMap;
+    public ChaosOptions Chaos => chaos;
 }
 
 static class EdictTestHarnessRegistry

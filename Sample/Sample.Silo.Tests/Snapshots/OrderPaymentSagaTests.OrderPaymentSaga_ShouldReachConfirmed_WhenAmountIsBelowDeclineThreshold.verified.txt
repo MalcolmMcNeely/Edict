@@ -1,0 +1,9 @@
+﻿{
+  progress: {
+    Stage: Confirmed
+  },
+  row: {
+    Status: Submitted,
+    ItemCount: 1
+  }
+}

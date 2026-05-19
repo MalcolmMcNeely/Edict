@@ -44,13 +44,6 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
 
     protected override int RingSize => 3;
 
-    protected override async Task SubscribeToStreamAsync(CancellationToken cancellationToken)
-    {
-        var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("DedupTest", this.GetPrimaryKey()));
-        await stream.SubscribeAsync(OnStreamEventAsync, static _ => Task.CompletedTask);
-    }
-
     protected override Task<bool> DispatchAsync(EdictEvent evt)
     {
         if (evt is not DedupTestEvent dedupEvt)

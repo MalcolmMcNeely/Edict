@@ -35,7 +35,7 @@ namespace Edict.Core.Saga;
 /// <c>Raise</c> (no analyzer, consistent with <c>Raise</c> having none).
 /// </para>
 /// </summary>
-public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>
+public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IEdictSaga
     where TProgress : new()
 {
     readonly SagaDispatchBuffer _dispatchBuffer = new();
@@ -47,6 +47,9 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>
     /// committed atomically with the dedup ring and any dispatched command.
     /// </summary>
     protected TProgress Progress => State.Payload.Payload;
+
+    /// <inheritdoc cref="IEdictSaga.GetEdictProgressAsync" />
+    public Task<object> GetEdictProgressAsync() => Task.FromResult<object>(Progress!);
 
     /// <summary>
     /// Issues the single Command this Event implies. Buffered now and staged as

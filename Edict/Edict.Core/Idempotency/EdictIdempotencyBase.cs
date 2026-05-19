@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans.Providers;
 using Orleans.Runtime;
 using Orleans.Streams;
+using Orleans.Streams.Core;
 
 namespace Edict.Core.Idempotency;
 
@@ -25,10 +26,27 @@ namespace Edict.Core.Idempotency;
 /// <see cref="IdempotencyPayload{TPayload}"/> <c>{ Ring, TPayload }</c>, so the
 /// dedup ring, consumer payload, and Outbox/DeadLetter slice all commit
 /// atomically in one write (ADR 0018).
+/// <para>
+/// Stream wiring is pure-implicit: the subclass carries
+/// <c>[ImplicitStreamSubscription]</c> (emitted by the generator or applied by
+/// hand on a test consumer), and the base implements
+/// <see cref="IAsyncObserver{T}"/> + <see cref="IStreamSubscriptionObserver"/> /
+/// <see cref="ResumeAsync"/> so the runtime binds delivery to the grain
+/// directly. Mixing explicit <c>SubscribeAsync</c> with implicit subscriptions
+/// — the trap that surfaced in #53 with memory streams and a referenced-assembly
+/// consumer — is no longer possible because the subclass no longer participates
+/// in stream wiring.
+/// </para>
 /// </summary>
 [StorageProvider(ProviderName = "edict-dedup")]
 public abstract class EdictIdempotencyBase<TPayload>
-    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>, IEdictDeadLetterAdmin, IRemindable, IOutboxHost
+    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>,
+        IEdictDeadLetterAdmin,
+        IRemindable,
+        IOutboxHost,
+        IAsyncObserver<EdictEvent>,
+        IStreamSubscriptionObserver,
+        IEdictEventConsumer
     where TPayload : new()
 {
     const string DrainReminderName = "edict-outbox-drain";
@@ -48,7 +66,6 @@ public abstract class EdictIdempotencyBase<TPayload>
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
-        await SubscribeToStreamAsync(cancellationToken);
 
         // Drain-on-activation (ADR 0018): recover anything a crash left between
         // the ring/outbox commit and the drain — the durable half of the
@@ -61,11 +78,36 @@ public abstract class EdictIdempotencyBase<TPayload>
     }
 
     /// <summary>
-    /// Implemented by the concrete subclass to subscribe to its domain stream,
-    /// passing <see cref="OnStreamEventAsync"/> as the callback. The base never
-    /// decides which stream or provider to use.
+    /// Pure-implicit stream wiring (the trap-free shape of the maintainer's
+    /// in-memory-stream guide): the runtime hands one handle per matching
+    /// <c>[ImplicitStreamSubscription]</c> and we <see cref="ResumeAsync"/>
+    /// against this grain so <see cref="OnNextAsync"/> receives delivery. The
+    /// previous hybrid (implicit attribute + explicit <c>SubscribeAsync</c> in
+    /// <c>OnActivateAsync</c>) is what stopped memory-stream delivery to
+    /// referenced-assembly consumers in #53.
     /// </summary>
-    protected abstract Task SubscribeToStreamAsync(CancellationToken cancellationToken);
+    public Task OnSubscribed(IStreamSubscriptionHandleFactory handleFactory) =>
+        handleFactory.Create<EdictEvent>().ResumeAsync(this);
+
+    /// <inheritdoc />
+    public Task OnNextAsync(EdictEvent item, StreamSequenceToken? token = null) =>
+        OnStreamEventAsync(item, token);
+
+    /// <inheritdoc />
+    public Task OnCompletedAsync() => Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task OnErrorAsync(Exception ex) => Task.CompletedTask;
+
+    /// <summary>
+    /// In-memory delivery seam (<see cref="IEdictEventConsumer.OnEdictEventAsync"/>):
+    /// the Test Framework's in-process stream-provider replacement invokes this
+    /// per publish, bypassing the Orleans memory-stream pulling agent that
+    /// stops delivering to referenced-assembly consumers (#53). Routes through
+    /// the same dedup-guarded callback as Orleans's real delivery so the engine
+    /// behaviour is identical under test and in production.
+    /// </summary>
+    public Task OnEdictEventAsync(EdictEvent evt) => OnStreamEventAsync(evt, null);
 
     /// <summary>
     /// Implemented by the concrete subclass (or a future generator) to dispatch
@@ -78,10 +120,10 @@ public abstract class EdictIdempotencyBase<TPayload>
     protected abstract Task<bool> DispatchAsync(EdictEvent evt);
 
     /// <summary>
-    /// The dedup-guarded stream callback. Subclasses pass this method to
-    /// <c>stream.SubscribeAsync</c> from <see cref="SubscribeToStreamAsync"/>.
+    /// The dedup-guarded stream callback. Invoked by <see cref="OnNextAsync"/>
+    /// for every event the runtime delivers via the implicit subscription.
     /// </summary>
-    protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken _)
+    protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
         // Block-intake (ADR 0019): a saturated DeadLetter slice must not
         // silently drop a redelivered event. Throw before the dedup check so
