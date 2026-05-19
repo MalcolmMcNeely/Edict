@@ -22,7 +22,7 @@ public class EdictWellKnownNamesParityTests
         typeof(GrainMustBePartialAnalyzer).Assembly;
 
     [Fact]
-    public void EdictWellKnownNames_type_exists_in_both_assemblies()
+    public void EdictWellKnownNames_ShouldExistInBothAssemblies()
     {
         var generatorsType = GeneratorsAssembly.GetType("Edict.Generators.EdictWellKnownNames");
         var analyzersType = AnalyzersAssembly.GetType("Edict.Generators.EdictWellKnownNames");
@@ -32,7 +32,7 @@ public class EdictWellKnownNamesParityTests
     }
 
     [Fact]
-    public void EdictWellKnownNames_constants_are_identical_in_generators_and_analyzers()
+    public void EdictWellKnownNames_ShouldHaveIdenticalConstantsInGeneratorsAndAnalyzers()
     {
         var generatorsType = GeneratorsAssembly.GetType("Edict.Generators.EdictWellKnownNames")!;
         var analyzersType = AnalyzersAssembly.GetType("Edict.Generators.EdictWellKnownNames")!;

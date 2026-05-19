@@ -29,7 +29,7 @@ public class EdictAnalyzerTests
     // ── EDICT001: grain must be partial ─────────────────────────────────────
 
     [Fact]
-    public void EDICT001_not_raised_when_grain_is_partial()
+    public void EDICT001_ShouldNotRaise_WhenGrainIsPartial()
     {
         var diagnostics = AnalyzerTestHarness.Run(ValidBase, new GrainMustBePartialAnalyzer());
 
@@ -37,7 +37,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT001_raised_on_class_identifier_when_grain_is_not_partial()
+    public void EDICT001_ShouldRaiseOnClassIdentifier_WhenGrainIsNotPartial()
     {
         const string source = """
             using System;
@@ -67,7 +67,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT001_not_raised_when_projection_builder_grain_is_partial()
+    public void EDICT001_ShouldNotRaise_WhenProjectionBuilderGrainIsPartial()
     {
         const string source = """
             using System;
@@ -94,7 +94,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT001_raised_on_class_identifier_when_projection_builder_grain_is_not_partial()
+    public void EDICT001_ShouldRaiseOnClassIdentifier_WhenProjectionBuilderGrainIsNotPartial()
     {
         const string source = """
             using System;
@@ -127,7 +127,7 @@ public class EdictAnalyzerTests
     // ── EDICT002: Handle must return Task<EdictCommandResult> ────────────────────
 
     [Fact]
-    public void EDICT002_not_raised_when_handle_returns_TaskOfEdictCommandResult()
+    public void EDICT002_ShouldNotRaise_WhenHandleReturnsTaskOfEdictCommandResult()
     {
         var diagnostics = AnalyzerTestHarness.Run(ValidBase, new HandleReturnTypeAnalyzer());
 
@@ -135,7 +135,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT002_raised_on_method_when_handle_returns_wrong_type()
+    public void EDICT002_ShouldRaiseOnMethod_WhenHandleReturnsWrongType()
     {
         const string source = """
             using System;
@@ -168,7 +168,7 @@ public class EdictAnalyzerTests
     // ── EDICT003: [EdictRouteKey] must be exactly one Guid property ──────────────
 
     [Fact]
-    public void EDICT003_not_raised_when_command_has_one_Guid_RouteKey()
+    public void EDICT003_ShouldNotRaise_WhenCommandHasOneGuidRouteKey()
     {
         var diagnostics = AnalyzerTestHarness.Run(ValidBase, new RouteKeyAnalyzer());
 
@@ -176,7 +176,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_raised_on_class_when_command_has_no_RouteKey()
+    public void EDICT003_ShouldRaiseOnClass_WhenCommandHasNoRouteKey()
     {
         const string source = """
             using System;
@@ -198,7 +198,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_raised_on_each_property_when_command_has_multiple_RouteKeys()
+    public void EDICT003_ShouldRaiseOnEachProperty_WhenCommandHasMultipleRouteKeys()
     {
         const string source = """
             using System;
@@ -221,7 +221,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_raised_on_property_when_RouteKey_is_not_Guid()
+    public void EDICT003_ShouldRaiseOnProperty_WhenRouteKeyIsNotGuid()
     {
         const string source = """
             using System;
@@ -244,7 +244,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_not_raised_when_event_has_one_Guid_RouteKey()
+    public void EDICT003_ShouldNotRaise_WhenEventHasOneGuidRouteKey()
     {
         const string source = """
             using System;
@@ -265,7 +265,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_raised_on_class_when_event_has_no_RouteKey()
+    public void EDICT003_ShouldRaiseOnClass_WhenEventHasNoRouteKey()
     {
         const string source = """
             using System;
@@ -288,7 +288,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT003_raised_on_property_when_event_RouteKey_is_not_Guid()
+    public void EDICT003_ShouldRaiseOnProperty_WhenEventRouteKeyIsNotGuid()
     {
         const string source = """
             using System;
@@ -315,7 +315,7 @@ public class EdictAnalyzerTests
     // ── EDICT004: each command must route to exactly one grain ───────────────
 
     [Fact]
-    public void EDICT004_not_raised_when_each_command_handled_by_one_grain()
+    public void EDICT004_ShouldNotRaise_WhenEachCommandHandledByOneGrain()
     {
         var diagnostics = AnalyzerTestHarness.Run(ValidBase, new DuplicateCommandRouteAnalyzer());
 
@@ -323,7 +323,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT004_raised_on_second_grain_Handle_when_command_is_duplicated()
+    public void EDICT004_ShouldRaiseOnSecondGrainHandle_WhenCommandIsDuplicated()
     {
         const string source = """
             using System;
@@ -362,7 +362,7 @@ public class EdictAnalyzerTests
     // ── EDICT006: concrete Command must be declared partial ─────────────────
 
     [Fact]
-    public void EDICT006_not_raised_when_command_is_partial()
+    public void EDICT006_ShouldNotRaise_WhenCommandIsPartial()
     {
         const string source = """
             using System;
@@ -381,7 +381,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT006_raised_on_type_when_concrete_command_is_not_partial()
+    public void EDICT006_ShouldRaiseOnType_WhenConcreteCommandIsNotPartial()
     {
         const string source = """
             using System;
@@ -404,7 +404,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT006_not_raised_on_abstract_command_subtype()
+    public void EDICT006_ShouldNotRaise_WhenAbstractCommandSubtype()
     {
         const string source = """
             using System;
@@ -421,7 +421,7 @@ public class EdictAnalyzerTests
     // ── EDICT007: concrete Event must be declared partial ───────────────────
 
     [Fact]
-    public void EDICT007_not_raised_when_event_is_partial()
+    public void EDICT007_ShouldNotRaise_WhenEventIsPartial()
     {
         const string source = """
             using System;
@@ -442,7 +442,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT007_not_raised_on_abstract_event_subtype()
+    public void EDICT007_ShouldNotRaise_WhenAbstractEventSubtype()
     {
         const string source = """
             using System;
@@ -457,7 +457,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT007_raised_on_type_when_concrete_event_is_not_partial()
+    public void EDICT007_ShouldRaiseOnType_WhenConcreteEventIsNotPartial()
     {
         const string source = """
             using System;
@@ -484,7 +484,7 @@ public class EdictAnalyzerTests
     // ── EDICT008: concrete Event must declare [Stream] ──────────────────────
 
     [Fact]
-    public void EDICT008_not_raised_when_event_has_Stream_attribute()
+    public void EDICT008_ShouldNotRaise_WhenEventHasStreamAttribute()
     {
         const string source = """
             using System;
@@ -505,7 +505,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT008_not_raised_on_abstract_event_subtype()
+    public void EDICT008_ShouldNotRaise_WhenAbstractEventSubtype()
     {
         const string source = """
             using System;
@@ -520,7 +520,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT008_raised_on_type_when_event_has_no_Stream_attribute()
+    public void EDICT008_ShouldRaiseOnType_WhenEventHasNoStreamAttribute()
     {
         const string source = """
             using System;
@@ -546,7 +546,7 @@ public class EdictAnalyzerTests
     // ── EDICT009: Projection Builder Handle must return Task with Event param ─
 
     [Fact]
-    public void EDICT009_not_raised_when_projection_Handle_returns_Task_with_Event_param()
+    public void EDICT009_ShouldNotRaise_WhenProjectionHandleReturnsTaskWithEventParam()
     {
         const string source = """
             using System;
@@ -573,7 +573,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT009_raised_on_method_when_projection_Handle_returns_wrong_type()
+    public void EDICT009_ShouldRaiseOnMethod_WhenProjectionHandleReturnsWrongType()
     {
         const string source = """
             using System;
@@ -605,7 +605,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT009_raised_on_method_when_projection_Handle_param_is_not_Event()
+    public void EDICT009_ShouldRaiseOnMethod_WhenProjectionHandleParamIsNotEvent()
     {
         const string source = """
             using System;
@@ -633,7 +633,7 @@ public class EdictAnalyzerTests
     // ── EDICT005: [EdictTelemeterized] must be on a primitive property ────────────
 
     [Fact]
-    public void EDICT005_not_raised_when_Telemeterized_is_on_primitive_property_of_event()
+    public void EDICT005_ShouldNotRaise_WhenTelemeterizedIsOnPrimitivePropertyOfEvent()
     {
         const string source = """
             using System;
@@ -654,7 +654,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT005_raised_on_property_when_Telemeterized_is_on_non_primitive_event_property()
+    public void EDICT005_ShouldRaiseOnProperty_WhenTelemeterizedIsOnNonPrimitiveEventProperty()
     {
         const string source = """
             using System;
@@ -680,7 +680,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT005_not_raised_when_Telemeterized_is_on_primitive_property()
+    public void EDICT005_ShouldNotRaise_WhenTelemeterizedIsOnPrimitiveProperty()
     {
         const string source = """
             using System;
@@ -702,7 +702,7 @@ public class EdictAnalyzerTests
     }
 
     [Fact]
-    public void EDICT005_raised_on_property_when_Telemeterized_is_on_non_primitive()
+    public void EDICT005_ShouldRaiseOnProperty_WhenTelemeterizedIsOnNonPrimitive()
     {
         const string source = """
             using System;
