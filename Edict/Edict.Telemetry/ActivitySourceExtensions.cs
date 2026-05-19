@@ -38,6 +38,15 @@ public static class ActivitySourceExtensions
             ActivityKind.Consumer,
             parentContext);
 
+    public static Activity? StartEdictCommandSend(
+        this ActivitySource source,
+        string commandTypeName,
+        ActivityContext parentContext)
+        => source.StartActivity(
+            $"edict.command.send {commandTypeName}",
+            ActivityKind.Producer,
+            parentContext);
+
     public static Activity? StartEdictTableUpsert(
         this ActivitySource source,
         string tableName,

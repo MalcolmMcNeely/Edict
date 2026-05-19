@@ -62,6 +62,9 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
+            // A saga's SendCommand effect drains in-silo through IEdictSender, so
+            // the silo (not just the client) needs the generated route map (ADR 0020).
+            siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

@@ -7,11 +7,8 @@ namespace Sample.Silo.Orders;
 
 [MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("Orders")]
-public sealed partial record OrderSubmittedEvent(Guid OrderId, decimal Amount) : EdictEvent
+public sealed partial record OrderConfirmedEvent(Guid OrderId) : EdictEvent
 {
     [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
-
-    /// <summary>Order total the OrderPayment saga forwards to <c>AuthorizePaymentCommand</c>.</summary>
-    public decimal Amount { get; init; } = Amount;
 }

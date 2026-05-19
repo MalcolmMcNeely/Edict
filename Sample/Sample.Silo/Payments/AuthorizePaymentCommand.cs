@@ -2,14 +2,13 @@ using Edict.Contracts.Commands;
 
 using MessagePack;
 
-namespace Sample.Silo.Orders;
+namespace Sample.Silo.Payments;
 
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed partial record SubmitOrderCommand(Guid OrderId, decimal Amount) : EdictCommand
+public sealed partial record AuthorizePaymentCommand(Guid OrderId, decimal Amount) : EdictCommand
 {
     [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
-    /// <summary>Order total the OrderPayment saga forwards to the payment aggregate.</summary>
     public decimal Amount { get; init; } = Amount;
 }

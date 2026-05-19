@@ -34,15 +34,31 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 [new EdictRejectionReason("no_items", "Order has no line items.")]));
 
         State.Status = OrderStatus.Submitted;
-        Raise(new OrderSubmittedEvent(command.OrderId));
+        Raise(new OrderSubmittedEvent(command.OrderId, command.Amount));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
+    // Driven by the OrderPayment saga on PaymentAuthorized — the happy-path
+    // terminal transition.
+    public Task<EdictCommandResult> Handle(ConfirmOrderCommand command)
+    {
+        if (State.Status == OrderStatus.Cancelled)
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+                [new EdictRejectionReason("order_cancelled", "Order has been cancelled.")]));
+
+        State.Status = OrderStatus.Confirmed;
+        Raise(new OrderConfirmedEvent(command.OrderId));
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+    }
+
+    // A submitted order stays cancellable — that is exactly the OrderPayment
+    // saga's compensation branch (PaymentDeclined → CancelOrder). Only a
+    // confirmed order is terminal and rejects cancellation.
     public Task<EdictCommandResult> Handle(CancelOrderCommand command)
     {
-        if (State.Status == OrderStatus.Submitted)
+        if (State.Status == OrderStatus.Confirmed)
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
-                [new EdictRejectionReason("already_submitted", "Order has already been submitted.")]));
+                [new EdictRejectionReason("already_confirmed", "Order has already been confirmed.")]));
 
         State.Status = OrderStatus.Cancelled;
         Raise(new OrderCancelledEvent(command.OrderId));

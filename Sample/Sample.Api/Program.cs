@@ -10,6 +10,7 @@ using OpenTelemetry.Trace;
 using Orleans.Serialization;
 using Sample.Api.Orders;
 using Sample.Silo.Orders;
+using Sample.Silo.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +41,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddSingleton(tableServiceClient);
     builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
         _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
+    builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
+        _ => new AzureTableRepository<OrderOutcomeRow>(tableServiceClient, "orderoutcome"));
 }
 
 builder.Services.AddEdict();

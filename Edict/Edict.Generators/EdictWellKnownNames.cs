@@ -47,6 +47,15 @@ internal static class EdictWellKnownNames
     public const string EdictProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictProjectionBuilder";
 
+    // ── Edict.Core.Saga ──────────────────────────────────────────────────────
+    // EdictSaga is generic; matched via a generics-stripped FQN base-chain walk
+    // (mirrors EdictCommandHandler), so this name carries no `1 arity suffix.
+    public const string EdictSagaFqn =
+        "global::Edict.Core.Saga.EdictSaga";
+
+    public const string IEdictSagaFqn =
+        "global::Edict.Core.Saga.IEdictSaga";
+
     // ── System ───────────────────────────────────────────────────────────────
     public const string TaskFqn =
         "global::System.Threading.Tasks.Task";

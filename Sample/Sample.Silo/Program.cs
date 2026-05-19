@@ -6,6 +6,7 @@ using Edict.Telemetry;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Generated;
 
 using OpenTelemetry;
 
@@ -40,6 +41,9 @@ var host = Host.CreateDefaultBuilder(args)
             options.TableServiceClient = tableServiceClient);
         silo.AddAzureTableGrainStorage("edict-state", options =>
             options.TableServiceClient = tableServiceClient);
+        // A saga's SendCommand effect drains in-silo through IEdictSender, so
+        // the silo needs the generated route map too (ADR 0020).
+        silo.Services.AddEdict();
         silo.Services.AddEdictOutbox();
         silo.UseAzureTableReminderService(options =>
             options.TableServiceClient = tableServiceClient);

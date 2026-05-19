@@ -128,12 +128,26 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <summary>
     /// Hook for a subclass to contribute durable side-effects staged during
     /// dispatch (the Table Projection Builder's <see cref="OutboxEffectKind.UpsertRow"/>
-    /// entry). Returning a non-empty list routes the ring commit through the
-    /// Outbox engine so the ring slot and the effect commit atomically in one
-    /// write. The default is empty — event handlers and the in-memory
-    /// projection builder keep the ring-only commit unchanged.
+    /// entry, a saga's <see cref="OutboxEffectKind.SendCommand"/> entry).
+    /// Returning a non-empty list routes the ring commit through the Outbox
+    /// engine so the ring slot and the effect commit atomically in one write.
+    /// The default is empty — event handlers and the in-memory projection
+    /// builder keep the ring-only commit unchanged.
     /// </summary>
     protected virtual IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries() => [];
+
+    /// <summary>
+    /// Called by the generated <c>DispatchAsync</c> for each matched event type.
+    /// The default passes the event directly to <paramref name="handler"/>.
+    /// <c>EdictTableProjectionBuilder&lt;T&gt;</c> wraps it with
+    /// load-apply-writeback (ADR 0012); <c>EdictSaga&lt;TProgress&gt;</c> wraps
+    /// it to reset the single outbound-command buffer per event (ADR 0020).
+    /// Lives on the shared idempotency root so every consumer role — handler,
+    /// projection builder, saga — shares one dispatch seam.
+    /// </summary>
+    protected virtual Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
+        where TEvent : EdictEvent
+        => handler(evt);
 
     /// <summary>
     /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry

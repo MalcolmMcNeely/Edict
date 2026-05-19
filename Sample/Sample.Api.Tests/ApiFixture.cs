@@ -18,7 +18,10 @@ using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
+using Edict.Generated;
+
 using Sample.Silo.Orders;
+using Sample.Silo.Payments;
 
 using Testcontainers.Azurite;
 
@@ -69,6 +72,9 @@ public sealed class ApiFixture : IAsyncLifetime
                     services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
                         _ => new AzureTableRepository<OrderStatusRow>(
                             _tableServiceClient, "ordersbystatus"));
+                    services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
+                        _ => new AzureTableRepository<OrderOutcomeRow>(
+                            _tableServiceClient, "orderoutcome"));
                 });
             });
 
@@ -104,6 +110,7 @@ public sealed class ApiFixture : IAsyncLifetime
                 options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureTableGrainStorage("edict-state", options =>
                 options.TableServiceClient = _tableServiceClient);
+            siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.UseAzureTableReminderService(options =>
                 options.TableServiceClient = _tableServiceClient);

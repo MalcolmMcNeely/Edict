@@ -63,19 +63,19 @@ public sealed class OrdersEndpointsTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
 
+    // A submitted order stays cancellable: that is exactly the OrderPayment
+    // saga's compensation branch (PaymentDeclined → CancelOrder). Only a
+    // confirmed order is terminal — covered by the workflow tests.
     [Fact]
-    public async Task CancelOrder_ShouldReturn422WithAlreadySubmittedReason_WhenAlreadySubmitted()
+    public async Task CancelOrder_ShouldReturn202_WhenAlreadySubmitted()
     {
         var orderId = await PlaceNewOrder();
         await fixture.Client.PostAsJsonAsync($"/orders/{orderId}/lines", new { sku = "ITEM-1", quantity = 1 });
-        await fixture.Client.PostAsync($"/orders/{orderId}/submit", null);
+        await fixture.Client.PostAsync($"/orders/{orderId}/submit?amount=5000", null);
 
         var response = await fixture.Client.PostAsync($"/orders/{orderId}/cancel", null);
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var reasons = await response.Content.ReadFromJsonAsync<List<Dictionary<string, string>>>();
-        Assert.Single(reasons!);
-        Assert.Equal("already_submitted", reasons![0]["code"]);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
 
     private async Task<Guid> PlaceNewOrder()

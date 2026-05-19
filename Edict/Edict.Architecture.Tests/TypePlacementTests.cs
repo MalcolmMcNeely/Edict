@@ -104,6 +104,27 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // Saga: EdictSaga<TProgress> + IEdictSaga are consumer-facing (brand-prefixed)
+    // and live in Edict.Core/Saga/; the dispatch-buffer mechanism is bare. ADR 0020.
+
+    [Fact]
+    public void EdictSaga_ShouldResideInEdictCoreSaga()
+    {
+        var rule = Classes().That().HaveNameStartingWith("EdictSaga")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Saga$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void IEdictSaga_ShouldResideInEdictCoreSaga()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^IEdictSaga$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Saga$");
+
+        rule.Check(Architecture);
+    }
+
     // EdictUnit: the stateless-payload shim type — consumer-visible surface, ADR 0008 / 0017
 
     [Fact]

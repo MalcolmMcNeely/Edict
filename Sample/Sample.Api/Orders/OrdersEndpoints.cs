@@ -3,6 +3,7 @@ using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 
 using Sample.Silo.Orders;
+using Sample.Silo.Payments;
 
 namespace Sample.Api.Orders;
 
@@ -15,6 +16,7 @@ internal static class OrdersEndpoints
         app.MapPost("/orders/{id:guid}/submit", SubmitOrder);
         app.MapPost("/orders/{id:guid}/cancel", CancelOrder);
         app.MapGet("/orders/{id:guid}/projection", GetOrderProjection);
+        app.MapGet("/orders/{id:guid}/outcome", GetOrderOutcome);
     }
 
     static async Task<IResult> PlaceOrder(IEdictSender sender)
@@ -31,9 +33,13 @@ internal static class OrdersEndpoints
         return MapResult(result, () => Results.Accepted());
     }
 
-    static async Task<IResult> SubmitOrder(Guid id, IEdictSender sender)
+    // The optional amount drives the OrderPayment saga's branch: at or below
+    // PaymentCommandHandler.DeclineThreshold authorizes (→ Confirmed), above it
+    // declines (→ compensation → Cancelled). Defaults into the authorize range
+    // so callers that don't care about the workflow keep working.
+    static async Task<IResult> SubmitOrder(Guid id, decimal? amount, IEdictSender sender)
     {
-        var result = await sender.Send(new SubmitOrderCommand(id));
+        var result = await sender.Send(new SubmitOrderCommand(id, amount ?? 100m));
         return MapResult(result, () => Results.Accepted());
     }
 
@@ -70,6 +76,15 @@ internal static class OrdersEndpoints
             """;
 
         return Results.Content(html, "text/html");
+    }
+
+    // Terminal outcome of the OrderPayment workflow (saga happy path /
+    // compensation), surfaced from the OrderOutcome projection.
+    static async Task<IResult> GetOrderOutcome(
+        Guid id, IEdictTableRepository<OrderOutcomeRow> repository)
+    {
+        var row = await repository.GetAsync(id.ToString(), "outcome");
+        return Results.Text(row?.Outcome ?? "Pending");
     }
 
     static IResult MapResult(EdictCommandResult result, Func<IResult> onAccepted) =>
