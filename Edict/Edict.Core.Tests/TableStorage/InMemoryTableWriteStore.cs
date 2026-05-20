@@ -15,9 +15,12 @@ public interface IInMemoryUpsert
     void UpsertObject(string partitionKey, string rowKey, object row);
 }
 
-public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IInMemoryUpsert
+public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
     where T : class, new()
 {
+    public Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<T>>(GetPartition(partitionKey));
+
     private readonly Dictionary<(string pk, string rk), T> _rows = new();
 
     public void UpsertObject(string partitionKey, string rowKey, object row) =>
@@ -91,4 +94,16 @@ public sealed class InMemoryTableStoreFactory : IEdictTableStoreFactory
     public InMemoryTableWriteStore<T> GetStore<T>(string tableName)
         where T : class, new() =>
         (InMemoryTableWriteStore<T>)_stores[$"{tableName}:{typeof(T).FullName}"];
+
+    public InMemoryTableWriteStore<T> GetOrCreateStore<T>(string tableName)
+        where T : class, new()
+    {
+        var key = $"{tableName}:{typeof(T).FullName}";
+        if (!_stores.TryGetValue(key, out var existing))
+        {
+            existing = new InMemoryTableWriteStore<T>();
+            _stores[key] = existing;
+        }
+        return (InMemoryTableWriteStore<T>)existing;
+    }
 }

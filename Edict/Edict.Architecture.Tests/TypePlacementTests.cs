@@ -197,15 +197,27 @@ public class TypePlacementTests
     [Fact]
     public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
     {
-        // EdictDurableConsumerBase is the deliberate exception: ADR 0017
-        // clause (b) names it as the new outer shared-inheritance root for
-        // the two consumer-facing grain bases, so it is brand-prefixed even
-        // though it lives in the Outbox folder alongside the engine seam.
+        // Two deliberate brand-prefixed exceptions in these folders:
+        // - EdictDurableConsumerBase: ADR 0017 clause (b) names it as the outer
+        //   shared-inheritance root for the consumer-facing grain bases.
+        // - EdictDeadLetterProjectionBuilder: the framework-shipped projection
+        //   grain whose role-named subclass naturally inherits the brand from
+        //   EdictTableProjectionBuilder (ADR 0022 — auto-wired by AddEdict()).
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
             .And().DoNotHaveNameStartingWith("EdictDurableConsumerBase")
+            .And().DoNotHaveNameStartingWith("EdictDeadLetterProjectionBuilder")
             .Should().HaveNameMatching("^(?!Edict)")
             .AndShould().HaveNameMatching("^(?!IEdict)");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictDeadLetterProjectionBuilder_ShouldResideInEdictCoreDeadLetter()
+    {
+        var rule = Classes().That().HaveNameStartingWith("EdictDeadLetterProjectionBuilder")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.DeadLetter$");
 
         rule.Check(Architecture);
     }

@@ -1,9 +1,12 @@
 using System.Reflection;
 
 using Edict.Contracts.Commands;
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Saga;
 using Edict.Core.Serialization;
@@ -180,6 +183,19 @@ public sealed class EdictTestApp : IAsyncDisposable
     static void InvokeAddEdict(IServiceCollection services, Assembly consumerAssembly) =>
         services.AddEdict(consumerAssembly);
 
+    // Plug the in-memory IEdictTableRepository<EdictDeadLetterEntry> behind
+    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade (ADR 0022).
+    // The store is held on the harness context, so silo (write) and client
+    // (read) share one backing dictionary — the test can call
+    // IEdictDeadLetterRepository.ListAllAsync() on the client and see the row
+    // the engine wrote on the silo.
+    static void RegisterInMemoryDeadLetterTable(IServiceCollection services, EdictTestHarnessContext ctx) =>
+        services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
+            (IEdictTableRepository<EdictDeadLetterEntry>)
+                ctx.TableStoreFactory
+                    .CreateAsync<EdictDeadLetterEntry>(EdictDeadLetterProjectionBuilder.DeadLetterPartition)
+                    .GetAwaiter().GetResult());
+
     // Re-point IEdictSender at the recording decorator wrapping the real sender,
     // so a saga's in-silo dispatched Command and a test's client Command share
     // one timeline. Last AddSingleton wins in MS DI.
@@ -202,6 +218,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
 
             InvokeAddEdict(siloBuilder.Services, ctx.ConsumerAssembly);
+            RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);
             siloBuilder.Services.AddEdictOutbox();
 
             // Swap the bare PublishEvent executor for the in-process dispatcher
@@ -241,6 +258,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
             InvokeAddEdict(clientBuilder.Services, ctx.ConsumerAssembly);
+            RegisterInMemoryDeadLetterTable(clientBuilder.Services, ctx);
             DecorateSender(clientBuilder.Services, ctx.Recorder);
         }
     }

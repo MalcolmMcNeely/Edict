@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using System.Reflection;
 
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +52,23 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
+
+        // Forensic dead-letter repository is auto-wired so the framework's
+        // no-silent-loss guarantee holds without consumer configuration
+        // (ADR 0022). The provider plugs IEdictTableRepository<EdictDeadLetterEntry>:
+        // Edict.Testing's in-memory store factory in tests, Edict.Azure's table
+        // repository in production. The framework-shipped projection grain
+        // (EdictDeadLetterProjectionBuilder) is discovered by Orleans via the
+        // Edict.Core assembly reference; no further registration is required.
+        // Factory-delegate registration so a host that wires the framework but
+        // has no dead-letter table seam still constructs its DI container —
+        // the dependency is only resolved when an operator actually queries
+        // the repository (mirrors UpsertRowExecutor / DeadLetterPromoter's lazy
+        // service-provider lookup).
+        services.AddSingleton<IEdictDeadLetterRepository>(sp =>
+            new TableBackedDeadLetterRepository(
+                sp.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
+
         return services;
     }
 

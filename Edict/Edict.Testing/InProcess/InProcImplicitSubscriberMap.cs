@@ -39,16 +39,26 @@ sealed class InProcImplicitSubscriberMap
         var consumerInterface = typeof(IEdictEventConsumer);
         var bindings = new List<(Type, IStreamNamespacePredicate)>();
 
-        foreach (var type in consumerAssembly.GetTypes())
-        {
-            if (type.IsAbstract || !consumerInterface.IsAssignableFrom(type))
-            {
-                continue;
-            }
+        // Scan the consumer assembly for its sagas/projections plus the
+        // framework assembly for shipped projections (the dead-letter
+        // projection, ADR 0022) — without this the in-process executor would
+        // skip the framework's own auto-wired subscribers.
+        var assemblies = new[] { consumerAssembly, consumerInterface.Assembly }
+            .Distinct();
 
-            foreach (var attr in type.GetCustomAttributes<ImplicitStreamSubscriptionAttribute>(inherit: false))
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetTypes())
             {
-                bindings.Add((type, attr.Predicate));
+                if (type.IsAbstract || !consumerInterface.IsAssignableFrom(type))
+                {
+                    continue;
+                }
+
+                foreach (var attr in type.GetCustomAttributes<ImplicitStreamSubscriptionAttribute>(inherit: false))
+                {
+                    bindings.Add((type, attr.Predicate));
+                }
             }
         }
 

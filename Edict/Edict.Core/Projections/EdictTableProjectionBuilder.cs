@@ -46,16 +46,21 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// <summary>
     /// The grain's primary key as a string. For per-aggregate projections this equals
     /// the event's <c>[EdictRouteKey]</c> Guid, making it the natural PartitionKey.
-    /// Global-singleton projections override to use a different strategy.
+    /// Global-singleton projections override to use a different strategy (e.g. the
+    /// built-in dead-letter projection collapses every entry into one fixed
+    /// partition for cheap fleet-wide reads, ADR 0022).
     /// </summary>
-    protected string DefaultPartitionKey => this.GetPrimaryKey().ToString();
+    protected virtual string DefaultPartitionKey => this.GetPrimaryKey().ToString();
 
     /// <summary>
     /// The row loaded (or freshly constructed) before each handler invocation.
     /// Modifications the handler makes to this instance are captured into the
     /// <see cref="OutboxEffectKind.UpsertRow"/> effect after the handler returns.
+    /// The setter is <c>protected</c> so a handler can replace the row wholesale
+    /// when the row type is immutable (e.g. a record with <c>init</c>-only
+    /// properties).
     /// </summary>
-    protected T CurrentRow { get; private set; } = new();
+    protected T CurrentRow { get; set; } = new();
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {

@@ -18,7 +18,7 @@ interface IInMemoryUpsert
 /// (partitionKey, rowKey) — a full-row replace — so the Outbox's at-least-once
 /// UpsertRow redelivery does not double-apply (ADR 0012/0018).
 /// </summary>
-sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IInMemoryUpsert
+sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
     where T : class, new()
 {
     readonly ConcurrentDictionary<(string pk, string rk), T> _rows = new();
@@ -37,6 +37,10 @@ sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IInMemoryUps
         _rows[(partitionKey, rowKey)] = row;
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<T>>(
+            _rows.Where(kv => kv.Key.pk == partitionKey).Select(kv => kv.Value).ToList());
 }
 
 /// <summary>
