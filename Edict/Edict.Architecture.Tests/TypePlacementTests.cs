@@ -318,6 +318,46 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // Claim-check contracts: ADR 0024 — universal wire-format envelope,
+    // append-only store seam, post-wrap overflow exception, and dead-letter
+    // failure-kind discriminator. All live in Edict.Contracts (Orleans-free).
+
+    [Fact]
+    public void EdictEventEnvelope_ShouldResideInEdictContractsEvents()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictEventEnvelope$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Events$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void IEdictClaimCheckStore_ShouldResideInEdictContractsClaimCheck()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^IEdictClaimCheckStore$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.ClaimCheck$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictEnvelopeOverflowException_ShouldResideInEdictContractsClaimCheck()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictEnvelopeOverflowException$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.ClaimCheck$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictDeadLetterFailureKind_ShouldResideInEdictContractsDeadLetter()
+    {
+        var rule = Types().That().HaveNameMatching("^EdictDeadLetterFailureKind$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.DeadLetter$");
+
+        rule.Check(Architecture);
+    }
+
     [Fact]
     public void AzureTableRepository_ShouldResideInEdictAzure()
     {

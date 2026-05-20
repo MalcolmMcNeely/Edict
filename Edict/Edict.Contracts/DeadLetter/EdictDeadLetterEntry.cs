@@ -67,4 +67,23 @@ public sealed record EdictDeadLetterEntry
     /// the originating event for RCA.
     /// </summary>
     public Guid? SourceEventId { get; init; }
+
+    /// <summary>
+    /// Claim-check store key for the inbound event whose blob could not
+    /// be fetched at the receiver (ADR 0024). Populated only when
+    /// <see cref="FailureKind"/> is
+    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/>; null on the
+    /// existing publisher-side <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
+    /// path. Lets operators click through to the (likely lifecycle-reaped)
+    /// blob to diagnose the misconfiguration.
+    /// </summary>
+    public string? ClaimCheckKey { get; init; }
+
+    /// <summary>
+    /// Discriminator over the two dead-letter failure modes (ADR 0024).
+    /// Defaults to <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
+    /// so every existing publisher-side promotion remains valid without
+    /// touching the call site.
+    /// </summary>
+    public EdictDeadLetterFailureKind FailureKind { get; init; } = EdictDeadLetterFailureKind.EffectFailure;
 }

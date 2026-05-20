@@ -16,7 +16,17 @@ internal static class AzureTablePocoMapper
         var entity = new TableEntity(partitionKey, rowKey);
         foreach (var prop in row.GetType().GetProperties(PublicInstance).Where(p => p.CanRead))
         {
-            entity[prop.Name] = prop.GetValue(row);
+            var value = prop.GetValue(row);
+            // Azure Tables rejects enum properties on POCO upsert; store the
+            // enum name as a string so operators see human-readable values and
+            // round-trip is symmetric with FromTableEntity below.
+            if (value is Enum enumValue)
+            {
+                entity[prop.Name] = enumValue.ToString();
+                continue;
+            }
+
+            entity[prop.Name] = value;
         }
 
         return entity;
@@ -34,10 +44,18 @@ internal static class AzureTablePocoMapper
 
             try
             {
-                prop.SetValue(instance, Convert.ChangeType(value, prop.PropertyType));
+                var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                if (targetType.IsEnum)
+                {
+                    prop.SetValue(instance, Enum.Parse(targetType, (string)value));
+                    continue;
+                }
+
+                prop.SetValue(instance, Convert.ChangeType(value, targetType));
             }
             catch (InvalidCastException) { }
             catch (FormatException) { }
+            catch (ArgumentException) { }
         }
         return instance;
     }
