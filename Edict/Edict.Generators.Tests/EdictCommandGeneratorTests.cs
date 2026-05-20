@@ -13,13 +13,13 @@ public class EdictCommandGeneratorTests
 
         namespace Sample;
 
-        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
+        public sealed partial record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
         {
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed record CancelOrder(Guid OrderId) : EdictCommand
+        public sealed partial record CancelOrder(Guid OrderId) : EdictCommand
         {
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
@@ -45,7 +45,7 @@ public class EdictCommandGeneratorTests
 
         namespace Sample;
 
-        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
+        public sealed partial record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
         {
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
@@ -54,7 +54,7 @@ public class EdictCommandGeneratorTests
             public string Sku { get; init; } = Sku;
         }
 
-        public sealed record CancelOrder(Guid OrderId) : EdictCommand
+        public sealed partial record CancelOrder(Guid OrderId) : EdictCommand
         {
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;
@@ -79,7 +79,7 @@ public class EdictCommandGeneratorTests
 
         namespace Sample;
 
-        public sealed record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
+        public sealed partial record PlaceOrder(Guid OrderId, string Sku) : EdictCommand
         {
             [EdictRouteKey]
             public Guid OrderId { get; init; } = OrderId;

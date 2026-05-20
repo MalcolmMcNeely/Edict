@@ -1,6 +1,10 @@
 using Edict.Contracts.Commands;
 using Edict.Core.Commands;
 
+using Sample.Contracts.Orders.Commands;
+using Sample.Contracts.Orders.Domain;
+using Sample.Contracts.Orders.Events;
+
 namespace Sample.Silo.Orders;
 
 // End-to-end demo of the inline-drain path: the handler mutates framework-owned

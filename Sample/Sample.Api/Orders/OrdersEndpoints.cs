@@ -2,8 +2,9 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 
-using Sample.Silo.Orders;
-using Sample.Silo.Payments;
+using Sample.Contracts.Orders.Commands;
+using Sample.Contracts.Orders.Projections;
+using Sample.Contracts.Payments.Projections;
 
 namespace Sample.Api.Orders;
 

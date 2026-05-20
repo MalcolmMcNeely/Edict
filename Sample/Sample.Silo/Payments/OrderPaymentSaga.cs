@@ -1,6 +1,9 @@
 using Edict.Core.Saga;
 
-using Sample.Silo.Orders;
+using Sample.Contracts.Orders.Commands;
+using Sample.Contracts.Orders.Events;
+using Sample.Contracts.Payments.Commands;
+using Sample.Contracts.Payments.Events;
 
 namespace Sample.Silo.Payments;
 

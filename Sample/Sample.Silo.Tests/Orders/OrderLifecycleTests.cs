@@ -1,5 +1,6 @@
 using Edict.Testing;
 
+using Sample.Contracts.Orders.Commands;
 using Sample.Silo.Orders;
 
 using Xunit;

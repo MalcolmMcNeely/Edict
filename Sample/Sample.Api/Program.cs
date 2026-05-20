@@ -9,8 +9,9 @@ using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Orleans.Serialization;
 using Sample.Api.Orders;
+using Sample.Contracts.Orders.Projections;
+using Sample.Contracts.Payments.Projections;
 using Sample.Silo.Orders;
-using Sample.Silo.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 

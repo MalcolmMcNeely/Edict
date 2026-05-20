@@ -2,15 +2,10 @@ using Edict.Contracts.Events;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
-using Sample.Silo.Orders;
+using Sample.Contracts.Orders.Events;
+using Sample.Contracts.Payments.Projections;
 
 namespace Sample.Silo.Payments;
-
-/// <summary>Read model for the terminal outcome of the OrderPayment workflow.</summary>
-public sealed class OrderOutcomeRow
-{
-    public string Outcome { get; set; } = "Pending";
-}
 
 /// <summary>
 /// Projects the OrderPayment saga's terminal order events into a queryable

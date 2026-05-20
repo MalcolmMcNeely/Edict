@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Orleans attribute set (AliasAttribute, GenerateSerializerAttribute) so
+             the Edict.Generators-emitted [Alias] partials compile here. -->
+        <PackageReference Include="Microsoft.Orleans.Sdk" Version="10.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../Edict/Edict.Contracts/Edict.Contracts.csproj" />
+        <!-- Generators run over this assembly so each command/event in this contracts
+             package carries an [Alias] partial without consumer ceremony. -->
+        <ProjectReference Include="../../Edict/Edict.Generators/Edict.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+        <ProjectReference Include="../../Edict/Edict.Analyzers/Edict.Analyzers.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

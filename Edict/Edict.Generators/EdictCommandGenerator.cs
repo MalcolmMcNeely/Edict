@@ -33,18 +33,27 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             .Where(static model => model is not null)
             .Select(static (model, _) => model!);
 
+        // Aliases are emitted by syntax-scoped discovery so the partial-record
+        // declaration always lands in the SAME assembly as the command type
+        // (cross-assembly partial declarations are not legal and would collide
+        // with the real type's FQN). Mirrors EdictEventGenerator's approach so
+        // a contracts assembly can carry its own commands.
+        var commandAliases = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is RecordDeclarationSyntax { BaseList: not null } candidate
+                    && candidate.Modifiers.Any(static m => m.ValueText == "partial")
+                    && !candidate.Modifiers.Any(static m => m.ValueText == "abstract"),
+                static (ctx, _) => MapCommandForAlias((RecordDeclarationSyntax)ctx.Node, ctx.SemanticModel))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
         context.RegisterSourceOutput(grains, static (spc, grain) =>
             spc.AddSource($"{grain.Namespace}.{grain.GrainName}.g.cs",
                 SourceText.From(EmitGrain(grain), Encoding.UTF8)));
 
-        context.RegisterSourceOutput(grains, static (spc, grain) =>
-        {
-            foreach (var command in grain.Commands)
-            {
-                spc.AddSource($"{command.Namespace}.{command.SimpleName}.Alias.g.cs",
-                    SourceText.From(EmitAlias(command), Encoding.UTF8));
-            }
-        });
+        context.RegisterSourceOutput(commandAliases, static (spc, command) =>
+            spc.AddSource($"{command.Namespace}.{command.SimpleName}.Alias.g.cs",
+                SourceText.From(EmitAlias(command), Encoding.UTF8)));
 
         context.RegisterSourceOutput(grains.Collect(), static (spc, allGrains) =>
         {
@@ -56,6 +65,21 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             spc.AddSource("Edict.Generated.AddEdict.g.cs",
                 SourceText.From(EmitAddEdict(allGrains), Encoding.UTF8));
         });
+    }
+
+    private static CommandModel? MapCommandForAlias(RecordDeclarationSyntax syntax, SemanticModel model)
+    {
+        if (model.GetDeclaredSymbol(syntax) is not INamedTypeSymbol command)
+        {
+            return null;
+        }
+
+        if (!DerivesFromCommand(command))
+        {
+            return null;
+        }
+
+        return MapCommand(command);
     }
 
     private static GrainModel? Map(ClassDeclarationSyntax syntax, SemanticModel model)

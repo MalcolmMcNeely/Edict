@@ -5,7 +5,7 @@ using Edict.Contracts.Commands;
 using Edict.Core.Idempotency;
 using Edict.Telemetry;
 
-using Sample.Orders;
+using Sample.Contracts.Orders.Commands;
 
 using Xunit;
 
@@ -39,7 +39,7 @@ public class BoundaryTests
     }
 
     [Fact]
-    public void SampleOrders_ShouldNotDependOnGrainBases()
+    public void SampleContracts_ShouldNotDependOnGrainBases()
     {
         var rule = Types().That()
             .ResideInAssembly(typeof(PlaceOrderCommand).Assembly.GetName().Name!)

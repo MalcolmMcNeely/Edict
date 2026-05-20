@@ -1,6 +1,10 @@
 using Edict.Contracts.Commands;
 using Edict.Core.Commands;
 
+using Sample.Contracts.Payments.Commands;
+using Sample.Contracts.Payments.Domain;
+using Sample.Contracts.Payments.Events;
+
 namespace Sample.Silo.Payments;
 
 /// <summary>

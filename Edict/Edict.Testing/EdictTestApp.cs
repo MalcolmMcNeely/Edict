@@ -7,6 +7,9 @@ using Edict.Core.Outbox;
 using Edict.Core.Saga;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Testing.Hosting;
+using Edict.Testing.InProcess;
+using Edict.Testing.Recording;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

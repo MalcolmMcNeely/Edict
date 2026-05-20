@@ -17,6 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />
         <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
         <!--

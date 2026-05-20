@@ -21,7 +21,7 @@
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">
-    <Project Path="../Sample/Sample.Orders/Sample.Orders.csproj" />
+    <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
     <Project Path="../Sample/Sample.Silo/Sample.Silo.csproj" />
     <Project Path="../Sample/Sample.Api/Sample.Api.csproj" />
     <Project Path="../Sample/Sample.Api.Tests/Sample.Api.Tests.csproj" />

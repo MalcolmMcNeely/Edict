@@ -20,8 +20,9 @@ using Orleans.TestingHost;
 
 using Edict.Generated;
 
+using Sample.Contracts.Orders.Projections;
+using Sample.Contracts.Payments.Projections;
 using Sample.Silo.Orders;
-using Sample.Silo.Payments;
 
 using Testcontainers.Azurite;
 

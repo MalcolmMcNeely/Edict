@@ -1,3 +1,5 @@
+using Sample.Contracts.Orders.Domain;
+
 namespace Sample.Silo.Orders;
 
 /// <summary>

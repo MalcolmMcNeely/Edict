@@ -8,7 +8,7 @@ using Edict.Contracts.TableStorage;
 using Edict.Core.Idempotency;
 using Edict.Core.Projections;
 
-using Sample.Orders;
+using Sample.Contracts.Orders.Commands;
 
 using Xunit;
 

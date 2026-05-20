@@ -40,6 +40,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 - Always use braces, even single-line `if`/`for`/`while` bodies (`csharp_prefer_braces`).
 - Don't pre-wrap lines; ~170 columns is fine. Gratuitous carriage returns hurt readability.
 - One top-level type per file. A file with many classes is a smell — split it.
+- When a project grows past a handful of files, fold by concept (or feature) into subfolders — see `Edict.Core` for the canonical example. Namespace follows folder.
 - Every `[GenerateSerializer]` type that is persisted or crosses the wire carries an `[Alias]`; never suppress `ORLEANS0010`. Commands use `[Alias(nameof(TheCommand))]` (ADR 0010). **Persisted grain state** uses a **frozen string literal** `[Alias]` (must survive a class rename — ADR 0017), not `nameof`.
 
 ## Testing (ADR 0016)
@@ -50,6 +51,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 - **`Edict.Architecture.Tests`** — `BoundaryTests` and `TypePlacementTests` boundary guards.
 - The **shipped Test Framework** (`Edict.Testing`) is **in-memory** (memory streams), boots the consumer's grains with Edict auto-wired, and exposes a single Verify-shaped timeline (Commands, Events, Projection/Saga state). It does **not** capture traces.
 - Strongly favour integration tests and **Verify** snapshot tests over long `Assert` chains. Never commit `.received.*` files.
+- Test projects mirror the folder layout of the project they test: one test file per source class, foldered the same way. A single grab-bag test file covering many classes is a smell.
 - Test names: `Subject_Should{Outcome}[_When{Condition}]`. `Subject` is the method under test when one exists, else a scenario noun (e.g. `EDICT001`, `CommandPipeline`). `_When…` only when there is a condition. If `Class.Method` would push a Verify snapshot filename past ~90 chars, the test scope is too broad — split it, don't truncate or hash.
 - Verify snapshots live in a flat `{TestProject}/Snapshots/` directory (a `ModuleInitializer` sets `Verifier.DerivePathInfo`). Contributors must `git config core.longpaths true` on Windows.
 - The Sample app uses **no in-memory infrastructure** — Azure Table grain storage (PubSub + dedup ring), Azure Queue streams, Azure Table projections; `Sample.AppHost` provisions Azurite. In-memory wiring belongs to the shipped Test Framework, never the sample.

@@ -1,3 +1,5 @@
+using Sample.Contracts.Payments.Domain;
+
 namespace Sample.Silo.Payments;
 
 /// <summary>

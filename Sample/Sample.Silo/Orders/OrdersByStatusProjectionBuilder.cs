@@ -2,6 +2,9 @@ using Edict.Contracts.Events;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
+using Sample.Contracts.Orders.Events;
+using Sample.Contracts.Orders.Projections;
+
 namespace Sample.Silo.Orders;
 
 public sealed partial class OrdersByStatusProjectionBuilder : EdictTableProjectionBuilder<OrderStatusRow>

@@ -1,5 +1,7 @@
 using System.Reflection;
 
+using Edict.Testing.Chaos;
+
 namespace Edict.Testing;
 
 /// <summary>

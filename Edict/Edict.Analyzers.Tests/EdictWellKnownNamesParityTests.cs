@@ -1,6 +1,6 @@
 using System.Reflection;
 
-using Edict.Analyzers;
+using Edict.Analyzers.Partial;
 using Edict.Generators;
 
 using Xunit;
