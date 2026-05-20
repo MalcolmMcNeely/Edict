@@ -8,8 +8,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Edict.Core.Outbox;
 
 /// <summary>
-/// Silo-side wiring for the Outbox engine: the drain engine, the per-kind
-/// effect executors, the consumer-tunable <see cref="EdictOutboxOptions"/>, the
+/// Silo-side wiring for the Outbox host: the per-kind effect executors, the
+/// consumer-tunable <see cref="EdictOutboxOptions"/>, the
 /// <see cref="TimeProvider"/> clock seam, and the dead-letter promoter
 /// (ADR 0018 / 0022). The shipped in-memory Test Framework substitutes a
 /// virtual clock by registering its own <see cref="TimeProvider"/> before this
@@ -31,7 +31,6 @@ public static class OutboxServiceCollectionExtensions
         services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, InvokeHandlerExecutor>();
         services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
-        services.AddSingleton<OutboxDrainEngine>();
         return services;
     }
 }

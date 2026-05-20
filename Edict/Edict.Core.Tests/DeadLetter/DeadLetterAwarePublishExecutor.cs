@@ -3,6 +3,7 @@ using Edict.Contracts.Events;
 using Edict.Core.Outbox;
 
 using Orleans.Serialization;
+using Orleans.Streams;
 
 namespace Edict.Core.Tests.DeadLetter;
 
@@ -19,12 +20,13 @@ sealed class DeadLetterAwarePublishExecutor(Serializer serializer) : IOutboxEffe
 
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
+    public Task ExecuteAsync(
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
         if (evt is EdictDeadLetterRaised)
         {
-            return _inner.ExecuteAsync(entry, host);
+            return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
         }
         throw new InvalidOperationException("simulated permanent publish failure");
     }

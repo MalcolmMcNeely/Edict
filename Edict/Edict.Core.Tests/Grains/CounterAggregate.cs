@@ -94,7 +94,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
         ReceiveReminder("edict-outbox-drain", new TickStatus());
 
     public Task<int> GetPendingOutboxCountAsync() =>
-        Task.FromResult(((IOutboxHost)this).Outbox.Pending.Count);
+        Task.FromResult(OutboxStateForProbe.Pending.Count);
 
     public async Task<bool> HasDrainReminderAsync() =>
         await this.GetReminder("edict-outbox-drain") is not null;

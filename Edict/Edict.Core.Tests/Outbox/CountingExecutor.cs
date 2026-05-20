@@ -1,11 +1,14 @@
+using Edict.Contracts.Events;
 using Edict.Core.Outbox;
+
+using Orleans.Streams;
 
 namespace Edict.Core.Tests.Outbox;
 
 /// <summary>
 /// Test seam: records every drained <see cref="OutboxEntry.EntryId"/> against
 /// the configured <see cref="OutboxEffectKind"/> so a test can assert that the
-/// drain engine reached its executor (or did not). The recorded list is
+/// drain host reached its executor (or did not). The recorded list is
 /// process-wide because the cluster builder constructs configurators via
 /// reflection and cannot capture closure state.
 /// </summary>
@@ -15,7 +18,8 @@ sealed class CountingExecutor(OutboxEffectKind kind) : IOutboxEffectExecutor
 
     public OutboxEffectKind Kind { get; } = kind;
 
-    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
+    public Task ExecuteAsync(
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
     {
         lock (Executed)
         {

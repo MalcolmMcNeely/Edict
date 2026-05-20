@@ -85,7 +85,6 @@ public sealed class DeadLetterPromoteClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, SendCommandExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
-            siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.Services.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

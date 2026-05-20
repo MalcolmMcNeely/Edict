@@ -9,17 +9,18 @@ using Edict.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Serialization;
+using Orleans.Streams;
 
 using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
-// InvokeHandlerExecutor unit test against a fake IOutboxHost (ADR 0023). The
-// executor deserialises the entry's EdictEvent payload and routes it back into
-// the host grain via IOutboxHost.DispatchEventAsync — the seam the engine
-// drives the host's idempotent-consumer dispatch through. No grain, no
-// cluster, no backend: the engine's host adapter is replaced by a fake so the
-// executor's logic body is the only thing under test.
+// InvokeHandlerExecutor unit test against the deferred-dispatch callback the
+// composed OutboxHost wires through to the executor (ADR 0023). The executor
+// deserialises the entry's EdictEvent payload and invokes the callback — the
+// seam the host's idempotent-consumer dispatch hangs on. No grain, no
+// cluster, no backend: the callback is replaced by a fake so the executor's
+// logic body is the only thing under test.
 public sealed class InvokeHandlerExecutorTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -39,12 +40,12 @@ public sealed class InvokeHandlerExecutorTests
             Kind = OutboxEffectKind.InvokeHandler,
             Payload = Serializer.SerializeToArray<EdictEvent>(evt),
         };
-        var host = new FakeInvokeHandlerHost();
+        var dispatched = new List<EdictEvent>();
 
         var executor = new InvokeHandlerExecutor(Serializer);
-        await executor.ExecuteAsync(entry, host);
+        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; });
 
-        await Verify(host.Dispatched).DontScrubGuids();
+        await Verify(dispatched).DontScrubGuids();
     }
 
     [Fact]
@@ -78,10 +79,9 @@ public sealed class InvokeHandlerExecutorTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        var host = new FakeInvokeHandlerHost();
         var executor = new InvokeHandlerExecutor(Serializer);
 
-        await executor.ExecuteAsync(entry, host);
+        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask);
 
         var span = Assert.Single(stopped);
         Assert.Equal("edict.event.handle OrderPlacedEvent", span.OperationName);
@@ -104,11 +104,12 @@ public sealed class InvokeHandlerExecutorTests
             Kind = OutboxEffectKind.InvokeHandler,
             Payload = Serializer.SerializeToArray<EdictEvent>(evt),
         };
-        var host = new FakeInvokeHandlerHost { ThrowOnDispatch = true };
 
         var executor = new InvokeHandlerExecutor(Serializer);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(entry, host));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            executor.ExecuteAsync(entry, NullStreamProvider.Instance,
+                _ => throw new InvalidOperationException("simulated dispatch failure")));
     }
 
     static Serializer BuildSerializer()
@@ -122,29 +123,13 @@ public sealed class InvokeHandlerExecutorTests
         return services.BuildServiceProvider().GetRequiredService<Serializer>();
     }
 
-    sealed class FakeInvokeHandlerHost : IOutboxHost
+    sealed class NullStreamProvider : IStreamProvider
     {
-        public List<EdictEvent> Dispatched { get; } = [];
-        public bool ThrowOnDispatch { get; init; }
+        public static readonly NullStreamProvider Instance = new();
+        public string Name => "edict";
+        public bool IsRewindable => false;
 
-        public OutboxSlice Outbox { get; set; } = new();
-        public Orleans.Streams.IStreamProvider StreamProvider => null!;
-        public string GrainKey => "00000000-0000-0000-0000-000000000000";
-        public string GrainTypeName => "FakeInvokeHandlerHost";
-
-        public Task CommitAsync() => Task.CompletedTask;
-        public Task RegisterDrainReminderAsync() => Task.CompletedTask;
-        public Task UnregisterDrainReminderAsync() => Task.CompletedTask;
-
-        public Task DispatchEventAsync(EdictEvent evt)
-        {
-            if (ThrowOnDispatch)
-            {
-                throw new InvalidOperationException("simulated dispatch failure");
-            }
-
-            Dispatched.Add(evt);
-            return Task.CompletedTask;
-        }
+        public IAsyncStream<T> GetStream<T>(StreamId streamId) =>
+            throw new NotSupportedException("NullStreamProvider has no streams.");
     }
 }

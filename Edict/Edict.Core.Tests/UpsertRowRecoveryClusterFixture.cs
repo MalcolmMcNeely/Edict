@@ -74,7 +74,6 @@ public sealed class UpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableUpsertRowExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
-            siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");

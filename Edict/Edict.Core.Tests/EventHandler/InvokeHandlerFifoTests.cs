@@ -1,3 +1,4 @@
+using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
@@ -5,15 +6,18 @@ using Edict.Core.Outbox;
 
 using Microsoft.Extensions.Time.Testing;
 
+using Orleans.Runtime;
+using Orleans.Streams;
+
 using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
 // FIFO stop-at-head for InvokeHandler entries per host grain (ADR 0023): a
 // transient failure on the head InvokeHandler entry blocks subsequent entries
-// from running until backoff retries succeed. The engine is kind-agnostic for
+// from running until backoff retries succeed. The host is kind-agnostic for
 // FIFO, so this exercises the same stop-at-head behaviour proven for
-// PublishEvent in OutboxDrainEngineTests against the new InvokeHandler kind.
+// PublishEvent in OutboxHostTests against the new InvokeHandler kind.
 public sealed class InvokeHandlerFifoTests
 {
     static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
@@ -32,25 +36,39 @@ public sealed class InvokeHandlerFifoTests
     {
         var clock = new FakeTimeProvider(Now);
         var executor = new ThrowingInvokeHandlerExecutor();
-        var host = new FakeHost
+        var state = new FakePersistentState
         {
-            Outbox = new OutboxSlice()
-                .Enqueue(InvokeHandlerEntry(EntryA))
-                .Enqueue(InvokeHandlerEntry(EntryB)),
+            State = new GrainEnvelope<EdictUnit>
+            {
+                Outbox = new OutboxSlice()
+                    .Enqueue(InvokeHandlerEntry(EntryA))
+                    .Enqueue(InvokeHandlerEntry(EntryB)),
+            },
         };
+        var reminders = new FakeReminderRegistrar();
         var options = new EdictOutboxOptions
         {
             MaxAttempts = 5,
             BaseDelay = TimeSpan.FromSeconds(2),
             JitterFraction = 0,
         };
-        var engine = new OutboxDrainEngine([executor], clock, options, new UnusedPromoter());
+        var host = new OutboxHost<EdictUnit>(
+            state,
+            FakeStreamProvider.Instance,
+            reminders,
+            [executor],
+            options,
+            clock,
+            new UnusedPromoter(),
+            grainKey: "00000000-0000-0000-0000-000000000000",
+            grainTypeName: "FakeHost",
+            deferredDispatch: _ => Task.CompletedTask);
 
-        await engine.DrainAsync(host);
+        await host.DrainAsync();
 
         // EntryB never attempted: stop-at-head left it untouched behind the
         // backed-off head.
-        await Verify(new { executor.Attempts, executor.Attempted, host.Outbox })
+        await Verify(new { executor.Attempts, executor.Attempted, host.State.Outbox })
             .DontScrubGuids().DontScrubDateTimes();
     }
 
@@ -61,7 +79,8 @@ public sealed class InvokeHandlerFifoTests
 
         public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
-        public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
+        public Task ExecuteAsync(
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
         {
             Attempted.Add(entry.EntryId);
             throw new InvalidOperationException("simulated transient handler failure");
@@ -75,18 +94,32 @@ public sealed class InvokeHandlerFifoTests
             => throw new InvalidOperationException("No promotion expected at default MaxAttempts after one failure.");
     }
 
-    sealed class FakeHost : IOutboxHost
+    sealed class FakePersistentState : IPersistentState<GrainEnvelope<EdictUnit>>
     {
-        public List<string> Log { get; } = [];
-        public OutboxSlice Outbox { get; set; } = new();
-        public Orleans.Streams.IStreamProvider StreamProvider => null!;
-        public string GrainKey => "00000000-0000-0000-0000-000000000000";
-        public string GrainTypeName => "FakeHost";
+        public GrainEnvelope<EdictUnit> State { get; set; } = new();
+        public string Etag => "";
+        public bool RecordExists => true;
 
-        public Task CommitAsync() => Task.CompletedTask;
-        public Task RegisterDrainReminderAsync() => Task.CompletedTask;
-        public Task UnregisterDrainReminderAsync() => Task.CompletedTask;
-        public Task DispatchEventAsync(EdictEvent evt) =>
-            throw new NotSupportedException("FakeHost does not route deferred dispatch.");
+        public Task WriteStateAsync() => Task.CompletedTask;
+        public Task ReadStateAsync() => Task.CompletedTask;
+        public Task ClearStateAsync() => Task.CompletedTask;
+    }
+
+    sealed class FakeReminderRegistrar : IReminderRegistrar
+    {
+        public Task RegisterOrUpdateReminderAsync(string name, TimeSpan dueTime, TimeSpan period) =>
+            Task.CompletedTask;
+
+        public Task UnregisterReminderAsync(string name) => Task.CompletedTask;
+    }
+
+    sealed class FakeStreamProvider : IStreamProvider
+    {
+        public static readonly FakeStreamProvider Instance = new();
+        public string Name => "edict";
+        public bool IsRewindable => false;
+
+        public IAsyncStream<T> GetStream<T>(StreamId streamId) =>
+            throw new NotSupportedException("FakeStreamProvider has no streams.");
     }
 }

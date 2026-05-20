@@ -197,15 +197,13 @@ public class TypePlacementTests
     [Fact]
     public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
     {
-        // Two deliberate brand-prefixed exceptions in these folders:
-        // - EdictDurableConsumerBase: ADR 0017 clause (b) names it as the outer
-        //   shared-inheritance root for the consumer-facing grain bases.
-        // - EdictDeadLetterProjectionBuilder: the framework-shipped projection
-        //   grain whose role-named subclass naturally inherits the brand from
-        //   EdictTableProjectionBuilder (ADR 0022 — auto-wired by AddEdict()).
+        // EdictDeadLetterProjectionBuilder is the deliberate brand-prefixed
+        // exception: the framework-shipped projection grain whose role-named
+        // subclass naturally inherits the brand from EdictTableProjectionBuilder
+        // (ADR 0022 — auto-wired by AddEdict()). The pre-refactor
+        // EdictDurableConsumerBase exception is gone (#69 — composition).
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
-            .And().DoNotHaveNameStartingWith("EdictDurableConsumerBase")
             .And().DoNotHaveNameStartingWith("EdictDeadLetterProjectionBuilder")
             .Should().HaveNameMatching("^(?!Edict)")
             .AndShould().HaveNameMatching("^(?!IEdict)");
@@ -222,13 +220,75 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
+    // #69: composition refactor — the intermediate base, the host seam, and
+    // the standalone drain engine are gone. The replacement OutboxHost lives
+    // as a field on each consumer-facing root.
+
     [Fact]
-    public void EdictDurableConsumerBase_ShouldResideInEdictCoreOutbox()
+    public void OutboxHost_ShouldResideInEdictCoreOutboxAsInternalBareNamed()
     {
-        var rule = Classes().That().HaveNameStartingWith("EdictDurableConsumerBase")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Outbox$");
+        var rule = Classes().That().HaveNameStartingWith("OutboxHost")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Outbox$")
+            .AndShould().NotBePublic()
+            .AndShould().HaveNameMatching("^(?!Edict)");
 
         rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void OutboxDrainEngine_ShouldNotExist()
+    {
+        // Algorithm folded into OutboxHost; the engine/host split is gone.
+        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var match = coreAssembly.GetTypes()
+            .FirstOrDefault(t => t.Name == "OutboxDrainEngine");
+        Assert.Null(match);
+    }
+
+    [Fact]
+    public void IOutboxHost_ShouldNotExist()
+    {
+        // The interface that served only OutboxDrainEngine's testability is
+        // gone now that the host *is* the testable thing.
+        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var match = coreAssembly.GetTypes()
+            .FirstOrDefault(t => t.Name == "IOutboxHost");
+        Assert.Null(match);
+    }
+
+    [Fact]
+    public void EdictDurableConsumerBase_ShouldNotExist()
+    {
+        // The intermediate shared root is gone; each consumer-facing root
+        // owns its own ~30-40 line lifecycle shell.
+        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var match = coreAssembly.GetTypes()
+            .FirstOrDefault(t => t.Name.StartsWith("EdictDurableConsumerBase", StringComparison.Ordinal));
+        Assert.Null(match);
+    }
+
+    [Fact]
+    public void ConsumerFacingRoots_ShouldNotExposeOutboxHostInPublicOrProtectedSurface()
+    {
+        // OutboxHost is a composed internal — no consumer surface (public OR
+        // protected, since protected is reachable by consumer subclasses)
+        // should leak the type. The framework bases hold it as a private
+        // field; test probes can reach the underlying envelope via the
+        // internal OutboxStateForProbe accessor.
+        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var leakingMembers = coreAssembly.GetExportedTypes()
+            .SelectMany(t =>
+                t.GetProperties(System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Instance)
+                    .Where(p =>
+                        (p.GetMethod is { IsFamily: true } or { IsFamilyOrAssembly: true } or { IsPublic: true })
+                        && p.PropertyType.IsGenericType
+                        && p.PropertyType.GetGenericTypeDefinition().Name.StartsWith("OutboxHost", StringComparison.Ordinal))
+                    .Select(p => $"{t.FullName}.{p.Name}"))
+            .ToList();
+
+        Assert.Empty(leakingMembers);
     }
 
     // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014

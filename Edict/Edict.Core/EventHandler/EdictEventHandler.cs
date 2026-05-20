@@ -17,8 +17,8 @@ namespace Edict.Core.EventHandler;
 /// consumer whose stream-callback path stages a deferred
 /// <see cref="OutboxEffectKind.InvokeHandler"/> Outbox entry instead of running
 /// the consumer's <c>Handle(TEvent)</c> inline. The actual invocation runs
-/// later through the existing <see cref="OutboxDrainEngine"/> — picking up its
-/// retry/backoff and ADR-0022 dead-letter promotion for free, so transient
+/// later through the composed <see cref="OutboxHost{TPayload}"/> — picking up
+/// its retry/backoff and ADR-0022 dead-letter promotion for free, so transient
 /// external-I/O failures are framework-managed and permanent failures land on
 /// the queryable dead-letter projection.
 /// <para>
@@ -72,7 +72,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
         Commit(evt.EventId);
 
         var entry = BuildInvokeHandlerEntry(evt);
-        await Engine.EnqueueAndDrainAsync(this, [entry]);
+        await Host.EnqueueAndDrainAsync([entry]);
     }
 
     OutboxEntry BuildInvokeHandlerEntry(EdictEvent evt)

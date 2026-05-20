@@ -62,7 +62,7 @@ public sealed partial class ProbedOrderTableProjectionBuilder
     }
 
     public Task<int> GetPendingOutboxCountAsync() =>
-        Task.FromResult(((IOutboxHost)this).Outbox.Pending.Count);
+        Task.FromResult(OutboxStateForProbe.Pending.Count);
 
     public async Task<bool> HasDrainReminderAsync() =>
         await this.GetReminder("edict-outbox-drain") is not null;

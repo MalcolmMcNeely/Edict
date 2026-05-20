@@ -28,3 +28,11 @@
 - Wire identity is **unaffected**: ADR 0010 keys the manifest on the concrete command's simple class name, not the base type name (carried over from ADR 0013).
 - ADR 0013's branded list is restated here with `Grain` removed and the (b) clause added; ADR 0013 is superseded, not edited.
 - The architecture test that enforced the branded surface is updated to the new names and the (a)/(b) rule.
+
+## Amendment — composition refactor (#69)
+
+The "outer shared inheritance root" half of decision 3 / clause (b) — specifically the call-out of `EdictDurableConsumerBase<TPayload>` as the home of the shared host plumbing — is **superseded by composition**. There is no longer a shared intermediate base: `EdictCommandHandler<TState>` and `EdictIdempotencyBase<TPayload>` each compose an `OutboxHost<TPayload>` field directly, and the plumbing lives in that bare-named component rather than in a derived `Edict`-prefixed root.
+
+The brand-prefix rule itself survives intact, and `EdictIdempotencyBase<TPayload>` still earns its prefix under clause (b) as the root shared by the idempotent-consumer family (event handlers, projection builders, sagas). The deleted `EdictDurableConsumerBase<TPayload>` was the only "outer" example; with composition, there are no further outer roots and clause (b)'s "multiple nested roots" provision is dormant rather than load-bearing.
+
+The consumer authoring shape is unchanged — `: EdictCommandHandler<…>` / `: EdictIdempotencyBase<…>` are still the bases consumers derive from — so no follow-on rename is needed.

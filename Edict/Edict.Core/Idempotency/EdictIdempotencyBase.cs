@@ -1,10 +1,14 @@
 using Edict.Contracts;
+using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans.Providers;
+using Orleans.Runtime;
 using Orleans.Streams;
 using Orleans.Streams.Core;
 
@@ -17,10 +21,12 @@ namespace Edict.Core.Idempotency;
 /// stream-observer callback, suppresses at-least-once redeliveries via a
 /// configurable bounded window of recently handled
 /// <see cref="EdictEvent.EventId"/>s, and commits progress only after the
-/// subclass's dispatch succeeds (ADR 0002). The host plumbing (Outbox host
-/// adapter, lazy Reminder, drain-on-activation) lives on the shared
-/// <see cref="EdictDurableConsumerBase{TPayload}"/> root; this class keeps only
-/// the idempotent-consumer's stream observer and dedup surface.
+/// subclass's dispatch succeeds (ADR 0002). All outbox plumbing — drain
+/// algorithm, lazy reminder, drain-on-activation — lives on the composed
+/// <see cref="OutboxHost{TPayload}"/> field; the grain itself is a thin
+/// Orleans lifecycle shell that forwards <c>OnActivateAsync</c> and
+/// <c>ReceiveReminder</c>, plus the implicit-subscription stream observer
+/// surface that's unique to this role.
 /// <para>
 /// The persisted document is the single-write <see cref="GrainEnvelope{TPayload}"/>
 /// <c>{ Payload, Outbox, Idempotency }</c>: the dedup state is a sibling slot
@@ -33,29 +39,55 @@ namespace Edict.Core.Idempotency;
 /// <c>[ImplicitStreamSubscription]</c> (emitted by the generator or applied by
 /// hand on a test consumer), and the base implements
 /// <see cref="IAsyncObserver{T}"/> + <see cref="IStreamSubscriptionObserver"/> /
-/// <see cref="ResumeAsync"/> so the runtime binds delivery to the grain
+/// <see cref="OnSubscribed"/> so the runtime binds delivery to the grain
 /// directly. Mixing explicit <c>SubscribeAsync</c> with implicit subscriptions
 /// — the trap that surfaced in #53 with memory streams and a referenced-assembly
 /// consumer — is no longer possible because the subclass no longer participates
 /// in stream wiring.
 /// </para>
 /// </summary>
+[StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictIdempotencyBase<TPayload>
-    : EdictDurableConsumerBase<TPayload>,
+    : Grain<GrainEnvelope<TPayload>>,
         IAsyncObserver<EdictEvent>,
         IStreamSubscriptionObserver,
-        IEdictEventConsumer
+        IEdictEventConsumer,
+        IRemindable
     where TPayload : new()
 {
+    OutboxHost<TPayload>? _host;
+
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
     /// Override in the subclass to tune for expected redelivery volume.
     /// </summary>
     protected virtual int RingSize => 100;
 
-    IdempotencyState Idempotency => State.Idempotency;
+    IdempotencyState Idempotency => base.State.Idempotency;
 
-    private protected OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
+    private protected OutboxHost<TPayload> Host => _host ??= BuildHost();
+
+    /// <summary>
+    /// Test-only probe over the framework-owned Outbox slice. Internal so the
+    /// Edict probe grains (table-projection-builder probes) can assert
+    /// pending-entry counts; not part of the consumer surface.
+    /// </summary>
+    internal OutboxSlice OutboxStateForProbe => base.State.Outbox;
+
+    /// <summary>
+    /// Drains anything left from a crash before the grain serves traffic
+    /// (drain-on-activation, ADR 0018). Steady state has nothing pending so
+    /// this is a cheap check.
+    /// </summary>
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        await base.OnActivateAsync(cancellationToken);
+        await Host.OnActivateAsync();
+    }
+
+    /// <inheritdoc />
+    public Task ReceiveReminder(string reminderName, TickStatus status) =>
+        Host.ReceiveReminderAsync();
 
     /// <summary>
     /// Pure-implicit stream wiring (the trap-free shape of the maintainer's
@@ -102,8 +134,8 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by <see cref="OnNextAsync"/>
     /// for every event the runtime delivers via the implicit subscription.
-    /// <see cref="EdictEventHandler"/> overrides this to swap inline dispatch
-    /// for a deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
+    /// <c>EdictEventHandler</c> overrides this to swap inline dispatch for a
+    /// deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
     /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
     /// retry/backoff/dead-letter wrapping (ADR 0023).
     /// </summary>
@@ -136,7 +168,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             }
             else
             {
-                await Engine.EnqueueAndDrainAsync(this, entries);
+                await Host.EnqueueAndDrainAsync(entries);
             }
         }
     }
@@ -146,7 +178,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// dispatch (the Table Projection Builder's <see cref="OutboxEffectKind.UpsertRow"/>
     /// entry, a saga's <see cref="OutboxEffectKind.SendCommand"/> entry).
     /// Returning a non-empty list routes the ring commit through the Outbox
-    /// engine so the ring slot and the effect commit atomically in one write.
+    /// host so the ring slot and the effect commit atomically in one write.
     /// The default is empty — event handlers and the in-memory projection
     /// builder keep the ring-only commit unchanged.
     /// </summary>
@@ -164,18 +196,6 @@ public abstract class EdictIdempotencyBase<TPayload>
     protected virtual Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
         where TEvent : EdictEvent
         => handler(evt);
-
-    /// <summary>
-    /// Routes the InvokeHandler executor's deferred dispatch (ADR 0023) back
-    /// into <see cref="DispatchAsync"/> so the consumer's strongly-typed
-    /// <c>Handle(TEvent)</c> runs off the stream-callback path. The boolean
-    /// return of <see cref="DispatchAsync"/> is ignored here because the
-    /// stream-callback path only stages an <see cref="OutboxEffectKind.InvokeHandler"/>
-    /// entry for events that already passed an <c>HandlesType</c> pre-flight —
-    /// an unhandled type cannot reach this seam.
-    /// </summary>
-    protected override async Task DispatchEventForOutboxAsync(EdictEvent evt) =>
-        await DispatchAsync(evt);
 
     private protected void EnsureRingInitialized()
     {
@@ -214,6 +234,22 @@ public abstract class EdictIdempotencyBase<TPayload>
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(evt.GetType().Name, parentContext);
         span?.SetTag("edict.deduplicated", true);
     }
+
+    OutboxHost<TPayload> BuildHost() =>
+        new(
+            new GrainPersistentStateAdapter<GrainEnvelope<TPayload>>(
+                get: () => base.State,
+                set: v => base.State = v,
+                writeState: WriteStateAsync),
+            this.GetStreamProvider("edict"),
+            new GrainReminderRegistrar(this),
+            ServiceProvider.GetServices<IOutboxEffectExecutor>(),
+            ServiceProvider.GetRequiredService<EdictOutboxOptions>(),
+            ServiceProvider.GetRequiredService<TimeProvider>(),
+            ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
+            grainKey: this.GetPrimaryKey().ToString(),
+            grainTypeName: GetType().FullName ?? GetType().Name,
+            deferredDispatch: evt => DispatchAsync(evt));
 }
 
 /// <summary>

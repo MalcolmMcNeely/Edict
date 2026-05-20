@@ -1,10 +1,12 @@
 using Edict.Contracts.Commands;
+using Edict.Contracts.Events;
 using Edict.Contracts.Sending;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Serialization;
+using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
@@ -23,7 +25,10 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
 {
     public OutboxEffectKind Kind => OutboxEffectKind.SendCommand;
 
-    public async Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
+    public async Task ExecuteAsync(
+        OutboxEntry entry,
+        IStreamProvider streamProvider,
+        Func<EdictEvent, Task>? deferredDispatch)
     {
         var command = serializer.Deserialize<EdictCommand>(entry.Payload);
 

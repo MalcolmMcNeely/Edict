@@ -250,7 +250,8 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             // Memory streams are still registered because
-            // EdictIdempotencyBase's IOutboxHost.StreamProvider asks for one,
+            // EdictIdempotencyBase's OutboxHost asks for one via the silo's
+            // "edict" stream provider,
             // but the in-process dispatcher bypasses it — no event is ever
             // pushed to a memory queue, so the pulling-agent that fails for
             // referenced-assembly consumers in #53 is out of the loop.

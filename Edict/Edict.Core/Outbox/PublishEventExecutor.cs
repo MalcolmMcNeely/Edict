@@ -3,6 +3,7 @@ using Edict.Telemetry;
 
 using Orleans.Runtime;
 using Orleans.Serialization;
+using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
@@ -18,11 +19,14 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    public async Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
+    public async Task ExecuteAsync(
+        OutboxEntry entry,
+        IStreamProvider streamProvider,
+        Func<EdictEvent, Task>? deferredDispatch)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
         var (streamName, routeKey) = EventStreamAddress.Resolve(evt);
-        var stream = host.StreamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
+        var stream = streamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
 

@@ -53,3 +53,45 @@ Orleans grain-storage providers collapse from two (`edict-state` + `edict-dedup`
 to **one (`edict-state`)** — the persisted document is now one shape, so ops
 configures one provider and one Azure Table. `edict-dedup` is removed from
 `Edict.Azure` silo wiring and from `Edict.Testing`'s in-memory wiring.
+
+## Amendment — composition refactor (#69)
+
+Envelope ownership moves from inheritance to composition. The intermediate
+`EdictDurableConsumerBase<TPayload>` that previously owned the persisted
+`GrainEnvelope<TPayload>` document, the `IOutboxHost` adapter, the lazy
+drain Reminder, and drain-on-activation is **deleted**. Its responsibilities
+move into a bare-named, internal `OutboxHost<TPayload>` component (`Edict.Core/Outbox/OutboxHost.cs`)
+that lives as a field on each consumer-facing root:
+
+- `EdictCommandHandler<TState>` and `EdictIdempotencyBase<TPayload>` each
+  derive from `Grain<GrainEnvelope<TPayload>>` directly (no intermediate
+  base) and construct an `OutboxHost<TPayload>` lazily on first use, closed
+  over a small persistent-state adapter (`GrainPersistentStateAdapter<T>`)
+  bridging `base.State` + `WriteStateAsync` to the host's
+  `IPersistentState<T>` seam.
+- The standalone `OutboxDrainEngine` and the `IOutboxHost` interface are
+  **deleted**; the drain algorithm (FIFO stop-at-head, exponential backoff,
+  max-attempts dead-letter promotion via `IDeadLetterPromoter`) is folded
+  into `OutboxHost<TPayload>` itself. With the host *being* the unit-testable
+  thing, the engine/host split that existed only to serve the abstraction
+  goes away.
+- Reminder registration is the one residual coupling — Orleans's reminder
+  API is grain-instance-bound. A tiny `IReminderRegistrar` adapter
+  (`GrainReminderRegistrar`) closes over the hosting grain and is handed to
+  the host at construction.
+- Effect executors (`PublishEventExecutor`, `SendCommandExecutor`,
+  `UpsertRowExecutor`, `InvokeHandlerExecutor`) no longer depend on
+  `IOutboxHost`; their `ExecuteAsync` now takes the primitives an executor
+  might need — `IStreamProvider` and the optional
+  `Func<EdictEvent, Task>? deferredDispatch` callback — as explicit
+  parameters, and each executor uses only what its effect requires.
+
+The persisted `GrainEnvelope<TPayload>` shape and its frozen
+`[Alias("GrainEnvelope\`1")]` are **unchanged** — state written before the
+refactor is readable after, and no migration tooling is needed. The drain
+algorithm, dedup-ring semantics, lazy-Reminder lifecycle, trace-context
+capture/restore on staged entries, and outbox effect-kind enum are all
+preserved byte-for-byte. The refactor is type-shape-only; every behavioural
+test (Azurite redelivery + dead-letter end-to-end, telemetry span tree,
+generator output for consumer subclasses, in-memory `Edict.Testing` Verify
+timelines) passes unchanged.

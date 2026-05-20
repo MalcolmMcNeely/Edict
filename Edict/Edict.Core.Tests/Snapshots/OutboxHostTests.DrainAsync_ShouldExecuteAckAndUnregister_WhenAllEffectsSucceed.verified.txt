@@ -5,8 +5,7 @@
   ],
   Log: [
     commit[bbbbbbbb-0000-0000-0000-000000000002],
-    commit[],
-    unregister
+    commit[]
   ],
   Outbox: {}
 }

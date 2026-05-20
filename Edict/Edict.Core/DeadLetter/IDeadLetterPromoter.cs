@@ -6,9 +6,9 @@ namespace Edict.Core.DeadLetter;
 /// Engine-facing seam for promoting a failing <see cref="OutboxEntry"/> to a
 /// dead-letter publish entry (ADR 0022). The pure mapping lives in
 /// <see cref="DeadLetterPromotion"/>; this seam adds the Orleans-serializer
-/// and route-resolver dependencies needed at runtime, so the engine itself
-/// stays a plain class that takes its identity inputs from
-/// <see cref="IOutboxHost"/>. Bare-named — no consumer types it.
+/// and route-resolver dependencies needed at runtime, so the composed
+/// <see cref="OutboxHost{TPayload}"/> stays a plain class that passes its
+/// own grain-key / grain-type strings in. Bare-named — no consumer types it.
 /// </summary>
 interface IDeadLetterPromoter
 {

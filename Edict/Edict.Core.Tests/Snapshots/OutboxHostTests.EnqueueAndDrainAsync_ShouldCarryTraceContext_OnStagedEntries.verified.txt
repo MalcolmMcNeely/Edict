@@ -1,0 +1,4 @@
+﻿{
+  SeenTraceParent: 00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01,
+  SeenTraceState: rojo=00f067aa0ba902b7
+}

@@ -1,6 +1,8 @@
 using Edict.Contracts;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -8,6 +10,8 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans.Providers;
+using Orleans.Runtime;
 using Orleans.Serialization;
 
 namespace Edict.Core.Commands;
@@ -20,10 +24,11 @@ namespace Edict.Core.Commands;
 /// Handlers never touch the <see cref="GrainEnvelope{TPayload}.Idempotency"/>
 /// slot (a Command is a direct grain call, so there is deliberately no
 /// deduplication — dedup is for at-least-once stream delivery, which Commands
-/// never use — ADR 0004). The host plumbing (Outbox host adapter, lazy
-/// Reminder, drain-on-activation) lives on the shared
-/// <see cref="EdictDurableConsumerBase{TPayload}"/> root — this class keeps
-/// only the Command Handler's role-specific surface.
+/// never use — ADR 0004). All outbox plumbing — drain algorithm, lazy
+/// reminder, drain-on-activation — lives on the composed
+/// <see cref="OutboxHost{TPayload}"/> field; the grain itself is a thin Orleans
+/// lifecycle shell that forwards <c>OnActivateAsync</c> and
+/// <c>ReceiveReminder</c>.
 /// <para>
 /// The consumer mutates <see cref="State"/> — its own <typeparamref name="TState"/>
 /// POCO — and never hand-persists fields. The consumer writes a <c>partial</c>
@@ -32,21 +37,16 @@ namespace Edict.Core.Commands;
 /// that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
 /// </para>
-/// <para>
-/// After <c>Accepted</c>, raised events become <see cref="OutboxEffectKind.PublishEvent"/>
-/// entries staged onto the Outbox and committed in the same write as
-/// <typeparamref name="TState"/>; the <see cref="OutboxDrainEngine"/> then
-/// publishes them via the inline FIFO drain. A lazy Orleans Reminder is the
-/// crash-recovery net — registered only while the Outbox is non-empty,
-/// unregistered on full drain, plus drain-on-activation — so steady state holds
-/// zero reminders (ADR 0018).
-/// </para>
 /// </summary>
+[StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictCommandHandler<TState>
-    : EdictDurableConsumerBase<TState>, IEdictCommandHandler
+    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable
     where TState : new()
 {
+    OutboxHost<TState>? _host;
     List<EdictEvent>? _raisedEvents;
+
+    OutboxHost<TState> Host => _host ??= BuildHost();
 
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
@@ -55,10 +55,30 @@ public abstract class EdictCommandHandler<TState>
     /// </summary>
     protected new TState State => base.State.Payload;
 
-    OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
+    /// <summary>
+    /// Test-only probe over the framework-owned Outbox slice. Internal so the
+    /// Edict probe grains (<c>CounterAggregate</c>) can assert pending-entry
+    /// counts; not part of the consumer surface.
+    /// </summary>
+    internal OutboxSlice OutboxStateForProbe => base.State.Outbox;
 
     /// <inheritdoc />
     public abstract Task<EdictCommandResult> DispatchAsync(EdictCommand command);
+
+    /// <summary>
+    /// Drains anything left from a crash before the grain serves traffic
+    /// (drain-on-activation, ADR 0018). Steady state has nothing pending so
+    /// this is a cheap check.
+    /// </summary>
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        await base.OnActivateAsync(cancellationToken);
+        await Host.OnActivateAsync();
+    }
+
+    /// <inheritdoc />
+    public Task ReceiveReminder(string reminderName, TickStatus status) =>
+        Host.ReceiveReminderAsync();
 
     /// <summary>
     /// Buffers an event to be staged onto the Outbox after the current command
@@ -83,7 +103,7 @@ public abstract class EdictCommandHandler<TState>
     {
         var entries = BuildPendingEntries();
         _raisedEvents = null;
-        await Engine.EnqueueAndDrainAsync(this, entries);
+        await Host.EnqueueAndDrainAsync(entries);
     }
 
     IReadOnlyList<OutboxEntry> BuildPendingEntries()
@@ -167,13 +187,28 @@ public abstract class EdictCommandHandler<TState>
     /// The default returns <c>null</c> (no state injected).
     /// </summary>
     protected virtual object? GetValidationState() => null;
+
+    OutboxHost<TState> BuildHost() =>
+        new(
+            new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
+                get: () => base.State,
+                set: v => base.State = v,
+                writeState: WriteStateAsync),
+            this.GetStreamProvider("edict"),
+            new GrainReminderRegistrar(this),
+            ServiceProvider.GetServices<IOutboxEffectExecutor>(),
+            ServiceProvider.GetRequiredService<EdictOutboxOptions>(),
+            ServiceProvider.GetRequiredService<TimeProvider>(),
+            ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
+            grainKey: this.GetPrimaryKey().ToString(),
+            grainTypeName: GetType().FullName ?? GetType().Name);
 }
 
 /// <summary>
 /// Stateless-handler convenience shim over <see cref="EdictCommandHandler{TState}"/>
 /// closed on <see cref="EdictUnit"/>, so a handler that needs no aggregate state
 /// derives from a bare <c>EdictCommandHandler</c> without writing
-/// <c>&lt;EdictUnit&gt;</c> across hundreds of handlers. The Outbox/DeadLetter
-/// slice still exists on the envelope; only the payload is empty.
+/// <c>&lt;EdictUnit&gt;</c> across hundreds of handlers. The Outbox slice still
+/// exists on the envelope; only the payload is empty.
 /// </summary>
 public abstract class EdictCommandHandler : EdictCommandHandler<EdictUnit>;

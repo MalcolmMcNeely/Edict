@@ -74,7 +74,7 @@ public sealed partial class AzureRecoverableOrderTableProjectionBuilder
     }
 
     public Task<int> GetPendingOutboxCountAsync() =>
-        Task.FromResult(((IOutboxHost)this).Outbox.Pending.Count);
+        Task.FromResult(OutboxStateForProbe.Pending.Count);
 
     public Task ForceDrainViaReminderAsync() =>
         ReceiveReminder("edict-outbox-drain", new TickStatus());
