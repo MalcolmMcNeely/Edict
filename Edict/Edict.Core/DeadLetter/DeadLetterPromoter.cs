@@ -79,6 +79,29 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         return DeadLetterPromotion.Build(failed, effect, exception, sourceGrainKey, sourceGrainType, now);
     }
 
+    public OutboxEntry PromoteBlobMissing(
+        EdictEventEnvelope envelope,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset now)
+    {
+        var raised = DeadLetterPromotion.BuildForBlobMissing(envelope, sourceGrainKey, sourceGrainType, now);
+        var traceParent = envelope.TraceId is { Length: > 0 } traceId && envelope.SpanId is { Length: > 0 } spanId
+            ? $"00-{traceId}-{spanId}-01"
+            : null;
+
+        return new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.PublishEvent,
+            Payload = serializer.SerializeToArray<EdictEvent>(raised),
+            TraceParent = traceParent,
+            TraceState = envelope.TraceState,
+            AttemptCount = 0,
+            NextAttemptUtc = now,
+        };
+    }
+
     EdictDeadLetterRaised BuildFromInvokeHandler(
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {

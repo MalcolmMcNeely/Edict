@@ -23,5 +23,6 @@
     ],
     Head: 1,
     Count: 1
-  }
+  },
+  BlobMissing: {}
 }

@@ -759,6 +759,9 @@ public sealed class OutboxHostTests
     {
         public OutboxEntry Promote(OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
             => throw new InvalidOperationException("No promotion expected in this test.");
+
+        public OutboxEntry PromoteBlobMissing(EdictEventEnvelope envelope, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+            => throw new InvalidOperationException("No blob-missing promotion expected in this test.");
     }
 
     sealed class FakePromoter(Guid promotedId) : IDeadLetterPromoter
@@ -792,6 +795,9 @@ public sealed class OutboxHostTests
                 NextAttemptUtc = now,
             };
         }
+
+        public OutboxEntry PromoteBlobMissing(EdictEventEnvelope envelope, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+            => throw new InvalidOperationException("No blob-missing promotion expected in this test.");
     }
 
     public sealed record PromoteCall(

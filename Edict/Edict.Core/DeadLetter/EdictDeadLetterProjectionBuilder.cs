@@ -64,6 +64,10 @@ public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory sto
             ExceptionType = raised.ExceptionType,
             Reason = raised.Reason,
             PayloadJson = raised.PayloadJson,
+            SourceEventType = raised.SourceEventType,
+            SourceEventId = raised.SourceEventId,
+            ClaimCheckKey = raised.ClaimCheckKey,
+            FailureKind = raised.FailureKind,
         };
         return Task.CompletedTask;
     }

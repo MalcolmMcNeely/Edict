@@ -95,6 +95,48 @@ static class DeadLetterPromotion
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 
+    /// <summary>
+    /// Receiver-side specialisation (ADR 0024, slice 3): builds an
+    /// <see cref="EdictDeadLetterRaised"/> for an inbound event whose
+    /// claim-check blob could not be fetched after <c>MaxAttempts</c>. There
+    /// is no failing <c>OutboxEntry</c> on the receiver path, so the entry-shaped
+    /// fields (EntryId, Kind, AttemptCount, TraceParent) come from the envelope
+    /// itself rather than a buffered effect. The forensic row carries the
+    /// missing key, the inner event's stream/route-key as the EffectTarget, and
+    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/> as the discriminator.
+    /// </summary>
+    public static EdictDeadLetterRaised BuildForBlobMissing(
+        EdictEventEnvelope envelope,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var effectTarget = envelope.InnerEventStreamName is { } innerStream
+            ? $"{innerStream}/{envelope.InnerEventRouteKey:D}"
+            : nameof(EdictDeadLetterFailureKind.BlobMissing);
+
+        var traceParent = envelope.TraceId is { Length: > 0 } traceId && envelope.SpanId is { Length: > 0 } spanId
+            ? $"00-{traceId}-{spanId}-01"
+            : null;
+
+        return new EdictDeadLetterRaised
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.PublishEvent.ToString(),
+            AttemptCount = 0,
+            DeadLetteredAt = deadLetteredAt,
+            SourceGrainKey = sourceGrainKey,
+            SourceGrainType = sourceGrainType,
+            EffectTarget = effectTarget,
+            TraceParent = traceParent,
+            ExceptionType = nameof(KeyNotFoundException),
+            Reason = $"Claim-check blob '{envelope.ClaimCheckKey}' was not found.",
+            PayloadJson = null,
+            ClaimCheckKey = envelope.ClaimCheckKey,
+            FailureKind = EdictDeadLetterFailureKind.BlobMissing,
+        };
+    }
+
     static EdictDeadLetterRaised Compose(
         OutboxEntry entry,
         string effectTarget,

@@ -92,6 +92,10 @@ public sealed class InvokeHandlerFifoTests
         public OutboxEntry Promote(
             OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
             => throw new InvalidOperationException("No promotion expected at default MaxAttempts after one failure.");
+
+        public OutboxEntry PromoteBlobMissing(
+            EdictEventEnvelope envelope, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+            => throw new InvalidOperationException("No blob-missing promotion expected in this test.");
     }
 
     sealed class FakePersistentState : IPersistentState<GrainEnvelope<EdictUnit>>

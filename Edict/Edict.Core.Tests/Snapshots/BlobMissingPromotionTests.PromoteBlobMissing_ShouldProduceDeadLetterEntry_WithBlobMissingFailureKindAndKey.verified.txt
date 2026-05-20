@@ -1,0 +1,14 @@
+{
+  SingletonKey: d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1,
+  EntryId: {Scrubbed},
+  Kind: PublishEvent,
+  DeadLetteredAt: 2026-05-19 12:00 +0,
+  SourceGrainKey: 11111111-1111-1111-1111-111111111111,
+  SourceGrainType: Sample.OrderEmailHandler,
+  EffectTarget: Orders/11111111-1111-1111-1111-111111111111,
+  TraceParent: 00-0123456789abcdef0123456789abcdef-fedcba9876543210-01,
+  ExceptionType: KeyNotFoundException,
+  Reason: Claim-check blob 'edict-claim-check/abc123' was not found.,
+  ClaimCheckKey: edict-claim-check/abc123,
+  FailureKind: BlobMissing
+}

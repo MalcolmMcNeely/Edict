@@ -1,16 +1,21 @@
 using System.Diagnostics;
 using System.Reflection;
 
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
+using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using Orleans.Serialization;
 
 namespace Edict.Core;
 
@@ -68,6 +73,16 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton<IEdictDeadLetterRepository>(sp =>
             new TableBackedDeadLetterRepository(
                 sp.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
+
+        // Receiver-side claim-check unwrap (ADR 0024, slice 3). Every
+        // EdictIdempotencyBase consumer resolves this on the stream-observer
+        // path, so the framework's front door is the right home — independent
+        // of whether the host opted into AddEdictOutbox for publisher-side
+        // policy. The IEdictClaimCheckStore is optional: a host with no store
+        // still passes non-envelope and inline-payload events through.
+        services.TryAddSingleton(sp => new ClaimCheckUnwrap(
+            sp.GetRequiredService<Serializer>(),
+            sp.GetService<IEdictClaimCheckStore>()));
 
         return services;
     }

@@ -74,6 +74,11 @@ public sealed class UpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableUpsertRowExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
+            // The silo activates EdictIdempotencyBase grains (ProbedTableProjection,
+            // EdictDeadLetterProjectionBuilder); they resolve ClaimCheckUnwrap from
+            // DI on the stream-observer path (ADR 0024, slice 3). AddEdict() is
+            // where the receiver-side unwrap registration lives.
+            siloBuilder.Services.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");

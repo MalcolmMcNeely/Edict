@@ -1,6 +1,7 @@
 using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
@@ -56,6 +57,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     where TPayload : new()
 {
     OutboxHost<TPayload>? _host;
+    ClaimCheckUnwrap? _unwrap;
 
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
@@ -103,7 +105,7 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     /// <inheritdoc />
     public Task OnNextAsync(EdictEvent item, StreamSequenceToken? token = null) =>
-        OnStreamEventAsync(item, token);
+        UnwrapAndDispatchAsync(item, token);
 
     /// <inheritdoc />
     public Task OnCompletedAsync() => Task.CompletedTask;
@@ -119,7 +121,120 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// the same dedup-guarded callback as Orleans's real delivery so the engine
     /// behaviour is identical under test and in production.
     /// </summary>
-    public Task OnEdictEventAsync(EdictEvent evt) => OnStreamEventAsync(evt, null);
+    public Task OnEdictEventAsync(EdictEvent evt) => UnwrapAndDispatchAsync(evt, null);
+
+    /// <summary>
+    /// Receiver-side claim-check unwrap (ADR 0024, slice 3): every incoming
+    /// event is run through <see cref="ClaimCheckUnwrap"/> before the
+    /// dedup-ring and dispatch logic, so the materialised concrete event is
+    /// what both the ring check and the consumer's <c>Handle</c> see. Both
+    /// stream-delivery surfaces (<see cref="OnNextAsync"/> and the in-process
+    /// <see cref="OnEdictEventAsync"/>) route through here so an
+    /// <see cref="EdictEventHandler"/> override of <see cref="OnStreamEventAsync"/>
+    /// inherits the unwrap without naming it. A missing-blob fetch lands in
+    /// <see cref="HandleBlobMissingAsync"/>; non-envelope and inline-branch
+    /// deliveries flow straight through.
+    /// </summary>
+    async Task UnwrapAndDispatchAsync(EdictEvent incoming, StreamSequenceToken? token)
+    {
+        var unwrap = _unwrap ??= ServiceProvider.GetRequiredService<ClaimCheckUnwrap>();
+
+        EdictEvent materialised;
+        try
+        {
+            materialised = await unwrap.ApplyAsync(incoming, GetType(), CancellationToken.None);
+        }
+        catch (Exception ex) when (incoming is EdictEventEnvelope envelope && envelope.ClaimCheckKey is { Length: > 0 } key)
+        {
+            await HandleBlobMissingAsync(envelope, key, ex);
+            return;
+        }
+
+        await OnStreamEventAsync(materialised, token);
+    }
+
+    /// <summary>
+    /// Receiver-side dead-letter retry loop (ADR 0024, slice 3): each delivery
+    /// attempt bumps the per-key counter and persists the new
+    /// <see cref="OutboxBackoff"/>-computed next-attempt instant; if the
+    /// caller redelivers before that instant the throw short-circuits without
+    /// consuming an attempt. At <see cref="EdictOutboxOptions.MaxAttempts"/>
+    /// the path commits the dedup-ring slot for the envelope and stages an
+    /// <c>EdictDeadLetterRaised</c> publish entry via the existing
+    /// <see cref="IDeadLetterPromoter"/>, then drains so the synthetic
+    /// outcome reaches the fleet-wide forensic projection on the same path
+    /// publisher-side failures use.
+    /// </summary>
+    async Task HandleBlobMissingAsync(EdictEventEnvelope envelope, string key, Exception cause)
+    {
+        var options = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
+        var timeProvider = ServiceProvider.GetRequiredService<TimeProvider>();
+        var promoter = ServiceProvider.GetRequiredService<IDeadLetterPromoter>();
+        var now = timeProvider.GetUtcNow();
+
+        var attempts = base.State.BlobMissing.Attempts;
+        attempts.TryGetValue(key, out var existing);
+
+        // Backoff gate: a redelivery that arrives before the next-attempt
+        // instant does not consume an attempt. Rethrow so the stream observer
+        // treats it as a transient failure and the queue's natural
+        // visibility-timeout drives the next retry.
+        if (existing is not null && existing.NextAttemptUtc > now)
+        {
+            throw cause;
+        }
+
+        var attempt = (existing?.AttemptCount ?? 0) + 1;
+
+        if (attempt >= options.MaxAttempts)
+        {
+            // Promote: build the synthetic dead-letter entry, commit the
+            // dedup-ring slot for the envelope's wire-frame EventId so the
+            // event does not redeliver, clear the tracker entry, stage the
+            // entry on the Outbox, and drain — the standard at-least-once
+            // path delivers the EdictDeadLetterRaised to the projection.
+            var promoted = promoter.PromoteBlobMissing(
+                envelope,
+                sourceGrainKey: this.GetPrimaryKey().ToString(),
+                sourceGrainType: GetType().FullName ?? GetType().Name,
+                now: now);
+
+            EnsureRingInitialized();
+            if (!Contains(envelope.EventId))
+            {
+                Commit(envelope.EventId);
+            }
+            attempts.Remove(key);
+            await Host.EnqueueAndDrainAsync([promoted]);
+            return;
+        }
+
+        // Bump and persist the tracker, then rethrow so the queue's natural
+        // redelivery brings us back here once the next-attempt instant elapses.
+        var nextAttemptUtc = OutboxBackoff.NextAttemptUtc(
+            attempt,
+            now,
+            entryId: DeriveAttemptJitterSeed(key),
+            options);
+        attempts[key] = new BlobMissingAttempt(attempt, nextAttemptUtc);
+        await WriteStateAsync();
+        throw cause;
+    }
+
+    /// <summary>
+    /// The claim-check key is the natural identity for jitter seeding here —
+    /// every retry of the same blob is the same logical entry, so jitter is
+    /// reproducible per blob (mirroring the publisher path's per-entry jitter).
+    /// </summary>
+    static Guid DeriveAttemptJitterSeed(string key)
+    {
+        Span<byte> bytes = stackalloc byte[16];
+        var hash = new HashCode();
+        hash.Add(key);
+        BitConverter.TryWriteBytes(bytes, hash.ToHashCode());
+        BitConverter.TryWriteBytes(bytes[8..], hash.ToHashCode());
+        return new Guid(bytes);
+    }
 
     /// <summary>
     /// Implemented by the concrete subclass (or a future generator) to dispatch

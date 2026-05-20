@@ -83,8 +83,9 @@ public sealed class InvokeHandlerExecutorTests
 
         await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask);
 
-        var span = Assert.Single(stopped);
-        Assert.Equal("edict.event.handle OrderPlacedEvent", span.OperationName);
+        // Filter by operation name — parallel tests sharing the process-wide
+        // ActivityListener mechanism may surface unrelated edict.* spans here.
+        var span = Assert.Single(stopped, a => a.OperationName == "edict.event.handle OrderPlacedEvent");
         Assert.Equal(capturedTraceId, span.TraceId.ToHexString());
         Assert.Equal(capturedSpanId, span.ParentSpanId.ToHexString());
     }

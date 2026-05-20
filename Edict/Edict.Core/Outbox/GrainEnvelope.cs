@@ -1,3 +1,4 @@
+using Edict.Core.ClaimCheck;
 using Edict.Core.Idempotency;
 
 namespace Edict.Core.Outbox;
@@ -29,4 +30,14 @@ public sealed class GrainEnvelope<TPayload>
 
     [Id(2)]
     public IdempotencyState Idempotency { get; set; } = new();
+
+    /// <summary>
+    /// Receiver-side missing-blob retry tracker (ADR 0024, slice 3). Empty
+    /// for any grain that never sees a pointer-bearing envelope or whose
+    /// fetches always succeed — added only to the persisted shape because a
+    /// lifecycle-reaped blob lands its retry state alongside the existing
+    /// slots in the same atomic write.
+    /// </summary>
+    [Id(3)]
+    public BlobMissingTracker BlobMissing { get; set; } = new();
 }

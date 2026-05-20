@@ -1,9 +1,11 @@
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Core.Tests.ClaimCheck;
 using Edict.Core.Tests.Grains;
 using Edict.Core.Tests.TableStorage;
 
@@ -24,6 +26,7 @@ namespace Edict.Core.Tests;
 public sealed class EdictClusterFixture : IAsyncLifetime
 {
     private static readonly InMemoryTableStoreFactory _tableStoreFactory = new();
+    private static readonly InMemoryClaimCheckStore _claimCheckStore = new();
 
     public TestCluster Cluster { get; private set; } = null!;
 
@@ -31,6 +34,8 @@ public sealed class EdictClusterFixture : IAsyncLifetime
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
     public InMemoryTableStoreFactory TableStoreFactory => _tableStoreFactory;
+
+    public InMemoryClaimCheckStore ClaimCheckStore => _claimCheckStore;
 
     public async Task InitializeAsync()
     {
@@ -62,6 +67,7 @@ public sealed class EdictClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(_claimCheckStore);
             // A saga's SendCommand effect drains in-silo through IEdictSender, so
             // the silo (not just the client) needs the generated route map (ADR 0020).
             siloBuilder.Services.AddEdict();
