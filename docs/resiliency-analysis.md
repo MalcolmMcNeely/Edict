@@ -8,7 +8,7 @@ The framework leans on three load-bearing primitives:
 
 1. **One atomic grain-document write** — `GrainEnvelope { Payload, Outbox, Idempotency }`.
 2. **One Outbox engine** — FIFO + stop-at-head + lazy Reminder + dead-letter-as-tail-promotion.
-3. **Per-consumer dedup ring** — bounded window of recently handled `EventId`s.
+3. **Per-consumer dedup window** — bounded window of recently handled `EventId`s.
 
 This document inventories what Orleans gives us for free, where Edict's own design is genuinely strong, and where the seams crack under production load and schema drift.
 
@@ -50,7 +50,7 @@ This document inventories what Orleans gives us for free, where Edict's own desi
 | 2 | `OutboxSlice` grows inline in the grain document | High (cap-overflow half resolved by ADR 0025) | `OutboxSlice.Pending : List<OutboxEntry>` | **Cap-overflow half resolved by [ADR 0025](adr/0025-grain-state-on-blob-substrate.md) — grain state on Blob has no row cap.** Observability half (saturation metrics, intake throttle) remains open. |
 | 3 | ~~`[Alias]` discipline has a hole at `UpsertRowEffect.RowTypeName`~~ **Resolved by [ADR 0027](adr/0027-attribute-placement-policy-and-persisted-state-marker.md)** | ~~High~~ | ~~`Edict.Core/Outbox/UpsertRowExecutor.cs:40`~~ — `RowTypeName` (AQTN) replaced by `RowAlias` (frozen literal); drain resolves via `Orleans.Serialization.TypeConverter.Parse`; `IEdictPersistedState` + EDICT011 enforce the frozen-literal discipline at compile time | Closed — rename/move is now `[Alias]`-stable |
 | 4 | Receiver-side missing-blob dead-letter path is documented but unshipped | Medium | ADR 0024 §"receiver-side failure mode" | A deleted blob wedges consumers indefinitely until shipped |
-| 5 | Dedup ring is silently bounded | Medium | `EdictIdempotencyBase.RingSize = 100` | Singleton consumers are the dangerous default |
+| 5 | Dedup window is silently bounded | Medium | `EdictIdempotencyBase.WindowSize = 100` (default sourced from `EdictOptions.IdempotencyWindowSize`, ADR 0028) | Singleton consumers are the dangerous default |
 | 6 | Route shape changes during rolling deploy | Medium | Saga `SendCommand` entries; new/removed `Handle(TCommand)` | Dead-letter (correct but loud) |
 | 7 | Telemetry exporter is a backpressure source | Medium | `EdictDiagnostics.ActivitySource` | Operator must size exporter / sampling |
 | 8 | Sampled-out activity ⇒ orphan trace through the drain | Low | `EdictSaga.cs:107`, `EdictEventHandler.cs:84` | Forensic value lost, not data |
@@ -86,7 +86,7 @@ This is correct by design (per-aggregate causal order), but should be called out
 
 `Edict.Core/Outbox/OutboxSlice.cs:21` — pending entries are persisted inline in the envelope. Under burst load with slow downstreams, a single aggregate accumulates:
 
-`grain document size ≈ payload + dedup ring + Σ(entry overhead + serialised event)`
+`grain document size ≈ payload + dedup window + Σ(entry overhead + serialised event)`
 
 Claim-check shrinks the *event payload* but not the per-entry overhead × N. The 32 KB-per-property cap (and 1 MB row cap on Azure Table) is reachable before claim-check helps.
 
@@ -128,20 +128,20 @@ For comparison — what each persisted/wire type uses:
 
 ADR 0024 specifies a receiver-side dead-letter promotion when a claim-check blob fetch fails after `MaxAttempts` — synthetic `EdictEventBlobMissing` into the same fleet-wide dead-letter projection. **Documented but not yet implemented.** Until it lands, a deleted/lifecycle-reaped blob will sit in Orleans' stream-retry forever with no operator surface beyond Orleans logs.
 
-#### 3.3.2 Dedup ring is silently bounded
+#### 3.3.2 Dedup window is silently bounded
 
-`EdictIdempotencyBase.RingSize = 100` (`Edict.Core/Idempotency/EdictIdempotencyBase.cs:64`).
+`EdictIdempotencyBase.WindowSize = 100` (`Edict.Core/Idempotency/EdictIdempotencyBase.cs:64`). ADR 0028 surfaces the silo-wide default as `EdictOptions.IdempotencyWindowSize`; the per-grain-type `protected virtual int WindowSize` override remains for high-EPS singletons. The silent-failure half (no overwrite metric, no analyzer error) is unaddressed.
 
-| Consumer shape | EPS at consumer | Ring exhaustion time | Risk |
+| Consumer shape | EPS at consumer | Window exhaustion time | Risk |
 |---|---|---|---|
 | Per-aggregate consumer (normal) | ~1–10 | hours | None |
 | Per-aggregate hot key | ~100 | ~1 s | Low |
 | **Fixed-Guid singleton consumer** | **5 000** | **~20 ms** | **A redelivery older than 20 ms looks like a new event** |
 
-There is no metric, no warning, no analyzer error if `RingSize` is too small relative to the redelivery window of the underlying stream provider. Suggested mitigations:
+There is no metric, no warning, no analyzer error if `WindowSize` is too small relative to the redelivery window of the underlying stream provider. Suggested mitigations:
 
-- `edict.idempotency.ring.overwrite_per_minute` counter — a non-zero value means redelivery beyond the window is possible.
-- ADR / docs note that singleton consumers must explicitly size `RingSize`.
+- `edict.idempotency.window.overwrite_per_minute` counter — a non-zero value means redelivery beyond the window is possible.
+- ADR / docs note that singleton consumers must explicitly size `WindowSize`.
 
 #### 3.3.3 Route shape changes during rolling deploy
 
@@ -177,7 +177,7 @@ Every call site assumes the write succeeds. An Azure Table 503 throws out of `Dr
 
 | Concern | Why it matters at 5–10 k EPS |
 |---|---|
-| **Reminder service throughput.** Orleans reminder service is a cluster-wide table (one row per reminder). | During a fleet-wide downstream outage, every affected aggregate registers a drain reminder simultaneously. 100 k aggregates → 100 k reminder-table rows churning at the 1-minute period. Document the reminder-table sizing assumption; consider making the 1-minute floor (`OutboxHost.cs:178`) tunable. |
+| **Reminder service throughput.** Orleans reminder service is a cluster-wide table (one row per reminder). | During a fleet-wide downstream outage, every affected aggregate registers a drain reminder simultaneously. 100 k aggregates → 100 k reminder-table rows churning at the 1-minute period. Document the reminder-table sizing assumption. The 1-minute floor is now tunable as `EdictOptions.OutboxDrainReminderPeriod` (ADR 0028). |
 | **`OutboxSlice.Enqueue` is O(n).** `[.. Pending, entry]` allocates a new list. | Fine at small depths; at 50+ pending × burst rate, per-grain CPU starts to show. Persistence cost dominates anyway — flag if `Pending.Count > ~20`. |
 | **Implicit subscription + new consumer deploy.** A new `EdictEventHandler` doesn't see in-flight events on the stream. | Expected (ADR 0001) but worth one operator-doc line: "a new consumer starts from now; backfill is the consumer's design problem." |
 | **Saga single-command rule is a runtime throw.** Bug fires `Dispatch` twice → runtime exception → dead-letter promotion. | At burst load a saga bug that fires twice 1 % of the time fills the dead-letter projection with stack traces. Worth re-evaluating "no analyzer" given the cost at scale. |
@@ -195,5 +195,5 @@ The atomic-envelope design and FIFO / stop-at-head / lazy-reminder shape are the
 | 1 | ~~`UpsertRowEffect.RowTypeName` uses `Type.GetType` and bypasses `[Alias]`~~ **Resolved by [ADR 0027](adr/0027-attribute-placement-policy-and-persisted-state-marker.md)** | ~~The framework's most important schema-drift guarantee has a hole~~. Closed: `RowAlias` replaces `RowTypeName`; `IEdictPersistedState` + EDICT011 enforce the discipline at compile time |
 | 2 | ~~Grain-document size envelope under sustained burst~~ Observability for `OutboxSlice` backlog under sustained burst | ~~Without an intake throttle or saturation metric, an aggregate caught behind a slow downstream during a burst will overflow the row before claim-check helps~~. **Cap-overflow half resolved by [ADR 0025](adr/0025-grain-state-on-blob-substrate.md).** Observability half (saturation metrics, intake throttle) remains open — a deep backlog is still operationally suspect even when the substrate can hold it. |
 | 3 | Receiver-side blob-missing dead-letter path (ADR 0024) | Documented but unshipped; until it lands, claim-check'd consumers are wedge-able by retention misconfiguration |
-| 4 | Singleton consumer `RingSize` default of 100 | Silent failure mode at high EPS; cheap fix with a metric + docs note |
-| 5 | Reminder-table sizing & 1-minute floor under fleet-wide outage | Operator-doc concern + a tunable knob |
+| 4 | Singleton consumer `WindowSize` default of 100 — **option surfaced by [ADR 0028](adr/0028-config-surface-and-installation.md)** as `EdictOptions.IdempotencyWindowSize` (silo-wide default) with the per-grain-type `protected virtual int WindowSize` override retained for high-EPS singletons; the silent-failure half (no overwrite metric, no analyzer error) remains open | Cheap fix with a metric + docs note |
+| 5 | Reminder-table sizing & ~~1-minute floor~~ under fleet-wide outage — **tunable-floor half resolved by [ADR 0028](adr/0028-config-surface-and-installation.md)** (`OutboxDrainReminderPeriod` on `EdictOptions`); sizing-assumption half remains open as an operator-docs concern | Operator-doc concern only |
