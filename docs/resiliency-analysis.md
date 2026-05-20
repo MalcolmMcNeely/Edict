@@ -46,9 +46,9 @@ This document inventories what Orleans gives us for free, where Edict's own desi
 
 | # | Concern | Severity | Surface | Recovery posture |
 |---|---|---|---|---|
-| 1 | Head-of-line blocking inside one aggregate | High | OutboxHost FIFO stop-at-head | Self-heals after `MaxAttempts` (~30–40 min default) |
+| 1 | ~~Head-of-line blocking inside one aggregate~~ **Resolved by [ADR 0026](adr/0026-per-entry-independent-retry-unified-deferred-dispatch.md)** | ~~High~~ | ~~OutboxHost FIFO stop-at-head~~ — replaced by per-entry independent retry, sequential in insertion order; a failing entry no longer blocks subsequent entries on the same grain | Per-entry backoff + reminder; no aggregate wedge |
 | 2 | `OutboxSlice` grows inline in the grain document | High (cap-overflow half resolved by ADR 0025) | `OutboxSlice.Pending : List<OutboxEntry>` | **Cap-overflow half resolved by [ADR 0025](adr/0025-grain-state-on-blob-substrate.md) — grain state on Blob has no row cap.** Observability half (saturation metrics, intake throttle) remains open. |
-| 3 | `[Alias]` discipline has a hole at `UpsertRowEffect.RowTypeName` | High | `Edict.Core/Outbox/UpsertRowExecutor.cs:40` | None — rename/move is irrecoverable for in-flight entries |
+| 3 | ~~`[Alias]` discipline has a hole at `UpsertRowEffect.RowTypeName`~~ **Resolved by [ADR 0027](adr/0027-attribute-placement-policy-and-persisted-state-marker.md)** | ~~High~~ | ~~`Edict.Core/Outbox/UpsertRowExecutor.cs:40`~~ — `RowTypeName` (AQTN) replaced by `RowAlias` (frozen literal); drain resolves via `Orleans.Serialization.TypeConverter.Parse`; `IEdictPersistedState` + EDICT011 enforce the frozen-literal discipline at compile time | Closed — rename/move is now `[Alias]`-stable |
 | 4 | Receiver-side missing-blob dead-letter path is documented but unshipped | Medium | ADR 0024 §"receiver-side failure mode" | A deleted blob wedges consumers indefinitely until shipped |
 | 5 | Dedup ring is silently bounded | Medium | `EdictIdempotencyBase.RingSize = 100` | Singleton consumers are the dangerous default |
 | 6 | Route shape changes during rolling deploy | Medium | Saga `SendCommand` entries; new/removed `Handle(TCommand)` | Dead-letter (correct but loud) |
@@ -60,6 +60,8 @@ This document inventories what Orleans gives us for free, where Edict's own desi
 ### 3.2 High-severity concerns
 
 #### 3.2.1 Head-of-line blocking per aggregate
+
+> **Status:** **resolved by [ADR 0026](adr/0026-per-entry-independent-retry-unified-deferred-dispatch.md)** — FIFO stop-at-head is retracted; drain is per-entry-independent retry, sequential in insertion order. A failing entry bumps its own `NextAttemptUtc` and the drain continues past it; subsequent entries on the same grain are not blocked. The per-aggregate wedge described below cannot occur. Historical context for the original concern is preserved below.
 
 Stop-at-head means a single poison effect blocks every subsequent effect on *that grain key* until either it succeeds or hits `MaxAttempts`. Worst-case wedge with defaults (`MaxAttempts=8`, `MaxDelay=5 min`):
 
@@ -95,6 +97,8 @@ Claim-check shrinks the *event payload* but not the per-entry overhead × N. The
 | Hard cap `Pending.Count` with FIFO drop-tail | Loses ordering guarantee — probably not acceptable |
 
 #### 3.2.3 `[Alias]` discipline hole at `UpsertRowEffect.RowTypeName`
+
+> **Status:** **resolved by [ADR 0027](adr/0027-attribute-placement-policy-and-persisted-state-marker.md)** — `UpsertRowEffect.RowTypeName` (AQTN, resolved via `Type.GetType`) is replaced by `RowAlias` (the row POCO's frozen `[Alias]` literal, resolved via `Orleans.Serialization.TypeConverter.Parse`). The row POCO implements the new `IEdictPersistedState` marker; the analyzer EDICT011 enforces frozen-literal `[Alias]` + `[GenerateSerializer]` + `[Id(n)]` on every implementor, so the hole closes at compile time, not at incident time. Historical context for the original concern is preserved below.
 
 `Edict.Core/Outbox/UpsertRowExecutor.cs:40` uses `Type.GetType(effect.RowTypeName)`. **`Type.GetType` does not honour `[Alias]`.**
 
@@ -188,7 +192,7 @@ The atomic-envelope design and FIFO / stop-at-head / lazy-reminder shape are the
 
 | Priority | Item | Rationale |
 |---|---|---|
-| 1 | `UpsertRowEffect.RowTypeName` uses `Type.GetType` and bypasses `[Alias]` | The framework's most important schema-drift guarantee has a hole |
+| 1 | ~~`UpsertRowEffect.RowTypeName` uses `Type.GetType` and bypasses `[Alias]`~~ **Resolved by [ADR 0027](adr/0027-attribute-placement-policy-and-persisted-state-marker.md)** | ~~The framework's most important schema-drift guarantee has a hole~~. Closed: `RowAlias` replaces `RowTypeName`; `IEdictPersistedState` + EDICT011 enforce the discipline at compile time |
 | 2 | ~~Grain-document size envelope under sustained burst~~ Observability for `OutboxSlice` backlog under sustained burst | ~~Without an intake throttle or saturation metric, an aggregate caught behind a slow downstream during a burst will overflow the row before claim-check helps~~. **Cap-overflow half resolved by [ADR 0025](adr/0025-grain-state-on-blob-substrate.md).** Observability half (saturation metrics, intake throttle) remains open — a deep backlog is still operationally suspect even when the substrate can hold it. |
 | 3 | Receiver-side blob-missing dead-letter path (ADR 0024) | Documented but unshipped; until it lands, claim-check'd consumers are wedge-able by retention misconfiguration |
 | 4 | Singleton consumer `RingSize` default of 100 | Silent failure mode at high EPS; cheap fix with a metric + docs note |
