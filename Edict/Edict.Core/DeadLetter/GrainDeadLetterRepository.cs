@@ -27,4 +27,14 @@ public sealed class GrainDeadLetterRepository(IGrainFactory grainFactory, string
             Guid.Parse(grainKey), grainClassPrefix);
         return admin.ListDeadLetterAsync();
     }
+
+    // The pivot to ADR 0022 (forensic-only, table-projection-backed) replaces
+    // this grain-backed repository with a table-backed one in a follow-up
+    // slice; the fleet-wide query has no grain-level analogue, so this stub
+    // exists only to keep the build green until that delete lands.
+    public Task<IReadOnlyList<EdictDeadLetterEntry>> ListAllAsync(
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Fleet-wide dead-letter listing is provided by the table-backed " +
+            "repository introduced under ADR 0022.");
 }

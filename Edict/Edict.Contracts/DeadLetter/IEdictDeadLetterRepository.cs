@@ -1,22 +1,29 @@
 namespace Edict.Contracts.DeadLetter;
 
 /// <summary>
-/// Read-only inspection of an aggregate's dead-lettered Outbox effects (ADR
-/// 0019). The Azure implementation lives in <c>Edict.Azure</c>; this interface
-/// is the substitution seam (ADR 0008) operators and tooling bind to,
-/// mirroring <see cref="TableStorage.IEdictTableRepository{T}"/> for the
-/// projection side. <b>Strictly read-only</b>: redrive is a state mutation and
-/// belongs on the grain (<c>IEdictDeadLetterAdmin.RedriveAsync</c>, atomic), so
-/// the repository never exposes a write — exactly the Table Repository seam
-/// split.
+/// Read-only inspection of dead-lettered Outbox effects (ADR 0022). The
+/// repository reads from the fleet-wide dead-letter projection table; the
+/// Azure implementation lives in <c>Edict.Azure</c> and the in-memory
+/// implementation in <c>Edict.Testing</c>. This interface is the substitution
+/// seam (ADR 0008) operators and tooling bind to, mirroring
+/// <see cref="TableStorage.IEdictTableRepository{T}"/> for the projection
+/// side. <b>Strictly read-only</b>: recovery is manual re-emission (for
+/// <c>PublishEvent</c>/<c>SendCommand</c>) or manual table repair (for
+/// <c>UpsertRow</c>), so the repository never exposes a write.
 /// </summary>
 public interface IEdictDeadLetterRepository
 {
     /// <summary>
-    /// Lists the dead-lettered effects currently held by the aggregate grain
-    /// with key <paramref name="grainKey"/>. Empty when none (or the grain has
-    /// no persisted state yet).
+    /// Lists dead-lettered effects whose <see cref="EdictDeadLetterEntry.SourceGrainKey"/>
+    /// matches <paramref name="grainKey"/>. Empty when none.
     /// </summary>
     Task<IReadOnlyList<EdictDeadLetterEntry>> ListAsync(
         string grainKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every dead-letter row in the fleet-wide partition — the
+    /// operator's first triage question during a system-wide failure.
+    /// </summary>
+    Task<IReadOnlyList<EdictDeadLetterEntry>> ListAllAsync(
+        CancellationToken cancellationToken = default);
 }

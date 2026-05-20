@@ -1,0 +1,102 @@
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+
+using Edict.Contracts.Commands;
+using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Events;
+using Edict.Core.Outbox;
+
+namespace Edict.Core.DeadLetter;
+
+/// <summary>
+/// Pure module that promotes a failing <see cref="OutboxEntry"/> to an
+/// <see cref="EdictDeadLetterRaised"/> event (ADR 0022). No DI, no I/O — owns
+/// the effect-kind → <c>EffectTarget</c> mapping, the System.Text.Json
+/// serialization of the payload for operator inspection (distinct from the
+/// MessagePack wire format per ADR 0007), trace context propagation
+/// (ADR 0003), and exception capture. The engine deserializes the entry
+/// payload via its existing Orleans serializer and hands the deserialized
+/// effect in.
+/// </summary>
+static class DeadLetterPromotion
+{
+    public static EdictDeadLetterRaised Build(
+        OutboxEntry entry,
+        EdictEvent evt,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var (streamName, _) = EventStreamAddress.Resolve(evt);
+        var effectTarget = $"{streamName}/{evt.GetType().Name}";
+        var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
+        return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+    }
+
+    public static EdictDeadLetterRaised Build(
+        OutboxEntry entry,
+        EdictCommand command,
+        string targetGrainType,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var targetGrainKey = ResolveCommandRouteKey(command);
+        var effectTarget = $"{targetGrainType}/{targetGrainKey:D}";
+        var payloadJson = JsonSerializer.Serialize(command, command.GetType());
+        return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+    }
+
+    public static EdictDeadLetterRaised Build(
+        OutboxEntry entry,
+        UpsertRowEffect effect,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var effectTarget = $"{effect.TableName}/{effect.PartitionKey}/{effect.RowKey}";
+        // UpsertRowEffect already carries the row as UTF-8 JSON (the row POCO has
+        // no Orleans codec — see UpsertRowEffect). Use it verbatim as display data.
+        var payloadJson = effect.RowJson.Length == 0
+            ? null
+            : Encoding.UTF8.GetString(effect.RowJson);
+        return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+    }
+
+    static EdictDeadLetterRaised Compose(
+        OutboxEntry entry,
+        string effectTarget,
+        string? payloadJson,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt) => new()
+    {
+        EntryId = entry.EntryId,
+        Kind = entry.Kind.ToString(),
+        AttemptCount = entry.AttemptCount,
+        DeadLetteredAt = deadLetteredAt,
+        SourceGrainKey = sourceGrainKey,
+        SourceGrainType = sourceGrainType,
+        EffectTarget = effectTarget,
+        TraceParent = entry.TraceParent,
+        ExceptionType = exception.GetType().FullName,
+        Reason = exception.Message,
+        PayloadJson = payloadJson,
+    };
+
+    static Guid ResolveCommandRouteKey(EdictCommand command)
+    {
+        var routeKeyProp = Array.Find(
+            command.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance),
+            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
+            ?? throw new InvalidOperationException(
+                $"Command {command.GetType().Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
+
+        return (Guid)routeKeyProp.GetValue(command)!;
+    }
+}
