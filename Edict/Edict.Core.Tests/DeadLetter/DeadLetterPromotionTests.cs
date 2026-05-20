@@ -1,4 +1,5 @@
 using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
@@ -172,6 +173,30 @@ public sealed class DeadLetterPromotionTests
 
         var raised = DeadLetterPromotion.Build(
             entry, evt, new InvalidOperationException("downstream unavailable"),
+            SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
+
+        return Verify(raised).DontScrubGuids().DontScrubDateTimes();
+    }
+
+    // ADR 0024 slice 4: an oversized event whose publish permanently fails rides
+    // the Outbox as a pointer-bearing EdictEventEnvelope. Promotion must lift
+    // ClaimCheckKey onto the dead-letter event and leave PayloadJson null — the
+    // forensic surface preserves the operator's click-through to the blob while
+    // the >32 KB body never tries to fit into the Azure Table property.
+    [Fact]
+    public Task BuildForEnvelopeFailure_ShouldCarryClaimCheckKeyAndOmitPayloadJson()
+    {
+        var entry = PublishEventEntry();
+        var envelope = new EdictEventEnvelope(
+            inlinePayload: null,
+            claimCheckKey: "edict-claim-check/abc123")
+        {
+            InnerEventStreamName = "Orders",
+            InnerEventRouteKey = FixedOrderId,
+        };
+
+        var raised = DeadLetterPromotion.BuildForEnvelopeFailure(
+            entry, envelope, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();

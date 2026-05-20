@@ -60,6 +60,15 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
         var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
+        // ADR 0024 slice 4: an oversized event rides as a pointer-bearing
+        // envelope on the wire. Lift the pointer onto the forensic row instead
+        // of trying to JSON-serialise the body into a 32 KB Azure Table
+        // property — the very failure mode claim-check exists to avoid.
+        if (evt is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } envelope)
+        {
+            return DeadLetterPromotion.BuildForEnvelopeFailure(
+                failed, envelope, exception, sourceGrainKey, sourceGrainType, now);
+        }
         return DeadLetterPromotion.Build(failed, evt, exception, sourceGrainKey, sourceGrainType, now);
     }
 

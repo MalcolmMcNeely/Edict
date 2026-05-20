@@ -78,6 +78,38 @@ static class DeadLetterPromotion
         };
     }
 
+    /// <summary>
+    /// Publisher-side specialisation for an oversized event (ADR 0024, slice 4).
+    /// The failing Outbox entry's payload is a pointer-bearing
+    /// <see cref="EdictEventEnvelope"/> — the inner body is in the claim-check
+    /// blob store, not on the wire. The forensic row lifts
+    /// <see cref="EdictEventEnvelope.ClaimCheckKey"/> onto the
+    /// <see cref="EdictDeadLetterRaised"/> so an operator clicks through to the
+    /// blob; <see cref="EdictDeadLetterRaised.PayloadJson"/> stays null because
+    /// the >32 KB body never fits into the Azure Table property the dead-letter
+    /// projection writes (the failure mode claim-check was designed to prevent).
+    /// <see cref="EdictDeadLetterFailureKind.EffectFailure"/> stays the
+    /// discriminator — this is still a publisher-side promotion, distinct from
+    /// the receiver-side <see cref="EdictDeadLetterFailureKind.BlobMissing"/>.
+    /// </summary>
+    public static EdictDeadLetterRaised BuildForEnvelopeFailure(
+        OutboxEntry entry,
+        EdictEventEnvelope envelope,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var effectTarget = envelope.InnerEventStreamName is { } innerStream
+            ? $"{innerStream}/{envelope.InnerEventRouteKey:D}"
+            : nameof(EdictEventEnvelope);
+        var raised = Compose(entry, effectTarget, payloadJson: null, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+        return raised with
+        {
+            ClaimCheckKey = envelope.ClaimCheckKey,
+        };
+    }
+
     public static EdictDeadLetterRaised Build(
         OutboxEntry entry,
         UpsertRowEffect effect,

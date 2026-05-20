@@ -80,9 +80,14 @@ public static class EdictServiceCollectionExtensions
         // of whether the host opted into AddEdictOutbox for publisher-side
         // policy. The IEdictClaimCheckStore is optional: a host with no store
         // still passes non-envelope and inline-payload events through.
+        // ADR 0024 slice 4: EdictDeadLetterProjectionBuilder is the one
+        // framework consumer for which the fetch is suppressed — the dead-letter
+        // row stores the pointer instead of inflating a >32 KB body into a
+        // 32 KB Azure Table property. Every other consumer fetches by default.
         services.TryAddSingleton(sp => new ClaimCheckUnwrap(
             sp.GetRequiredService<Serializer>(),
-            sp.GetService<IEdictClaimCheckStore>()));
+            sp.GetService<IEdictClaimCheckStore>(),
+            shouldFetchForConsumer: static t => t != typeof(EdictDeadLetterProjectionBuilder)));
 
         return services;
     }

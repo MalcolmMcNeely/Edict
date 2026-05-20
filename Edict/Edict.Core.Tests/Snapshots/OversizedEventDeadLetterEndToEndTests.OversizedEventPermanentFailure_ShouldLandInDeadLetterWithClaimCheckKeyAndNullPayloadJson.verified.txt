@@ -1,0 +1,13 @@
+﻿{
+  EntryId: {Scrubbed},
+  Kind: PublishEvent,
+  AttemptCount: 3,
+  DeadLetteredAt: {Scrubbed},
+  SourceGrainKey: {Scrubbed},
+  SourceGrainType: Edict.Core.Tests.Grains.CounterAggregate,
+  EffectTarget: {Scrubbed},
+  TraceParent: {Scrubbed},
+  ExceptionType: System.InvalidOperationException,
+  Reason: simulated permanent publish failure,
+  ClaimCheckKey: {Scrubbed}
+}
