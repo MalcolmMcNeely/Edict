@@ -55,6 +55,15 @@ For each approved slice, publish a new issue to the issue tracker. Use the issue
 
 Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
 
+### 6. Close the parent (if source was an existing issue)
+
+If the source was a parent issue on the tracker (e.g. a PRD), maintain the bidirectional link by:
+
+1. Posting a single comment on the parent that lists every created issue (use the tracker's auto-link form so the relationship is rendered, e.g. `#123` on GitHub).
+2. Closing the parent as completed.
+
+Skip this step if the source was a path, an inline plan, or otherwise had no parent issue. Never close a parent that was passed by URL/number unless the user has confirmed the breakdown — closing happens after publication, not during quiz.
+
 <issue-template>
 ## Parent
 
@@ -80,4 +89,4 @@ Or "None - can start immediately" if no blockers.
 
 </issue-template>
 
-Do NOT close or modify any parent issue.
+Do NOT modify the parent issue's body or labels — only the close-with-comment in step 6.
