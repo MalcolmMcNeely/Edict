@@ -1,0 +1,27 @@
+{
+  Attempted: [
+    aaaaaaaa-0000-0000-0000-000000000001,
+    aaaaaaaa-0000-0000-0000-000000000001,
+    aaaaaaaa-0000-0000-0000-000000000001,
+    dddddddd-0000-0000-0000-000000000099
+  ],
+  Log: [
+    commit[aaaaaaaa-0000-0000-0000-000000000001],
+    register,
+    commit[aaaaaaaa-0000-0000-0000-000000000001],
+    register,
+    commit[dddddddd-0000-0000-0000-000000000099],
+    commit[dddddddd-0000-0000-0000-000000000099],
+    register
+  ],
+  Outbox: {
+    Pending: [
+      {
+        EntryId: dddddddd-0000-0000-0000-000000000099,
+        Payload: CQkJ,
+        AttemptCount: 1,
+        NextAttemptUtc: 2026-05-19 12:20:02 +0
+      }
+    ]
+  }
+}

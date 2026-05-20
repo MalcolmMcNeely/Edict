@@ -21,9 +21,9 @@ namespace Edict.Core.Commands;
 /// slot (a Command is a direct grain call, so there is deliberately no
 /// deduplication — dedup is for at-least-once stream delivery, which Commands
 /// never use — ADR 0004). The host plumbing (Outbox host adapter, lazy
-/// Reminder, dead-letter admin, drain-on-activation, intake-block guard) lives
-/// on the shared <see cref="EdictDurableConsumerBase{TPayload}"/> root — this
-/// class keeps only the Command Handler's role-specific surface.
+/// Reminder, drain-on-activation) lives on the shared
+/// <see cref="EdictDurableConsumerBase{TPayload}"/> root — this class keeps
+/// only the Command Handler's role-specific surface.
 /// <para>
 /// The consumer mutates <see cref="State"/> — its own <typeparamref name="TState"/>
 /// POCO — and never hand-persists fields. The consumer writes a <c>partial</c>
@@ -133,11 +133,6 @@ public abstract class EdictCommandHandler<TState>
         Func<Task<EdictCommandResult>> handle)
         where TCommand : EdictCommand
     {
-        // Block-intake (ADR 0019): a saturated DeadLetter slice surfaces an
-        // infrastructure fault (thrown, never a business Rejected) so the
-        // effect is never silently dropped until an operator redrives.
-        EnsureIntakeNotBlocked();
-
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
         if (validator is null)

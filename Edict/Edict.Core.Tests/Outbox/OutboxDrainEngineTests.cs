@@ -1,4 +1,5 @@
 using Edict.Contracts.Configuration;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 using Microsoft.Extensions.Time.Testing;
@@ -30,7 +31,7 @@ public sealed class OutboxDrainEngineTests
     static readonly EdictOutboxOptions Options = new();
 
     static OutboxDrainEngine Engine(IOutboxEffectExecutor executor, FakeTimeProvider clock) =>
-        new([executor], clock, Options);
+        new([executor], clock, Options, new UnusedPromoter());
 
     [Fact]
     public async Task DrainAsync_ShouldExecuteAckAndUnregister_WhenAllEffectsSucceed()
@@ -109,37 +110,8 @@ public sealed class OutboxDrainEngineTests
             .DontScrubGuids().DontScrubDateTimes();
     }
 
-    // ADR 0019: a permanently failing head is retried with backoff, then at
-    // MaxAttempts moves Outbox→DeadLetter in the same one commit and the drain
-    // CONTINUES — the tail (EntryB) is no longer blocked (self-healing).
-    [Fact]
-    public async Task DrainAsync_ShouldDeadLetterPoisonHeadAndFreeTail_WhenMaxAttemptsExhausted()
-    {
-        var clock = new FakeTimeProvider(Now);
-        var options = new EdictOutboxOptions
-        {
-            MaxAttempts = 3,
-            BaseDelay = TimeSpan.FromSeconds(2),
-            JitterFraction = 0,
-        };
-        var executor = new SelectiveExecutor(poison: EntryA);
-        var host = new FakeOutboxHost
-        {
-            Outbox = new OutboxSlice().Enqueue(Entry(EntryA)).Enqueue(Entry(EntryB)),
-        };
-        var engine = new OutboxDrainEngine([executor], clock, options);
-
-        // Each pass: poison head throws, backoff-gated; advance past the gate
-        // and drain again. The 3rd failure exhausts MaxAttempts → dead-letter.
-        for (var pass = 0; pass < 3; pass++)
-        {
-            await engine.DrainAsync(host);
-            clock.Advance(TimeSpan.FromMinutes(10));
-        }
-
-        await Verify(new { executor.Executed, host.Log, host.Outbox })
-            .DontScrubGuids().DontScrubDateTimes();
-    }
+    // ADR 0022: the promotion behaviour at MaxAttempts (Outbox→PublishEvent
+    // tail, single commit) is exercised in OutboxDrainEnginePromotionTests.
 
     // ADR 0019: the same one Reminder gates retries on NextAttemptUtc — an
     // entry not yet due is skipped (not executed); once the virtual clock
@@ -151,7 +123,7 @@ public sealed class OutboxDrainEngineTests
         var executor = new RecordingExecutor();
         var gated = Entry(EntryA) with { AttemptCount = 1, NextAttemptUtc = Now.AddMinutes(5) };
         var host = new FakeOutboxHost { Outbox = new OutboxSlice().Enqueue(gated) };
-        var engine = new OutboxDrainEngine([executor], clock, Options);
+        var engine = new OutboxDrainEngine([executor], clock, Options, new UnusedPromoter());
 
         await engine.DrainAsync(host);          // gated: skipped, not executed
         var skippedExecuted = executor.Executed.Count;
@@ -161,23 +133,6 @@ public sealed class OutboxDrainEngineTests
 
         await Verify(new { skippedExecuted, executor.Executed, host.Log, host.Outbox })
             .DontScrubGuids().DontScrubDateTimes();
-    }
-
-    sealed class SelectiveExecutor(Guid poison) : IOutboxEffectExecutor
-    {
-        public List<Guid> Executed { get; } = [];
-        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
-
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
-        {
-            if (entry.EntryId == poison)
-            {
-                throw new InvalidOperationException("poison entry");
-            }
-
-            Executed.Add(entry.EntryId);
-            return Task.CompletedTask;
-        }
     }
 
     sealed class RecordingExecutor : IOutboxEffectExecutor
@@ -204,11 +159,19 @@ public sealed class OutboxDrainEngineTests
         }
     }
 
+    sealed class UnusedPromoter : IDeadLetterPromoter
+    {
+        public OutboxEntry Promote(OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+            => throw new InvalidOperationException("No promotion expected in this test.");
+    }
+
     sealed class FakeOutboxHost : IOutboxHost
     {
         public List<string> Log { get; } = [];
         public OutboxSlice Outbox { get; set; } = new();
         public IStreamProvider StreamProvider => null!; // never touched by fake executors
+        public string GrainKey => "00000000-0000-0000-0000-000000000000";
+        public string GrainTypeName => "FakeHost";
 
         public Task CommitAsync()
         {

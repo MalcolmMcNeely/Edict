@@ -18,8 +18,7 @@ namespace Edict.Core.Idempotency;
 /// configurable bounded window of recently handled
 /// <see cref="EdictEvent.EventId"/>s, and commits progress only after the
 /// subclass's dispatch succeeds (ADR 0002). The host plumbing (Outbox host
-/// adapter, lazy Reminder, dead-letter admin, drain-on-activation,
-/// intake-block guard) lives on the shared
+/// adapter, lazy Reminder, drain-on-activation) lives on the shared
 /// <see cref="EdictDurableConsumerBase{TPayload}"/> root; this class keeps only
 /// the idempotent-consumer's stream observer and dedup surface.
 /// <para>
@@ -106,12 +105,6 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// </summary>
     protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
-        // Block-intake (ADR 0019): a saturated DeadLetter slice must not
-        // silently drop a redelivered event. Throw before the dedup check so
-        // the EventId is never committed to the ring — Orleans redelivers it
-        // until an operator redrives and the cap clears.
-        EnsureIntakeNotBlocked();
-
         EnsureRingInitialized();
 
         if (Contains(evt.EventId))

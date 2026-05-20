@@ -161,20 +161,11 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    [Fact]
-    public void DeadLetterEntry_ShouldResideInEdictCoreDeadLetter()
-    {
-        var rule = Types().That().HaveNameMatching("^DeadLetterEntry$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.DeadLetter$");
-
-        rule.Check(Architecture);
-    }
-
-    // ADR 0019 consumer surface: the read-only repository + its DTO are
+    // ADR 0022 consumer surface: the read-only repository + its DTO are
     // consumer-facing, so they are brand-prefixed and live in Edict.Contracts
-    // (mirroring IEdictTableRepository); redrive is the only mutation path and
-    // is a grain method, so IEdictDeadLetterAdmin is a grain interface in
-    // Edict.Core (it cannot sit in the bare-named Edict.Core.DeadLetter ns).
+    // (mirroring IEdictTableRepository). The in-grain dead-letter slice, its
+    // operator-recovery admin grain interface, and the saturated-intake
+    // exception are all removed under ADR 0022 — no placement tests for them.
 
     [Fact]
     public void IEdictDeadLetterRepository_ShouldResideInEdictContracts()
@@ -190,24 +181,6 @@ public class TypePlacementTests
     {
         var rule = Types().That().HaveNameMatching("^EdictDeadLetterEntry$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.DeadLetter$");
-
-        rule.Check(Architecture);
-    }
-
-    [Fact]
-    public void IEdictDeadLetterAdmin_ShouldResideInEdictCoreAdministration()
-    {
-        var rule = Interfaces().That().HaveNameMatching("^IEdictDeadLetterAdmin$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Administration$");
-
-        rule.Check(Architecture);
-    }
-
-    [Fact]
-    public void EdictOutboxSaturatedException_ShouldResideInEdictCoreRoot()
-    {
-        var rule = Classes().That().HaveNameMatching("^EdictOutboxSaturatedException$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core$");
 
         rule.Check(Architecture);
     }

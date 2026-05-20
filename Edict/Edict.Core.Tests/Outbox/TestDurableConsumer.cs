@@ -1,5 +1,4 @@
 using Edict.Contracts;
-using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 using Orleans;
@@ -9,16 +8,14 @@ namespace Edict.Core.Tests.Outbox;
 
 /// <summary>
 /// Trivial probe surface used by the <see cref="EdictDurableConsumerBase{TPayload}"/>
-/// fixture: seed state, snapshot state, drive the protected intake-block guard,
-/// and tick the reminder. The grain itself adds no role-specific behaviour —
-/// no commands, no stream observer — so every test invocation exercises only
-/// the shared host plumbing under test.
+/// fixture: seed state, snapshot state, and tick the reminder. The grain itself
+/// adds no role-specific behaviour — no commands, no stream observer — so every
+/// test invocation exercises only the shared host plumbing under test.
 /// </summary>
 public interface ITestDurableConsumer : IGrainWithGuidKey
 {
     Task SeedOutboxAsync(OutboxSlice slice);
     Task<OutboxSlice> GetOutboxAsync();
-    Task EnsureIntakeNotBlockedProbeAsync();
     Task TriggerReminderAsync();
     Task DeactivateAndWaitAsync();
 }
@@ -27,7 +24,8 @@ public interface ITestDurableConsumer : IGrainWithGuidKey
 /// Trivial subclass of <see cref="EdictDurableConsumerBase{TPayload}"/> with no
 /// role-specific surface, used by <c>TestDurableConsumerTests</c> to target the
 /// shared host plumbing directly rather than transitively through the two
-/// consumer roots (ADR 0018 unified envelope; ADR 0019 dead-letter recovery).
+/// consumer roots (ADR 0018 unified envelope; ADR 0022 forensic-only dead
+/// letters).
 /// </summary>
 public sealed class TestDurableConsumer : EdictDurableConsumerBase<EdictUnit>, ITestDurableConsumer
 {
@@ -38,12 +36,6 @@ public sealed class TestDurableConsumer : EdictDurableConsumerBase<EdictUnit>, I
     }
 
     public Task<OutboxSlice> GetOutboxAsync() => Task.FromResult(State.Outbox);
-
-    public Task EnsureIntakeNotBlockedProbeAsync()
-    {
-        EnsureIntakeNotBlocked();
-        return Task.CompletedTask;
-    }
 
     public Task TriggerReminderAsync() =>
         ReceiveReminder(DrainReminderName, new TickStatus());

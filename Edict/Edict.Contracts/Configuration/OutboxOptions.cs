@@ -1,7 +1,7 @@
 namespace Edict.Contracts.Configuration;
 
 /// <summary>
-/// Consumer-tunable Outbox/dead-letter policy (ADR 0018 / 0019). The framework
+/// Consumer-tunable Outbox/dead-letter policy (ADR 0018 / 0022). The framework
 /// ships sensible defaults; a consumer overrides only what it needs via
 /// <c>AddEdictOutbox(configure)</c>. Plain options POCO — no Orleans runtime
 /// dependency, so it lives in the shared kernel. Brand-prefixed because the
@@ -16,16 +16,12 @@ public sealed class EdictOutboxOptions
     public TimeSpan MaxDelay { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Attempts before a permanently failing entry is dead-lettered. The
-    /// failing attempt that reaches this count moves the entry Outbox→DeadLetter.
+    /// Attempts before a permanently failing entry is promoted to a dead-letter
+    /// publish (ADR 0022). The failing attempt that reaches this count removes
+    /// the entry from the Outbox and appends a new
+    /// <c>EdictDeadLetterRaised</c> publish entry at the FIFO tail.
     /// </summary>
     public int MaxAttempts { get; set; } = 8;
-
-    /// <summary>
-    /// Maximum dead-lettered entries retained in the grain document before the
-    /// grain blocks intake (commands fault, redelivered events are not acked).
-    /// </summary>
-    public int DeadLetterCap { get; set; } = 100;
 
     /// <summary>
     /// Fraction of the computed delay used as a deterministic ±spread per entry

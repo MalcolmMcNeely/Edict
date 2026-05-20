@@ -1,4 +1,5 @@
 using Edict.Contracts.Configuration;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 
@@ -59,13 +60,13 @@ public sealed class TestDurableConsumerClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(new EdictOutboxOptions
             {
                 MaxAttempts = 1,
-                DeadLetterCap = 1,
                 JitterFraction = 0,
                 BaseDelay = TimeSpan.FromSeconds(1),
             });
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.PublishEvent));
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.SendCommand));
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.UpsertRow));
+            siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

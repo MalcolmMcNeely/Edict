@@ -48,8 +48,7 @@ public sealed class EnvelopeStateShapeTests
                 AttemptCount = 2,
                 NextAttemptUtc = Now,
             })
-            .Enqueue(new OutboxEntry { EntryId = EntryId, Kind = OutboxEffectKind.PublishEvent })
-            .DeadLetterHead(Now, "max attempts exhausted");
+            .Enqueue(new OutboxEntry { EntryId = EntryId, Kind = OutboxEffectKind.PublishEvent });
 
     [Fact]
     public Task GrainEnvelope_ShouldRoundTripPersistedShape_ForStatelessUnitPayload()

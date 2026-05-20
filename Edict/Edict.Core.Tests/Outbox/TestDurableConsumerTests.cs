@@ -1,5 +1,3 @@
-using Edict.Core.Administration;
-using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 namespace Edict.Core.Tests.Outbox;
@@ -8,7 +6,10 @@ namespace Edict.Core.Tests.Outbox;
 /// Targets the host plumbing on <see cref="EdictDurableConsumerBase{TPayload}"/>
 /// directly via a trivial <see cref="TestDurableConsumer"/> subclass — the
 /// duplicated adapter that used to live on each consumer root is now its own
-/// test surface (ADR 0018 unified envelope, ADR 0019 dead-letter recovery).
+/// test surface (ADR 0018 unified envelope, ADR 0022 forensic-only dead
+/// letters: the in-grain DeadLetter slice and operator-recovery surface are
+/// gone, so the host plumbing this exercises is just drain-on-activation and
+/// reminder ticking).
 /// </summary>
 public sealed class TestDurableConsumerTests : IClassFixture<TestDurableConsumerClusterFixture>
 {
@@ -61,98 +62,6 @@ public sealed class TestDurableConsumerTests : IClassFixture<TestDurableConsumer
 
         Assert.Empty(CountingExecutor.Executed);
         Assert.Empty(outboxAfter.Pending);
-    }
-
-    [Fact]
-    public async Task EnsureIntakeNotBlocked_ShouldThrowSaturatedException_WhenDeadLetterAtCap()
-    {
-        var grain = _fixture.GrainFactory.GetGrain<ITestDurableConsumer>(Guid.NewGuid());
-        var saturated = new OutboxSlice
-        {
-            DeadLetter =
-            [
-                new DeadLetterEntry
-                {
-                    Entry = PublishEntry(EntryA, attemptCount: 1),
-                    DeadLetteredAt = _fixture.Clock.GetUtcNow(),
-                    Reason = "seeded (test)",
-                },
-            ],
-        };
-        await grain.SeedOutboxAsync(saturated);
-
-        await Assert.ThrowsAsync<EdictOutboxSaturatedException>(grain.EnsureIntakeNotBlockedProbeAsync);
-    }
-
-    [Fact]
-    public async Task EnsureIntakeNotBlocked_ShouldBeNoOp_WhenDeadLetterUnderCap()
-    {
-        var grain = _fixture.GrainFactory.GetGrain<ITestDurableConsumer>(Guid.NewGuid());
-        await grain.SeedOutboxAsync(new OutboxSlice());
-
-        await grain.EnsureIntakeNotBlockedProbeAsync(); // no throw
-    }
-
-    [Fact]
-    public async Task RedriveAsync_ShouldMoveDeadLetterBackToOutboxTailAndDrain()
-    {
-        CountingExecutor.Reset();
-        var grain = _fixture.GrainFactory.GetGrain<ITestDurableConsumer>(Guid.NewGuid());
-
-        var seededEntry = PublishEntry(EntryA, attemptCount: 5);
-        var saturated = new OutboxSlice
-        {
-            DeadLetter =
-            [
-                new DeadLetterEntry
-                {
-                    Entry = seededEntry,
-                    DeadLetteredAt = _fixture.Clock.GetUtcNow(),
-                    Reason = "max attempts exhausted",
-                },
-            ],
-        };
-        await grain.SeedOutboxAsync(saturated);
-
-        var admin = grain.AsReference<IEdictDeadLetterAdmin>();
-        await admin.RedriveAsync(EntryA);
-
-        var outboxAfter = await grain.GetOutboxAsync();
-        Assert.Empty(outboxAfter.DeadLetter);
-        Assert.Empty(outboxAfter.Pending); // drained immediately after redrive
-        Assert.Contains(EntryA, CountingExecutor.Executed);
-    }
-
-    [Fact]
-    public async Task ListDeadLetterAsync_ShouldProjectCurrentOutboxSliceViaDeadLetterProjection()
-    {
-        var grain = _fixture.GrainFactory.GetGrain<ITestDurableConsumer>(Guid.NewGuid());
-
-        var deadAt = _fixture.Clock.GetUtcNow();
-        var slice = new OutboxSlice
-        {
-            DeadLetter =
-            [
-                new DeadLetterEntry
-                {
-                    Entry = PublishEntry(EntryA, attemptCount: 3),
-                    DeadLetteredAt = deadAt,
-                    Reason = "max attempts exhausted",
-                },
-            ],
-        };
-        await grain.SeedOutboxAsync(slice);
-
-        var admin = grain.AsReference<IEdictDeadLetterAdmin>();
-        var listed = await admin.ListDeadLetterAsync();
-        var projected = DeadLetterProjection.From(slice);
-
-        Assert.Equal(projected.Count, listed.Count);
-        Assert.Equal(projected[0].EntryId, listed[0].EntryId);
-        Assert.Equal(projected[0].Kind, listed[0].Kind);
-        Assert.Equal(projected[0].AttemptCount, listed[0].AttemptCount);
-        Assert.Equal(projected[0].DeadLetteredAt, listed[0].DeadLetteredAt);
-        Assert.Equal(projected[0].Reason, listed[0].Reason);
     }
 
     [Fact]

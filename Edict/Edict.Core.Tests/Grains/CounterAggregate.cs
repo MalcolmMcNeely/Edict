@@ -56,8 +56,6 @@ public interface ICounterProbe : IGrainWithGuidKey
     Task ForceDrainViaReminderAsync();
     Task<int> GetPendingOutboxCountAsync();
     Task<bool> HasDrainReminderAsync();
-    Task<IReadOnlyList<Guid>> GetDeadLetterEntryIdsAsync();
-    Task<int> GetDeadLetterCountAsync();
 }
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
@@ -100,11 +98,4 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public async Task<bool> HasDrainReminderAsync() =>
         await this.GetReminder("edict-outbox-drain") is not null;
-
-    public Task<IReadOnlyList<Guid>> GetDeadLetterEntryIdsAsync() =>
-        Task.FromResult<IReadOnlyList<Guid>>(
-            ((IOutboxHost)this).Outbox.DeadLetter.Select(d => d.Entry.EntryId).ToList());
-
-    public Task<int> GetDeadLetterCountAsync() =>
-        Task.FromResult(((IOutboxHost)this).Outbox.DeadLetter.Count);
 }

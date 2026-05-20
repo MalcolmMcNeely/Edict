@@ -2,6 +2,7 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.Grains;
@@ -61,6 +62,7 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
             siloBuilder.Services.AddSingleton(new EdictOutboxOptions());
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
+            siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

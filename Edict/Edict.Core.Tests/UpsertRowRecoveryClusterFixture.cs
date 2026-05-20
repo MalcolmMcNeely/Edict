@@ -2,6 +2,7 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
@@ -72,6 +73,7 @@ public sealed class UpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableUpsertRowExecutor>();
+            siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

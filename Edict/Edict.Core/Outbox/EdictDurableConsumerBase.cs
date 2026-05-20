@@ -1,8 +1,3 @@
-using Edict.Contracts.Configuration;
-using Edict.Contracts.DeadLetter;
-using Edict.Core.Administration;
-using Edict.Core.DeadLetter;
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Providers;
@@ -15,9 +10,8 @@ namespace Edict.Core.Outbox;
 /// Internal intermediate base shared by the two consumer-facing grain roots
 /// (<c>EdictCommandHandler&lt;TState&gt;</c> and
 /// <c>EdictIdempotencyBase&lt;TPayload&gt;</c>): the single home for the
-/// <see cref="IOutboxHost"/> adapter, the <see cref="IRemindable"/> tick, the
-/// <see cref="IEdictDeadLetterAdmin"/> operator surface, drain-on-activation,
-/// the intake-block guard, the lazy drain-Reminder bookkeeping and the
+/// <see cref="IOutboxHost"/> adapter, the <see cref="IRemindable"/> tick,
+/// drain-on-activation, the lazy drain-Reminder bookkeeping and the
 /// <c>[StorageProvider]</c> binding. Both roots inherit this so the duplicated
 /// host plumbing has one home and one persisted-document contract
 /// (ADR 0017 clause (b) outer shared root; ADR 0018 unified envelope).
@@ -25,12 +19,15 @@ namespace Edict.Core.Outbox;
 /// The <see cref="OutboxDrainEngine"/> seam itself is untouched — this is the
 /// adapter that the engine drives via <see cref="IOutboxHost"/>; the engine
 /// stays a plain class, the grain owns the single <c>WriteStateAsync</c>, the
-/// stream provider and the Reminder.
+/// stream provider and the Reminder. Under ADR 0022 the dead-letter slice and
+/// its operator-recovery surface are gone: a failing entry at <c>MaxAttempts</c>
+/// is promoted to a new <see cref="OutboxEffectKind.PublishEvent"/> entry by
+/// the engine, so the grain never holds dead letters in its document.
 /// </para>
 /// </summary>
 [StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictDurableConsumerBase<TPayload>
-    : Grain<GrainEnvelope<TPayload>>, IOutboxHost, IRemindable, IEdictDeadLetterAdmin
+    : Grain<GrainEnvelope<TPayload>>, IOutboxHost, IRemindable
     where TPayload : new()
 {
     internal const string DrainReminderName = "edict-outbox-drain";
@@ -53,21 +50,6 @@ public abstract class EdictDurableConsumerBase<TPayload>
         }
     }
 
-    /// <summary>
-    /// Block-intake guard (ADR 0019): throws <see cref="EdictOutboxSaturatedException"/>
-    /// when the DeadLetter slice is at the configured cap so a redelivered
-    /// event or accepted command is never silently dropped until an operator
-    /// redrives. A no-op while the cap is clear.
-    /// </summary>
-    protected void EnsureIntakeNotBlocked()
-    {
-        var options = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
-        if (State.Outbox.IsIntakeBlocked(options.DeadLetterCap))
-        {
-            throw new EdictOutboxSaturatedException();
-        }
-    }
-
     /// <inheritdoc />
     public Task ReceiveReminder(string reminderName, TickStatus status)
     {
@@ -77,24 +59,6 @@ public abstract class EdictDurableConsumerBase<TPayload>
         return Engine.DrainAsync(this);
     }
 
-    /// <summary>
-    /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry
-    /// back to the Outbox tail with <c>AttemptCount</c> reset, writes state,
-    /// then drains. The same one grain-state write clears the cap, so a
-    /// previously blocked consumer resumes acking redelivered events.
-    /// </summary>
-    async Task IEdictDeadLetterAdmin.RedriveAsync(Guid entryId)
-    {
-        var clock = ServiceProvider.GetRequiredService<TimeProvider>();
-        State.Outbox = State.Outbox.Redrive(entryId, clock.GetUtcNow());
-        await WriteStateAsync();
-        await Engine.DrainAsync(this);
-    }
-
-    /// <inheritdoc />
-    Task<IReadOnlyList<EdictDeadLetterEntry>> IEdictDeadLetterAdmin.ListDeadLetterAsync() =>
-        Task.FromResult(DeadLetterProjection.From(State.Outbox));
-
     OutboxSlice IOutboxHost.Outbox
     {
         get => State.Outbox;
@@ -102,6 +66,10 @@ public abstract class EdictDurableConsumerBase<TPayload>
     }
 
     IStreamProvider IOutboxHost.StreamProvider => this.GetStreamProvider("edict");
+
+    string IOutboxHost.GrainKey => this.GetPrimaryKey().ToString();
+
+    string IOutboxHost.GrainTypeName => GetType().FullName ?? GetType().Name;
 
     Task IOutboxHost.CommitAsync() => WriteStateAsync();
 
