@@ -1,6 +1,7 @@
 using Azure.Data.Tables;
 using Azure.Storage.Queues;
 
+using Edict.Azure.DeadLetter;
 using Edict.Azure.TableStorage;
 using Edict.Contracts.Sending;
 using Edict.Core;
@@ -108,7 +109,9 @@ public sealed class AzureClusterFixture : IAsyncLifetime
         {
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            clientBuilder.Services.AddSingleton(_tableServiceClient);
             clientBuilder.Services.AddEdict();
+            clientBuilder.Services.AddEdictAzureDeadLetterRepository();
         }
     }
 }
