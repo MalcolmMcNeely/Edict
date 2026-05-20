@@ -7,19 +7,33 @@ namespace Edict.Testing.Chaos;
 /// making redelivery the default test condition catches consumers that quietly
 /// rely on exactly-once. <see cref="EdictTestAppBuilder.WithoutChaos"/>
 /// disables it; <see cref="EdictTestAppBuilder.WithChaosSeed"/> overrides the
-/// seed. Internal: no consumer types it directly (ADR 0017 brand rule).
+/// seed. <see cref="InvocationsEnabled"/> is the per-axis gate for
+/// <c>EdictEventHandler</c> deliveries (ADR 0023, issue #67): default
+/// <b>off</b> so a consumer's mock-call-count assertions are deterministic
+/// before the consumer has reasoned about chaos; opt-in via
+/// <see cref="EdictTestAppBuilder.WithChaosForInvocations"/>. Internal: no
+/// consumer types it directly (ADR 0017 brand rule).
 /// </summary>
-sealed record ChaosOptions(bool Enabled, int Seed, double DuplicateProbability, int MaxExtraDeliveries)
+sealed record ChaosOptions(
+    bool Enabled,
+    int Seed,
+    double DuplicateProbability,
+    int MaxExtraDeliveries,
+    bool InvocationsEnabled)
 {
     /// <summary>The shipped default: chaos on, fixed seed, half of all
-    /// publishes are duplicated once. The fixed default makes the Verify
-    /// snapshot stable run-to-run; the duplicate redelivery exercises the
-    /// dedup ring (ADR 0002) on every consumer test for free.</summary>
+    /// publishes are duplicated once, but <see cref="EdictEventHandler"/>
+    /// deliveries are excluded so a consumer's first event-handler test
+    /// surfaces deterministic mock counts (ADR 0023). The fixed default
+    /// keeps the Verify snapshot stable run-to-run; the duplicate redelivery
+    /// exercises the dedup ring (ADR 0002) on every saga/projection test
+    /// for free.</summary>
     public static ChaosOptions Default { get; } = new(
         Enabled: true,
         Seed: 0xED1C7,
         DuplicateProbability: 0.5,
-        MaxExtraDeliveries: 1);
+        MaxExtraDeliveries: 1,
+        InvocationsEnabled: false);
 
     public static ChaosOptions Off { get; } = Default with { Enabled = false };
 }

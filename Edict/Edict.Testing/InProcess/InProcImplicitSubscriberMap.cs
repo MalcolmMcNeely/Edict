@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 
 using Edict.Contracts.Events;
+using Edict.Core.EventHandler;
 using Edict.Core.Idempotency;
 
 using Orleans;
@@ -85,4 +86,13 @@ sealed class InProcImplicitSubscriberMap
             }
             return matched;
         });
+
+    /// <summary>
+    /// <c>true</c> when the subscriber grain class is an
+    /// <see cref="EdictEventHandler"/> — used by
+    /// <see cref="InProcPublishEventExecutor"/> to gate the chaos extra
+    /// deliveries off-by-default for that role (ADR 0023, issue #67).
+    /// </summary>
+    public static bool IsEventHandler(Type grainClass) =>
+        typeof(EdictEventHandler).IsAssignableFrom(grainClass);
 }

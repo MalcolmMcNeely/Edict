@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
@@ -66,6 +67,20 @@ sealed class InProcPublishEventExecutor(
 
         recorder.RecordEvent(stamped);
 
+        // The engine's dead-letter promotion path bypasses the InvokeHandler
+        // executor on the final attempt — it appends an EdictDeadLetterRaised
+        // PublishEvent entry instead (ADR 0022 / 0023). Recording the
+        // DeadLettered Invocation entry here closes the loop so the timeline
+        // shows the same "event arrived → ran (or dead-lettered)" pair the
+        // shipped contract documents.
+        if (stamped is EdictDeadLetterRaised raised
+            && raised.Kind == nameof(OutboxEffectKind.InvokeHandler)
+            && raised.SourceEventType is { } sourceType
+            && raised.SourceEventId is { } sourceEventId)
+        {
+            recorder.RecordInvocation(ShortTypeName(sourceType), sourceEventId, "DeadLettered");
+        }
+
         var (_, routeKey) = EventStreamAddress.Resolve(stamped);
 
         // Fire-and-forget per subscriber: a real stream hop is asynchronous to
@@ -74,10 +89,14 @@ sealed class InProcPublishEventExecutor(
         // OrderCommandHandler that just raised OrderSubmittedEvent) is free of
         // re-entrant grain-turn deadlock. The harness's Drain settles on
         // recorder-count stability, which captures the full cascade.
-        var deliveries = 1 + ExtraDeliveries();
         foreach (var grainClass in subscribers.SubscribersFor(stamped))
         {
             var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
+            // Per-subscriber chaos gate: EdictEventHandler deliveries are
+            // excluded from chaos extra deliveries by default (ADR 0023,
+            // issue #67) so a consumer's mock-call-count assertions are
+            // deterministic before they have reasoned about chaos.
+            var deliveries = 1 + ExtraDeliveriesFor(grainClass);
             for (var i = 0; i < deliveries; i++)
             {
                 _ = grain.OnEdictEventAsync(stamped);
@@ -91,9 +110,14 @@ sealed class InProcPublishEventExecutor(
     // so every consumer test exercises the ADR-0002 dedup ring for free. The
     // dedup ring suppresses the duplicate, so saga progress / projection rows /
     // recorder counts stay stable across runs.
-    int ExtraDeliveries()
+    int ExtraDeliveriesFor(Type grainClass)
     {
         if (!chaos.Enabled || chaos.MaxExtraDeliveries <= 0)
+        {
+            return 0;
+        }
+
+        if (InProcImplicitSubscriberMap.IsEventHandler(grainClass) && !chaos.InvocationsEnabled)
         {
             return 0;
         }
@@ -104,6 +128,12 @@ sealed class InProcPublishEventExecutor(
                 ? _chaosRng.Next(1, chaos.MaxExtraDeliveries + 1)
                 : 0;
         }
+    }
+
+    static string ShortTypeName(string fullName)
+    {
+        var lastDot = fullName.LastIndexOf('.');
+        return lastDot < 0 ? fullName : fullName[(lastDot + 1)..];
     }
 
     static (string? TraceId, string? SpanId) SplitTraceParent(string? traceParent)

@@ -7,6 +7,7 @@ using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
+using Edict.Core.EventHandler;
 using Edict.Core.Outbox;
 using Edict.Core.Saga;
 using Edict.Core.Serialization;
@@ -233,6 +234,15 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton(ctx.Chaos);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
                 ActivatorUtilities.CreateInstance<InProcPublishEventExecutor>(sp, ctx.Recorder));
+
+            // Swap the bare InvokeHandler executor for the recording variant so
+            // EdictEventHandler invocations surface on the timeline (ADR 0023).
+            var originalInvoke = siloBuilder.Services.Single(d =>
+                d.ServiceType == typeof(IOutboxEffectExecutor)
+                && d.ImplementationType == typeof(InvokeHandlerExecutor));
+            siloBuilder.Services.Remove(originalInvoke);
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
+                ActivatorUtilities.CreateInstance<InProcInvokeHandlerExecutor>(sp, ctx.Recorder));
 
             DecorateSender(siloBuilder.Services, ctx.Recorder);
 

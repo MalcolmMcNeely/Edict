@@ -37,6 +37,26 @@ sealed class EdictTimelineRecorder
     public void RecordEvent(EdictEvent evt) =>
         _entries.Enqueue(new TimelineEntry("Event", evt.GetType().Name, Payload(evt)));
 
+    /// <summary>
+    /// Records an <see cref="Edict.Core.EventHandler.EdictEventHandler"/>'s
+    /// deferred invocation (ADR 0023): a single entry per drained
+    /// <c>InvokeHandler</c> Outbox effect, carrying the source event type, the
+    /// source event id and the outcome — <c>Ran</c> when the consumer's
+    /// <c>Handle</c> returned, or <c>DeadLettered</c> when the engine exhausted
+    /// <c>MaxAttempts</c> and promoted the entry. Surfaces "event arrived →
+    /// ran (or dead-lettered)" explicitly on the timeline alongside
+    /// <c>Command</c> and <c>Event</c>.
+    /// </summary>
+    public void RecordInvocation(string sourceEventType, Guid sourceEventId, string outcome) =>
+        _entries.Enqueue(new TimelineEntry(
+            "Invocation",
+            sourceEventType,
+            new SortedDictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["EventId"] = sourceEventId,
+                ["Outcome"] = outcome,
+            }));
+
     public Timeline Snapshot() => new([.. _entries]);
 
     static IReadOnlyDictionary<string, object?> Payload(object message)

@@ -46,6 +46,20 @@ public sealed class EdictTestAppBuilder
         return this;
     }
 
+    /// <summary>
+    /// Opts <see cref="Edict.Core.EventHandler.EdictEventHandler"/> deliveries
+    /// into the duplicate-redelivery chaos that other consumer roles get by
+    /// default (ADR 0023, issue #67). Use only when a test specifically wants
+    /// to exercise the dedup ring under chaos for an event handler — the
+    /// shipped default is off so a consumer's first mock-call-count assertion
+    /// is deterministic.
+    /// </summary>
+    public EdictTestAppBuilder WithChaosForInvocations()
+    {
+        _chaos = _chaos with { InvocationsEnabled = true };
+        return this;
+    }
+
     internal Assembly ConsumerAssembly =>
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
