@@ -84,7 +84,6 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {

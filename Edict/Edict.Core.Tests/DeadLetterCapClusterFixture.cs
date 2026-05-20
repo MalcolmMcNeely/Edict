@@ -71,7 +71,6 @@ public sealed class DeadLetterCapClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             siloBuilder.AddMemoryStreams("edict");
         }

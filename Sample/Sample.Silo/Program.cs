@@ -37,8 +37,6 @@ var host = Host.CreateDefaultBuilder(args)
 
         silo.AddAzureTableGrainStorage("PubSubStore", options =>
             options.TableServiceClient = tableServiceClient);
-        silo.AddAzureTableGrainStorage("edict-dedup", options =>
-            options.TableServiceClient = tableServiceClient);
         silo.AddAzureTableGrainStorage("edict-state", options =>
             options.TableServiceClient = tableServiceClient);
         // A saga's SendCommand effect drains in-silo through IEdictSender, so

@@ -81,5 +81,5 @@ public sealed class BlockableConsumer : EdictIdempotencyBase, IBlockableConsumer
     public Task<int> GetHandledCountAsync() => Task.FromResult(_handledCount);
 
     public Task<bool> RingContainsAsync(Guid eventId) =>
-        Task.FromResult(State.Payload.Ring.Ring.Contains(eventId));
+        Task.FromResult(State.Idempotency.HandledEventIds.Contains(eventId));
 }

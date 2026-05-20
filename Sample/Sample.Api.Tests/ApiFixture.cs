@@ -107,8 +107,6 @@ public sealed class ApiFixture : IAsyncLifetime
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
             siloBuilder.AddAzureTableGrainStorage("PubSubStore", options =>
                 options.TableServiceClient = _tableServiceClient);
-            siloBuilder.AddAzureTableGrainStorage("edict-dedup", options =>
-                options.TableServiceClient = _tableServiceClient);
             siloBuilder.AddAzureTableGrainStorage("edict-state", options =>
                 options.TableServiceClient = _tableServiceClient);
             siloBuilder.Services.AddEdict();

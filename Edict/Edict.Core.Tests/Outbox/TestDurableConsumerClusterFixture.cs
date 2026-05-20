@@ -1,11 +1,6 @@
 using Edict.Contracts.Configuration;
-using Edict.Contracts.Sending;
-using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
-using Edict.Core.Tests.Grains;
-using Edict.Core.Tests.Outbox;
-using Edict.Generated;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -13,14 +8,17 @@ using Microsoft.Extensions.Time.Testing;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
-namespace Edict.Core.Tests;
+namespace Edict.Core.Tests.Outbox;
 
 /// <summary>
-/// In-memory cluster wired with a flippable <see cref="ControllableOutboxExecutor"/>
-/// and a virtual clock, so tests can drive a post-commit publish failure and a
-/// recovery (drain-on-activation) under a deterministic backoff (ADR 0016/0018).
+/// In-memory cluster scoped to the <see cref="TestDurableConsumer"/> host
+/// plumbing tests: registers <see cref="CountingExecutor"/>s for the three
+/// effect kinds so the drain engine records what it would have published, with
+/// a one-entry dead-letter cap and a MaxAttempts=1 policy so block-intake and
+/// dead-letter scenarios are deterministic. No streams, no commands — only the
+/// host plumbing under test.
 /// </summary>
-public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
+public sealed class TestDurableConsumerClusterFixture : IAsyncLifetime
 {
     static readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 5, 19, 12, 0, 0, TimeSpan.Zero));
 
@@ -28,8 +26,7 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
 
     public FakeTimeProvider Clock => _clock;
 
-    public IEdictSender Sender =>
-        Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+    public IGrainFactory GrainFactory => Cluster.GrainFactory;
 
     public async Task InitializeAsync()
     {
@@ -43,24 +40,32 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         if (Cluster is not null)
+        {
             await Cluster.DisposeAsync();
+        }
     }
 
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(OrderCommandHandler).Assembly)
-            .AddAssembly(typeof(IEdictCommandHandler).Assembly)
+            .AddAssembly(typeof(TestDurableConsumer).Assembly)
             .AddEdictContractSerializer();
 
     sealed class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
-            siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions());
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
+            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            {
+                MaxAttempts = 1,
+                DeadLetterCap = 1,
+                JitterFraction = 0,
+                BaseDelay = TimeSpan.FromSeconds(1),
+            });
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.PublishEvent));
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.SendCommand));
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(_ => new CountingExecutor(OutboxEffectKind.UpsertRow));
             siloBuilder.Services.AddSingleton<OutboxDrainEngine>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
@@ -75,15 +80,7 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
             Microsoft.Extensions.Configuration.IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
-            clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
-            clientBuilder.Services.AddEdict();
         }
     }
 }
-
-// The OutboxRecovery + DeadLetterCap tests share one xUnit collection
-// (DeadLetterCapClusterCollection) so the process-wide
-// ControllableOutboxExecutor static is never raced across parallel
-// collections. This fixture is contributed there as a second collection
-// fixture; it intentionally no longer defines its own collection.

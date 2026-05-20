@@ -12,19 +12,20 @@ using static VerifyXunit.Verifier;
 namespace Edict.Core.Tests.Serialization;
 
 // Drift guard for the persisted grain-state envelope (ADR 0017 frozen-alias
-// rule). The envelope is Orleans [GenerateSerializer] grain state, so the guard
-// round-trips it through the *Orleans* serializer (binary on Azure, the actual
-// persistence path) rather than MessagePack: a renamed/removed [Id] member or a
-// changed [Alias] drops the value on the round-trip and fails CI on the
-// snapshot diff. Inputs are fixed constants so the literals are the assertion.
+// rule, ADR 0018 unified envelope). The envelope is Orleans [GenerateSerializer]
+// grain state, so the guard round-trips it through the *Orleans* serializer
+// (binary on Azure, the actual persistence path) rather than MessagePack: a
+// renamed/removed [Id] member or a changed [Alias] drops the value on the
+// round-trip and fails CI on the snapshot diff. Inputs are fixed constants so
+// the literals are the assertion.
 
 public sealed class EnvelopeStateShapeTests
 {
-    private static readonly Guid EntryId = new("aaaaaaaa-0000-0000-0000-000000000001");
-    private static readonly Guid RingId = new("cccccccc-0000-0000-0000-000000000003");
-    private static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+    static readonly Guid EntryId = new("aaaaaaaa-0000-0000-0000-000000000001");
+    static readonly Guid HandledEventId = new("cccccccc-0000-0000-0000-000000000003");
+    static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
-    private static Serializer BuildSerializer()
+    static Serializer BuildSerializer()
     {
         var serviceProvider = new ServiceCollection()
             .AddSerializer(builder => builder
@@ -35,7 +36,7 @@ public sealed class EnvelopeStateShapeTests
         return serviceProvider.GetRequiredService<Serializer>();
     }
 
-    private static OutboxSlice PopulatedSlice() =>
+    static OutboxSlice PopulatedSlice() =>
         new OutboxSlice()
             .Enqueue(new OutboxEntry
             {
@@ -63,22 +64,23 @@ public sealed class EnvelopeStateShapeTests
     }
 
     [Fact]
-    public Task GrainEnvelope_ShouldRoundTripPersistedShape_ForIdempotencyPayload()
+    public Task GrainEnvelope_ShouldRoundTripPersistedShape_ForPopulatedIdempotency()
     {
         var serializer = BuildSerializer();
-        var payload = new IdempotencyPayload<EdictUnit>();
-        payload.Ring.Ring = [RingId, Guid.Empty, Guid.Empty];
-        payload.Ring.Head = 1;
-        payload.Ring.Count = 1;
-
-        var envelope = new GrainEnvelope<IdempotencyPayload<EdictUnit>>
+        var envelope = new GrainEnvelope<EdictUnit>
         {
-            Payload = payload,
+            Payload = default,
             Outbox = PopulatedSlice(),
+            Idempotency = new IdempotencyState
+            {
+                HandledEventIds = [HandledEventId, Guid.Empty, Guid.Empty],
+                Head = 1,
+                Count = 1,
+            },
         };
 
         var bytes = serializer.SerializeToArray(envelope);
-        var roundTripped = serializer.Deserialize<GrainEnvelope<IdempotencyPayload<EdictUnit>>>(bytes);
+        var roundTripped = serializer.Deserialize<GrainEnvelope<EdictUnit>>(bytes);
 
         return Verify(roundTripped).DontScrubGuids().DontScrubDateTimes();
     }

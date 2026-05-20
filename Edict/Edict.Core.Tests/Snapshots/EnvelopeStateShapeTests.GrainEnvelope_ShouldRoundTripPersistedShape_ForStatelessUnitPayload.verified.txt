@@ -20,5 +20,6 @@
         Reason: max attempts exhausted
       }
     ]
-  }
+  },
+  Idempotency: {}
 }

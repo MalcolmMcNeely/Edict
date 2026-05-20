@@ -225,7 +225,6 @@ public sealed class EdictTestApp : IAsyncDisposable
 
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            siloBuilder.AddMemoryGrainStorage("edict-dedup");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             // Memory streams are still registered because
             // EdictIdempotencyBase's IOutboxHost.StreamProvider asks for one,

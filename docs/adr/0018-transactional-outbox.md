@@ -24,3 +24,32 @@ Drain is **FIFO, stop-at-head** (preserves per-aggregate causal order), **awaite
 - `Send()` returns `Accepted` once `{State, Outbox}` is committed and the inline drain has been awaited; a publish failure after commit does **not** roll back and does **not** surface to the caller — the Reminder retries. "Accepted" means *durably accepted, will publish*.
 - New folder `Outbox/` in `Edict.Core`; the engine is internal/bare-named (no consumer types it).
 - Testing follows ADR 0016: drain/FIFO/backoff state-machine logic in `Edict.Core.Tests` (in-memory, virtual clock); the crash-across-pod redelivery+dedup proof (the ADR-0002-analogue) lives in `Edict.Azure.Tests` against Azurite via Testcontainers.
+
+## Amendment — unified durable-consumer base and grain envelope (#55)
+
+The host plumbing the two consumer-facing roots needed — the `IOutboxHost`
+adapter, the lazy drain Reminder, the `IEdictDeadLetterAdmin` operator surface,
+drain-on-activation, the `_drainReminderRegistered` bookkeeping, and the
+intake-block guard (`EdictOutboxSaturatedException`) — was duplicated
+byte-identically across `EdictCommandHandler<TState>` and
+`EdictIdempotencyBase<TPayload>`. It is now collapsed onto a single internal
+intermediate base **`EdictDurableConsumerBase<TPayload>`** (ADR 0017 clause (b)
+outer shared root) and the two consumer-facing roots inherit it; the engine
+seam (`OutboxDrainEngine`, `IOutboxHost`, the executors, `OutboxSlice`) is
+untouched.
+
+The persisted document shape is unified to **`GrainEnvelope<TPayload> {
+Payload, Outbox, Idempotency }`** — the dedup state is a **sibling slot**,
+not a wrapper around the payload. The wrapper type `IdempotencyPayload<T>` is
+retired; the buffer field is renamed `IdempotencyState.Ring → HandledEventIds`
+(the field name reflects ADR 0002's commit-after-success contract rather than
+the circular-buffer implementation). Command Handlers simply never touch the
+`Idempotency` slot; the cost is one empty `IdempotencyState` per envelope.
+The frozen `[Alias("GrainEnvelope\`1")]` and `[Alias("IdempotencyState")]`
+are preserved verbatim (ADR 0017 — persisted state must survive class
+rename); `Head` and `Count` are unchanged.
+
+Orleans grain-storage providers collapse from two (`edict-state` + `edict-dedup`)
+to **one (`edict-state`)** — the persisted document is now one shape, so ops
+configures one provider and one Azure Table. `edict-dedup` is removed from
+`Edict.Azure` silo wiring and from `Edict.Testing`'s in-memory wiring.

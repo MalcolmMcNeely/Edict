@@ -1,15 +1,10 @@
 using Edict.Contracts;
-using Edict.Contracts.Configuration;
-using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
-using Edict.Core;
-using Edict.Core.Administration;
-using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
+
 using Microsoft.Extensions.DependencyInjection;
-using Orleans.Providers;
-using Orleans.Runtime;
+
 using Orleans.Streams;
 using Orleans.Streams.Core;
 
@@ -17,15 +12,23 @@ namespace Edict.Core.Idempotency;
 
 /// <summary>
 /// Abstract generic base for every event-consuming grain (event handlers,
-/// projection builders, sagas — the shared inheritance root, brand-rule clause
-/// (b)). Owns the stream-observer callback, suppresses at-least-once
-/// redeliveries via a configurable bounded ring of recently seen
+/// projection builders, sagas — the shared inheritance root for the
+/// idempotent-consumer family, brand-rule clause (b)). Owns the
+/// stream-observer callback, suppresses at-least-once redeliveries via a
+/// configurable bounded window of recently handled
 /// <see cref="EdictEvent.EventId"/>s, and commits progress only after the
-/// subclass's dispatch succeeds (ADR 0002). The persisted document is the
-/// single-write <see cref="GrainEnvelope{TPayload}"/> over
-/// <see cref="IdempotencyPayload{TPayload}"/> <c>{ Ring, TPayload }</c>, so the
-/// dedup ring, consumer payload, and Outbox/DeadLetter slice all commit
-/// atomically in one write (ADR 0018).
+/// subclass's dispatch succeeds (ADR 0002). The host plumbing (Outbox host
+/// adapter, lazy Reminder, dead-letter admin, drain-on-activation,
+/// intake-block guard) lives on the shared
+/// <see cref="EdictDurableConsumerBase{TPayload}"/> root; this class keeps only
+/// the idempotent-consumer's stream observer and dedup surface.
+/// <para>
+/// The persisted document is the single-write <see cref="GrainEnvelope{TPayload}"/>
+/// <c>{ Payload, Outbox, Idempotency }</c>: the dedup state is a sibling slot
+/// (<see cref="GrainEnvelope{TPayload}.Idempotency"/>), the consumer payload is
+/// the <see cref="GrainEnvelope{TPayload}.Payload"/> slot, and the Outbox slice
+/// shares the same atomic write (ADR 0018).
+/// </para>
 /// <para>
 /// Stream wiring is pure-implicit: the subclass carries
 /// <c>[ImplicitStreamSubscription]</c> (emitted by the generator or applied by
@@ -38,44 +41,22 @@ namespace Edict.Core.Idempotency;
 /// in stream wiring.
 /// </para>
 /// </summary>
-[StorageProvider(ProviderName = "edict-dedup")]
 public abstract class EdictIdempotencyBase<TPayload>
-    : Grain<GrainEnvelope<IdempotencyPayload<TPayload>>>,
-        IEdictDeadLetterAdmin,
-        IRemindable,
-        IOutboxHost,
+    : EdictDurableConsumerBase<TPayload>,
         IAsyncObserver<EdictEvent>,
         IStreamSubscriptionObserver,
         IEdictEventConsumer
     where TPayload : new()
 {
-    const string DrainReminderName = "edict-outbox-drain";
-
-    bool _drainReminderRegistered;
-
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
     /// Override in the subclass to tune for expected redelivery volume.
     /// </summary>
     protected virtual int RingSize => 100;
 
-    IdempotencyState Ring => State.Payload.Ring;
+    IdempotencyState Idempotency => State.Idempotency;
 
     OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
-
-    public override async Task OnActivateAsync(CancellationToken cancellationToken)
-    {
-        await base.OnActivateAsync(cancellationToken);
-
-        // Drain-on-activation (ADR 0018): recover anything a crash left between
-        // the ring/outbox commit and the drain — the durable half of the
-        // ADR-0012 gap closure. Steady state has nothing pending, so this is a
-        // cheap check.
-        if (State.Outbox.Pending.Count > 0)
-        {
-            await Engine.DrainAsync(this);
-        }
-    }
 
     /// <summary>
     /// Pure-implicit stream wiring (the trap-free shape of the maintainer's
@@ -129,11 +110,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         // silently drop a redelivered event. Throw before the dedup check so
         // the EventId is never committed to the ring — Orleans redelivers it
         // until an operator redrives and the cap clears.
-        var outboxOptions = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
-        if (State.Outbox.IsIntakeBlocked(outboxOptions.DeadLetterCap))
-        {
-            throw new EdictOutboxSaturatedException();
-        }
+        EnsureIntakeNotBlocked();
 
         EnsureRingInitialized();
 
@@ -191,97 +168,34 @@ public abstract class EdictIdempotencyBase<TPayload>
         where TEvent : EdictEvent
         => handler(evt);
 
-    /// <summary>
-    /// Operator recovery (ADR 0019): atomically moves the dead-lettered entry
-    /// back to the Outbox tail with <c>AttemptCount</c> reset. The same one
-    /// grain-state write clears the cap, so a previously blocked consumer
-    /// resumes acking redelivered events.
-    /// </summary>
-    async Task IEdictDeadLetterAdmin.RedriveAsync(Guid entryId)
-    {
-        var clock = ServiceProvider.GetRequiredService<TimeProvider>();
-        State.Outbox = State.Outbox.Redrive(entryId, clock.GetUtcNow());
-        await WriteStateAsync();
-    }
-
-    /// <inheritdoc />
-    Task<IReadOnlyList<EdictDeadLetterEntry>> IEdictDeadLetterAdmin.ListDeadLetterAsync() =>
-        Task.FromResult(DeadLetterProjection.From(State.Outbox));
-
-    /// <inheritdoc />
-    public Task ReceiveReminder(string reminderName, TickStatus status)
-    {
-        // A tick proves a reminder exists; record that so the post-drain
-        // reconcile authoritatively unregisters it once the Outbox is empty.
-        _drainReminderRegistered = true;
-        return Engine.DrainAsync(this);
-    }
-
-    // IOutboxHost — implemented explicitly so the engine seam stays off the
-    // consumer surface (mirrors EdictCommandHandler<TState>); the grain owns
-    // the single WriteStateAsync, the stream provider, and the lazy Reminder.
-
-    OutboxSlice IOutboxHost.Outbox
-    {
-        get => State.Outbox;
-        set => State.Outbox = value;
-    }
-
-    IStreamProvider IOutboxHost.StreamProvider => this.GetStreamProvider("edict");
-
-    Task IOutboxHost.CommitAsync() => WriteStateAsync();
-
-    async Task IOutboxHost.RegisterDrainReminderAsync()
-    {
-        await this.RegisterOrUpdateReminder(
-            DrainReminderName, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
-        _drainReminderRegistered = true;
-    }
-
-    async Task IOutboxHost.UnregisterDrainReminderAsync()
-    {
-        if (!_drainReminderRegistered)
-        {
-            return; // never registered — keep the happy path off the reminder subsystem
-        }
-
-        var reminder = await this.GetReminder(DrainReminderName);
-        if (reminder is not null)
-        {
-            await this.UnregisterReminder(reminder);
-        }
-
-        _drainReminderRegistered = false;
-    }
-
     void EnsureRingInitialized()
     {
-        if (Ring.Ring.Length != RingSize)
+        if (Idempotency.HandledEventIds.Length != RingSize)
         {
-            Ring.Ring = new Guid[RingSize];
-            Ring.Head = 0;
-            Ring.Count = 0;
+            Idempotency.HandledEventIds = new Guid[RingSize];
+            Idempotency.Head = 0;
+            Idempotency.Count = 0;
         }
     }
 
     bool Contains(Guid eventId)
     {
-        if (Ring.Count < Ring.Ring.Length)
+        if (Idempotency.Count < Idempotency.HandledEventIds.Length)
         {
-            return Array.IndexOf(Ring.Ring, eventId, 0, Ring.Count) >= 0;
+            return Array.IndexOf(Idempotency.HandledEventIds, eventId, 0, Idempotency.Count) >= 0;
         }
 
-        return Array.IndexOf(Ring.Ring, eventId) >= 0;
+        return Array.IndexOf(Idempotency.HandledEventIds, eventId) >= 0;
     }
 
     void Commit(Guid eventId)
     {
-        Ring.Ring[Ring.Head] = eventId;
-        Ring.Head = (Ring.Head + 1) % RingSize;
+        Idempotency.HandledEventIds[Idempotency.Head] = eventId;
+        Idempotency.Head = (Idempotency.Head + 1) % RingSize;
 
-        if (Ring.Count < RingSize)
+        if (Idempotency.Count < RingSize)
         {
-            Ring.Count++;
+            Idempotency.Count++;
         }
     }
 

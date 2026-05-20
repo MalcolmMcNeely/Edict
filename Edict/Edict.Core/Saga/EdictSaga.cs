@@ -46,7 +46,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// <c>Handle</c>; it is the payload slot of the persisted envelope,
     /// committed atomically with the dedup ring and any dispatched command.
     /// </summary>
-    protected TProgress Progress => State.Payload.Payload;
+    protected TProgress Progress => State.Payload;
 
     /// <inheritdoc cref="IEdictSaga.GetEdictProgressAsync" />
     public Task<object> GetEdictProgressAsync() => Task.FromResult<object>(Progress!);
