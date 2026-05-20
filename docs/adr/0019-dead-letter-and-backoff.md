@@ -1,6 +1,6 @@
 # Dead-letter and backoff: the terminal tail of the Outbox
 
-**Status:** accepted — subordinate to ADR 0018 (read 0018 first; this records the dead-letter trade-offs that did not fit cleanly in the engine ADR).
+**Status:** superseded by ADR-0022 — the block-intake-on-cap stance and per-aggregate inspection surface recorded below were reversed in favour of a forensic-only, table-projection-backed model. Read ADR 0022 for the current dead-letter design; this ADR is kept for the historical record of the original trade-offs.
 
 A transactional outbox must answer "what about an entry that never succeeds?" — dead-lettering is intrinsic, not optional. A permanently failing downstream (stream/grain/store down for hours) must not stall an aggregate forever, nor silently drop the effect, nor break the atomicity guarantee the Outbox exists for.
 
