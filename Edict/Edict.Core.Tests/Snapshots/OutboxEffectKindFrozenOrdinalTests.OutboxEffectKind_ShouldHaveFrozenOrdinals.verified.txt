@@ -1,0 +1,17 @@
+[
+  {
+    Name: PublishEvent
+  },
+  {
+    Name: SendCommand,
+    Ordinal: 1
+  },
+  {
+    Name: UpsertRow,
+    Ordinal: 2
+  },
+  {
+    Name: InvokeHandler,
+    Ordinal: 3
+  }
+]

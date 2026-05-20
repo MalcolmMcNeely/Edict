@@ -72,4 +72,20 @@ public sealed record EdictDeadLetterRaised : EdictEvent
 
     /// <summary>The failed effect's payload as JSON for operator inspection (display data, distinct from MessagePack wire format per ADR 0007).</summary>
     public string? PayloadJson { get; init; }
+
+    /// <summary>
+    /// Full type name of the source <see cref="EdictEvent"/> that triggered the
+    /// failing effect — populated only for <c>InvokeHandler</c> promotions
+    /// (ADR 0023), null for <c>PublishEvent</c> / <c>SendCommand</c> / <c>UpsertRow</c>.
+    /// Lets operators filter dead letters by event type without parsing payload bytes.
+    /// </summary>
+    public string? SourceEventType { get; init; }
+
+    /// <summary>
+    /// <see cref="EdictEvent.EventId"/> of the source event that triggered the
+    /// failing effect — populated only for <c>InvokeHandler</c> promotions
+    /// (ADR 0023), null otherwise. Pairs with <see cref="SourceEventType"/> to
+    /// uniquely identify the originating event for RCA.
+    /// </summary>
+    public Guid? SourceEventId { get; init; }
 }
