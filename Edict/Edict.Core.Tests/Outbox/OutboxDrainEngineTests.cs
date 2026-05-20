@@ -2,11 +2,14 @@ using Edict.Contracts.Configuration;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
+using Edict.Contracts.Events;
+
 using Microsoft.Extensions.Time.Testing;
 
 using Orleans.Streams;
 
 using static VerifyXunit.Verifier;
+
 
 namespace Edict.Core.Tests.Outbox;
 
@@ -140,7 +143,7 @@ public sealed class OutboxDrainEngineTests
         public List<Guid> Executed { get; } = [];
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
         {
             Executed.Add(entry.EntryId);
             return Task.CompletedTask;
@@ -152,7 +155,7 @@ public sealed class OutboxDrainEngineTests
         public int Attempts { get; private set; }
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
         {
             Attempts++;
             throw new InvalidOperationException("downstream unavailable");
@@ -190,5 +193,8 @@ public sealed class OutboxDrainEngineTests
             Log.Add("unregister");
             return Task.CompletedTask;
         }
+
+        public Task DispatchEventAsync(EdictEvent evt) =>
+            throw new NotSupportedException("FakeOutboxHost does not route deferred dispatch.");
     }
 }

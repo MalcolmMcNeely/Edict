@@ -1,5 +1,6 @@
 using Edict.Contracts.Configuration;
 using Edict.Core.DeadLetter;
+using Edict.Core.EventHandler;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -28,6 +29,7 @@ public static class OutboxServiceCollectionExtensions
         services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, SendCommandExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
+        services.AddSingleton<IOutboxEffectExecutor, InvokeHandlerExecutor>();
         services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
         services.AddSingleton<OutboxDrainEngine>();
         return services;

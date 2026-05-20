@@ -40,6 +40,7 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
             OutboxEffectKind.PublishEvent => BuildFromPublishEvent(failed, exception, sourceGrainKey, sourceGrainType, now),
             OutboxEffectKind.SendCommand => BuildFromSendCommand(failed, exception, sourceGrainKey, sourceGrainType, now),
             OutboxEffectKind.UpsertRow => BuildFromUpsertRow(failed, exception, sourceGrainKey, sourceGrainType, now),
+            OutboxEffectKind.InvokeHandler => BuildFromInvokeHandler(failed, exception, sourceGrainKey, sourceGrainType, now),
             _ => throw new InvalidOperationException($"Unsupported effect kind '{failed.Kind}'."),
         };
 
@@ -76,5 +77,12 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(failed.Payload);
         return DeadLetterPromotion.Build(failed, effect, exception, sourceGrainKey, sourceGrainType, now);
+    }
+
+    EdictDeadLetterRaised BuildFromInvokeHandler(
+        OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+    {
+        var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
+        return DeadLetterPromotion.BuildForInvokeHandler(failed, evt, exception, sourceGrainKey, sourceGrainType, now);
     }
 }

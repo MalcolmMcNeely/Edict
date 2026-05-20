@@ -6,7 +6,6 @@ using Edict.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Serialization;
-using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
@@ -25,7 +24,7 @@ sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services)
 {
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
-    public async Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public async Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(entry.Payload);
 

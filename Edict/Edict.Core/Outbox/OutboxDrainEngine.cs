@@ -74,7 +74,7 @@ sealed class OutboxDrainEngine
 
             try
             {
-                await _executors[head.Kind].ExecuteAsync(head, host.StreamProvider);
+                await _executors[head.Kind].ExecuteAsync(head, host);
             }
             catch (Exception exception)
             {

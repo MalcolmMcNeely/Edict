@@ -1,7 +1,5 @@
 using Edict.Core.Outbox;
 
-using Orleans.Streams;
-
 namespace Edict.Core.Tests.Outbox;
 
 /// <summary>
@@ -17,7 +15,7 @@ sealed class CountingExecutor(OutboxEffectKind kind) : IOutboxEffectExecutor
 
     public OutboxEffectKind Kind { get; } = kind;
 
-    public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         lock (Executed)
         {

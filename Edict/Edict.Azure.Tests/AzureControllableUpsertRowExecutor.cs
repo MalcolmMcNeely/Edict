@@ -1,7 +1,6 @@
 using Edict.Core.Outbox;
 
 using Orleans.Serialization;
-using Orleans.Streams;
 
 namespace Edict.Azure.Tests;
 
@@ -21,13 +20,13 @@ sealed class AzureControllableUpsertRowExecutor(Serializer serializer, IServiceP
 
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
-    public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         if (ShouldFail)
         {
             throw new InvalidOperationException("controllable upsert failure (azure conformance test)");
         }
 
-        return _inner.ExecuteAsync(entry, streamProvider);
+        return _inner.ExecuteAsync(entry, host);
     }
 }

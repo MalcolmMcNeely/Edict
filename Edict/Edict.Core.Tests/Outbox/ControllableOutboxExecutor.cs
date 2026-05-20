@@ -1,7 +1,6 @@
 using Edict.Core.Outbox;
 
 using Orleans.Serialization;
-using Orleans.Streams;
 
 namespace Edict.Core.Tests.Outbox;
 
@@ -20,7 +19,7 @@ sealed class ControllableOutboxExecutor(Serializer serializer) : IOutboxEffectEx
 
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         if (ShouldFail)
         {
@@ -28,6 +27,6 @@ sealed class ControllableOutboxExecutor(Serializer serializer) : IOutboxEffectEx
             throw new InvalidOperationException("controllable failure (test)");
         }
 
-        return _inner.ExecuteAsync(entry, streamProvider);
+        return _inner.ExecuteAsync(entry, host);
     }
 }

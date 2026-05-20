@@ -233,6 +233,31 @@ public class TypePlacementTests
 
     // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014
 
+    // EdictEventHandler: ADR 0023 — the consumer-facing terminal side-effect
+    // base lives in Edict.Core/EventHandler/; its InvokeHandler executor is
+    // internal and bare-named; the new OutboxEffectKind value lives in
+    // Edict.Core.Outbox alongside the other three.
+
+    [Fact]
+    public void EdictEventHandler_ShouldResideInEdictCoreEventHandler()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictEventHandler$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.EventHandler$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void InvokeHandlerExecutor_ShouldBeInternalAndBareNamed()
+    {
+        var rule = Classes().That().HaveNameMatching("^InvokeHandlerExecutor$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.EventHandler$")
+            .AndShould().NotBePublic()
+            .AndShould().HaveNameMatching("^(?!Edict)");
+
+        rule.Check(Architecture);
+    }
+
     [Fact]
     public void AzureTableRepository_ShouldResideInEdictAzure()
     {

@@ -1,3 +1,5 @@
+using Edict.Contracts.Events;
+
 using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
@@ -39,4 +41,16 @@ interface IOutboxHost
 
     /// <summary>Unregisters the drain Reminder; a cheap no-op when none is registered.</summary>
     Task UnregisterDrainReminderAsync();
+
+    /// <summary>
+    /// Deferred dispatch callback driven by the
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> executor (ADR 0023): the
+    /// engine routes the deserialised <see cref="EdictEvent"/> back into the
+    /// host grain's idempotent-consumer dispatch so the consumer's
+    /// <c>Handle(TEvent)</c> runs off the stream-callback path with
+    /// retry/backoff/dead-letter wrapping. Hosts that cannot accept a deferred
+    /// dispatch (the command-handler root) throw <see cref="NotSupportedException"/>;
+    /// only an <c>EdictEventHandler</c>'s host adapter implements it.
+    /// </summary>
+    Task DispatchEventAsync(EdictEvent evt);
 }

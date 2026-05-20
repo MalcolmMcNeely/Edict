@@ -1,7 +1,6 @@
 using Edict.Core.Outbox;
 
 using Orleans.Serialization;
-using Orleans.Streams;
 
 namespace Edict.Core.Tests.Outbox;
 
@@ -29,7 +28,7 @@ sealed class ControllableUpsertRowExecutor(Serializer serializer, IServiceProvid
 
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
-    public async Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public async Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         Interlocked.Increment(ref Attempts);
 
@@ -38,11 +37,11 @@ sealed class ControllableUpsertRowExecutor(Serializer serializer, IServiceProvid
             throw new InvalidOperationException("controllable upsert failure (test)");
         }
 
-        await _inner.ExecuteAsync(entry, streamProvider);
+        await _inner.ExecuteAsync(entry, host);
 
         if (DuplicateOnSuccess)
         {
-            await _inner.ExecuteAsync(entry, streamProvider);
+            await _inner.ExecuteAsync(entry, host);
         }
     }
 }

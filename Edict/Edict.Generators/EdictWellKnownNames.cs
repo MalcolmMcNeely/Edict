@@ -47,6 +47,14 @@ internal static class EdictWellKnownNames
     public const string EdictProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictProjectionBuilder";
 
+    // ── Edict.Core.EventHandler ──────────────────────────────────────────────
+    // EdictEventHandler closes EdictIdempotencyBase<EdictUnit> via the
+    // payload-free shim, so the consumer's `partial class : EdictEventHandler`
+    // shape is matched by FQN with no generic-arity considerations (mirrors
+    // EdictProjectionBuilder).
+    public const string EdictEventHandlerFqn =
+        "global::Edict.Core.EventHandler.EdictEventHandler";
+
     // ── Edict.Core.Saga ──────────────────────────────────────────────────────
     // EdictSaga is generic; matched via a generics-stripped FQN base-chain walk
     // (mirrors EdictCommandHandler), so this name carries no `1 arity suffix.

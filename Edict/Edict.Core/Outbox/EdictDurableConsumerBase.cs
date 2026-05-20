@@ -1,3 +1,5 @@
+using Edict.Contracts.Events;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Providers;
@@ -95,4 +97,19 @@ public abstract class EdictDurableConsumerBase<TPayload>
 
         _drainReminderRegistered = false;
     }
+
+    Task IOutboxHost.DispatchEventAsync(EdictEvent evt) => DispatchEventForOutboxAsync(evt);
+
+    /// <summary>
+    /// Hook for the InvokeHandler executor's deferred dispatch (ADR 0023): the
+    /// engine routes a drained <see cref="OutboxEffectKind.InvokeHandler"/>
+    /// entry's <see cref="EdictEvent"/> back into the host grain through this
+    /// method. The shared host root has no consumer-visible dispatch surface,
+    /// so the default throws — only an <c>EdictEventHandler</c>'s
+    /// idempotent-consumer root overrides this to route into its
+    /// <c>DispatchAsync</c> (ADR 0023).
+    /// </summary>
+    protected virtual Task DispatchEventForOutboxAsync(EdictEvent evt) =>
+        throw new NotSupportedException(
+            $"{GetType().FullName} does not support deferred InvokeHandler dispatch.");
 }

@@ -50,6 +50,34 @@ static class DeadLetterPromotion
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 
+    /// <summary>
+    /// Specialised overload for <see cref="OutboxEffectKind.InvokeHandler"/>
+    /// promotions (ADR 0023): populates the new
+    /// <see cref="EdictDeadLetterRaised.SourceEventType"/> /
+    /// <see cref="EdictDeadLetterRaised.SourceEventId"/> fields from the
+    /// failing entry's <see cref="EdictEvent"/> payload so an operator can
+    /// filter the dead-letter projection by event type without parsing payload
+    /// bytes. Existing kinds leave the two fields null.
+    /// </summary>
+    public static EdictDeadLetterRaised BuildForInvokeHandler(
+        OutboxEntry entry,
+        EdictEvent evt,
+        Exception exception,
+        string sourceGrainKey,
+        string sourceGrainType,
+        DateTimeOffset deadLetteredAt)
+    {
+        var (streamName, _) = EventStreamAddress.Resolve(evt);
+        var effectTarget = $"{streamName}/{evt.GetType().Name}";
+        var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
+        var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+        return raised with
+        {
+            SourceEventType = evt.GetType().FullName,
+            SourceEventId = evt.EventId,
+        };
+    }
+
     public static EdictDeadLetterRaised Build(
         OutboxEntry entry,
         UpsertRowEffect effect,

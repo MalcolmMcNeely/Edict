@@ -23,6 +23,9 @@ internal static class GeneratorTestHarness
     public static IReadOnlyDictionary<string, string> RunProjectionGenerator(string consumerSource) =>
         Run(consumerSource, new EdictProjectionGenerator());
 
+    public static IReadOnlyDictionary<string, string> RunEventHandlerGenerator(string consumerSource) =>
+        Run(consumerSource, new EdictEventHandlerGenerator());
+
     private static IReadOnlyDictionary<string, string> Run(
         string consumerSource, IIncrementalGenerator generator)
     {

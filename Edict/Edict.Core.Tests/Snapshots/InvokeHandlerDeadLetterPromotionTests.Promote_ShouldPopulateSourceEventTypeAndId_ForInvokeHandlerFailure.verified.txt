@@ -1,0 +1,16 @@
+﻿{
+  SingletonKey: d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1,
+  EntryId: dddddddd-dddd-dddd-dddd-dddddddddddd,
+  Kind: InvokeHandler,
+  AttemptCount: 5,
+  DeadLetteredAt: 2026-05-19 12:00 +0,
+  SourceGrainKey: 11111111-1111-1111-1111-111111111111,
+  SourceGrainType: Sample.OrderEmailHandler,
+  EffectTarget: Orders/OrderPlacedEvent,
+  TraceParent: 00-0123456789abcdef0123456789abcdef-fedcba9876543210-01,
+  ExceptionType: System.InvalidOperationException,
+  Reason: SMTP gateway 503,
+  PayloadJson: {"OrderId":"11111111-1111-1111-1111-111111111111","Sku":"WIDGET","EventId":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","OccurredAt":"2026-05-19T12:00:00+00:00","TraceId":null,"SpanId":null,"TraceState":null},
+  SourceEventType: Edict.Core.Tests.OrderPlacedEvent,
+  SourceEventId: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+}

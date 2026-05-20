@@ -45,7 +45,7 @@ sealed class InProcPublishEventExecutor(
     readonly Random _chaosRng = new(chaos.Seed);
     readonly Lock _chaosLock = new();
 
-    public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+    public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);

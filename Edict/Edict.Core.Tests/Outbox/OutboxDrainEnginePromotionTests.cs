@@ -1,4 +1,5 @@
 using Edict.Contracts.Configuration;
+using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
@@ -178,7 +179,7 @@ public sealed class OutboxDrainEnginePromotionTests
         public List<Guid> Attempted { get; } = [];
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider)
+        public Task ExecuteAsync(OutboxEntry entry, IOutboxHost host)
         {
             Attempted.Add(entry.EntryId);
             if (_poison.Contains(entry.EntryId))
@@ -258,5 +259,8 @@ public sealed class OutboxDrainEnginePromotionTests
             Log.Add("unregister");
             return Task.CompletedTask;
         }
+
+        public Task DispatchEventAsync(EdictEvent evt) =>
+            throw new NotSupportedException("FakeOutboxHost does not route deferred dispatch.");
     }
 }

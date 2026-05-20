@@ -55,7 +55,7 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     IdempotencyState Idempotency => State.Idempotency;
 
-    OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
+    private protected OutboxDrainEngine Engine => ServiceProvider.GetRequiredService<OutboxDrainEngine>();
 
     /// <summary>
     /// Pure-implicit stream wiring (the trap-free shape of the maintainer's
@@ -102,8 +102,12 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by <see cref="OnNextAsync"/>
     /// for every event the runtime delivers via the implicit subscription.
+    /// <see cref="EdictEventHandler"/> overrides this to swap inline dispatch
+    /// for a deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
+    /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
+    /// retry/backoff/dead-letter wrapping (ADR 0023).
     /// </summary>
-    protected async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
+    protected virtual async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
         EnsureRingInitialized();
 
@@ -161,7 +165,19 @@ public abstract class EdictIdempotencyBase<TPayload>
         where TEvent : EdictEvent
         => handler(evt);
 
-    void EnsureRingInitialized()
+    /// <summary>
+    /// Routes the InvokeHandler executor's deferred dispatch (ADR 0023) back
+    /// into <see cref="DispatchAsync"/> so the consumer's strongly-typed
+    /// <c>Handle(TEvent)</c> runs off the stream-callback path. The boolean
+    /// return of <see cref="DispatchAsync"/> is ignored here because the
+    /// stream-callback path only stages an <see cref="OutboxEffectKind.InvokeHandler"/>
+    /// entry for events that already passed an <c>HandlesType</c> pre-flight —
+    /// an unhandled type cannot reach this seam.
+    /// </summary>
+    protected override async Task DispatchEventForOutboxAsync(EdictEvent evt) =>
+        await DispatchAsync(evt);
+
+    private protected void EnsureRingInitialized()
     {
         if (Idempotency.HandledEventIds.Length != RingSize)
         {
@@ -171,7 +187,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         }
     }
 
-    bool Contains(Guid eventId)
+    private protected bool Contains(Guid eventId)
     {
         if (Idempotency.Count < Idempotency.HandledEventIds.Length)
         {
@@ -181,7 +197,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         return Array.IndexOf(Idempotency.HandledEventIds, eventId) >= 0;
     }
 
-    void Commit(Guid eventId)
+    private protected void Commit(Guid eventId)
     {
         Idempotency.HandledEventIds[Idempotency.Head] = eventId;
         Idempotency.Head = (Idempotency.Head + 1) % RingSize;
@@ -192,7 +208,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         }
     }
 
-    static void EmitDedupSpan(EdictEvent evt)
+    private protected static void EmitDedupSpan(EdictEvent evt)
     {
         var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(evt.GetType().Name, parentContext);
