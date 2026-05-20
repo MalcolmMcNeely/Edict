@@ -12,8 +12,18 @@ namespace Edict.Testing;
 /// </summary>
 public sealed class EdictTestAppBuilder
 {
+    /// <summary>
+    /// Mirrors <c>EdictAzureOptions.ClaimCheckThresholdBytes</c> so the
+    /// in-memory test framework exercises the same commit pipeline as
+    /// production (ADR 0024). Override per test via
+    /// <see cref="WithClaimCheckThresholdBytes"/> to force the path on a
+    /// small payload.
+    /// </summary>
+    public const int DefaultClaimCheckThresholdBytes = 30_720;
+
     Assembly? _consumerAssembly;
     ChaosOptions _chaos = ChaosOptions.Default;
+    int _claimCheckThresholdBytes = DefaultClaimCheckThresholdBytes;
 
     /// <summary>
     /// The consumer assembly whose grains, commands/events and generated
@@ -60,9 +70,23 @@ public sealed class EdictTestAppBuilder
         return this;
     }
 
+    /// <summary>
+    /// Overrides the claim-check byte-length threshold for this test (ADR 0024).
+    /// Lower the value to force the path on a small payload — useful when a
+    /// test wants to stress the publisher pipeline without raising a 30 KB
+    /// event.
+    /// </summary>
+    public EdictTestAppBuilder WithClaimCheckThresholdBytes(int thresholdBytes)
+    {
+        _claimCheckThresholdBytes = thresholdBytes;
+        return this;
+    }
+
     internal Assembly ConsumerAssembly =>
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
 
     internal ChaosOptions Chaos => _chaos;
+
+    internal int ClaimCheckThresholdBytes => _claimCheckThresholdBytes;
 }

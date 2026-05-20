@@ -1,5 +1,6 @@
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 
 using Orleans.Runtime;
@@ -43,6 +44,7 @@ sealed class OutboxHost<TPayload>
     readonly TimeProvider _timeProvider;
     readonly IDeadLetterPromoter _promoter;
     readonly Func<EdictEvent, Task>? _deferredDispatch;
+    readonly ClaimCheckPolicy? _claimCheckPolicy;
     readonly string _grainKey;
     readonly string _grainTypeName;
 
@@ -58,7 +60,8 @@ sealed class OutboxHost<TPayload>
         IDeadLetterPromoter promoter,
         string grainKey,
         string grainTypeName,
-        Func<EdictEvent, Task>? deferredDispatch = null)
+        Func<EdictEvent, Task>? deferredDispatch = null,
+        ClaimCheckPolicy? claimCheckPolicy = null)
     {
         _state = state;
         _streamProvider = streamProvider;
@@ -70,6 +73,7 @@ sealed class OutboxHost<TPayload>
         _grainKey = grainKey;
         _grainTypeName = grainTypeName;
         _deferredDispatch = deferredDispatch;
+        _claimCheckPolicy = claimCheckPolicy;
     }
 
     /// <summary>The persisted envelope <c>{ Payload, Outbox, Idempotency }</c>.</summary>
@@ -110,6 +114,53 @@ sealed class OutboxHost<TPayload>
 
         await _state.WriteStateAsync();
         await DrainAsync();
+    }
+
+    /// <summary>
+    /// Event-aware commit boundary (ADR 0024, slice 2). Routes every buffered
+    /// event through <see cref="ClaimCheckPolicy"/> in parallel via
+    /// <see cref="Task.WhenAll(IEnumerable{Task})"/>, so a Handle that raises
+    /// N oversized events pays one I/O round trip rather than N. Each policy
+    /// invocation returns the bytes to persist as the
+    /// <see cref="OutboxEntry.Payload"/>; small events ride the entry as the
+    /// serialised inner event itself, oversized events as a serialised pointer
+    /// envelope. The staged entries then commit and drain through the existing
+    /// FIFO path.
+    /// </summary>
+    public async Task EnqueueRaisedEventsAndDrainAsync(
+        IReadOnlyList<EdictEvent> events,
+        string? traceParent,
+        string? traceState,
+        CancellationToken ct = default)
+    {
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        if (_claimCheckPolicy is null)
+        {
+            throw new InvalidOperationException(
+                "EnqueueRaisedEventsAndDrainAsync requires a ClaimCheckPolicy; none was registered on this host.");
+        }
+
+        var policy = _claimCheckPolicy;
+        var payloads = await Task.WhenAll(events.Select(evt => policy.ApplyAsync(evt, ct)));
+
+        var entries = new OutboxEntry[events.Count];
+        for (var i = 0; i < events.Count; i++)
+        {
+            entries[i] = new OutboxEntry
+            {
+                EntryId = Guid.NewGuid(),
+                Kind = OutboxEffectKind.PublishEvent,
+                Payload = payloads[i],
+                TraceParent = traceParent,
+                TraceState = traceState,
+            };
+        }
+
+        await EnqueueAndDrainAsync(entries);
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
+using Edict.Azure.ClaimCheck;
 using Edict.Azure.TableStorage;
 using Edict.Telemetry;
 using Edict.Core;
@@ -29,9 +31,12 @@ var host = Host.CreateDefaultBuilder(args)
                                     ?? "UseDevelopmentStorage=true";
         var queueConnectionString = context.Configuration.GetConnectionString("queues")
                                     ?? "UseDevelopmentStorage=true";
+        var blobConnectionString = context.Configuration.GetConnectionString("blobs")
+                                    ?? "UseDevelopmentStorage=true";
 
         var tableServiceClient = new TableServiceClient(tableConnectionString);
         silo.Services.AddSingleton(tableServiceClient);
+        silo.Services.AddSingleton(new BlobServiceClient(blobConnectionString));
         silo.Services.AddSingleton<IEdictTableStoreFactory>(
             _ => new AzureTableWriteStoreFactory(tableServiceClient));
 
@@ -42,6 +47,10 @@ var host = Host.CreateDefaultBuilder(args)
         // A saga's SendCommand effect drains in-silo through IEdictSender, so
         // the silo needs the generated route map too (ADR 0020).
         silo.Services.AddEdict();
+        // Claim-check store + tuned ClaimCheckPolicy must be in DI before
+        // AddEdictOutbox so its TryAddSingleton(default policy) is a no-op
+        // (ADR 0024).
+        silo.Services.AddEdictAzureClaimCheck();
         silo.Services.AddEdictOutbox();
         silo.UseAzureTableReminderService(options =>
             options.TableServiceClient = tableServiceClient);

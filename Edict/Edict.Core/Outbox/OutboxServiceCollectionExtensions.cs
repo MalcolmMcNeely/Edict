@@ -1,9 +1,13 @@
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+
+using Orleans.Serialization;
 
 namespace Edict.Core.Outbox;
 
@@ -31,6 +35,15 @@ public static class OutboxServiceCollectionExtensions
         services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, InvokeHandlerExecutor>();
         services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
+        // Default claim-check policy: threshold is int.MaxValue so the
+        // commit pipeline never trips into the pointer branch and the absent
+        // IEdictClaimCheckStore is never queried. The Azure provider and the
+        // shipped Test Framework each replace this with their own policy +
+        // store registration (ADR 0024).
+        services.TryAddSingleton(sp => new ClaimCheckPolicy(
+            sp.GetRequiredService<Serializer>(),
+            thresholdBytes: int.MaxValue,
+            store: sp.GetService<IEdictClaimCheckStore>()));
         return services;
     }
 }

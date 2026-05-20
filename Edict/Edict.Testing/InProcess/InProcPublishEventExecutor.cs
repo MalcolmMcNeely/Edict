@@ -82,7 +82,9 @@ sealed class InProcPublishEventExecutor(
             recorder.RecordInvocation(ShortTypeName(sourceType), sourceEventId, "DeadLettered");
         }
 
-        var (_, routeKey) = EventStreamAddress.Resolve(stamped);
+        var routeKey = stamped is EdictEventEnvelope envelope && envelope.InnerEventStreamName is not null
+            ? envelope.InnerEventRouteKey
+            : EventStreamAddress.Resolve(stamped).RouteKey;
 
         // Fire-and-forget per subscriber: a real stream hop is asynchronous to
         // the publishing grain, so a saga reaction that fans back out to the

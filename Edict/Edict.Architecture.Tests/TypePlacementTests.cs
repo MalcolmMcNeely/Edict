@@ -359,6 +359,33 @@ public class TypePlacementTests
     }
 
     [Fact]
+    public void ClaimCheckPolicy_ShouldResideInEdictCoreClaimCheck()
+    {
+        var rule = Classes().That().HaveNameMatching("^ClaimCheckPolicy$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.ClaimCheck$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void AzureBlobClaimCheckStore_ShouldResideInEdictAzureClaimCheck()
+    {
+        var rule = Classes().That().HaveNameMatching("^AzureBlobClaimCheckStore$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.ClaimCheck$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictAzureOptions_ShouldResideInEdictAzureClaimCheck()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictAzureOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.ClaimCheck$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
     public void AzureTableRepository_ShouldResideInEdictAzure()
     {
         var rule = Classes().That().HaveNameStartingWith("AzureTableRepository")

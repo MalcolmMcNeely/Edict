@@ -2,6 +2,7 @@ using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
@@ -101,19 +102,13 @@ public abstract class EdictCommandHandler<TState>
     /// </summary>
     protected async Task CommitAndDrainRaisedEventsAsync()
     {
-        var entries = BuildPendingEntries();
+        var events = _raisedEvents;
         _raisedEvents = null;
-        await Host.EnqueueAndDrainAsync(entries);
-    }
 
-    IReadOnlyList<OutboxEntry> BuildPendingEntries()
-    {
-        if (_raisedEvents is null || _raisedEvents.Count == 0)
+        if (events is null || events.Count == 0)
         {
-            return [];
+            return;
         }
-
-        var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
         // Capture the live command trace so the publish span nests under it as
         // parent-child even when a crash-recovery drain runs much later (ADR 0003).
@@ -122,20 +117,7 @@ public abstract class EdictCommandHandler<TState>
             ? ActivityExtensions.BuildTraceParent(traceId, spanId)
             : null;
 
-        var entries = new List<OutboxEntry>(_raisedEvents.Count);
-        foreach (var evt in _raisedEvents)
-        {
-            entries.Add(new OutboxEntry
-            {
-                EntryId = Guid.NewGuid(),
-                Kind = OutboxEffectKind.PublishEvent,
-                Payload = serializer.SerializeToArray<EdictEvent>(evt),
-                TraceParent = traceParent,
-                TraceState = traceState,
-            });
-        }
-
-        return entries;
+        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState);
     }
 
     /// <summary>Discards all buffered events. Called on <c>Rejected</c> or handler throw.</summary>
@@ -201,7 +183,16 @@ public abstract class EdictCommandHandler<TState>
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
-            grainTypeName: GetType().FullName ?? GetType().Name);
+            grainTypeName: GetType().FullName ?? GetType().Name,
+            claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider));
+
+    static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider sp) =>
+        // AddEdictOutbox registers the default policy; pre-existing test
+        // fixtures that hand-wire individual services pre-date that
+        // registration. Fall back to a never-trip policy so consumer code
+        // works either way.
+        sp.GetService<ClaimCheckPolicy>()
+        ?? new ClaimCheckPolicy(sp.GetRequiredService<Serializer>(), int.MaxValue, null);
 }
 
 /// <summary>

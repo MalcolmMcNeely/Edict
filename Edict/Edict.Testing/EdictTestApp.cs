@@ -12,6 +12,9 @@ using Edict.Core.Outbox;
 using Edict.Core.Saga;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Contracts.ClaimCheck;
+using Edict.Core.ClaimCheck;
+using Edict.Testing.ClaimCheck;
 using Edict.Testing.Hosting;
 using Edict.Testing.InProcess;
 using Edict.Testing.Recording;
@@ -60,7 +63,9 @@ public sealed class EdictTestApp : IAsyncDisposable
             new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
             new InMemoryEdictTableStoreFactory(),
             InProcImplicitSubscriberMap.Build(builder.ConsumerAssembly),
-            builder.Chaos);
+            builder.Chaos,
+            new InMemoryClaimCheckStore(),
+            builder.ClaimCheckThresholdBytes);
 
         TestCluster cluster;
         // The id flows down the async flow into the Orleans-instantiated
@@ -217,6 +222,13 @@ public sealed class EdictTestApp : IAsyncDisposable
             // TryAddSingleton(TimeProvider.System) is a no-op (ADR 0018 seam).
             siloBuilder.Services.AddSingleton<TimeProvider>(ctx.Clock);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
+            // Claim-check seam registered before AddEdictOutbox so its default
+            // policy registration picks up the in-memory store (ADR 0024).
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore);
+            siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
+                sp.GetRequiredService<Serializer>(),
+                ctx.ClaimCheckThresholdBytes,
+                sp.GetRequiredService<IEdictClaimCheckStore>()));
 
             InvokeAddEdict(siloBuilder.Services, ctx.ConsumerAssembly);
             RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);

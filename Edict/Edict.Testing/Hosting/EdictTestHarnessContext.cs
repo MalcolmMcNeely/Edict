@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
+using Edict.Testing.ClaimCheck;
 using Edict.Testing.Chaos;
 using Edict.Testing.InProcess;
 using Edict.Testing.Recording;
@@ -22,7 +23,9 @@ sealed class EdictTestHarnessContext(
     FakeTimeProvider clock,
     InMemoryEdictTableStoreFactory tableStoreFactory,
     InProcImplicitSubscriberMap subscriberMap,
-    ChaosOptions chaos)
+    ChaosOptions chaos,
+    InMemoryClaimCheckStore claimCheckStore,
+    int claimCheckThresholdBytes)
 {
     public Assembly ConsumerAssembly => consumerAssembly;
     public EdictTimelineRecorder Recorder => recorder;
@@ -30,6 +33,8 @@ sealed class EdictTestHarnessContext(
     public InMemoryEdictTableStoreFactory TableStoreFactory => tableStoreFactory;
     public InProcImplicitSubscriberMap SubscriberMap => subscriberMap;
     public ChaosOptions Chaos => chaos;
+    public InMemoryClaimCheckStore ClaimCheckStore => claimCheckStore;
+    public int ClaimCheckThresholdBytes => claimCheckThresholdBytes;
 }
 
 static class EdictTestHarnessRegistry

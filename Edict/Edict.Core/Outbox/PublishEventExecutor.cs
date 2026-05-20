@@ -25,7 +25,7 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
         Func<EdictEvent, Task>? deferredDispatch)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
-        var (streamName, routeKey) = EventStreamAddress.Resolve(evt);
+        var (streamName, routeKey) = ResolveStreamAddress(evt);
         var stream = streamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
@@ -49,6 +49,17 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
 
         await stream.OnNextAsync(stamped);
     }
+
+    // A claim-checked event rides as an EdictEventEnvelope whose inner-event
+    // address fields name the domain stream the unwrapped event would have
+    // ridden (ADR 0024, slice 2). The envelope itself carries no [EdictStream]
+    // because the stream choice is data, not metadata. Slice-3 receiver-side
+    // unwrap will pick the envelope off this stream and rehydrate the inner
+    // event.
+    static (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent evt) =>
+        evt is EdictEventEnvelope envelope && envelope.InnerEventStreamName is { } streamName
+            ? (streamName, envelope.InnerEventRouteKey)
+            : EventStreamAddress.Resolve(evt);
 
     static (string? TraceId, string? SpanId) SplitTraceParent(string? traceParent)
     {

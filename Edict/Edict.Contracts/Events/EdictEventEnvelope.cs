@@ -36,6 +36,22 @@ public sealed record EdictEventEnvelope : EdictEvent
     public string? ClaimCheckKey { get; init; }
 
     /// <summary>
+    /// The inner event's <c>[EdictStream]</c> name, so the framework can
+    /// address the envelope onto the same domain stream the unwrapped event
+    /// would have ridden. <c>null</c> on the inline branch when the inner
+    /// event itself is published directly (ADR 0024, slice 2 conditional
+    /// wrap).
+    /// </summary>
+    public string? InnerEventStreamName { get; init; }
+
+    /// <summary>
+    /// The inner event's <c>[EdictRouteKey]</c> value, used together with
+    /// <see cref="InnerEventStreamName"/> to address the envelope onto the
+    /// inner event's domain stream.
+    /// </summary>
+    public Guid InnerEventRouteKey { get; init; }
+
+    /// <summary>
     /// Construct an envelope on one of the two branches. Throws when both
     /// or neither is provided — the exactly-one invariant is asserted at
     /// construction (ADR 0024).

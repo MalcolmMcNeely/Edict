@@ -1,12 +1,17 @@
 using Edict.Contracts;
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
+using Edict.Core.Serialization;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
 using Orleans.Runtime;
+using Orleans.Serialization;
 using Orleans.Streams;
 
 using static VerifyXunit.Verifier;
@@ -51,7 +56,8 @@ public sealed class OutboxHostTests
         FakeTimeProvider clock,
         EdictOutboxOptions? options = null,
         IDeadLetterPromoter? promoter = null,
-        Func<EdictEvent, Task>? deferredDispatch = null) =>
+        Func<EdictEvent, Task>? deferredDispatch = null,
+        ClaimCheckPolicy? claimCheckPolicy = null) =>
         new(
             state,
             FakeStreamProvider.Instance,
@@ -62,7 +68,19 @@ public sealed class OutboxHostTests
             promoter ?? new UnusedPromoter(),
             grainKey: "00000000-0000-0000-0000-000000000000",
             grainTypeName: "FakeHost",
-            deferredDispatch);
+            deferredDispatch,
+            claimCheckPolicy);
+
+    static Serializer BuildSerializer()
+    {
+        var services = new ServiceCollection();
+        services.AddSerializer(b =>
+        {
+            b.AddAssembly(typeof(OutboxHostTests).Assembly);
+            b.AddEdictContractSerializer();
+        });
+        return services.BuildServiceProvider().GetRequiredService<Serializer>();
+    }
 
     // ---- Migrated from OutboxDrainEngineTests ---------------------------------
 
@@ -374,6 +392,84 @@ public sealed class OutboxHostTests
             .DontScrubGuids().DontScrubDateTimes();
     }
 
+    // ---- ClaimCheckPolicy wiring (ADR 0024, slice 2) --------------------------
+
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldParallelisePolicyPuts_WhenMultipleOversizedEventsBuffered()
+    {
+        // ADR 0024 / issue #72: a Handle that raises N oversized events at the
+        // commit boundary pays one I/O round trip, not N. The policy invocations
+        // run inside Task.WhenAll, so a store whose PutAsync blocks until N
+        // concurrent in-flight calls have arrived completes.
+        var serializer = BuildSerializer();
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var log = new List<string>();
+        var state = new FakePersistentState(log);
+        var reminders = new FakeReminderRegistrar(log);
+        var store = new ConcurrencyGate(expectedConcurrency: 3);
+        var policy = new ClaimCheckPolicy(serializer, thresholdBytes: 1, store);
+
+        var host = Host(state, reminders, executor, clock, claimCheckPolicy: policy);
+
+        var routeKey = new Guid("11111111-2222-3333-4444-555555555555");
+        var events = new EdictEvent[]
+        {
+            new OrderPlacedEvent(routeKey, "SKU-A"),
+            new OrderPlacedEvent(routeKey, "SKU-B"),
+            new OrderPlacedEvent(routeKey, "SKU-C"),
+        };
+
+        await host.EnqueueRaisedEventsAndDrainAsync(events, traceParent: null, traceState: null);
+
+        Assert.Equal(3, store.MaxObservedConcurrency);
+        Assert.Equal(3, executor.Executed.Count);
+    }
+
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldNoOp_WhenEventListEmpty()
+    {
+        // No events raised means no commit and no drain — the host must not
+        // write state nor touch the reminder subsystem.
+        var serializer = BuildSerializer();
+        var clock = new FakeTimeProvider(Now);
+        var executor = new RecordingExecutor();
+        var log = new List<string>();
+        var state = new FakePersistentState(log);
+        var reminders = new FakeReminderRegistrar(log);
+        var policy = new ClaimCheckPolicy(serializer, thresholdBytes: int.MaxValue, store: null);
+
+        var host = Host(state, reminders, executor, clock, claimCheckPolicy: policy);
+        await host.EnqueueRaisedEventsAndDrainAsync([], traceParent: null, traceState: null);
+
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldStageInnerEventBytes_WhenUnderThreshold()
+    {
+        // Conditional-wrap (slice 2): small events ride the entry payload as
+        // the serialised inner event itself, not as a wrapping envelope. The
+        // executor sees the raw inner-event bytes the policy produced.
+        var serializer = BuildSerializer();
+        var clock = new FakeTimeProvider(Now);
+        var executor = new PayloadCapturingExecutor();
+        var log = new List<string>();
+        var state = new FakePersistentState(log);
+        var reminders = new FakeReminderRegistrar(log);
+        var policy = new ClaimCheckPolicy(serializer, thresholdBytes: int.MaxValue, store: null);
+
+        var host = Host(state, reminders, executor, clock, claimCheckPolicy: policy);
+
+        var evt = new OrderPlacedEvent(new Guid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), "SKU");
+        var expected = serializer.SerializeToArray<EdictEvent>(evt);
+
+        await host.EnqueueRaisedEventsAndDrainAsync([evt], traceParent: null, traceState: null);
+
+        Assert.Single(executor.SeenPayloads);
+        Assert.Equal(expected, executor.SeenPayloads[0]);
+    }
+
     // ---- New surface specific to the composed host ----------------------------
 
     [Fact]
@@ -593,6 +689,55 @@ public sealed class OutboxHostTests
             SawNullCallback = deferredDispatch is null;
             return Task.CompletedTask;
         }
+    }
+
+    sealed class PayloadCapturingExecutor : IOutboxEffectExecutor
+    {
+        public List<byte[]> SeenPayloads { get; } = [];
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+
+        public Task ExecuteAsync(
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        {
+            SeenPayloads.Add(entry.Payload);
+            return Task.CompletedTask;
+        }
+    }
+
+    sealed class ConcurrencyGate(int expectedConcurrency) : IEdictClaimCheckStore
+    {
+        readonly TaskCompletionSource _allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int _inFlight;
+        int _max;
+
+        public int MaxObservedConcurrency => _max;
+
+        public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+        {
+            var seen = Interlocked.Increment(ref _inFlight);
+            // Track the high-water mark of simultaneous in-flight calls so the
+            // test can assert N concurrent puts on N oversized events.
+            while (true)
+            {
+                var prior = _max;
+                if (seen <= prior || Interlocked.CompareExchange(ref _max, seen, prior) == prior)
+                {
+                    break;
+                }
+            }
+
+            if (seen >= expectedConcurrency)
+            {
+                _allArrived.TrySetResult();
+            }
+
+            await _allArrived.Task;
+            Interlocked.Decrement(ref _inFlight);
+            return $"blob-{Guid.NewGuid():N}";
+        }
+
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct) =>
+            throw new NotSupportedException("publisher-side tests never fetch");
     }
 
     sealed class TraceCapturingExecutor : IOutboxEffectExecutor
