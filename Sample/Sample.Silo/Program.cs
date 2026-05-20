@@ -35,15 +35,22 @@ var host = Host.CreateDefaultBuilder(args)
                                     ?? "UseDevelopmentStorage=true";
 
         var tableServiceClient = new TableServiceClient(tableConnectionString);
+        var blobServiceClient = new BlobServiceClient(blobConnectionString);
         silo.Services.AddSingleton(tableServiceClient);
-        silo.Services.AddSingleton(new BlobServiceClient(blobConnectionString));
+        silo.Services.AddSingleton(blobServiceClient);
         silo.Services.AddSingleton<IEdictTableStoreFactory>(
             _ => new AzureTableWriteStoreFactory(tableServiceClient));
 
+        // PubSubStore stays on Tables — Orleans-internal, bounded shape, not subject to Outbox-growth dynamics. ADR 0025.
         silo.AddAzureTableGrainStorage("PubSubStore", options =>
             options.TableServiceClient = tableServiceClient);
-        silo.AddAzureTableGrainStorage("edict-state", options =>
-            options.TableServiceClient = tableServiceClient);
+        // edict-state on Azure Blob — single-blob ETag atomicity, no per-property
+        // or per-row cap; survives an arbitrarily deep Outbox backlog. ADR 0025.
+        silo.AddAzureBlobGrainStorage("edict-state", options =>
+        {
+            options.BlobServiceClient = blobServiceClient;
+            options.ContainerName = "edict-state";
+        });
         // A saga's SendCommand effect drains in-silo through IEdictSender, so
         // the silo needs the generated route map too (ADR 0020).
         silo.Services.AddEdict();

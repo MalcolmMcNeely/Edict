@@ -3,8 +3,14 @@ var builder = DistributedApplication.CreateBuilder(args);
 var storage = builder.AddAzureStorage("storage").RunAsEmulator();
 var queues = storage.AddQueues("queues");
 var tables = storage.AddTables("tables");
-// Claim-check escape hatch for oversized events (ADR 0024). The container
-// itself is created on first use by AzureBlobClaimCheckStore.CreateAsync.
+// Blob service shared by two containers with distinct lifecycle policies
+// (kept separate per ADR 0025):
+//   "edict-state"       — grain state on the blob substrate (live data,
+//                         no operator-set retention). Created on first use
+//                         by Orleans's AzureBlobGrainStorage provider.
+//   "edict-claim-check" — append-only oversize-event spill (ADR 0024;
+//                         operator-set retention). Created on first use
+//                         by AzureBlobClaimCheckStore.CreateAsync.
 var blobs = storage.AddBlobs("blobs");
 
 builder.AddProject<Projects.Sample_Silo>("silo")

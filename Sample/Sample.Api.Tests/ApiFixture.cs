@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
@@ -33,6 +34,7 @@ public sealed class ApiFixture : IAsyncLifetime
 {
     private static string _queueConnectionString = "";
     private static TableServiceClient _tableServiceClient = null!;
+    private static BlobServiceClient _blobServiceClient = null!;
 
     private AzuriteContainer _azurite = null!;
     private TestCluster _cluster = null!;
@@ -53,6 +55,7 @@ public sealed class ApiFixture : IAsyncLifetime
         await _azurite.StartAsync();
         _queueConnectionString = _azurite.GetConnectionString();
         _tableServiceClient = new TableServiceClient(_queueConnectionString);
+        _blobServiceClient = new BlobServiceClient(_queueConnectionString);
 
         var clusterBuilder = new TestClusterBuilder();
         clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
@@ -104,10 +107,16 @@ public sealed class ApiFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
+            // PubSubStore stays on Tables — Orleans-internal, bounded shape, not subject to Outbox-growth dynamics. ADR 0025.
             siloBuilder.AddAzureTableGrainStorage("PubSubStore", options =>
                 options.TableServiceClient = _tableServiceClient);
-            siloBuilder.AddAzureTableGrainStorage("edict-state", options =>
-                options.TableServiceClient = _tableServiceClient);
+            // edict-state on Azure Blob — mirrors Sample.Silo so the integration
+            // tests exercise the same substrate as production. ADR 0025.
+            siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
+            {
+                options.BlobServiceClient = _blobServiceClient;
+                options.ContainerName = "edict-state";
+            });
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.UseAzureTableReminderService(options =>

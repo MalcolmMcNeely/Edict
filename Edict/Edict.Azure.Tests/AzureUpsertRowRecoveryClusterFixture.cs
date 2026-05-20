@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
@@ -32,6 +33,7 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
 {
     static string _connectionString = "";
     static TableServiceClient _tableServiceClient = null!;
+    static BlobServiceClient _blobServiceClient = null!;
 
     AzuriteContainer _azurite = null!;
 
@@ -52,6 +54,7 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
         await _azurite.StartAsync();
         _connectionString = _azurite.GetConnectionString();
         _tableServiceClient = new TableServiceClient(_connectionString);
+        _blobServiceClient = new BlobServiceClient(_connectionString);
 
         var builder = new TestClusterBuilder();
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
@@ -94,9 +97,22 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableUpsertRowExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
+            // AddEdict() registers the receiver-side ClaimCheckUnwrap that
+            // every EdictIdempotencyBase consumer resolves on the stream
+            // observer path (ADR 0024, slice 3).
+            siloBuilder.Services.AddEdict();
             siloBuilder.UseInMemoryReminderService();
+            // PubSubStore stays on memory storage — Orleans's internal
+            // pub-sub state is out of scope for the Edict substrate story
+            // (ADR 0025 keeps it on Tables in production).
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            siloBuilder.AddMemoryGrainStorage("edict-state");
+            // edict-state on Azure Blob (ADR 0025) — provider conformance
+            // tests must exercise the same substrate the sample silo wires.
+            siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
+            {
+                options.BlobServiceClient = _blobServiceClient;
+                options.ContainerName = "edict-state";
+            });
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>
