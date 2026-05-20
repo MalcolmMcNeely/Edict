@@ -15,7 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- The consumer assembly under test: its grains + generated AddEdict(). -->
+        <!-- The consumer assembly under test: its grains + generated [assembly: EdictRoutes]. -->
         <ProjectReference Include="../Sample.Silo/Sample.Silo.csproj" />
         <!-- The shipped in-memory Test Framework. -->
         <ProjectReference Include="../../Edict/Edict.Testing/Edict.Testing.csproj" />

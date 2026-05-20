@@ -1,9 +1,9 @@
 using Azure.Data.Tables;
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
+using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
-using Edict.Generated;
 using Edict.Telemetry;
 using OpenTelemetry;
 using OpenTelemetry.Trace;

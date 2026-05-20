@@ -3,10 +3,10 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Telemetry;
+using Edict.Core;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Generated;
 
 using OpenTelemetry;
 

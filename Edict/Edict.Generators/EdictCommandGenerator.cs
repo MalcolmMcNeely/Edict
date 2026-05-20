@@ -11,10 +11,11 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the command spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Commands.EdictCommandHandler</c>: the Orleans grain interface, the
-/// <c>Dispatch</c> type-switch override, an Orleans surrogate + converter per
-/// concrete command, and a single <c>AddEdict()</c> that wires the route map,
-/// sender and ActivitySource.
+/// <c>Edict.Core.Commands.EdictCommandHandler</c>: the Orleans grain interface,
+/// the <c>Dispatch</c> type-switch override, an Orleans surrogate + converter
+/// per concrete command, and the per-assembly <c>EdictRouteRegistrar</c> plus
+/// the <c>[assembly: EdictRoutes]</c> annotation that the hand-authored
+/// <c>AddEdict()</c> in Edict.Core walks at startup (ADR 0021).
 /// <para>
 /// ADR 0005: this generator references no Edict assembly. It matches Edict's
 /// base type and annotations purely by fully-qualified name.
@@ -62,8 +63,8 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 return;
             }
 
-            spc.AddSource("Edict.Generated.AddEdict.g.cs",
-                SourceText.From(EmitAddEdict(allGrains), Encoding.UTF8));
+            spc.AddSource("Edict.Generated.EdictRouteRegistrar.g.cs",
+                SourceText.From(EmitRouteRegistrar(allGrains), Encoding.UTF8));
         });
     }
 
@@ -313,7 +314,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
 
         """;
 
-    private static string EmitAddEdict(ImmutableArray<GrainModel> grains)
+    private static string EmitRouteRegistrar(ImmutableArray<GrainModel> grains)
     {
         var ordered = grains
             .OrderBy(g => g.GrainFqn, System.StringComparer.Ordinal)
@@ -329,7 +330,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             {
                 if (command.TelemeterizedProperties.IsEmpty)
                 {
-                    entries.Append("                [typeof(")
+                    entries.Append("            routes[typeof(")
                         .Append(command.Fqn)
                         .Append(")] = new global::Edict.Core.Commands.CommandRoute(typeof(")
                         .Append(command.Fqn)
@@ -341,7 +342,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                         .Append(command.Fqn)
                         .Append(")command).")
                         .Append(command.RouteKeyProperty)
-                        .Append("),\n");
+                        .Append(");\n");
                 }
                 else
                 {
@@ -349,25 +350,25 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                     foreach (var property in command.TelemeterizedProperties)
                     {
                         var tagName = $"edict.{command.SimpleName.ToLowerInvariant()}.{property.PropertyName.ToLowerInvariant()}";
-                        tagLines.Append("                        activity?.SetTag(\"")
+                        tagLines.Append("                    activity?.SetTag(\"")
                             .Append(tagName)
                             .Append("\", typedCommand.")
                             .Append(property.PropertyName)
                             .Append(");\n");
                     }
 
-                    entries.Append("                [typeof(")
+                    entries.Append("            routes[typeof(")
                         .Append(command.Fqn)
                         .Append(")] = new global::Edict.Core.Commands.CommandRoute(\n")
-                        .Append("                    typeof(").Append(command.Fqn).Append("),\n")
-                        .Append("                    typeof(").Append(interfaceFqn).Append("),\n")
-                        .Append("                    \"").Append(grain.GrainTypeName).Append("\",\n")
-                        .Append("                    command => ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(",\n")
-                        .Append("                    (command, activity) =>\n")
-                        .Append("                    {\n")
-                        .Append("                        var typedCommand = (").Append(command.Fqn).Append(")command;\n")
+                        .Append("                typeof(").Append(command.Fqn).Append("),\n")
+                        .Append("                typeof(").Append(interfaceFqn).Append("),\n")
+                        .Append("                \"").Append(grain.GrainTypeName).Append("\",\n")
+                        .Append("                command => ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(",\n")
+                        .Append("                (command, activity) =>\n")
+                        .Append("                {\n")
+                        .Append("                    var typedCommand = (").Append(command.Fqn).Append(")command;\n")
                         .Append(tagLines)
-                        .Append("                    }),\n");
+                        .Append("                });\n");
                 }
             }
         }
@@ -376,30 +377,17 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             // <auto-generated/>
             #nullable enable
 
+            [assembly: global::Edict.Contracts.Routing.EdictRoutesAttribute(typeof(global::Edict.Generated.EdictRouteRegistrar))]
+
             namespace Edict.Generated
             {
-                public static class EdictServiceCollectionExtensions
+                internal static class EdictRouteRegistrar
                 {
-                    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddEdict(
-                        this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+                    public static void Register(
+                        global::System.Collections.Generic.Dictionary<
+                            global::System.Type, global::Edict.Core.Commands.CommandRoute> routes)
                     {
-                        var routes = new global::System.Collections.Generic.Dictionary<
-                            global::System.Type, global::Edict.Core.Commands.CommandRoute>
-                        {
             {{entries.ToString().TrimEnd('\n')}}
-                        };
-
-                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Core.Commands.CommandRouteResolver>(
-                                services, new global::Edict.Core.Commands.CommandRouteResolver(routes));
-                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::Edict.Contracts.Sending.IEdictSender, global::Edict.Core.Commands.EdictSender>(
-                                services);
-                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
-                            .AddSingleton<global::System.Diagnostics.ActivitySource>(
-                                services, {{EdictWellKnownNames.EdictDiagnosticsActivitySourceFqn}});
-
-                        return services;
                     }
                 }
             }

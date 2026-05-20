@@ -3,11 +3,11 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Contracts.Sending;
+using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Generated;
 
 using Microsoft.Extensions.DependencyInjection;
 

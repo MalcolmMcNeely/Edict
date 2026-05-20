@@ -3,6 +3,7 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Contracts.TableStorage;
+using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
@@ -17,8 +18,6 @@ using Orleans;
 using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
-
-using Edict.Generated;
 
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;

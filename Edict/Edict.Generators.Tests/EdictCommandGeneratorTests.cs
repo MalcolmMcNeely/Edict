@@ -109,7 +109,7 @@ public class EdictCommandGeneratorTests
     }
 
     [Fact]
-    public Task EdictCommandGenerator_ShouldEmitGrainInterfaceDispatchAndAddEdict()
+    public Task EdictCommandGenerator_ShouldEmitGrainInterfaceDispatchAndRouteRegistrar()
     {
         var generated = GeneratorTestHarness.Run(SampleConsumer);
 
@@ -117,7 +117,7 @@ public class EdictCommandGeneratorTests
     }
 
     [Fact]
-    public Task EdictCommandGenerator_ShouldEmitTelemeterizedTagWriterInAddEdict()
+    public Task EdictCommandGenerator_ShouldEmitTelemeterizedTagWriterInRouteRegistrar()
     {
         var generated = GeneratorTestHarness.Run(TelemeterizedConsumer);
 
@@ -132,5 +132,28 @@ public class EdictCommandGeneratorTests
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return Verify(generated);
+    }
+
+    private const string ContractsOnlyConsumer = """
+        using System;
+
+        using Edict.Contracts.Commands;
+
+        namespace Sample.Contracts;
+
+        public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+        """;
+
+    [Fact]
+    public void EdictCommandGenerator_ShouldNotEmitRouteRegistrar_WhenAssemblyHasNoHandlers()
+    {
+        var generated = GeneratorTestHarness.Run(ContractsOnlyConsumer);
+
+        Assert.DoesNotContain(generated.Keys, name => name.Contains("EdictRouteRegistrar", StringComparison.Ordinal));
+        Assert.DoesNotContain(generated.Values, content => content.Contains("EdictRoutesAttribute", StringComparison.Ordinal));
     }
 }

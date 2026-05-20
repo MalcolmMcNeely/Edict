@@ -1,5 +1,6 @@
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
+using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
@@ -7,7 +8,6 @@ using Edict.Core.TableStorage;
 using Edict.Core.Tests.Grains;
 using Edict.Core.Tests.Outbox;
 using Edict.Core.Tests.TableStorage;
-using Edict.Generated;
 
 using Microsoft.Extensions.DependencyInjection;
 

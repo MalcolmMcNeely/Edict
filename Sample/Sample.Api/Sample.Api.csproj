@@ -16,8 +16,9 @@
 
     <ItemGroup>
         <!--
-          Reference Silo for IOrderGrain (generated grain interface) and AddEdict()
-          (generated DI extension). In a production split this would be a dedicated
+          Reference Silo for IOrderGrain (generated grain interface) and the
+          [assembly: EdictRoutes] annotation that AddEdict() in Edict.Core picks
+          up at startup. In a production split this would be a dedicated
           grain-interfaces library; for this sample the silo assembly serves that role.
         -->
         <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />

@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
+using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Saga;
@@ -172,17 +173,12 @@ public sealed class EdictTestApp : IAsyncDisposable
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer());
 
-    static void InvokeGeneratedAddEdict(IServiceCollection services, Assembly consumerAssembly)
-    {
-        var type = consumerAssembly.GetType("Edict.Generated.EdictServiceCollectionExtensions")
-            ?? throw new InvalidOperationException(
-                $"Consumer assembly '{consumerAssembly.GetName().Name}' has no generated " +
-                "Edict.Generated.EdictServiceCollectionExtensions. Reference Edict.Generators " +
-                "as an analyzer from the consumer project.");
-        var method = type.GetMethod("AddEdict", BindingFlags.Public | BindingFlags.Static, [typeof(IServiceCollection)])
-            ?? throw new InvalidOperationException("Generated AddEdict(IServiceCollection) not found.");
-        method.Invoke(null, [services]);
-    }
+    // Drives the hand-authored AddEdict() with the explicit-assemblies overload
+    // so EdictTestApp routes are sourced from the consumer assembly alone
+    // (ADR 0021 — deterministic for test contexts; the AppDomain-scan happy-path
+    // is the consumer-app entry only).
+    static void InvokeAddEdict(IServiceCollection services, Assembly consumerAssembly) =>
+        services.AddEdict(consumerAssembly);
 
     // Re-point IEdictSender at the recording decorator wrapping the real sender,
     // so a saga's in-silo dispatched Command and a test's client Command share
@@ -205,7 +201,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton<TimeProvider>(ctx.Clock);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
 
-            InvokeGeneratedAddEdict(siloBuilder.Services, ctx.ConsumerAssembly);
+            InvokeAddEdict(siloBuilder.Services, ctx.ConsumerAssembly);
             siloBuilder.Services.AddEdictOutbox();
 
             // Swap the bare PublishEvent executor for the in-process dispatcher
@@ -244,7 +240,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             var ctx = EdictTestHarnessRegistry.Current;
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
-            InvokeGeneratedAddEdict(clientBuilder.Services, ctx.ConsumerAssembly);
+            InvokeAddEdict(clientBuilder.Services, ctx.ConsumerAssembly);
             DecorateSender(clientBuilder.Services, ctx.Recorder);
         }
     }
