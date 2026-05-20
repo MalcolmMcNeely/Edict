@@ -21,12 +21,12 @@ sealed class DeadLetterAwarePublishExecutor(Serializer serializer) : IOutboxEffe
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
         if (evt is EdictDeadLetterRaised)
         {
-            return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
+            return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
         }
         throw new InvalidOperationException("simulated permanent publish failure");
     }

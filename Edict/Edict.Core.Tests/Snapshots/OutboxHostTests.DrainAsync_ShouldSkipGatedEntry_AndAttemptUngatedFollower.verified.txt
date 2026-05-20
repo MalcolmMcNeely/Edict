@@ -1,5 +1,9 @@
 ﻿{
+  Executed: [
+    bbbbbbbb-0000-0000-0000-000000000002
+  ],
   Log: [
+    commit[aaaaaaaa-0000-0000-0000-000000000001],
     register
   ],
   Outbox: {
@@ -9,10 +13,6 @@
         Payload: AQID,
         AttemptCount: 1,
         NextAttemptUtc: 2026-05-19 12:01 +0
-      },
-      {
-        EntryId: bbbbbbbb-0000-0000-0000-000000000002,
-        Payload: AQID
       }
     ]
   }

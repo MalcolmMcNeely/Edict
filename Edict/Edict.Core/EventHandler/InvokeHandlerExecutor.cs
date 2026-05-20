@@ -1,4 +1,5 @@
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -8,37 +9,47 @@ using Orleans.Streams;
 namespace Edict.Core.EventHandler;
 
 /// <summary>
-/// Drains a <see cref="OutboxEffectKind.InvokeHandler"/> entry (ADR 0023):
-/// deserialise the buffered <see cref="EdictEvent"/>, restore the captured
-/// <c>traceparent</c> so the deferred invocation span nests under the publish
-/// span as parent-child even when backoff defers the call across the stream
-/// hop (ADR 0003), and route the dispatch back into the host grain's
-/// idempotent-consumer surface via the deferred-dispatch callback the host
-/// wired at construction. A null callback throws <see cref="NotSupportedException"/>:
-/// only the <see cref="EdictIdempotencyBase{TPayload}"/> shell wires a callback,
-/// and only it can stage InvokeHandler entries. Bare-named — no consumer types it.
+/// Drains a <see cref="OutboxEffectKind.InvokeHandler"/> entry (ADR 0023 /
+/// 0026): the entry's payload is a serialised <see cref="EdictEventEnvelope"/>
+/// — inline-payload (the common case for normal-size events the receiver-side
+/// inline path stages) or pointer-bearing (oversized events the stream-observer
+/// bifurcation stages, ADR 0026 fold). The executor materialises the inner
+/// event via <see cref="ClaimCheckUnwrap.ApplyAsync"/> — which transparently
+/// deserialises the inline branch or fetches the blob on the pointer branch —
+/// restores the captured <c>traceparent</c> so the deferred invocation span
+/// nests under the publish span as parent-child even when backoff defers the
+/// call across the stream hop (ADR 0003), and routes the dispatch back into the
+/// host grain's idempotent-consumer surface via the deferred-dispatch callback
+/// the host wired at construction. A null callback throws
+/// <see cref="NotSupportedException"/>: only the
+/// <see cref="EdictIdempotencyBase{TPayload}"/> shell wires a callback, and
+/// only it can stage <c>InvokeHandler</c> entries. Bare-named — no consumer
+/// types it.
 /// </summary>
-sealed class InvokeHandlerExecutor(Serializer serializer) : IOutboxEffectExecutor
+sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwrap) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
     public async Task ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch)
+        Func<EdictEvent, Task>? deferredDispatch,
+        Type? consumerType)
     {
-        var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
-
-        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
-        using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
-            evt.GetType().Name, parentContext);
-
         if (deferredDispatch is null)
         {
             throw new NotSupportedException(
                 "InvokeHandler executor invoked on a host that does not wire deferred dispatch.");
         }
 
-        await deferredDispatch(evt);
+        var staged = serializer.Deserialize<EdictEvent>(entry.Payload);
+        var materialised = await unwrap.ApplyAsync(
+            staged, consumerType ?? typeof(object), CancellationToken.None);
+
+        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
+        using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
+            materialised.GetType().Name, parentContext);
+
+        await deferredDispatch(materialised);
     }
 }

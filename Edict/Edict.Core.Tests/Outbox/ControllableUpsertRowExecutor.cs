@@ -31,7 +31,7 @@ sealed class ControllableUpsertRowExecutor(Serializer serializer, IServiceProvid
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
     public async Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
     {
         Interlocked.Increment(ref Attempts);
 
@@ -40,11 +40,11 @@ sealed class ControllableUpsertRowExecutor(Serializer serializer, IServiceProvid
             throw new InvalidOperationException("controllable upsert failure (test)");
         }
 
-        await _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
+        await _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
 
         if (DuplicateOnSuccess)
         {
-            await _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
+            await _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
         }
     }
 }

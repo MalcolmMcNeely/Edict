@@ -23,13 +23,13 @@ sealed class AzureControllableUpsertRowExecutor(Serializer serializer, IServiceP
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
     {
         if (ShouldFail)
         {
             throw new InvalidOperationException("controllable upsert failure (azure conformance test)");
         }
 
-        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
+        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
     }
 }

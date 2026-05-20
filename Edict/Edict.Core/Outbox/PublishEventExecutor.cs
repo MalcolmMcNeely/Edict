@@ -22,7 +22,8 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
     public async Task ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch)
+        Func<EdictEvent, Task>? deferredDispatch,
+        Type? consumerType)
     {
         var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
         var (streamName, routeKey) = ResolveStreamAddress(evt);

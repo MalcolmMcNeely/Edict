@@ -22,7 +22,7 @@ sealed class ControllableOutboxExecutor(Serializer serializer) : IOutboxEffectEx
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
     {
         if (ShouldFail)
         {
@@ -30,6 +30,6 @@ sealed class ControllableOutboxExecutor(Serializer serializer) : IOutboxEffectEx
             throw new InvalidOperationException("controllable failure (test)");
         }
 
-        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch);
+        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
     }
 }

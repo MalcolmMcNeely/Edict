@@ -128,17 +128,20 @@ static class DeadLetterPromotion
     }
 
     /// <summary>
-    /// Receiver-side specialisation (ADR 0024, slice 3): builds an
+    /// Receiver-side specialisation (ADR 0024 / 0026): builds an
     /// <see cref="EdictDeadLetterRaised"/> for an inbound event whose
-    /// claim-check blob could not be fetched after <c>MaxAttempts</c>. There
-    /// is no failing <c>OutboxEntry</c> on the receiver path, so the entry-shaped
-    /// fields (EntryId, Kind, AttemptCount, TraceParent) come from the envelope
-    /// itself rather than a buffered effect. The forensic row carries the
-    /// missing key, the inner event's stream/route-key as the EffectTarget, and
-    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/> as the discriminator.
+    /// claim-check blob could not be fetched after <c>MaxAttempts</c>. After
+    /// the ADR-0026 fold the missing-blob failure is just an
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry exhaustion — the
+    /// failing entry's identity (EntryId, AttemptCount, TraceParent) carries
+    /// onto the forensic row alongside the pointer-envelope-derived stream
+    /// address and claim-check key.
+    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/> is the discriminator.
     /// </summary>
     public static EdictDeadLetterRaised BuildForBlobMissing(
+        OutboxEntry entry,
         EdictEventEnvelope envelope,
+        Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
@@ -147,22 +150,18 @@ static class DeadLetterPromotion
             ? $"{innerStream}/{envelope.InnerEventRouteKey:D}"
             : nameof(EdictDeadLetterFailureKind.BlobMissing);
 
-        var traceParent = envelope.TraceId is { Length: > 0 } traceId && envelope.SpanId is { Length: > 0 } spanId
-            ? $"00-{traceId}-{spanId}-01"
-            : null;
-
         return new EdictDeadLetterRaised
         {
-            EntryId = Guid.NewGuid(),
-            Kind = OutboxEffectKind.PublishEvent.ToString(),
-            AttemptCount = 0,
+            EntryId = entry.EntryId,
+            Kind = entry.Kind.ToString(),
+            AttemptCount = entry.AttemptCount,
             DeadLetteredAt = deadLetteredAt,
             SourceGrainKey = sourceGrainKey,
             SourceGrainType = sourceGrainType,
             EffectTarget = effectTarget,
-            TraceParent = traceParent,
-            ExceptionType = nameof(KeyNotFoundException),
-            Reason = $"Claim-check blob '{envelope.ClaimCheckKey}' was not found.",
+            TraceParent = entry.TraceParent,
+            ExceptionType = exception.GetType().FullName ?? nameof(KeyNotFoundException),
+            Reason = exception.Message,
             PayloadJson = null,
             ClaimCheckKey = envelope.ClaimCheckKey,
             FailureKind = EdictDeadLetterFailureKind.BlobMissing,

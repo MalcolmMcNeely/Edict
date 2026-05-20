@@ -28,7 +28,8 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
     public async Task ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch)
+        Func<EdictEvent, Task>? deferredDispatch,
+        Type? consumerType)
     {
         var command = serializer.Deserialize<EdictCommand>(entry.Payload);
 

@@ -15,6 +15,5 @@
       }
     ]
   },
-  Idempotency: {},
-  BlobMissing: {}
+  Idempotency: {}
 }

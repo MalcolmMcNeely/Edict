@@ -9,9 +9,9 @@ using Orleans.Streams;
 namespace Edict.Core.Outbox;
 
 /// <summary>
-/// The single Outbox component (ADR 0018 / 0022): owns the persisted
-/// <see cref="GrainEnvelope{TPayload}"/>, the drain algorithm (FIFO,
-/// stop-at-head, exponential backoff, max-attempts dead-letter promotion),
+/// The single Outbox component (ADR 0018 / 0022 / 0026): owns the persisted
+/// <see cref="GrainEnvelope{TPayload}"/>, the drain algorithm (per-entry
+/// independent retry, exponential backoff, max-attempts dead-letter promotion),
 /// and the lazy drain Reminder lifecycle. Lives as a field on each
 /// consumer-facing grain shell (<c>EdictCommandHandler&lt;TState&gt;</c>,
 /// <c>EdictIdempotencyBase&lt;TPayload&gt;</c>); the shell is a thin Orleans
@@ -19,16 +19,18 @@ namespace Edict.Core.Outbox;
 /// <c>ReceiveReminder</c> to this component. Bare-named — no consumer types
 /// it.
 /// <para>
-/// Drain is <b>FIFO, stop-at-head</b> (per-aggregate causal order) and
-/// <b>awaited inline immediately after the commit</b>, so the happy-path span
-/// tree is identical to the pre-Outbox code. A post-commit effect failure
-/// bumps backoff, stops at the head, and leaves the Reminder as the durable
-/// retry — it never rolls back nor surfaces to the caller. At
+/// Drain (ADR 0026) walks <see cref="OutboxSlice.Pending"/> in insertion
+/// order. For each entry: if <see cref="OutboxEntry.NextAttemptUtc"/> is in
+/// the future the entry is skipped; otherwise the executor runs. On success
+/// the entry is acked, state is written, and the walk restarts from the head
+/// so any newly-enqueued entry surfaces immediately. On failure the entry
+/// is bumped via backoff (no head privilege) and the walk continues past it
+/// — a poison entry no longer blocks subsequent effects. At
 /// <see cref="EdictOutboxOptions.MaxAttempts"/> the host promotes the failing
-/// head via <see cref="IDeadLetterPromoter"/>: the failing entry is removed
+/// entry via <see cref="IDeadLetterPromoter"/>: the failing entry is removed
 /// and a new <see cref="OutboxEffectKind.PublishEvent"/> entry carrying an
-/// <c>EdictDeadLetterRaised</c> notification is appended at the FIFO tail, in
-/// the same one grain-state write — there is no in-grain dead-letter slice.
+/// <c>EdictDeadLetterRaised</c> notification is appended at the tail, in the
+/// same one grain-state write.
 /// </para>
 /// </summary>
 sealed class OutboxHost<TPayload>
@@ -47,6 +49,7 @@ sealed class OutboxHost<TPayload>
     readonly ClaimCheckPolicy? _claimCheckPolicy;
     readonly string _grainKey;
     readonly string _grainTypeName;
+    readonly Type? _consumerType;
 
     bool _drainReminderRegistered;
 
@@ -61,7 +64,8 @@ sealed class OutboxHost<TPayload>
         string grainKey,
         string grainTypeName,
         Func<EdictEvent, Task>? deferredDispatch = null,
-        ClaimCheckPolicy? claimCheckPolicy = null)
+        ClaimCheckPolicy? claimCheckPolicy = null,
+        Type? consumerType = null)
     {
         _state = state;
         _streamProvider = streamProvider;
@@ -74,6 +78,7 @@ sealed class OutboxHost<TPayload>
         _grainTypeName = grainTypeName;
         _deferredDispatch = deferredDispatch;
         _claimCheckPolicy = claimCheckPolicy;
+        _consumerType = consumerType;
     }
 
     /// <summary>The persisted envelope <c>{ Payload, Outbox, Idempotency }</c>.</summary>
@@ -124,8 +129,7 @@ sealed class OutboxHost<TPayload>
     /// invocation returns the bytes to persist as the
     /// <see cref="OutboxEntry.Payload"/>; small events ride the entry as the
     /// serialised inner event itself, oversized events as a serialised pointer
-    /// envelope. The staged entries then commit and drain through the existing
-    /// FIFO path.
+    /// envelope. The staged entries then commit and drain through the engine.
     /// </summary>
     public async Task EnqueueRaisedEventsAndDrainAsync(
         IReadOnlyList<EdictEvent> events,
@@ -164,53 +168,66 @@ sealed class OutboxHost<TPayload>
     }
 
     /// <summary>
-    /// Drains pending effects FIFO, stopping at the head on the first failure
-    /// or backoff gate. Reconciles the lazy Reminder: unregistered when the
-    /// Outbox fully drains, registered while anything remains.
+    /// Drains pending effects with per-entry independent retry (ADR 0026):
+    /// walks <see cref="OutboxSlice.Pending"/> in insertion order, skipping
+    /// backoff-gated entries and continuing past failures. On success restarts
+    /// the walk from the head so a newly-enqueued entry surfaces immediately.
+    /// At <see cref="EdictOutboxOptions.MaxAttempts"/> the failing entry is
+    /// promoted to a dead-letter publish entry appended at the tail, in the
+    /// same write. Reconciles the lazy Reminder: unregistered when the Outbox
+    /// fully drains, registered while anything remains.
     /// </summary>
     public async Task DrainAsync()
     {
-        while (State.Outbox.Pending.Count > 0)
+        var index = 0;
+        while (index < State.Outbox.Pending.Count)
         {
-            var head = State.Outbox.Pending[0];
+            var entry = State.Outbox.Pending[index];
             var now = _timeProvider.GetUtcNow();
 
-            if (head.NextAttemptUtc > now)
+            if (entry.NextAttemptUtc > now)
             {
-                break; // backoff-gated; stop-at-head
+                index++;
+                continue;
             }
 
             try
             {
-                await _executors[head.Kind].ExecuteAsync(head, _streamProvider, _deferredDispatch);
+                await _executors[entry.Kind].ExecuteAsync(entry, _streamProvider, _deferredDispatch, _consumerType);
             }
             catch (Exception exception)
             {
                 // Post-commit failure: do not roll back, do not surface. Bump
-                // backoff; if attempts are now exhausted, promote the head in
-                // the SAME one commit — the failing entry is removed and an
-                // EdictDeadLetterRaised PublishEvent entry is appended at the
-                // FIFO tail (atomic by construction, ADR 0022) and CONTINUE —
-                // the poison head has left the FIFO, so the tail is no longer
-                // blocked (self-healing). Otherwise stop at the head (causal
-                // order) and let the lazy Reminder retry once backoff elapses.
-                State.Outbox = State.Outbox.FailHeadWithBackoff(now, _options);
+                // backoff; if attempts are now exhausted, promote the failing
+                // entry in the SAME one commit — the failing entry is removed
+                // and an EdictDeadLetterRaised PublishEvent entry is appended
+                // at the tail (atomic by construction, ADR 0022). Then
+                // CONTINUE past this entry (ADR 0026): no head privilege,
+                // later entries get a fair shot.
+                State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
 
-                if (State.Outbox.Pending[0].AttemptCount >= _options.MaxAttempts)
+                var bumped = State.Outbox.Pending.FirstOrDefault(p => p.EntryId == entry.EntryId);
+                if (bumped is not null && bumped.AttemptCount >= _options.MaxAttempts)
                 {
                     var promoted = _promoter.Promote(
-                        State.Outbox.Pending[0], exception, _grainKey, _grainTypeName, now);
-                    State.Outbox = State.Outbox.PromoteHead(promoted);
+                        bumped, exception, _grainKey, _grainTypeName, now);
+                    State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
                     await _state.WriteStateAsync();
+                    // The failing entry is gone — do not advance index;
+                    // whatever followed has shifted into its slot.
                     continue;
                 }
 
                 await _state.WriteStateAsync();
-                break;
+                index++;
+                continue;
             }
 
-            State.Outbox = State.Outbox.AckHead();
+            State.Outbox = State.Outbox.Ack(entry.EntryId);
             await _state.WriteStateAsync();
+            // Restart from the head so a newly-enqueued entry surfaces
+            // immediately (ADR 0026).
+            index = 0;
         }
 
         if (State.Outbox.Pending.Count == 0)

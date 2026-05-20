@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
@@ -13,21 +14,21 @@ using Orleans.Streams;
 namespace Edict.Core.EventHandler;
 
 /// <summary>
-/// Consumer-facing base for the "Event Handler" role (ADR 0023): an idempotent
-/// consumer whose stream-callback path stages a deferred
+/// Consumer-facing base for the "Event Handler" role (ADR 0023 / 0026): an
+/// idempotent consumer whose stream-callback path stages a deferred
 /// <see cref="OutboxEffectKind.InvokeHandler"/> Outbox entry instead of running
 /// the consumer's <c>Handle(TEvent)</c> inline. The actual invocation runs
 /// later through the composed <see cref="OutboxHost{TPayload}"/> — picking up
-/// its retry/backoff and ADR-0022 dead-letter promotion for free, so transient
-/// external-I/O failures are framework-managed and permanent failures land on
-/// the queryable dead-letter projection.
+/// its per-entry retry/backoff and ADR-0022 dead-letter promotion for free, so
+/// transient external-I/O failures are framework-managed and permanent
+/// failures land on the queryable dead-letter projection.
 /// <para>
 /// Authoring shape is identical to <c>EdictProjectionBuilder</c>: a
 /// <c>partial</c> class with one <c>Handle(TEvent)</c> overload per event type,
 /// the generator emits the Orleans interface, the implicit-stream-subscription
 /// attribute, and both <see cref="DispatchAsync"/> (used at drain time) and
 /// <see cref="HandlesType"/> (used at stream-callback time to keep unhandled
-/// event types from consuming a dedup ring slot).
+/// event types from consuming a dedup ring slot on the inline branch).
 /// </para>
 /// <para>
 /// The role is <b>terminal</b>: there is no <c>Raise</c> (events belong to
@@ -88,11 +89,19 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
+        // ADR 0026: InvokeHandler entry payloads are serialised
+        // EdictEventEnvelopes (inline or pointer). The inline-branch case the
+        // EventHandler stream-callback hits gets wrapped here; the executor
+        // unwraps via ClaimCheckUnwrap before dispatching.
+        var envelope = evt is EdictEventEnvelope already
+            ? already
+            : EnvelopeCodec.WrapInline(serializer.SerializeToArray<EdictEvent>(evt));
+
         return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.InvokeHandler,
-            Payload = serializer.SerializeToArray<EdictEvent>(evt),
+            Payload = serializer.SerializeToArray<EdictEvent>(envelope),
             TraceParent = traceParent,
             TraceState = current?.TraceStateString,
         };

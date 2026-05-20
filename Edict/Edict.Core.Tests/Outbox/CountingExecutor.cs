@@ -19,7 +19,7 @@ sealed class CountingExecutor(OutboxEffectKind kind) : IOutboxEffectExecutor
     public OutboxEffectKind Kind { get; } = kind;
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
     {
         lock (Executed)
         {

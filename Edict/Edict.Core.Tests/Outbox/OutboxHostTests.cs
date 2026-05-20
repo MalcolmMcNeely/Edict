@@ -107,8 +107,11 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
-    public async Task DrainAsync_ShouldFailBackoffStopAndRegister_WhenEffectThrows()
+    public async Task DrainAsync_ShouldFailBackoffContinueAndRegister_WhenEveryEntryThrows()
     {
+        // ADR 0026: per-entry independent retry. A throw on EntryA does NOT
+        // wedge EntryB — the drain continues past A, attempts B (also throws),
+        // bumps both with backoff, registers the lazy reminder.
         var clock = new FakeTimeProvider(Now);
         var executor = new ThrowingExecutor();
         var log = new List<string>();
@@ -130,8 +133,10 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
-    public async Task DrainAsync_ShouldStopAtHead_WhenHeadBackoffGated()
+    public async Task DrainAsync_ShouldSkipGatedEntry_AndAttemptUngatedFollower()
     {
+        // ADR 0026: a backoff-gated entry is skipped (no head privilege); the
+        // drain walks past it and attempts the next ungated entry.
         var clock = new FakeTimeProvider(Now);
         var executor = new RecordingExecutor();
         var log = new List<string>();
@@ -274,11 +279,12 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
-    public async Task DrainAsync_ShouldPreserveFifo_WhenPromotedEntryAppendedAtTail()
+    public async Task DrainAsync_ShouldContinuePastFailure_AndAppendPromotedEntryAtTail()
     {
-        // ADR 0022: the promoted entry is appended at the FIFO tail (not the
-        // head), so an existing pending tail entry drains before the new
-        // dead-letter publish — per-aggregate causal order is preserved.
+        // ADR 0026: a poison head entry does NOT block its tail neighbour. On
+        // the first pass EntryA throws (bumped, walk continues), EntryB
+        // succeeds (acked). Subsequent passes retry A; on the third A is
+        // promoted and the synthetic PublishEvent at the tail then drains.
         var clock = new FakeTimeProvider(Now);
         var executor = new SelectiveExecutor(EntryA);
         var promoter = new FakePromoter(PromotedId);
@@ -352,13 +358,13 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
-    public async Task DrainAsync_ShouldStopAtPromotedEntry_WhenSubsequentEntryAlsoFails()
+    public async Task DrainAsync_ShouldBackoffPromotedEntry_WhenItAlsoFails()
     {
-        // ADR 0022: the promoted entry is just another Outbox PublishEvent
-        // entry — the host's existing stop-at-head + backoff semantics apply
-        // unchanged. If the dead-letter publish itself fails, the host
-        // FailHeadWithBackoff's it (no second promotion in the same pass) and
-        // stops at the head, leaving the Reminder to retry.
+        // ADR 0026: the promoted entry is just another Outbox PublishEvent
+        // entry — the host's per-entry backoff applies unchanged. If the
+        // dead-letter publish itself fails, the host bumps its backoff (no
+        // second promotion in the same pass) and continues the walk; the
+        // Reminder retries it once backoff elapses.
         var clock = new FakeTimeProvider(Now);
         var executor = new SelectiveExecutor(EntryA, PromotedId);
         var promoter = new FakePromoter(PromotedId);
@@ -389,6 +395,76 @@ public sealed class OutboxHostTests
         }
 
         await Verify(new { executor.Attempted, executor.Executed, Log = log, host.State.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldFireLaterEntryAheadOfGatedHead_WhenHeadStillBackedOff()
+    {
+        // ADR 0026 hallmark: per-entry independent retry. On the first pass
+        // EntryA throws and is gated by backoff. The drain then attempts
+        // EntryB on the same pass — which succeeds. EntryB publishes ahead of
+        // its (still-gated) head neighbour; ordering on the retry path is
+        // reorder-by-design.
+        var clock = new FakeTimeProvider(Now);
+        var executor = new SelectiveExecutor(EntryA);
+        var log = new List<string>();
+        var state = new FakePersistentState(log)
+        {
+            State = new GrainEnvelope<EdictUnit>
+            {
+                Outbox = new OutboxSlice().Enqueue(Entry(EntryA)).Enqueue(Entry(EntryB)),
+            },
+        };
+        var reminders = new FakeReminderRegistrar(log);
+
+        var host = Host(state, reminders, executor, clock);
+        await host.DrainAsync();
+
+        await Verify(new { executor.Attempted, executor.Executed, Log = log, host.State.Outbox })
+            .DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldContinueThroughRemainingEntries_AfterDeadLetterPromotion()
+    {
+        // ADR 0026: dead-letter-during-drain does not stop the walk. EntryA is
+        // poison and gets promoted on its third attempt; the promoted tail
+        // entry plus any healthy followers (EntryB, EntryC) all drain in the
+        // same final pass.
+        var clock = new FakeTimeProvider(Now);
+        var executor = new SelectiveExecutor(EntryA);
+        var promoter = new FakePromoter(PromotedId);
+        var log = new List<string>();
+        var state = new FakePersistentState(log)
+        {
+            State = new GrainEnvelope<EdictUnit>
+            {
+                Outbox = new OutboxSlice()
+                    .Enqueue(Entry(EntryA))
+                    .Enqueue(Entry(EntryB))
+                    .Enqueue(Entry(new Guid("cccccccc-0000-0000-0000-000000000003"))),
+            },
+        };
+        var reminders = new FakeReminderRegistrar(log);
+        var host = new OutboxHost<EdictUnit>(
+            state,
+            FakeStreamProvider.Instance,
+            reminders,
+            [executor],
+            PromotionOptions(),
+            clock,
+            promoter,
+            grainKey: "11111111-1111-1111-1111-111111111111",
+            grainTypeName: "Sample.OrderCommandHandler");
+
+        for (var pass = 0; pass < 3; pass++)
+        {
+            await host.DrainAsync();
+            clock.Advance(TimeSpan.FromMinutes(10));
+        }
+
+        await Verify(new { executor.Executed, host.State.Outbox })
             .DontScrubGuids().DontScrubDateTimes();
     }
 
@@ -613,7 +689,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             Executed.Add(entry.EntryId);
             return Task.CompletedTask;
@@ -626,7 +702,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             Attempts++;
             throw new InvalidOperationException("downstream unavailable");
@@ -647,7 +723,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             Attempted.Add(entry.EntryId);
             if (_poison.Contains(entry.EntryId))
@@ -666,7 +742,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
         public async Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             if (deferredDispatch is not null)
             {
@@ -684,7 +760,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             SawNullCallback = deferredDispatch is null;
             return Task.CompletedTask;
@@ -697,7 +773,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             SeenPayloads.Add(entry.Payload);
             return Task.CompletedTask;
@@ -747,7 +823,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
         {
             SeenTraceParent = entry.TraceParent;
             SeenTraceState = entry.TraceState;

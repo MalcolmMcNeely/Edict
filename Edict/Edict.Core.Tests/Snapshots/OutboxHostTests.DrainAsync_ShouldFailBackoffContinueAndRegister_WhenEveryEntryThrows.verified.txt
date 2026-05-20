@@ -1,6 +1,7 @@
 ﻿{
-  Attempts: 1,
+  Attempts: 2,
   Log: [
+    commit[aaaaaaaa-0000-0000-0000-000000000001,bbbbbbbb-0000-0000-0000-000000000002],
     commit[aaaaaaaa-0000-0000-0000-000000000001,bbbbbbbb-0000-0000-0000-000000000002],
     register
   ],
@@ -14,7 +15,9 @@
       },
       {
         EntryId: bbbbbbbb-0000-0000-0000-000000000002,
-        Payload: AQID
+        Payload: AQID,
+        AttemptCount: 1,
+        NextAttemptUtc: 2026-05-19 12:00:01.9688309 +0
       }
     ]
   }

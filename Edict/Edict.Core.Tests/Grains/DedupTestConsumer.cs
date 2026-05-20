@@ -1,6 +1,7 @@
 using Edict.Contracts.Events;
 using Edict.Core.Idempotency;
 using Orleans;
+using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Edict.Core.Tests.Grains;
@@ -10,8 +11,9 @@ public interface IDedupTestConsumer : IGrainWithGuidKey
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
     Task ArmThrowOnNextAsync();
     Task DeactivateSelfAsync();
-    Task<int> GetBlobMissingAttemptCountAsync(string key);
     Task DeliverAsync(EdictEvent evt);
+    Task ForceDrainViaReminderAsync();
+    Task<int> GetPendingOutboxCountAsync();
 }
 
 public interface IDedupPublisherGrain : IGrainWithGuidKey
@@ -77,14 +79,6 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
     }
 
     /// <summary>
-    /// Per-key probe over the receiver-side <see cref="ClaimCheck.BlobMissingTracker"/>:
-    /// lets a receiver-side dead-letter test observe whether the retry counter
-    /// progressed before promotion cleared the entry.
-    /// </summary>
-    public Task<int> GetBlobMissingAttemptCountAsync(string key) =>
-        Task.FromResult(State.BlobMissing.Attempts.TryGetValue(key, out var a) ? a.AttemptCount : 0);
-
-    /// <summary>
     /// Test-only direct-delivery seam: routes the event through the same
     /// <see cref="EdictIdempotencyBase{TPayload}.OnEdictEventAsync"/> path
     /// Orleans's stream-callback uses, so a test can drive consecutive
@@ -92,4 +86,16 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
     /// observer-side throws on the same subscription).
     /// </summary>
     public Task DeliverAsync(EdictEvent evt) => OnEdictEventAsync(evt);
+
+    /// <summary>
+    /// Drives the engine's reminder-tick drain path deterministically — used
+    /// by the missing-blob receiver-side dead-letter test to exhaust
+    /// <c>MaxAttempts</c> retries without waiting on Orleans's one-minute
+    /// reminder floor (ADR 0026 retry loop).
+    /// </summary>
+    public Task ForceDrainViaReminderAsync() =>
+        ReceiveReminder("edict-outbox-drain", new TickStatus());
+
+    public Task<int> GetPendingOutboxCountAsync() =>
+        Task.FromResult(OutboxStateForProbe.Pending.Count);
 }

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Providers;
 using Orleans.Runtime;
+using Orleans.Serialization;
 using Orleans.Streams;
 using Orleans.Streams.Core;
 
@@ -36,15 +39,17 @@ namespace Edict.Core.Idempotency;
 /// shares the same atomic write (ADR 0018).
 /// </para>
 /// <para>
-/// Stream wiring is pure-implicit: the subclass carries
-/// <c>[ImplicitStreamSubscription]</c> (emitted by the generator or applied by
-/// hand on a test consumer), and the base implements
-/// <see cref="IAsyncObserver{T}"/> + <see cref="IStreamSubscriptionObserver"/> /
-/// <see cref="OnSubscribed"/> so the runtime binds delivery to the grain
-/// directly. Mixing explicit <c>SubscribeAsync</c> with implicit subscriptions
-/// — the trap that surfaced in #53 with memory streams and a referenced-assembly
-/// consumer — is no longer possible because the subclass no longer participates
-/// in stream wiring.
+/// Receiver-side bifurcation (ADR 0026 fold): the stream-observer callback
+/// splits on the wire-frame's claim-check shape. Non-envelopes and
+/// inline-payload envelopes flow through <see cref="OnStreamEventAsync"/>
+/// inline — ADR-0012 ring-equals-row atomicity is preserved for the common
+/// case. Pointer-bearing envelopes commit the ring slot for the envelope's
+/// wire-frame <see cref="EdictEvent.EventId"/> and stage an
+/// <see cref="OutboxEffectKind.InvokeHandler"/> entry in one atomic write; the
+/// engine takes over from there (fetch blob → dispatch via the
+/// deferred-dispatch callback), inheriting per-entry retry/backoff and
+/// <see cref="IDeadLetterPromoter"/> exhaustion semantics on the same surface
+/// the publisher-side path uses.
 /// </para>
 /// </summary>
 [StorageProvider(ProviderName = "edict-state")]
@@ -95,10 +100,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// Pure-implicit stream wiring (the trap-free shape of the maintainer's
     /// in-memory-stream guide): the runtime hands one handle per matching
     /// <c>[ImplicitStreamSubscription]</c> and we <see cref="ResumeAsync"/>
-    /// against this grain so <see cref="OnNextAsync"/> receives delivery. The
-    /// previous hybrid (implicit attribute + explicit <c>SubscribeAsync</c> in
-    /// <c>OnActivateAsync</c>) is what stopped memory-stream delivery to
-    /// referenced-assembly consumers in #53.
+    /// against this grain so <see cref="OnNextAsync"/> receives delivery.
     /// </summary>
     public Task OnSubscribed(IStreamSubscriptionHandleFactory handleFactory) =>
         handleFactory.Create<EdictEvent>().ResumeAsync(this);
@@ -118,122 +120,73 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// the Test Framework's in-process stream-provider replacement invokes this
     /// per publish, bypassing the Orleans memory-stream pulling agent that
     /// stops delivering to referenced-assembly consumers (#53). Routes through
-    /// the same dedup-guarded callback as Orleans's real delivery so the engine
-    /// behaviour is identical under test and in production.
+    /// the same bifurcation as Orleans's real delivery so the engine behaviour
+    /// is identical under test and in production.
     /// </summary>
     public Task OnEdictEventAsync(EdictEvent evt) => UnwrapAndDispatchAsync(evt, null);
 
     /// <summary>
-    /// Receiver-side claim-check unwrap (ADR 0024, slice 3): every incoming
-    /// event is run through <see cref="ClaimCheckUnwrap"/> before the
-    /// dedup-ring and dispatch logic, so the materialised concrete event is
-    /// what both the ring check and the consumer's <c>Handle</c> see. Both
-    /// stream-delivery surfaces (<see cref="OnNextAsync"/> and the in-process
-    /// <see cref="OnEdictEventAsync"/>) route through here so an
-    /// <see cref="EdictEventHandler"/> override of <see cref="OnStreamEventAsync"/>
-    /// inherits the unwrap without naming it. A missing-blob fetch lands in
-    /// <see cref="HandleBlobMissingAsync"/>; non-envelope and inline-branch
-    /// deliveries flow straight through.
+    /// Receiver-side bifurcation (ADR 0026, supersedes ADR 0024 slice 3):
+    /// non-envelope payloads and inline-payload envelopes dispatch inline
+    /// through <see cref="OnStreamEventAsync"/> (ring check → DispatchAsync →
+    /// ring commit + any staged effects atomic, ADR-0012 ring-equals-row
+    /// preserved). Pointer-bearing envelopes commit the ring slot for the
+    /// envelope's wire-frame <see cref="EdictEvent.EventId"/> and stage an
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry in one atomic write;
+    /// the engine's per-entry retry takes the fetch-and-dispatch from there.
     /// </summary>
     async Task UnwrapAndDispatchAsync(EdictEvent incoming, StreamSequenceToken? token)
     {
-        var unwrap = _unwrap ??= ServiceProvider.GetRequiredService<ClaimCheckUnwrap>();
-
-        EdictEvent materialised;
-        try
+        if (incoming is EdictEventEnvelope envelope && envelope.ClaimCheckKey is { Length: > 0 })
         {
-            materialised = await unwrap.ApplyAsync(incoming, GetType(), CancellationToken.None);
-        }
-        catch (Exception ex) when (incoming is EdictEventEnvelope envelope && envelope.ClaimCheckKey is { Length: > 0 } key)
-        {
-            await HandleBlobMissingAsync(envelope, key, ex);
+            await StagePointerEnvelopeForDeferredDispatchAsync(envelope);
             return;
         }
 
+        var unwrap = _unwrap ??= ServiceProvider.GetRequiredService<ClaimCheckUnwrap>();
+        var materialised = await unwrap.ApplyAsync(incoming, GetType(), CancellationToken.None);
         await OnStreamEventAsync(materialised, token);
     }
 
     /// <summary>
-    /// Receiver-side dead-letter retry loop (ADR 0024, slice 3): each delivery
-    /// attempt bumps the per-key counter and persists the new
-    /// <see cref="OutboxBackoff"/>-computed next-attempt instant; if the
-    /// caller redelivers before that instant the throw short-circuits without
-    /// consuming an attempt. At <see cref="EdictOutboxOptions.MaxAttempts"/>
-    /// the path commits the dedup-ring slot for the envelope and stages an
-    /// <c>EdictDeadLetterRaised</c> publish entry via the existing
-    /// <see cref="IDeadLetterPromoter"/>, then drains so the synthetic
-    /// outcome reaches the fleet-wide forensic projection on the same path
-    /// publisher-side failures use.
+    /// Pointer-envelope intake: commits the ring slot for the envelope's
+    /// wire-frame <see cref="EdictEvent.EventId"/> and stages an
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry carrying the envelope
+    /// itself as its payload, in one atomic write. The engine's per-entry
+    /// retry runs the fetch via <see cref="ClaimCheckUnwrap"/> inside
+    /// <c>InvokeHandlerExecutor</c>; on <see cref="EdictOutboxOptions.MaxAttempts"/>
+    /// exhaustion the standard dead-letter promotion synthesises an
+    /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind
+    /// and the original claim-check key.
     /// </summary>
-    async Task HandleBlobMissingAsync(EdictEventEnvelope envelope, string key, Exception cause)
+    async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
     {
-        var options = ServiceProvider.GetRequiredService<EdictOutboxOptions>();
-        var timeProvider = ServiceProvider.GetRequiredService<TimeProvider>();
-        var promoter = ServiceProvider.GetRequiredService<IDeadLetterPromoter>();
-        var now = timeProvider.GetUtcNow();
+        EnsureRingInitialized();
 
-        var attempts = base.State.BlobMissing.Attempts;
-        attempts.TryGetValue(key, out var existing);
-
-        // Backoff gate: a redelivery that arrives before the next-attempt
-        // instant does not consume an attempt. Rethrow so the stream observer
-        // treats it as a transient failure and the queue's natural
-        // visibility-timeout drives the next retry.
-        if (existing is not null && existing.NextAttemptUtc > now)
+        if (Contains(envelope.EventId))
         {
-            throw cause;
-        }
-
-        var attempt = (existing?.AttemptCount ?? 0) + 1;
-
-        if (attempt >= options.MaxAttempts)
-        {
-            // Promote: build the synthetic dead-letter entry, commit the
-            // dedup-ring slot for the envelope's wire-frame EventId so the
-            // event does not redeliver, clear the tracker entry, stage the
-            // entry on the Outbox, and drain — the standard at-least-once
-            // path delivers the EdictDeadLetterRaised to the projection.
-            var promoted = promoter.PromoteBlobMissing(
-                envelope,
-                sourceGrainKey: this.GetPrimaryKey().ToString(),
-                sourceGrainType: GetType().FullName ?? GetType().Name,
-                now: now);
-
-            EnsureRingInitialized();
-            if (!Contains(envelope.EventId))
-            {
-                Commit(envelope.EventId);
-            }
-            attempts.Remove(key);
-            await Host.EnqueueAndDrainAsync([promoted]);
+            EmitDedupSpan(envelope);
             return;
         }
 
-        // Bump and persist the tracker, then rethrow so the queue's natural
-        // redelivery brings us back here once the next-attempt instant elapses.
-        var nextAttemptUtc = OutboxBackoff.NextAttemptUtc(
-            attempt,
-            now,
-            entryId: DeriveAttemptJitterSeed(key),
-            options);
-        attempts[key] = new BlobMissingAttempt(attempt, nextAttemptUtc);
-        await WriteStateAsync();
-        throw cause;
-    }
+        Commit(envelope.EventId);
 
-    /// <summary>
-    /// The claim-check key is the natural identity for jitter seeding here —
-    /// every retry of the same blob is the same logical entry, so jitter is
-    /// reproducible per blob (mirroring the publisher path's per-entry jitter).
-    /// </summary>
-    static Guid DeriveAttemptJitterSeed(string key)
-    {
-        Span<byte> bytes = stackalloc byte[16];
-        var hash = new HashCode();
-        hash.Add(key);
-        BitConverter.TryWriteBytes(bytes, hash.ToHashCode());
-        BitConverter.TryWriteBytes(bytes[8..], hash.ToHashCode());
-        return new Guid(bytes);
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var current = Activity.Current;
+        var traceParent = current is not null
+            ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
+            : null;
+
+        var entry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.InvokeHandler,
+            Payload = serializer.SerializeToArray<EdictEvent>(envelope),
+            TraceParent = traceParent,
+            TraceState = current?.TraceStateString,
+        };
+
+        await Host.EnqueueAndDrainAsync([entry]);
     }
 
     /// <summary>
@@ -247,8 +200,10 @@ public abstract class EdictIdempotencyBase<TPayload>
     protected abstract Task<bool> DispatchAsync(EdictEvent evt);
 
     /// <summary>
-    /// The dedup-guarded stream callback. Invoked by <see cref="OnNextAsync"/>
-    /// for every event the runtime delivers via the implicit subscription.
+    /// The dedup-guarded stream callback. Invoked by the bifurcation for the
+    /// non-envelope / inline-payload-envelope branch (ADR 0026); the
+    /// pointer-envelope branch bypasses this in favour of an
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry the engine drains.
     /// <c>EdictEventHandler</c> overrides this to swap inline dispatch for a
     /// deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
     /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
@@ -364,7 +319,8 @@ public abstract class EdictIdempotencyBase<TPayload>
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
-            deferredDispatch: evt => DispatchAsync(evt));
+            deferredDispatch: evt => DispatchAsync(evt),
+            consumerType: GetType());
 }
 
 /// <summary>

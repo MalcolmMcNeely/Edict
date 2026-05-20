@@ -29,7 +29,8 @@ sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services)
     public async Task ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch)
+        Func<EdictEvent, Task>? deferredDispatch,
+        Type? consumerType)
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(entry.Payload);
 
