@@ -1,0 +1,182 @@
+using Edict.Analyzers.Persistence;
+
+using Xunit;
+
+namespace Edict.Analyzers.Tests.Persistence;
+
+public class PersistedStateContractAnalyzerTests
+{
+    [Fact]
+    public void EDICT011_ShouldNotRaise_WhenPersistedStateHasGenerateSerializerLiteralAliasAndIdOnEveryProperty()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            [GenerateSerializer]
+            [Alias("Sample.OrderState")]
+            public sealed class OrderState : IEdictPersistedState
+            {
+                [Id(0)]
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT011_ShouldRaiseMissingGenerateSerializer_WhenPersistedStateLacksTheAttribute()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            [Alias("Sample.OrderState")]
+            public sealed class OrderState : IEdictPersistedState
+            {
+                [Id(0)]
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT011", d.Id);
+        Assert.Contains("GenerateSerializer", d.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT011_ShouldRaiseMissingAlias_WhenPersistedStateLacksTheAttribute()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            [GenerateSerializer]
+            public sealed class OrderState : IEdictPersistedState
+            {
+                [Id(0)]
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT011", d.Id);
+        Assert.Contains("[Alias", d.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT011_ShouldRaiseAliasNotStringLiteral_WhenAliasArgumentIsNameof()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            [GenerateSerializer]
+            [Alias(nameof(OrderState))]
+            public sealed class OrderState : IEdictPersistedState
+            {
+                [Id(0)]
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT011", d.Id);
+        Assert.Contains("nameof", d.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT011_ShouldRaisePropertyMissingId_WhenDeclaredPublicPropertyLacksIdAttribute()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            [GenerateSerializer]
+            [Alias("Sample.OrderState")]
+            public sealed class OrderState : IEdictPersistedState
+            {
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT011", d.Id);
+        Assert.Contains("Count", d.GetMessage());
+        Assert.Contains("[Id(n)]", d.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT011_ShouldNotRaisePropertyMissingId_WhenPropertyIsInheritedFromBaseClass()
+    {
+        // Scope of the [Id(n)] check is *declared* public instance properties
+        // only — a property the type inherits from a base class does not fire,
+        // because the base class owns its own [Id(n)] discipline (ADR 0027).
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Orleans;
+            namespace Sample;
+            public abstract class StateBase
+            {
+                public int Inherited { get; set; }
+            }
+            [GenerateSerializer]
+            [Alias("Sample.OrderState")]
+            public sealed class OrderState : StateBase, IEdictPersistedState
+            {
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT011_ShouldNotRaise_WhenTypeDoesNotImplementPersistedState()
+    {
+        const string source = """
+            namespace Sample;
+            public sealed class JustAPoco
+            {
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT011_ShouldRaiseEveryViolation_WhenPersistedStateMissesAllAttributes()
+    {
+        // Composite-case proof: a single type missing every consumer-owned
+        // attribute fires one diagnostic per sub-descriptor — the codefix's
+        // batched Quick Action then satisfies them all in one edit.
+        const string source = """
+            using Edict.Contracts.Persistence;
+            namespace Sample;
+            public sealed class OrderState : IEdictPersistedState
+            {
+                public int Count { get; set; }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new PersistedStateContractAnalyzer());
+
+        Assert.Equal(3, diagnostics.Length);
+        Assert.All(diagnostics, d => Assert.Equal("EDICT011", d.Id));
+    }
+}

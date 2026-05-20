@@ -6,6 +6,7 @@
 namespace Sample
 {
     [global::Orleans.AliasAttribute("OrderCancelledEvent")]
+    [global::MessagePack.MessagePackObjectAttribute(true)]
     public partial record OrderCancelledEvent;
 }
 ,
@@ -16,6 +17,7 @@ namespace Sample
 namespace Sample
 {
     [global::Orleans.AliasAttribute("OrderPlacedEvent")]
+    [global::MessagePack.MessagePackObjectAttribute(true)]
     public partial record OrderPlacedEvent;
 }
 

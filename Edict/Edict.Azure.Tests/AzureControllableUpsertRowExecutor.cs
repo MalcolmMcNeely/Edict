@@ -14,9 +14,12 @@ namespace Edict.Azure.Tests;
 /// (ADR 0016/0018). Delegates to the genuine <see cref="UpsertRowExecutor"/>
 /// when not failing.
 /// </summary>
-sealed class AzureControllableUpsertRowExecutor(Serializer serializer, IServiceProvider services) : IOutboxEffectExecutor
+sealed class AzureControllableUpsertRowExecutor(
+    Serializer serializer,
+    Orleans.Serialization.TypeSystem.TypeConverter typeConverter,
+    IServiceProvider services) : IOutboxEffectExecutor
 {
-    readonly UpsertRowExecutor _inner = new(serializer, services);
+    readonly UpsertRowExecutor _inner = new(serializer, typeConverter, services);
 
     public static volatile bool ShouldFail;
 

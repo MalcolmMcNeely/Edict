@@ -1,5 +1,6 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.Commands;
 using Edict.Core.Saga;
 
@@ -14,7 +15,6 @@ namespace Edict.Core.Tests.Saga;
 // SagaTrackerCommand. The ring slot, Progress, and the SendCommand effect commit
 // in the one grain-document write, then the inline drain routes the command.
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("SagaWorkflow")]
 public sealed partial record SagaTriggerEvent(Guid WorkflowId) : EdictEvent
 {
@@ -24,7 +24,7 @@ public sealed partial record SagaTriggerEvent(Guid WorkflowId) : EdictEvent
 
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Saga.WorkflowProgress")]
-public sealed class WorkflowProgress
+public sealed class WorkflowProgress : IEdictPersistedState
 {
     [Id(0)]
     public int Handled { get; set; }
@@ -32,7 +32,7 @@ public sealed class WorkflowProgress
 
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Saga.TrackerState")]
-public sealed class TrackerState
+public sealed class TrackerState : IEdictPersistedState
 {
     [Id(0)]
     public int Received { get; set; }

@@ -77,6 +77,7 @@ public sealed class EdictEventGenerator : IIncrementalGenerator
         namespace {{evt.Namespace}}
         {
             [global::Orleans.AliasAttribute("{{evt.SimpleName}}")]
+            [global::MessagePack.MessagePackObjectAttribute(true)]
             public partial record {{evt.SimpleName}};
         }
 

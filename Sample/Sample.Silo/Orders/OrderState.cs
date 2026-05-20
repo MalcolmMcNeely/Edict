@@ -1,3 +1,5 @@
+using Edict.Contracts.Persistence;
+
 using Sample.Contracts.Orders.Domain;
 
 namespace Sample.Silo.Orders;
@@ -11,7 +13,7 @@ namespace Sample.Silo.Orders;
 /// </summary>
 [GenerateSerializer]
 [Alias("Sample.Silo.Orders.OrderState")]
-public sealed class OrderState
+public sealed class OrderState : IEdictPersistedState
 {
     [Id(0)]
     public OrderStatus Status { get; set; } = OrderStatus.Open;

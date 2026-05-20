@@ -24,7 +24,6 @@ namespace Edict.Core.Tests.Serialization;
 // Guid, string, int, bool, double, DateTimeOffset and a nullable string. This
 // is the codec-breadth case the order commands (Guid + string only) do not
 // exercise — it folds in the rigor the #9 spike's probe command proved.
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
 {
     [EdictRouteKey]

@@ -1,5 +1,6 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.Outbox;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
@@ -12,12 +13,14 @@ using Orleans.Runtime;
 namespace Edict.Core.Tests.Grains;
 
 /// <summary>Table row for the probed table-projection mechanism tests.</summary>
-public sealed class ProbedOrderRow
+[GenerateSerializer]
+[Alias("Edict.Core.Tests.Grains.ProbedOrderRow")]
+public sealed class ProbedOrderRow : IEdictPersistedState
 {
+    [Id(0)]
     public int OrderCount { get; set; }
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("ProbedOrders")]
 public sealed partial record ProbedOrderPlacedEvent(Guid OrderId) : EdictEvent
 {

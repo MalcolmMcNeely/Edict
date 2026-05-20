@@ -14,7 +14,6 @@ namespace Edict.Telemetry.Tests;
 // Minimal consumer-shaped grains for telemetry integration tests.
 // The generator runs over this assembly and emits IOrderCommandHandler, Dispatch, and AddEdict().
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record TelPlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -24,14 +23,12 @@ public sealed partial record TelPlaceOrderCommand(Guid OrderId, string Sku) : Ed
     public string Sku { get; init; } = Sku;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record TelFailOrderCommand(Guid OrderId) : EdictCommand
 {
     [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("TelOrders")]
 public sealed partial record TelOrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
 {

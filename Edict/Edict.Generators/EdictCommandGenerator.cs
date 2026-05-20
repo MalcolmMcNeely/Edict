@@ -309,6 +309,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
         namespace {{command.Namespace}}
         {
             [global::Orleans.AliasAttribute("{{command.SimpleName}}")]
+            [global::MessagePack.MessagePackObjectAttribute(true)]
             public partial record {{command.SimpleName}};
         }
 

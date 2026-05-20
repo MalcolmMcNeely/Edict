@@ -1,3 +1,5 @@
+using Edict.Contracts.Persistence;
+
 using Sample.Contracts.Payments.Domain;
 
 namespace Sample.Silo.Payments;
@@ -9,7 +11,7 @@ namespace Sample.Silo.Payments;
 /// </summary>
 [GenerateSerializer]
 [Alias("Sample.Silo.Payments.PaymentState")]
-public sealed class PaymentState
+public sealed class PaymentState : IEdictPersistedState
 {
     [Id(0)]
     public PaymentStatus Status { get; set; } = PaymentStatus.None;

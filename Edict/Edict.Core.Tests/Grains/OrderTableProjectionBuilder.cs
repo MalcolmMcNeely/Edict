@@ -1,12 +1,16 @@
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
 namespace Edict.Core.Tests.Grains;
 
 /// <summary>Table row for the order table projection test — plain POCO, no storage keys.</summary>
-public sealed class OrderTableRow
+[GenerateSerializer]
+[Alias("Edict.Core.Tests.Grains.OrderTableRow")]
+public sealed class OrderTableRow : IEdictPersistedState
 {
+    [Id(0)]
     public int OrderCount { get; set; }
 }
 

@@ -1,3 +1,5 @@
+using Edict.Contracts.Persistence;
+
 namespace Sample.Silo.Payments;
 
 /// <summary>Stage the OrderPayment saga has durably reached.</summary>
@@ -16,7 +18,7 @@ public enum OrderPaymentStage
 /// </summary>
 [GenerateSerializer]
 [Alias("Sample.Silo.Payments.OrderPaymentProgress")]
-public sealed class OrderPaymentProgress
+public sealed class OrderPaymentProgress : IEdictPersistedState
 {
     [Id(0)]
     public OrderPaymentStage Stage { get; set; } = OrderPaymentStage.Started;

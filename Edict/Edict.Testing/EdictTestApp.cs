@@ -103,7 +103,7 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// </summary>
     public async Task<TProgress> GetSagaProgress<TSaga, TProgress>(Guid key)
         where TSaga : EdictSaga<TProgress>
-        where TProgress : new()
+        where TProgress : Edict.Contracts.Persistence.IEdictPersistedState, new()
     {
         var grain = _cluster.GrainFactory.GetGrain<IEdictSaga>(key, typeof(TSaga).FullName);
         return (TProgress)await grain.GetEdictProgressAsync();

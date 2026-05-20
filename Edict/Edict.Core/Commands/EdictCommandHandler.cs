@@ -2,6 +2,7 @@ using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
@@ -42,7 +43,7 @@ namespace Edict.Core.Commands;
 [StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictCommandHandler<TState>
     : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable
-    where TState : new()
+    where TState : IEdictPersistedState, new()
 {
     OutboxHost<TState>? _host;
     List<EdictEvent>? _raisedEvents;

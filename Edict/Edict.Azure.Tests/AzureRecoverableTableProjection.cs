@@ -1,5 +1,6 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.Outbox;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
@@ -12,7 +13,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests;
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("AzureRecoverableOrders")]
 public sealed partial record AzureRecoverableOrderPlacedEvent(Guid OrderId) : EdictEvent
 {
@@ -20,8 +20,11 @@ public sealed partial record AzureRecoverableOrderPlacedEvent(Guid OrderId) : Ed
     public Guid OrderId { get; init; } = OrderId;
 }
 
-public sealed class AzureRecoverableOrderRow
+[GenerateSerializer]
+[Alias("Edict.Azure.Tests.AzureRecoverableOrderRow")]
+public sealed class AzureRecoverableOrderRow : IEdictPersistedState
 {
+    [Id(0)]
     public int OrderCount { get; set; }
 }
 

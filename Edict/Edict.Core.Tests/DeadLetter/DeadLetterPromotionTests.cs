@@ -82,7 +82,7 @@ public sealed class DeadLetterPromotionTests
             TableName = "OrderSummary",
             PartitionKey = "orders",
             RowKey = FixedOrderId.ToString("N"),
-            RowTypeName = "Sample.OrderSummaryRow, Sample",
+            RowAlias = "OrderSummaryRow",
             RowJson = "{\"OrderId\":\"22222222-2222-2222-2222-222222222222\"}"u8.ToArray(),
         };
 

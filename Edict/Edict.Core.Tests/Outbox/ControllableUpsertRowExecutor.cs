@@ -15,9 +15,12 @@ namespace Edict.Core.Tests.Outbox;
 /// the real <see cref="UpsertRowExecutor"/> when not failing, so a successful
 /// drain genuinely writes the row.
 /// </summary>
-sealed class ControllableUpsertRowExecutor(Serializer serializer, IServiceProvider services) : IOutboxEffectExecutor
+sealed class ControllableUpsertRowExecutor(
+    Serializer serializer,
+    Orleans.Serialization.TypeSystem.TypeConverter typeConverter,
+    IServiceProvider services) : IOutboxEffectExecutor
 {
-    readonly UpsertRowExecutor _inner = new(serializer, services);
+    readonly UpsertRowExecutor _inner = new(serializer, typeConverter, services);
 
     public static volatile bool ShouldFail;
 

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
@@ -59,7 +60,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         IStreamSubscriptionObserver,
         IEdictEventConsumer,
         IRemindable
-    where TPayload : new()
+    where TPayload : IEdictPersistedState, new()
 {
     OutboxHost<TPayload>? _host;
     ClaimCheckUnwrap? _unwrap;

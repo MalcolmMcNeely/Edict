@@ -26,6 +26,7 @@ namespace Edict.Generated
 namespace Sample
 {
     [global::Orleans.AliasAttribute("CancelOrder")]
+    [global::MessagePack.MessagePackObjectAttribute(true)]
     public partial record CancelOrder;
 }
 ,
@@ -77,6 +78,7 @@ namespace Sample
 namespace Sample
 {
     [global::Orleans.AliasAttribute("PlaceOrder")]
+    [global::MessagePack.MessagePackObjectAttribute(true)]
     public partial record PlaceOrder;
 }
 

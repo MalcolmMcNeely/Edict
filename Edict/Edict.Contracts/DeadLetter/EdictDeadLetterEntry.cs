@@ -1,3 +1,5 @@
+using Edict.Contracts.Persistence;
+
 using MessagePack;
 
 namespace Edict.Contracts.DeadLetter;
@@ -12,7 +14,7 @@ namespace Edict.Contracts.DeadLetter;
 /// MessagePack annotations like every other contract type (ADR 0005/0007).
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
-public sealed record EdictDeadLetterEntry
+public sealed record EdictDeadLetterEntry : IEdictPersistedState
 {
     /// <summary>Stable id of the dead-lettered effect; the projection row key.</summary>
     public Guid EntryId { get; init; }

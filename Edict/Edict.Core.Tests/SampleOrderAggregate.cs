@@ -11,7 +11,6 @@ namespace Edict.Core.Tests;
 // Sample-shaped consumer code. The generator runs over this assembly and emits
 // IOrderCommandHandler, OrderCommandHandler.Dispatch, the Orleans surrogates and AddEdict().
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -21,14 +20,12 @@ public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : Edict
     public string Sku { get; init; } = Sku;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record CancelOrderCommand(Guid OrderId, string Reason) : EdictCommand
 {
     [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record FailOrderCommand(Guid OrderId) : EdictCommand
 {
     [EdictRouteKey]
@@ -37,7 +34,6 @@ public sealed partial record FailOrderCommand(Guid OrderId) : EdictCommand
 
 // Commands used by the Command Validator tests (issue #12).
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -46,7 +42,6 @@ public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : Edic
     public string Sku { get; init; } = Sku;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record StateCheckCommand(Guid OrderId) : EdictCommand
 {
     [EdictRouteKey]
@@ -54,7 +49,6 @@ public sealed partial record StateCheckCommand(Guid OrderId) : EdictCommand
 }
 
 // The domain event raised when a PlaceOrderCommand is accepted.
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("Orders")]
 public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
 {
@@ -65,7 +59,6 @@ public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictE
 }
 
 // Test event for EventDeduplicationGrain integration tests.
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("DedupTest")]
 public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : EdictEvent
 {

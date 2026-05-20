@@ -1,5 +1,6 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
@@ -15,19 +16,20 @@ namespace Edict.Core.Tests.Grains;
 // event. Exercises the Outbox engine end-to-end — {State, Outbox} commit in
 // one write, then the inline FIFO drain publishes (ADR 0018).
 
-public sealed class CounterState
+[GenerateSerializer]
+[Alias("Edict.Core.Tests.Grains.CounterState")]
+public sealed class CounterState : IEdictPersistedState
 {
+    [Id(0)]
     public int Count { get; set; }
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record IncrementCounterCommand(Guid CounterId) : EdictCommand
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record BatchIncrementCounterCommand(Guid CounterId, int Times) : EdictCommand
 {
     [EdictRouteKey]
@@ -36,7 +38,6 @@ public sealed partial record BatchIncrementCounterCommand(Guid CounterId, int Ti
     public int Times { get; init; } = Times;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("Counters")]
 public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCount) : EdictEvent
 {

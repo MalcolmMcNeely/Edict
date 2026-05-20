@@ -8,11 +8,14 @@ namespace Edict.Core.Outbox;
 /// a pk/rk full-row replace, redelivery of the effect is idempotent — this is
 /// how ADR 0012's double-apply gap is <b>closed</b>, not merely accepted.
 /// <para>
-/// The row is a consumer POCO (<c>T : class, new()</c>) with no Orleans codec,
-/// so it travels as JSON plus its assembly-qualified type name; the envelope
-/// itself is Orleans-serialized into <see cref="OutboxEntry.Payload"/> like the
-/// <see cref="OutboxEffectKind.PublishEvent"/> case. Persisted state, so a
-/// frozen string-literal <c>[Alias]</c> survives a class rename (ADR 0017);
+/// The row is a consumer POCO with no Orleans codec on the wire, so it travels
+/// as JSON plus its frozen <c>[Alias]</c> literal (ADR 0027): the alias is what
+/// the publisher captures via <c>Orleans.Serialization.TypeConverter.Format</c>
+/// and the drain resolves via <c>TypeConverter.Parse</c>, so a consumer who
+/// renames the row POCO class — but preserves its <c>[Alias]</c> — has no
+/// in-flight entries dead-lettered. Closes the AQTN hole called out in
+/// <c>resiliency-analysis.md</c> §3.2.3. Persisted state, so a frozen
+/// string-literal <c>[Alias]</c> survives a class rename (ADR 0017);
 /// <c>ORLEANS0010</c> is never suppressed. Bare-named — no consumer types it.
 /// </para>
 /// </summary>
@@ -29,9 +32,15 @@ public sealed record UpsertRowEffect
     [Id(2)]
     public string RowKey { get; init; } = "";
 
-    /// <summary>Assembly-qualified name of the consumer row POCO, so the drain reconstructs the concrete type.</summary>
+    /// <summary>
+    /// Frozen <c>[Alias]</c> literal of the consumer row POCO, captured via
+    /// <c>Orleans.Serialization.TypeConverter.Format(typeof(T))</c>. The drain
+    /// resolves it back to the concrete <see cref="System.Type"/> via
+    /// <c>TypeConverter.Parse</c> against the Orleans manifest, so a class
+    /// rename that preserves the alias does not dead-letter (ADR 0027).
+    /// </summary>
     [Id(3)]
-    public string RowTypeName { get; init; } = "";
+    public string RowAlias { get; init; } = "";
 
     /// <summary>The row serialized as UTF-8 JSON (the POCO carries no Orleans codec).</summary>
     [Id(4)]

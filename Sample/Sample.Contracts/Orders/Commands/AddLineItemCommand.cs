@@ -1,11 +1,8 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Telemetry;
 
-using MessagePack;
-
 namespace Sample.Contracts.Orders.Commands;
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record AddLineItemCommand(Guid OrderId, string Sku, int Quantity) : EdictCommand
 {
     [EdictRouteKey]

@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
@@ -36,7 +37,7 @@ namespace Edict.Core.Saga;
 /// </para>
 /// </summary>
 public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IEdictSaga
-    where TProgress : new()
+    where TProgress : IEdictPersistedState, new()
 {
     readonly SagaDispatchBuffer _dispatchBuffer = new();
     OutboxEntry? _stagedEntry;

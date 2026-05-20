@@ -1,5 +1,6 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Idempotency;
@@ -15,7 +16,6 @@ namespace Edict.Azure.Tests;
 
 // ── Order aggregate (table-projection E2E) ───────────────────────────────────
 
-[MessagePackObject(keyAsPropertyName: true)]
 public sealed partial record AzurePlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -25,7 +25,6 @@ public sealed partial record AzurePlaceOrderCommand(Guid OrderId, string Sku) : 
     public string Sku { get; init; } = Sku;
 }
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("AzureOrders")]
 public sealed partial record AzureOrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
 {
@@ -44,8 +43,11 @@ public partial class AzureOrderCommandHandler : EdictCommandHandler
     }
 }
 
-public sealed class AzureOrderTableRow
+[GenerateSerializer]
+[Alias("Edict.Azure.Tests.AzureOrderTableRow")]
+public sealed class AzureOrderTableRow : IEdictPersistedState
 {
+    [Id(0)]
     public int OrderCount { get; set; }
 }
 
@@ -72,7 +74,6 @@ public sealed partial class AzureOrderTableProjectionBuilder : EdictTableProject
 
 // ── Dedup aggregate (at-least-once + dedup realism proof) ───────────────────
 
-[MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("AzureDedupTest")]
 public sealed partial record AzureDedupTestEvent(Guid AggregateId, int Sequence) : EdictEvent
 {

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 
 using Edict.Contracts.Events;
+using Edict.Contracts.Persistence;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Outbox;
 using Edict.Core.TableStorage;
@@ -28,7 +29,7 @@ namespace Edict.Core.Projections;
 /// </para>
 /// </summary>
 public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
-    where T : class, new()
+    where T : class, IEdictPersistedState, new()
 {
     IEdictTableWriteStore<T>? _writeStore;
     OutboxEntry? _pendingUpsert;
@@ -103,12 +104,18 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
 
     OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, T row)
     {
+        // ADR 0027: the row type identity that travels with the effect is the
+        // frozen [Alias] literal, captured here via TypeConverter.Format so the
+        // string that survives a class rename is what the drain resolves with
+        // TypeConverter.Parse. Replaces the previous AssemblyQualifiedName hop
+        // that dead-lettered on rename or move.
+        var typeConverter = ServiceProvider.GetRequiredService<Orleans.Serialization.TypeSystem.TypeConverter>();
         var effect = new UpsertRowEffect
         {
             TableName = TableName,
             PartitionKey = partitionKey,
             RowKey = rowKey,
-            RowTypeName = typeof(T).AssemblyQualifiedName!,
+            RowAlias = typeConverter.Format(typeof(T)),
             RowJson = JsonSerializer.SerializeToUtf8Bytes(row),
         };
 

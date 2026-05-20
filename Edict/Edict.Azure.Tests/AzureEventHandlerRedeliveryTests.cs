@@ -9,7 +9,6 @@ namespace Edict.Azure.Tests;
 
 // ── Aggregate / handler types ───────────────────────────────────────────────
 
-[MessagePack.MessagePackObject(keyAsPropertyName: true)]
 [EdictStream("AzureEmailEvents")]
 public sealed partial record AzureCustomerNotifiedEvent(Guid CustomerId, string Reason) : EdictEvent
 {

@@ -21,8 +21,18 @@ namespace Edict.Core.Outbox;
 /// the Outbox but has no Table Projection (no
 /// <see cref="IEdictTableStoreFactory"/> registered) still constructs the
 /// engine. Bare-named — no consumer types it.
+/// <para>
+/// ADR 0027: the row type is captured as its frozen <c>[Alias]</c> literal and
+/// resolved here via <see cref="TypeConverter.Parse"/> against the Orleans
+/// manifest, so a consumer who renames the row POCO class but preserves the
+/// alias has no in-flight entries dead-lettered — superseding the previous
+/// assembly-qualified-name lookup which broke on rename or move.
+/// </para>
 /// </summary>
-sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services) : IOutboxEffectExecutor
+sealed class UpsertRowExecutor(
+    Serializer serializer,
+    Orleans.Serialization.TypeSystem.TypeConverter typeConverter,
+    IServiceProvider services) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
@@ -38,9 +48,16 @@ sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services)
         using var activity = EdictDiagnostics.ActivitySource.StartEdictTableUpsert(
             effect.TableName, parentContext);
 
-        var rowType = Type.GetType(effect.RowTypeName)
-            ?? throw new InvalidOperationException(
-                $"UpsertRow effect references an unresolvable row type '{effect.RowTypeName}'.");
+        Type rowType;
+        try
+        {
+            rowType = typeConverter.Parse(effect.RowAlias);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"UpsertRow effect references an unresolvable row alias '{effect.RowAlias}'.", ex);
+        }
 
         var row = JsonSerializer.Deserialize(effect.RowJson, rowType)
             ?? throw new InvalidOperationException(
