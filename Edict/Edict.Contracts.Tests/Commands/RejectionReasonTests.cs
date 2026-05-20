@@ -1,6 +1,6 @@
 using Edict.Contracts.Commands;
 
-namespace Edict.Contracts.Tests.Results;
+namespace Edict.Contracts.Tests.Commands;
 
 public class RejectionReasonTests
 {
