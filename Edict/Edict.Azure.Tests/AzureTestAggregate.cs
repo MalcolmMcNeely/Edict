@@ -122,7 +122,19 @@ public sealed class AzureOrderTableRow : IEdictPersistedState
     public int OrderCount { get; set; }
 }
 
-public sealed partial class AzureOrderTableProjectionBuilder : EdictTableProjectionBuilder<AzureOrderTableRow>
+public interface IAzureOrderTableProjectionProbe : IGrainWithGuidKey
+{
+    Task<RingStateProbe> GetRingStateAsync();
+}
+
+[GenerateSerializer]
+[Alias("Edict.Azure.Tests.RingStateProbe")]
+public sealed record RingStateProbe(
+    [property: Id(0)] int Capacity,
+    [property: Id(1)] int Count);
+
+public sealed partial class AzureOrderTableProjectionBuilder
+    : EdictTableProjectionBuilder<AzureOrderTableRow>, IAzureOrderTableProjectionProbe
 {
     public AzureOrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
@@ -141,6 +153,11 @@ public sealed partial class AzureOrderTableProjectionBuilder : EdictTableProject
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
     }
+
+    public Task<RingStateProbe> GetRingStateAsync() =>
+        Task.FromResult(new RingStateProbe(
+            State.Idempotency.HandledEventIds.Length,
+            State.Idempotency.Count));
 }
 
 /// <summary>
