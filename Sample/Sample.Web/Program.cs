@@ -13,10 +13,12 @@ using OpenTelemetry.Trace;
 
 using Orleans.Serialization;
 
+using Sample.Contracts.Fulfillment.Projections;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
 using Sample.Silo.Orders.CommandHandlers;
 using Sample.Web.Components;
+using Sample.Web.State;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +49,8 @@ builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
     _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
 builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
     _ => new AzureTableRepository<OrderOutcomeRow>(tableServiceClient, "orderoutcome"));
+builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(
+    _ => new AzureTableRepository<LineItemFulfillmentRow>(tableServiceClient, "lineitemfulfillment"));
 
 // Forensic dead-letter projection lives on the same table the silo writes via
 // AddEdictAzurePersistence; the Home page reads it through IEdictDeadLetterRepository
@@ -56,6 +60,8 @@ builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
         tableServiceClient, "edict-dead-letter"));
 
 builder.Services.AddEdict();
+
+builder.Services.AddSingleton<CurrentOrderTracker>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

@@ -52,7 +52,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 [new EdictRejectionReason("order_cancelled", "Order has been cancelled.")]));
 
         State.Status = OrderStatus.Confirmed;
-        Raise(new OrderConfirmedEvent(command.OrderId));
+        // Carry the snapshot of line item ids so the OrderFulfillment saga can
+        // hand them to FulfillmentCommandHandler without re-fetching the order.
+        var lineItemIds = State.Items.Select(i => i.LineItemId).ToArray();
+        Raise(new OrderConfirmedEvent(command.OrderId, lineItemIds));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

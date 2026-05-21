@@ -3,9 +3,11 @@
 @using Sample.Contracts.Orders.Commands
 @using Sample.Contracts.Orders.Projections
 @using Sample.Contracts.Payments.Projections
+@using Sample.Web.State
 @inject IEdictSender Sender
 @inject IEdictTableRepository<OrderStatusRow> OrdersByStatus
 @inject IEdictTableRepository<OrderOutcomeRow> OrderOutcomes
+@inject CurrentOrderTracker OrderTracker
 @implements IDisposable
 
 <PageTitle>Orders</PageTitle>
@@ -159,6 +161,7 @@
         if (result is Edict.Contracts.Commands.EdictCommandResult.Accepted)
         {
             _currentOrderId = orderId;
+            OrderTracker.Set(orderId);
             _statusRow = null;
             _outcomeRow = null;
             _lastPlaceMessage = $"Placed {orderId}.";

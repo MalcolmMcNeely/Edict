@@ -1,0 +1,35 @@
+using Edict.Core.Sagas;
+
+using Sample.Contracts.Fulfillment.Commands;
+using Sample.Contracts.Fulfillment.Events;
+using Sample.Contracts.Orders.Commands;
+using Sample.Contracts.Orders.Events;
+
+namespace Sample.Silo.Fulfillment.Sagas;
+
+/// <summary>
+/// Coordinates the order→fulfillment workflow across two aggregates, keyed
+/// throughout by the order's Guid (cross-domain re-keying). The
+/// workflow-handoff Saga shape (complementing the compensation shape of
+/// <c>OrderPaymentSaga</c>): one event in, one command out per handler.
+/// <list type="bullet">
+///   <item><c>OrderConfirmed → StartFulfillment</c></item>
+///   <item><c>OrderFullyFulfilled → MarkOrderShipped</c></item>
+/// </list>
+/// </summary>
+public partial class OrderFulfillmentSaga : EdictSaga<OrderFulfillmentProgress>
+{
+    public Task Handle(OrderConfirmedEvent evt)
+    {
+        Progress.Stage = OrderFulfillmentStage.FulfillmentRequested;
+        Dispatch(new StartFulfillmentCommand(evt.OrderId, evt.LineItemIds));
+        return Task.CompletedTask;
+    }
+
+    public Task Handle(OrderFullyFulfilledEvent evt)
+    {
+        Progress.Stage = OrderFulfillmentStage.Shipped;
+        Dispatch(new MarkOrderShippedCommand(evt.OrderId));
+        return Task.CompletedTask;
+    }
+}

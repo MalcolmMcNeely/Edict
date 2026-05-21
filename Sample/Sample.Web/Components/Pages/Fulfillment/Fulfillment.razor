@@ -1,13 +1,109 @@
 @page "/fulfillment"
+@using Edict.Contracts.TableStorage
+@using Sample.Contracts.Fulfillment.Projections
+@using Sample.Web.State
+@inject IEdictTableRepository<LineItemFulfillmentRow> FulfillmentRows
+@inject CurrentOrderTracker OrderTracker
+@implements IDisposable
 
 <PageTitle>Fulfillment</PageTitle>
 
 <h1>Fulfillment</h1>
 
 <p>
-    This page will host the live <code>LineItemFulfillmentTableProjectionBuilder</code>
-    view as the <code>OrderFulfillmentSaga</code> and the grain-timer-driven aggregate
-    progress five line items to Fulfilled.
+    The <code>OrderFulfillmentSaga</code> bridges <code>OrderConfirmedEvent</code>
+    into <code>StartFulfillmentCommand</code>;
+    <code>FulfillmentCommandHandler</code> then drives an Orleans grain timer
+    that ticks one line at a time from Pending to Fulfilled. The terminal tick
+    raises <code>OrderFullyFulfilledEvent</code> which the saga bridges into
+    <code>MarkOrderShippedCommand</code>.
 </p>
 
-<p><em>Available in an upcoming slice.</em></p>
+<p>
+    No buttons here — fulfillment is driven entirely by the saga reacting to
+    <code>OrderConfirmedEvent</code> from the
+    <a href="orders">Orders</a> page. The most recently placed order's
+    fulfillment rows render live below via the
+    <code>LineItemFulfillmentTableProjectionBuilder</code> projection.
+</p>
+
+<p>Current order: <code>@(_currentOrderId?.ToString() ?? "(none placed yet)")</code></p>
+
+@if (_rows.Count == 0)
+{
+    <p><em>No rows yet — place + submit an order on the Orders page first.</em></p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>LineItemId</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _rows)
+            {
+                <tr>
+                    <td><code>@row.LineItemId</code></td>
+                    <td>@row.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    Guid? _currentOrderId;
+    IReadOnlyList<LineItemFulfillmentRow> _rows = Array.Empty<LineItemFulfillmentRow>();
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override void OnInitialized()
+    {
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cts.Token);
+    }
+
+    async Task PollAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        _currentOrderId = OrderTracker.Current;
+        if (_currentOrderId is not { } orderId)
+        {
+            _rows = Array.Empty<LineItemFulfillmentRow>();
+            return;
+        }
+
+        try
+        {
+            _rows = await FulfillmentRows.QueryPartitionAsync(orderId.ToString());
+        }
+        catch
+        {
+            _rows = Array.Empty<LineItemFulfillmentRow>();
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+    }
+}
