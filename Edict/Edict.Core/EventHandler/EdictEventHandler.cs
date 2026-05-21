@@ -78,14 +78,33 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
     OutboxEntry BuildInvokeHandlerEntry(EdictEvent evt)
     {
-        // Capture the live traceparent while the stream-callback span is still
-        // Activity.Current so the deferred-invocation span — opened later by
-        // InvokeHandlerExecutor — nests under the publish span as parent-child
-        // even when backoff defers the call (ADR 0003).
-        var current = Activity.Current;
-        var traceParent = current is not null
-            ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
-            : null;
+        // The deferred-invocation span — opened later by InvokeHandlerExecutor —
+        // must nest under the publish span as parent-child even when backoff
+        // defers the call (ADR 0003). The event itself carries the publish
+        // span's identity in its TraceId/SpanId fields (stamped by
+        // PublishEventExecutor) so the parent is recoverable even when the
+        // stream transport did not propagate Activity.Current across the hop
+        // — the case Azure Queue streams hit. Fall back to Activity.Current
+        // (e.g. an in-process publisher that bypassed the publish executor)
+        // only when the event carries no embedded trace context.
+        string? traceParent;
+        string? traceState;
+        if (evt.TraceId is { Length: 32 } eventTraceId && evt.SpanId is { Length: 16 } eventSpanId)
+        {
+            traceParent = ActivityExtensions.BuildTraceParent(eventTraceId, eventSpanId);
+            traceState = evt.TraceState;
+        }
+        else if (Activity.Current is { } current)
+        {
+            traceParent = ActivityExtensions.BuildTraceParent(
+                current.TraceId.ToHexString(), current.SpanId.ToHexString());
+            traceState = current.TraceStateString;
+        }
+        else
+        {
+            traceParent = null;
+            traceState = null;
+        }
 
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
@@ -103,7 +122,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
             Kind = OutboxEffectKind.InvokeHandler,
             Payload = serializer.SerializeToArray<EdictEvent>(envelope),
             TraceParent = traceParent,
-            TraceState = current?.TraceStateString,
+            TraceState = traceState,
         };
     }
 }

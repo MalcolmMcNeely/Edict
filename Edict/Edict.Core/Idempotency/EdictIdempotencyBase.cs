@@ -179,10 +179,30 @@ public abstract class EdictIdempotencyBase<TPayload>
         Commit(envelope.EventId);
 
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
-        var current = Activity.Current;
-        var traceParent = current is not null
-            ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
-            : null;
+
+        // Prefer the envelope's embedded trace ids (stamped by
+        // PublishEventExecutor) over Activity.Current — Azure Queue streams do
+        // not propagate Activity.Current across the hop, but the publish span's
+        // identity rides on the event itself so the deferred handle span
+        // still nests as parent-child (ADR 0003).
+        string? traceParent;
+        string? traceState;
+        if (envelope.TraceId is { Length: 32 } evtTraceId && envelope.SpanId is { Length: 16 } evtSpanId)
+        {
+            traceParent = ActivityExtensions.BuildTraceParent(evtTraceId, evtSpanId);
+            traceState = envelope.TraceState;
+        }
+        else if (Activity.Current is { } current)
+        {
+            traceParent = ActivityExtensions.BuildTraceParent(
+                current.TraceId.ToHexString(), current.SpanId.ToHexString());
+            traceState = current.TraceStateString;
+        }
+        else
+        {
+            traceParent = null;
+            traceState = null;
+        }
 
         var entry = new OutboxEntry
         {
@@ -190,7 +210,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             Kind = OutboxEffectKind.InvokeHandler,
             Payload = serializer.SerializeToArray<EdictEvent>(envelope),
             TraceParent = traceParent,
-            TraceState = current?.TraceStateString,
+            TraceState = traceState,
         };
 
         await Host.EnqueueAndDrainAsync([entry]);
