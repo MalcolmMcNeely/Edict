@@ -1,8 +1,15 @@
 # Edict — Claude Instructions
 
-Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **library**, not an application. A sample Aspire web/silo app and a shipped in-memory Test Framework come later. Read `CONTEXT.md` for the domain language and `docs/adr/` for the load-bearing decisions before changing architecture.
+Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **library**, not an application.
+
+## Before you touch the repo
+
+- Read `CONTEXT.md` before any domain work — it is the glossary, one sentence per term.
+- Read `docs/adr/` before any architectural change — the decisions and their rationale live there.
+- Follow the relevant skill when editing `.cs` files (`csharp`), `.razor` files (`blazor`), or tests (`testing`).
 
 ## Stack
+
 - C# / .NET 10
 - Microsoft Orleans (grains, implicit stream subscriptions)
 - Azure Queue Storage stream provider, backed by **Azurite** locally
@@ -11,58 +18,29 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 - Roslyn source generators + analyzers for boilerplate removal
 - Aspire AppHost orchestrates the sample app (web + silo + Azurite)
 
-## Core model (see ADRs)
-- **Event-driven, not event-sourced** — no event store, no replay, no rebuild. Never add replay/rehydration; "Projection Builder" forward-consumes the live stream only. (ADR 0001)
-- **Commands** are direct grain calls. **Events** travel on streams. A Command Handler raises Events as its output.
-- Grain hierarchy: `EdictCommandHandler` (direct call, no dedup) and `EdictIdempotencyBase` → consumer event handlers / consumer sagas / `EdictProjectionBuilder` / `EdictTableProjectionBuilder` (implicit subscription + idempotency base). No `Grain` suffix anywhere (ADR 0017); consumer subclasses are `{Name}{Role}` (e.g. `OrderCommandHandler`).
-- **Idempotency is in the base, not opt-in.** Bounded per-consumer `EventId` ring, committed *after* `HandleAsync` succeeds. (ADR 0002)
-- Stream address is `(eventTypeName, sourceAggregateGuid)`; consumers are per-aggregate by default; a fixed-Guid singleton is the explicit global escape hatch.
-
-## Assembly structure (ADR 0014, 0015)
-- **`Edict.Contracts`** — shared kernel: `EdictCommand`, `EdictEvent`, attributes, `IEdictSender`, `IEdictTableRepository`, and the internal write-store seam. No Orleans server runtime.
-- **`Edict.Core`** — persistence-agnostic grain runtime: `EdictCommandHandler`, `EdictIdempotencyBase`, `EdictProjectionBuilder`, `EdictTableProjectionBuilder`. Foldered by concept: `Commands/`, `Idempotency/`, `Projections/`, `Sagas/`. Must not depend on `Azure.*`.
-- **`Edict.Telemetry`** — `ActivitySource`, span extensions, and the ADR-0003 stream-hop trace capture (`RequestContext`). References `Orleans.Core`, not the server runtime.
-- **`Edict.Azure`** — Azure-specific implementations: queue stream provider, `IEdictTableRepository` implementation, write-store implementation. The only assembly that may depend on `Azure.*`.
-- **`Edict.Generators`** / **`Edict.Analyzers`** — Roslyn source generators and analyzers (`netstandard2.0`). Shared FQN constants live in a single `EdictWellKnownNames.cs` `<Compile>`-linked into both (no shared runtime assembly).
-- **Placement rule**: consumer-typed → `Edict.Contracts`; grain logic → `Edict.Core`; Azure-specific → `Edict.Azure`; telemetry helpers → `Edict.Telemetry`; generator/analyzer → the respective project.
-
 ## Conventions
+
 - Never use namespace-qualified types inline — always add a `using` directive; use a `using` alias only if names collide.
-- Every Edict grain is declared `partial` (source generators emit the other half). An analyzer must error if it is not.
-- **Brand-prefix rule**: a type is `Edict`-prefixed iff **(a)** a consumer types it (derives from it, applies it as an attribute, or receives/returns it) **or (b)** it is an inheritance root shared by the consumer-facing grain bases. Consumer-facing surface: `EdictCommand`, `EdictEvent`, `EdictCommandResult`, `EdictRejectionReason`, `[EdictRouteKey]`, `[EdictStream]`, `[EdictTelemeterized]`, `EdictCommandHandler`, `EdictProjectionBuilder`, `EdictTableProjectionBuilder`, `EdictIdempotencyBase` (clause b), `IEdictSender`, `IEdictTableRepository`. No `Grain` suffix; consumer subclasses are `{Name}{Role}`. Internals (sender implementation, command-route resolver, dedup state) stay bare; raw Orleans test doubles that truly derive from `Grain` keep "Grain". (ADR 0017, supersedes 0013)
-- `[EdictTelemeterized]` goes on **primitive properties only**; a generator emits the OTEL tag-writing code. Placing it on a non-primitive is a **compile error** — do not weaken this to a warning.
-- Dedup delivery is a template method: the base owns the stream-observer callback and calls the subclass's `HandleAsync`. Subclasses never hand-roll dedup or the dedup guard.
-- The consuming grain declares its own stream/subscription — the `EdictIdempotencyBase` base never decides which stream.
-- **No magic numbers or strings in mechanism code.** Every framework knob is a property on `EdictOptions` / `EdictAzureStreamsOptions` / `EdictAzurePersistenceOptions` with its default in the constructor, a `ValidateOnStart` rule on the same class, and a line in `Sample.Silo/Program.cs` demonstrating the literal default. Invalid values throw at host start, never silently clamp. The three calls (`silo.AddEdict`, `silo.AddEdictAzureStreams`, `silo.AddEdictAzurePersistence`) are `ISiloBuilder` extensions taking `Action<T>`; a missing provider call throws an aggregated message at `IHostedService.StartAsync`. (ADR 0028, skill `surface-config`)
-- Trace context (`TraceId`/`SpanId`/`TraceState`) lives on the base `EdictEvent` class and stitches `Command → Publish → Handle` as **parent-child** spans across the stream hop. (ADR 0003)
-- Logging is `ILogger<T>`, structured, no custom logging abstraction. Do **not** log-narrate the command/event flow — spans are the observability mechanism. A thrown handler logs `Error` with the `EventId`. No `Console.WriteLine`.
-- No commercially licensed dependencies (FluentAssertions is banned for this reason).
 - No redundant `private` — members are private by default, so omit the keyword (`.editorconfig` warns via `dotnet_style_require_accessibility_modifiers = never`). Keep `private` only where it changes accessibility, e.g. `{ get; private set; }` on a wider property.
 - Always use braces, even single-line `if`/`for`/`while` bodies (`csharp_prefer_braces`).
 - Don't pre-wrap lines; ~170 columns is fine. Gratuitous carriage returns hurt readability.
 - One top-level type per file. A file with many classes is a smell — split it.
-- When a project grows past a handful of files, fold by concept (or feature) into subfolders — see `Edict.Core` for the canonical example. Namespace follows folder.
-- Every `[GenerateSerializer]` type that is persisted or crosses the wire carries an `[Alias]`; never suppress `ORLEANS0010`. Commands use `[Alias(nameof(TheCommand))]` (ADR 0010). **Persisted grain state** uses a **frozen string literal** `[Alias]` (must survive a class rename — ADR 0017), not `nameof`.
+- When a project grows past a handful of files, fold by concept (or feature) into subfolders. Namespace follows folder.
+- Logging is `ILogger<T>`, structured, no custom logging abstraction. Do **not** log-narrate the command/event flow — spans are the observability mechanism. A thrown handler logs `Error` with the `EventId`. No `Console.WriteLine`.
+- No commercially licensed dependencies (FluentAssertions is banned for this reason).
 
-## Testing (ADR 0029, supersedes ADR 0016)
-- **`Edict.Core.Tests`** — **pure logic only**, no `TestCluster`. Survivors: `OutboxSlice`, route discovery/resolution, options/wiring validators, claim-check policy + envelope codec + unwrap helpers, `InvokeHandlerExecutor` pure parts, wire-shape + MessagePack round-trip Verify guards, frozen-ordinal guards. Reaching for a cluster (in-memory or Azurite) in Core.Tests is a smell — pure-logic tests are only kept here because they are genuinely faster *and* no less revealing than an integration test.
-- **`Edict.Azure.Tests`** — the mechanism battery, the resilience suite, and the load proof, all against real **Azurite via Testcontainers**. Owns the ADR-0002 at-least-once + dedup realism proof, the outbox/saga/dead-letter/claim-check end-to-end scenarios, transport-fault tests (Testcontainers pause/restart), one silo-kill test (`TestCluster.StopSilo`), and one liveness-and-invariants load test (~1000 commands, downstream effect observed, loose wall-clock ceiling as catastrophic-regression tripwire). Folder layout is the **union** of `Edict.Azure/` and `Edict.Core/` source folders; the file-per-source-class rule is dropped — folder mirrors source, filename names the scenario, multiple files per folder are normal.
-- **Parallelism**: one shared Azurite container per assembly, each test collection spins its own `TestCluster` pointing at it (cluster *shape* varies — visibility timeouts, controllable executors, custom stream provider configs — so the cluster cannot be shared even when Azurite can). No `static` fields in fixtures. Each test prefixes table/queue/blob container names with a `Guid` for cross-collection isolation. An explicit `xunit.runner.json` sets `parallelizeAssembly: true, parallelizeTestCollections: true`. Resources are not cleaned up between tests — the Azurite container is thrown away at assembly teardown, which bounds the leak.
-- **`Edict.Telemetry.Tests`** — `ActivityListener` assertions on the span tree, against an in-memory cluster (the parent-child stitch in `RequestContext` is transport-agnostic by design). One end-to-end span-stitch assertion lives in `Edict.Azure.Tests` to prove the real Azure Queue Storage transport preserves trace headers.
-- **`Edict.Generators.Tests`** / **`Edict.Analyzers.Tests`** — generator output shape and `EDICT00x` diagnostic coverage in their own projects.
-- **`Edict.Architecture.Tests`** — `BoundaryTests` and `TypePlacementTests` boundary guards.
-- **`Edict.Testing` is consumer-only.** Internal framework test projects (`Edict.Core.Tests`, `Edict.Azure.Tests`, `Edict.Telemetry.Tests`, `Edict.Architecture.Tests`) must not add a `<ProjectReference>` to `Edict.Testing`. The shipped consumer harness is proven via Sample app tests, where it is exercised the way an external consumer would use it. Conflating the two surfaces tempts internal tests to skip real-transport scenarios because the in-memory harness "already proved it" — the exact wrong move when the whole point of the integration suite is to exercise the real transport.
-- The **shipped Test Framework** (`Edict.Testing`) is **in-memory** (memory streams), boots the consumer's grains with Edict auto-wired, and exposes a single Verify-shaped timeline (Commands, Events, Projection/Saga state). It does **not** capture traces.
-- **No reflection-based shape tests on the `Edict.Contracts` surface** (no `typeof(EdictCommand).GetProperties()` lockdowns, no `[AttributeUsage]` assertions on `[EdictRouteKey]`, etc.). Widening commands, events, and attributes is acceptable; the wire-shape Verify snapshots in `Edict.Core.Tests/Serialization/` are the only stability guarantee.
-- Strongly favour integration tests and **Verify** snapshot tests over long `Assert` chains. Never commit `.received.*` files.
-- During any test addition or migration, ask: *does this prove Edict's contract, or does it prove Orleans works?* If the latter, delete instead of write — Orleans is a mature, battle-tested framework and re-proving it is dead weight in the CI pipeline.
-- Test names: `Subject_Should{Outcome}[_When{Condition}]`. `Subject` is the method under test when one exists, else a scenario noun (e.g. `EDICT001`, `CommandPipeline`). `_When…` only when there is a condition. If `Class.Method` would push a Verify snapshot filename past ~90 chars, the test scope is too broad — split it, don't truncate or hash.
-- Verify snapshots live in a flat `{TestProject}/Snapshots/` directory (a `ModuleInitializer` sets `Verifier.DerivePathInfo`). Contributors must `git config core.longpaths true` on Windows.
-- The Sample app uses **no in-memory infrastructure** — Azure Table grain storage (PubSub + dedup ring), Azure Queue streams, Azure Table projections; `Sample.AppHost` provisions Azurite. In-memory wiring belongs to the shipped Test Framework, never the sample.
+## Comment policy
+
+- **XML doc (`///`)** is required on the consumer-facing `Edict*` surface in `Edict.Contracts` and on the public bases in `Edict.Core`. It is forbidden on internal-only types unless the type's purpose is non-obvious from its name — in that case, prefer renaming the type over adding a summary.
+- **Inline (`//`)** comments are only for non-obvious WHY, and the prose must stand alone. Do not cite ADR numbers — if the comment only earns its keep via a doc pointer, rewrite the prose so it stands alone or delete the comment. Comments that restate what the code does should be deleted.
+- **Test scaffolding** — `// Arrange`, `// Act`, `// Assert` markers are a permitted readability convention in tests.
 
 ## Skills available
+
 Skills are auto-loaded on demand. Key skills for this project:
+
 - **csharp** — C# naming, using directives, framework project structure (triggers on `.cs` files)
+- **blazor** — Blazor component rules (triggers on `.razor` files)
 - **testing** — xUnit/Verify/Testcontainers conventions, what not to do (triggers on test files)
 - **tdd** — red-green-refactor loop
 - **diagnose** — disciplined debugging loop
