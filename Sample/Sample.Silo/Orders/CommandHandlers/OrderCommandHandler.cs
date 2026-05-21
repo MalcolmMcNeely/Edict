@@ -4,8 +4,9 @@ using Edict.Core.Commands;
 using Sample.Contracts.Orders.Commands;
 using Sample.Contracts.Orders.Domain;
 using Sample.Contracts.Orders.Events;
+using Sample.Silo.Orders.State;
 
-namespace Sample.Silo.Orders;
+namespace Sample.Silo.Orders.CommandHandlers;
 
 // End-to-end demo of the inline-drain path: the handler mutates framework-owned
 // State and raises events; Edict commits {State, Outbox} in one write and the

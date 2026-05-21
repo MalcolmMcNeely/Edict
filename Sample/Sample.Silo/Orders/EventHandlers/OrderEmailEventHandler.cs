@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 using Sample.Contracts.Orders.Events;
 
-namespace Sample.Silo.Orders;
+namespace Sample.Silo.Orders.EventHandlers;
 
 /// <summary>
 /// Sample <see cref="EdictEventHandler"/>: reacts to
@@ -16,7 +16,7 @@ namespace Sample.Silo.Orders;
 /// still surfaces on the timeline without forcing every test to fake a
 /// collaborator.
 /// </summary>
-public sealed partial class OrderEmailHandler(ILogger<OrderEmailHandler> logger) : EdictEventHandler
+public sealed partial class OrderEmailEventHandler(ILogger<OrderEmailEventHandler> logger) : EdictEventHandler
 {
     public Task Handle(OrderPlacedEvent evt)
     {

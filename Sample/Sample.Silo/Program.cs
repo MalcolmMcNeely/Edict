@@ -12,6 +12,7 @@ using OpenTelemetry;
 using Orleans.Serialization;
 
 using Sample.Silo.Orders;
+using Sample.Silo.Orders.CommandHandlers;
 
 var host = Host.CreateDefaultBuilder(args)
     .UseOrleans((context, silo) =>

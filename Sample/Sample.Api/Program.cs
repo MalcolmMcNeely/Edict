@@ -11,7 +11,7 @@ using Orleans.Serialization;
 using Sample.Api.Orders;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
-using Sample.Silo.Orders;
+using Sample.Silo.Orders.CommandHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 

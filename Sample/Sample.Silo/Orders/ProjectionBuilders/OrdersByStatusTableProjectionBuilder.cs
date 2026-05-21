@@ -5,11 +5,11 @@ using Edict.Core.TableStorage;
 using Sample.Contracts.Orders.Events;
 using Sample.Contracts.Orders.Projections;
 
-namespace Sample.Silo.Orders;
+namespace Sample.Silo.Orders.ProjectionBuilders;
 
-public sealed partial class OrdersByStatusProjectionBuilder : EdictTableProjectionBuilder<OrderStatusRow>
+public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTableProjectionBuilder<OrderStatusRow>
 {
-    public OrdersByStatusProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrdersByStatusTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "ordersbystatus";

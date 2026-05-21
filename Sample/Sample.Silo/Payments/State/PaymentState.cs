@@ -2,7 +2,7 @@ using Edict.Contracts.Persistence;
 
 using Sample.Contracts.Payments.Domain;
 
-namespace Sample.Silo.Payments;
+namespace Sample.Silo.Payments.State;
 
 /// <summary>
 /// Framework-owned durable aggregate state for a payment. Persisted

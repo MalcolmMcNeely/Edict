@@ -4,8 +4,9 @@ using Edict.Core.Commands;
 using Sample.Contracts.Payments.Commands;
 using Sample.Contracts.Payments.Domain;
 using Sample.Contracts.Payments.Events;
+using Sample.Silo.Payments.State;
 
-namespace Sample.Silo.Payments;
+namespace Sample.Silo.Payments.CommandHandlers;
 
 /// <summary>
 /// The second aggregate the OrderPayment saga drives (cross-domain re-keying:

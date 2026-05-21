@@ -1,6 +1,6 @@
 using Edict.Contracts.Persistence;
 
-namespace Sample.Silo.Payments;
+namespace Sample.Silo.Payments.Sagas;
 
 /// <summary>Stage the OrderPayment saga has durably reached.</summary>
 public enum OrderPaymentStage

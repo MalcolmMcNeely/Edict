@@ -1,4 +1,4 @@
-namespace Sample.Silo.Orders;
+namespace Sample.Silo.Orders.State;
 
 /// <summary>A single line on an order. Part of the persisted aggregate state.</summary>
 [GenerateSerializer]

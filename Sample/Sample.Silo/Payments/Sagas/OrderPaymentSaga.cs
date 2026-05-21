@@ -5,7 +5,7 @@ using Sample.Contracts.Orders.Events;
 using Sample.Contracts.Payments.Commands;
 using Sample.Contracts.Payments.Events;
 
-namespace Sample.Silo.Payments;
+namespace Sample.Silo.Payments.Sagas;
 
 /// <summary>
 /// Coordinates the order→payment workflow across two aggregates,

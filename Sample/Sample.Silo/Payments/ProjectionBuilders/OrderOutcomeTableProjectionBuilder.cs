@@ -5,7 +5,7 @@ using Edict.Core.TableStorage;
 using Sample.Contracts.Orders.Events;
 using Sample.Contracts.Payments.Projections;
 
-namespace Sample.Silo.Payments;
+namespace Sample.Silo.Payments.ProjectionBuilders;
 
 /// <summary>
 /// Projects the OrderPayment saga's terminal order events into a queryable
@@ -13,9 +13,9 @@ namespace Sample.Silo.Payments;
 /// observable through a read endpoint. Kept separate from the status
 /// projection so each projection has a single, stable responsibility.
 /// </summary>
-public sealed partial class OrderOutcomeProjectionBuilder : EdictTableProjectionBuilder<OrderOutcomeRow>
+public sealed partial class OrderOutcomeTableProjectionBuilder : EdictTableProjectionBuilder<OrderOutcomeRow>
 {
-    public OrderOutcomeProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrderOutcomeTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "orderoutcome";

@@ -22,7 +22,7 @@ using Orleans.TestingHost;
 
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
-using Sample.Silo.Orders;
+using Sample.Silo.Orders.CommandHandlers;
 
 using Testcontainers.Azurite;
 

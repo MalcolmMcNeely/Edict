@@ -2,6 +2,8 @@ using Edict.Testing;
 
 using Sample.Contracts.Orders.Commands;
 using Sample.Silo.Orders;
+using Sample.Silo.Orders.CommandHandlers;
+using Sample.Silo.Orders.EventHandlers;
 
 using Xunit;
 
@@ -10,7 +12,7 @@ namespace Sample.Silo.Tests.Orders;
 /// <summary>
 /// Exercises <c>EdictTestAppBuilder.Replace&lt;TService&gt;</c>: a fake
 /// <see cref="IEmailNotifier"/> handed to the builder must win on the silo
-/// container so <see cref="OrderEmailHandler"/>'s deferred invocation routes
+/// container so <see cref="OrderEmailEventHandler"/>'s deferred invocation routes
 /// through it. Proves the new fake-injection seam is wired through both the
 /// silo registration path and the harness's last-AddSingleton-wins ordering.
 /// </summary>
