@@ -13,6 +13,27 @@ namespace Edict.Core.Tests.Serialization;
 // constants so snapshots are deterministic. No Orleans cluster is needed —
 // pure MessagePack serialisation only.
 
+// Codec-breadth probe: spans every primitive the contract codec must carry —
+// Guid, string, int, bool, double, DateTimeOffset and a nullable string. The
+// order commands (Guid + string only) do not exercise this breadth.
+public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
+{
+    [EdictRouteKey]
+    public Guid ProbeId { get; init; } = ProbeId;
+
+    public string Label { get; init; } = "";
+
+    public int Count { get; init; }
+
+    public bool Flag { get; init; }
+
+    public double Ratio { get; init; }
+
+    public DateTimeOffset OccurredAt { get; init; }
+
+    public string? Note { get; init; }
+}
+
 public sealed class CommandWireShapeTests
 {
     private static readonly Guid FixedCommandId = new("11111111-1111-1111-1111-111111111111");

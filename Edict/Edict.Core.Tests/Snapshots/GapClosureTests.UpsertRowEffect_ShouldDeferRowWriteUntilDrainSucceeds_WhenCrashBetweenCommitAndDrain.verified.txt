@@ -1,8 +1,0 @@
-﻿{
-  RowBeforeRecovery: null (deferred),
-  PendingBeforeRecovery: 1 entry,
-  ReminderBeforeRecovery: true,
-  RowAfterRecovery: OrderCount=1,
-  PendingAfterRecovery: 0 entries,
-  ReminderAfterRecovery: false
-}

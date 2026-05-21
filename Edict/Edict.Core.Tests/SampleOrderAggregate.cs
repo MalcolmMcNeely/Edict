@@ -2,7 +2,6 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
-using Edict.Core.Tests.Serialization;
 
 using MessagePack;
 
@@ -58,31 +57,17 @@ public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictE
     public string Sku { get; init; } = Sku;
 }
 
-// Test event for EventDeduplicationGrain integration tests.
-[EdictStream("DedupTest")]
-public sealed partial record DedupTestEvent(Guid AggregateId, int Sequence) : EdictEvent
-{
-    [EdictRouteKey]
-    public Guid AggregateId { get; init; } = AggregateId;
-
-    public int Sequence { get; init; } = Sequence;
-}
-
 public partial class OrderCommandHandler : EdictCommandHandler
 {
     public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
     {
-        CommandRoundTripRecorder.Record(command);
         Raise(new OrderPlacedEvent(command.OrderId, command.Sku));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(CancelOrderCommand command)
-    {
-        CommandRoundTripRecorder.Record(command);
-        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+    public Task<EdictCommandResult> Handle(CancelOrderCommand command) =>
+        Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
             [new EdictRejectionReason("already_shipped", "Order has already shipped.")]));
-    }
 
     public Task<EdictCommandResult> Handle(FailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
