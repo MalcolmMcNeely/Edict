@@ -1,86 +1,72 @@
 ---
 name: blazor
-description: Use this skill when editing, creating, or reviewing any Blazor component (.razor) in this repo. Covers MudBlazor component rules, layout conventions, render mode, SignalR state, and bUnit test setup for Covenant's Blazor Server app.
+description: Use this skill when editing, creating, or reviewing any Blazor component (.razor) in this repo. Covers render mode, folder layout, live read-model refresh, and SignalR/state rules for Sample.Web (the Edict sample app's Blazor Server tier).
 ---
 
 # Blazor Component Conventions
 
-## Component library — MudBlazor
+`Sample.Web` is the canonical Edict consumer reference. It is **plain Blazor Server** — no UI component library, no design system, no JS interop beyond what the framework ships. The point of the sample is to show off Edict primitives, not Blazor flourishes.
 
-Covenant uses **MudBlazor** as its sole UI component library. Raw HTML interactive elements are **banned** — use MudBlazor equivalents instead:
+## No UI component library
 
-| Banned | Use instead |
-|---|---|
-| `<button>` | `<MudButton>` / `<MudIconButton>` |
-| `<input>` | `<MudTextField>` |
-| `<select>` | `<MudSelect>` |
-| `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<td>` | `<MudDataGrid>` or `<MudSimpleTable>` |
-| `<input type="file">` / `<InputFile>` | `<MudFileUpload>` |
-| `<input type="checkbox">` | `<MudCheckBox>` |
+Use standard HTML elements (`<button>`, `<input>`, `<table>`, `<select>`, etc.) and the framework-provided components (`<NavLink>`, `<RouteView>`, `<Router>`, `<HeadOutlet>`). Do **not** add MudBlazor, Radzen, Fluent UI, Bootstrap, Tailwind, or any other library. If a page needs layout, write CSS in `wwwroot/app.css`. If a page needs interactivity, use Blazor's built-in event handlers and `StateHasChanged`.
 
-Non-interactive structural elements (`<div>`, `<section>`, `<h1>`–`<h6>`, `<p>`, `<span>`) may still be used freely, or replaced with `<MudText>`, `<MudPaper>`, `<MudGrid>` where layout benefit is clear.
+If a future slice genuinely needs a richer widget, raise it for discussion first — adding a component library is a project-level decision, not a per-page convenience.
 
-### Layout — no Bootstrap
-
-Bootstrap is **not loaded**. Do not use Bootstrap utility classes (`d-flex`, `justify-content-between`, `mb-3`, `py-5`, etc.) — they will silently have no effect. Use MudBlazor layout components instead:
-
-| Layout need | Use |
-|---|---|
-| Horizontal row with spacing/alignment | `<MudStack Row="true" AlignItems="..." Justify="...">` |
-| Vertical stack with spacing | `<MudStack Spacing="2">` |
-| Multi-column grid | `<MudGrid>` / `<MudItem xs="...">` |
-| Spacing/padding on a component | `Class="ma-2"` / `Class="pa-4"` (MudBlazor spacing classes) |
-
-> **Warning:** MudBlazor spacing classes use `!important`. Do not use `pa-*` on `MudMainContent` — it overrides the built-in `padding-top: var(--mud-appbar-height)` and hides content behind the AppBar. Use `px-* pb-*` instead to preserve the top clearance.
-
-| Page-level heading | `<MudText Typo="Typo.h4">` instead of `<h1>` |
-
-### Required providers in MainLayout
-
-`MainLayout.razor` must include **all four** providers at the bottom of the markup, outside the layout structure. Missing any one of them causes a runtime `InvalidOperationException` when the corresponding MudBlazor component is first rendered.
-
-```razor
-<MudThemeProvider Theme="CovenantTheme.Default" IsDarkMode="true" DefaultScrollbar="true" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-```
-
-### MudFileUpload (v9 API)
-
-Use `CustomContent` (not the removed `ActivatorContent`) to render a custom trigger button. `CustomContent` is a `RenderFragment<MudFileUpload<T>>` — the context gives access to `OpenFilePickerAsync`. When nested inside an `EditForm`, disambiguate the context name to avoid a compile error:
-
-```razor
-<MudFileUpload T="IBrowserFile" FilesChanged="HandleFileChange" Accept=".docx">
-    <CustomContent Context="fileUpload">
-        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@fileUpload.OpenFilePickerAsync">
-            Choose File
-        </MudButton>
-    </CustomContent>
-</MudFileUpload>
-```
-
-### Imports
-
-`_Imports.razor` must contain `@using MudBlazor`. Do not add per-file `@using MudBlazor` directives.
-
-### bUnit tests
-
-MudBlazor component tests must call `ctx.Services.AddMudServices()` in test setup before rendering any component that uses Mud components.
-
-## Render mode
+## Render mode — global `InteractiveServer`
 
 Interactive Server rendering is configured **globally** by setting the render mode on `<Routes>` in `App.razor`:
 
 ```razor
-<Routes @rendermode="InteractiveServer"/>
+<Routes @rendermode="InteractiveServer" />
 ```
 
 This establishes a single persistent SignalR circuit for the entire app. All pages and child components inherit this mode automatically.
 
 **Never** add `@rendermode InteractiveServer` to individual page components (`.razor` files with `@page`). Doing so causes each navigation to tear down and recreate the circuit, which breaks Blazor's enhanced navigation — the URL updates but the page silently fails to activate.
 
-## SignalR and state
+## Folder layout
 
-- Subscribe to hub events in `OnInitializedAsync`; always call `await InvokeAsync(StateHasChanged)` inside hub callbacks.
-- Never broadcast SignalR events across tenant boundaries — group clients by `tenantId`.
+Pages and layout under `Sample.Web/Components/`:
+
+```
+Components/
+  _Imports.razor           — global usings (one per project + namespace)
+  App.razor                — <html> shell, <Routes @rendermode="InteractiveServer" />
+  Routes.razor             — <Router>, <RouteView DefaultLayout="...">
+  Layout/
+    MainLayout.razor       — page chrome (sidebar + main)
+    NavMenu.razor          — left-nav <NavLink> list
+  Pages/{Feature}/{Feature}.razor
+```
+
+`{Feature}` matches the Edict feature folders elsewhere in the sample (`Home`, `Orders`, `Fulfillment`, `DeadLetter`, `ClaimCheck`, `Idempotency`). One page per `.razor` file. One top-level `@page` route per file.
+
+## Live read-model refresh
+
+Edict pages observe projection state, not push streams. The convention for live views:
+
+- Subscribe to a server-side `PeriodicTimer` in `OnInitializedAsync`, tick every ~1–2 seconds.
+- Inside the tick callback: fetch the projection row(s), then `await InvokeAsync(StateHasChanged)`. Blazor's existing SignalR circuit pushes the diff to the browser.
+- `@implements IDisposable` and cancel the timer + dispose the `CancellationTokenSource` in `Dispose()`.
+- Swallow `OperationCanceledException` on shutdown; don't log it.
+
+Do **not** add a separate SignalR hub or an Orleans-stream subscription on the client tier. The point of the read-side model is that the projection is the truth — the timer just asks "what's the current row?".
+
+## State and async
+
+- Async callbacks that fire outside the render loop (timer ticks, awaited tasks completing late) must wrap UI mutations in `await InvokeAsync(StateHasChanged)`.
+- `@inject` is the dependency-resolution mechanism. Edict surfaces consumers bind to: `IEdictSender`, `IEdictTableRepository<TRow>`, `IEdictDeadLetterRepository`.
+- Wire DI registrations in `Program.cs`, not in Razor code. A page never news up a repository.
+
+## Imports
+
+`_Imports.razor` carries the global usings — every Edict.Contracts namespace a page might need, plus the standard `Microsoft.AspNetCore.Components.*` set the template provides. Do not add per-file `@using` directives for things already in `_Imports.razor`.
+
+## What this app does not do
+
+- Authentication / authorisation.
+- Multi-tenancy.
+- Real-time event push from the server to specific clients.
+- Custom JS interop.
+- Component tests (bUnit). The sample's mission is to demonstrate Edict, not Blazor.
