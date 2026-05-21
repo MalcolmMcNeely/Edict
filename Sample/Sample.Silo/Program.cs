@@ -37,9 +37,12 @@ var host = Host.CreateDefaultBuilder(args)
         silo.AddEdict(o =>
         {
             o.IdempotencyWindowSize     = 100;
-            o.OutboxBaseDelay           = TimeSpan.FromSeconds(2);
+            // Tuned for demo, not production: OutboxBaseDelay+OutboxMaxAttempts
+            // are shrunk so the Dead Letter buttons promote within ~5 seconds
+            // instead of the multi-minute production retry budget.
+            o.OutboxBaseDelay           = TimeSpan.FromSeconds(1);
             o.OutboxMaxDelay            = TimeSpan.FromMinutes(5);
-            o.OutboxMaxAttempts         = 8;
+            o.OutboxMaxAttempts         = 3;
             o.OutboxJitterFraction      = 0.2;
             o.OutboxDrainReminderPeriod = TimeSpan.FromMinutes(1);
         });

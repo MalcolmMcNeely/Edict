@@ -82,7 +82,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 [new EdictRejectionReason("already_confirmed", "Order has already been confirmed.")]));
 
         State.Status = OrderStatus.Cancelled;
-        Raise(new OrderCancelledEvent(command.OrderId));
+        Raise(new OrderCancelledEvent(command.OrderId, command.Reason));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }

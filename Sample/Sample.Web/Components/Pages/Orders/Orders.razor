@@ -194,7 +194,7 @@
     async Task OnCancel()
     {
         if (_currentOrderId is not { } orderId) { return; }
-        var result = await Sender.Send(new CancelOrderCommand(orderId));
+        var result = await Sender.Send(new CancelOrderCommand(orderId, _cancelReason));
         _lastCancelMessage = result is Edict.Contracts.Commands.EdictCommandResult.Accepted
             ? $"Cancelled (reason captured: \"{_cancelReason}\")."
             : Describe(result);

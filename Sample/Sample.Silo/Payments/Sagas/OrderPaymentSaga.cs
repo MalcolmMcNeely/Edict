@@ -38,7 +38,7 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
     public Task Handle(PaymentDeclinedEvent evt)
     {
         Progress.Stage = OrderPaymentStage.Compensated;
-        Dispatch(new CancelOrderCommand(evt.OrderId));
+        Dispatch(new CancelOrderCommand(evt.OrderId, "payment_declined"));
         return Task.CompletedTask;
     }
 }
