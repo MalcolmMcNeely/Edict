@@ -10,4 +10,7 @@ public sealed record OrderLine
 
     [Id(1)]
     public int Quantity { get; init; }
+
+    [Id(2)]
+    public Guid LineItemId { get; init; }
 }

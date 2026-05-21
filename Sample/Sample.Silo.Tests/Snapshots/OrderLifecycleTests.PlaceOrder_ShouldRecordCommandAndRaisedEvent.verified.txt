@@ -4,6 +4,7 @@
       Kind: Command,
       Type: PlaceOrderCommand,
       Data: {
+        CustomerReference: REF-001,
         OrderId: Guid_1
       }
     },

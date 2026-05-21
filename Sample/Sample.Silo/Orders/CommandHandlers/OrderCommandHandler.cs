@@ -27,8 +27,8 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("order_not_open", "Order is not open for modifications.")]));
 
-        State.Items.Add(new OrderLine { Sku = command.Sku, Quantity = command.Quantity });
-        Raise(new LineItemAddedEvent(command.OrderId, command.Sku, command.Quantity));
+        State.Items.Add(new OrderLine { LineItemId = command.LineItemId, Sku = command.Sku, Quantity = command.Quantity });
+        Raise(new LineItemAddedEvent(command.OrderId, command.LineItemId, command.Sku, command.Quantity));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
@@ -53,6 +53,19 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 
         State.Status = OrderStatus.Confirmed;
         Raise(new OrderConfirmedEvent(command.OrderId));
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+    }
+
+    // Driven by the OrderFulfillment saga on OrderFullyFulfilled — the terminal
+    // transition past Confirmed. Only a confirmed order may ship.
+    public Task<EdictCommandResult> Handle(MarkOrderShippedCommand command)
+    {
+        if (State.Status != OrderStatus.Confirmed)
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+                [new EdictRejectionReason("order_not_confirmed", "Order is not confirmed.")]));
+
+        State.Status = OrderStatus.Shipped;
+        Raise(new OrderShippedEvent(command.OrderId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

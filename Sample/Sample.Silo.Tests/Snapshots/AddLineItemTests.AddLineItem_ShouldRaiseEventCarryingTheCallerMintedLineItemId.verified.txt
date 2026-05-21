@@ -16,11 +16,31 @@
       }
     },
     {
+      Kind: Command,
+      Type: AddLineItemCommand,
+      Data: {
+        LineItemId: Guid_2,
+        OrderId: Guid_1,
+        Quantity: 1,
+        Sku: SKU-1
+      }
+    },
+    {
       Kind: Invocation,
       Type: OrderPlacedEvent,
       Data: {
-        EventId: Guid_2,
+        EventId: Guid_3,
         Outcome: Ran
+      }
+    },
+    {
+      Kind: Event,
+      Type: LineItemAddedEvent,
+      Data: {
+        LineItemId: Guid_2,
+        OrderId: Guid_1,
+        Quantity: 1,
+        Sku: SKU-1
       }
     }
   ]

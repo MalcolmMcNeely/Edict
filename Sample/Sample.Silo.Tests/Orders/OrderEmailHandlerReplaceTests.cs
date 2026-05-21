@@ -28,7 +28,7 @@ public sealed class OrderEmailHandlerReplaceTests
             .WithConsumer(typeof(OrderCommandHandler).Assembly)
             .Replace<IEmailNotifier>(fake));
 
-        await app.Send(new PlaceOrderCommand(orderId));
+        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
         Assert.Single(fake.SentOrderIds);

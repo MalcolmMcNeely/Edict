@@ -1,13 +1,211 @@
 @page "/orders"
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Orders.Commands
+@using Sample.Contracts.Orders.Projections
+@using Sample.Contracts.Payments.Projections
+@inject IEdictSender Sender
+@inject IEdictTableRepository<OrderStatusRow> OrdersByStatus
+@inject IEdictTableRepository<OrderOutcomeRow> OrderOutcomes
+@implements IDisposable
 
 <PageTitle>Orders</PageTitle>
 
 <h1>Orders</h1>
 
 <p>
-    This page will host the Place / Add line / Submit / Cancel buttons and the
-    live read-model view backed by <code>OrdersByStatusTableProjectionBuilder</code>
-    and <code>OrderOutcomeTableProjectionBuilder</code>.
+    Every button fires exactly one Command on click. The two live tables below
+    are read from the <code>OrdersByStatusTableProjectionBuilder</code> and
+    <code>OrderOutcomeTableProjectionBuilder</code> projections — they refresh
+    on a server-side timer over Blazor's existing SignalR circuit.
 </p>
 
-<p><em>Available in an upcoming slice.</em></p>
+<section>
+    <h2>Place</h2>
+    <p>Mint a new <code>OrderId</code> and place an order. The page tracks it for the buttons below.</p>
+    <label>
+        CustomerReference:
+        <input type="text" @bind="_customerReference" />
+    </label>
+    <button @onclick="OnPlace">Place</button>
+    @if (!string.IsNullOrEmpty(_lastPlaceMessage))
+    {
+        <p><em>@_lastPlaceMessage</em></p>
+    }
+</section>
+
+<section>
+    <h2>Add line item</h2>
+    <p>Caller mints the <code>LineItemId</code> on click.</p>
+    <label>SKU: <input type="text" @bind="_sku" /></label>
+    <label>Quantity: <input type="number" @bind="_quantity" min="1" /></label>
+    <button @onclick="OnAddLineItem" disabled="@(_currentOrderId is null)">Add line item</button>
+    @if (!string.IsNullOrEmpty(_lastAddLineMessage))
+    {
+        <p><em>@_lastAddLineMessage</em></p>
+    }
+</section>
+
+<section>
+    <h2>Submit</h2>
+    <p>At or below the silo's authorise threshold the saga authorises; above it declines.</p>
+    <label>Amount: <input type="number" step="0.01" @bind="_amount" /></label>
+    <button @onclick="OnSubmit" disabled="@(_currentOrderId is null)">Submit</button>
+    @if (!string.IsNullOrEmpty(_lastSubmitMessage))
+    {
+        <p><em>@_lastSubmitMessage</em></p>
+    }
+</section>
+
+<section>
+    <h2>Cancel</h2>
+    <p>The reason field is captured here; slice 7 wires it onto the command for the POISON dead-letter demo.</p>
+    <label>Reason: <input type="text" @bind="_cancelReason" /></label>
+    <button @onclick="OnCancel" disabled="@(_currentOrderId is null)">Cancel</button>
+    @if (!string.IsNullOrEmpty(_lastCancelMessage))
+    {
+        <p><em>@_lastCancelMessage</em></p>
+    }
+</section>
+
+<h2>Live projections</h2>
+
+<p>Current order: <code>@(_currentOrderId?.ToString() ?? "(none placed yet)")</code></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Projection</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>OrdersByStatus.Status</td>
+            <td>@(_statusRow?.Status ?? "—")</td>
+        </tr>
+        <tr>
+            <td>OrdersByStatus.ItemCount</td>
+            <td>@(_statusRow?.ItemCount.ToString() ?? "—")</td>
+        </tr>
+        <tr>
+            <td>OrderOutcome.Outcome</td>
+            <td>@(_outcomeRow?.Outcome ?? "—")</td>
+        </tr>
+    </tbody>
+</table>
+
+@code {
+    Guid? _currentOrderId;
+    string _customerReference = "REF-001";
+    string _sku = "SKU-1";
+    int _quantity = 1;
+    decimal _amount = 100m;
+    string _cancelReason = "";
+
+    string _lastPlaceMessage = "";
+    string _lastAddLineMessage = "";
+    string _lastSubmitMessage = "";
+    string _lastCancelMessage = "";
+
+    OrderStatusRow? _statusRow;
+    OrderOutcomeRow? _outcomeRow;
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override void OnInitialized()
+    {
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cts.Token);
+    }
+
+    async Task PollAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        if (_currentOrderId is not { } orderId)
+        {
+            return;
+        }
+
+        try
+        {
+            _statusRow = await OrdersByStatus.GetAsync(orderId.ToString(), "status");
+            _outcomeRow = await OrderOutcomes.GetAsync(orderId.ToString(), "outcome");
+        }
+        catch
+        {
+            _statusRow = null;
+            _outcomeRow = null;
+        }
+    }
+
+    async Task OnPlace()
+    {
+        var orderId = Guid.NewGuid();
+        var result = await Sender.Send(new PlaceOrderCommand(orderId, _customerReference));
+        if (result is Edict.Contracts.Commands.EdictCommandResult.Accepted)
+        {
+            _currentOrderId = orderId;
+            _statusRow = null;
+            _outcomeRow = null;
+            _lastPlaceMessage = $"Placed {orderId}.";
+        }
+        else
+        {
+            _lastPlaceMessage = Describe(result);
+        }
+    }
+
+    async Task OnAddLineItem()
+    {
+        if (_currentOrderId is not { } orderId) { return; }
+        var lineItemId = Guid.NewGuid();
+        var result = await Sender.Send(new AddLineItemCommand(orderId, lineItemId, _sku, _quantity));
+        _lastAddLineMessage = result is Edict.Contracts.Commands.EdictCommandResult.Accepted
+            ? $"Added line {lineItemId}."
+            : Describe(result);
+    }
+
+    async Task OnSubmit()
+    {
+        if (_currentOrderId is not { } orderId) { return; }
+        var result = await Sender.Send(new SubmitOrderCommand(orderId, _amount));
+        _lastSubmitMessage = result is Edict.Contracts.Commands.EdictCommandResult.Accepted
+            ? $"Submitted at {_amount:0.00}."
+            : Describe(result);
+    }
+
+    async Task OnCancel()
+    {
+        if (_currentOrderId is not { } orderId) { return; }
+        var result = await Sender.Send(new CancelOrderCommand(orderId));
+        _lastCancelMessage = result is Edict.Contracts.Commands.EdictCommandResult.Accepted
+            ? $"Cancelled (reason captured: \"{_cancelReason}\")."
+            : Describe(result);
+    }
+
+    static string Describe(Edict.Contracts.Commands.EdictCommandResult result) =>
+        result is Edict.Contracts.Commands.EdictCommandResult.Rejected r
+            ? $"Rejected: {string.Join(", ", r.Reasons.Select(x => x.Code))}"
+            : "Accepted";
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+    }
+}

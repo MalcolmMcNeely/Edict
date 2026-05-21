@@ -23,7 +23,7 @@ public sealed class OrderLifecycleTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId));
+        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
         await Verify(app.Timeline);

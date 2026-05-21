@@ -19,8 +19,8 @@ public sealed class OrderPaymentSagaTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId));
-        await app.Send(new AddLineItemCommand(orderId, "SKU-1", 1));
+        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
         // Below the decline threshold so the saga's happy branch fires.
         await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
@@ -42,8 +42,8 @@ public sealed class OrderPaymentSagaTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId));
-        await app.Send(new AddLineItemCommand(orderId, "SKU-1", 1));
+        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
         // Above the PaymentCommandHandler's DeclineThreshold so the saga's
         // compensation branch (PaymentDeclined → CancelOrder) fires.
         await app.Send(new SubmitOrderCommand(orderId, Amount: 5_000m));
