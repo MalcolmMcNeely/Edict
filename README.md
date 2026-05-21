@@ -25,6 +25,28 @@ public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHa
 
 That's both sides of an event-driven flow. No Orleans interfaces, no stream wiring, no idempotency code, no serialization attributes, no DI registration. The framework wires `Handle` into the stream by method signature; at-least-once redeliveries are deduplicated by `EventId` in the base class.
 
+## Testing and chaos
+
+Edict ships with an in-memory test framework so command, event, saga, and projection handlers can be exercised without spinning up Orleans, Azurite, or any container. Tests `Send` a command, `Drain` the cascade, and inspect saga progress or projection rows directly.
+
+```csharp
+await using var app = await EdictTestApp.StartAsync(b => b
+    .WithConsumer(typeof(OrderCommandHandler).Assembly));
+
+await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+await app.Drain();
+
+var progress = await app.GetSagaProgress<OrderPaymentSaga, OrderPaymentProgress>(orderId);
+
+await Verify(progress);
+```
+
+Three commands flow through a command handler, a saga, and a projection builder — all in-process, no containers — and one Verify snapshot captures the entire outcome.
+
+Chaos is on by default. The in-memory executor models at-least-once delivery — seeded duplicate redelivery, and bounded reorder ([#115](https://github.com/MalcolmMcNeely/Edict/issues/115), in flight) — so each test exercises the dedup ring and the reorder-tolerance contract the production substrate requires, as a side-effect of asserting business behaviour. The framework itself is tested against real Azurite via Testcontainers, so the in-memory seam stays honest.
+
 ## Why I built this
 
 Distributed systems force a tax on every application that adopts them: idempotency, concurrency, atomicity across stores, trace continuity. Edict pays that tax once, in the base classes, so domain code stays about the domain.
