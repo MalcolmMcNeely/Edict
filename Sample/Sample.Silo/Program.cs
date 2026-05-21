@@ -2,17 +2,13 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure.ClaimCheck;
-using Edict.Azure.TableStorage;
-using Edict.Telemetry;
+using Edict.Azure;
 using Edict.Core;
-using Edict.Core.Outbox;
 using Edict.Core.Serialization;
-using Edict.Core.TableStorage;
+using Edict.Telemetry;
 
 using OpenTelemetry;
 
-using Orleans.Hosting;
 using Orleans.Serialization;
 
 using Sample.Silo.Orders;
@@ -34,39 +30,34 @@ var host = Host.CreateDefaultBuilder(args)
         var blobConnectionString = context.Configuration.GetConnectionString("blobs")
                                     ?? "UseDevelopmentStorage=true";
 
-        var tableServiceClient = new TableServiceClient(tableConnectionString);
-        var blobServiceClient = new BlobServiceClient(blobConnectionString);
-        silo.Services.AddSingleton(tableServiceClient);
-        silo.Services.AddSingleton(blobServiceClient);
-        silo.Services.AddSingleton<IEdictTableStoreFactory>(
-            _ => new AzureTableWriteStoreFactory(tableServiceClient));
-
-        // PubSubStore stays on Tables — Orleans-internal, bounded shape, not subject to Outbox-growth dynamics. ADR 0025.
-        silo.AddAzureTableGrainStorage("PubSubStore", options =>
-            options.TableServiceClient = tableServiceClient);
-        // edict-state on Azure Blob — single-blob ETag atomicity, no per-property
-        // or per-row cap; survives an arbitrarily deep Outbox backlog. ADR 0025.
-        silo.AddAzureBlobGrainStorage("edict-state", options =>
+        // ADR 0028: three Action lambdas. Every option is on its own line at
+        // its literal default — the sample doubles as the config catalogue, so
+        // a consumer can compare and tune from this file.
+        silo.AddEdict(o =>
         {
-            options.BlobServiceClient = blobServiceClient;
-            options.ContainerName = "edict-state";
+            o.IdempotencyWindowSize     = 100;
+            o.OutboxBaseDelay           = TimeSpan.FromSeconds(2);
+            o.OutboxMaxDelay            = TimeSpan.FromMinutes(5);
+            o.OutboxMaxAttempts         = 8;
+            o.OutboxJitterFraction      = 0.2;
+            o.OutboxDrainReminderPeriod = TimeSpan.FromMinutes(1);
         });
-        // A saga's SendCommand effect drains in-silo through IEdictSender, so
-        // the silo needs the generated route map too (ADR 0020).
-        silo.Services.AddEdict();
-        // Claim-check store + tuned ClaimCheckPolicy must be in DI before
-        // AddEdictOutbox so its TryAddSingleton(default policy) is a no-op
-        // (ADR 0024).
-        silo.Services.AddEdictAzureClaimCheck();
-        silo.Services.AddEdictOutbox();
-        silo.UseAzureTableReminderService(options =>
-            options.TableServiceClient = tableServiceClient);
-        silo.AddAzureQueueStreams("edict", configure =>
+
+        silo.AddEdictAzureStreams(o =>
         {
-            configure.ConfigureAzureQueue(opt => opt.Configure(o =>
-                o.QueueServiceClient = new QueueServiceClient(queueConnectionString)));
-            configure.ConfigurePullingAgent(opt => opt.Configure(o =>
-                o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(500)));
+            o.StreamProviderName       = "edict";
+            o.ClaimCheckThresholdBytes = 30_720;
+            o.QueuePollingPeriod       = TimeSpan.FromMilliseconds(500);
+            o.QueueServiceClient       = new QueueServiceClient(queueConnectionString);
+        });
+
+        silo.AddEdictAzurePersistence(o =>
+        {
+            o.GrainStateContainerName     = "edict-state";
+            o.ClaimCheckBlobContainerName = "edict-claim-check";
+            o.DeadLetterTableName         = "edict-dead-letter";
+            o.TableServiceClient          = new TableServiceClient(tableConnectionString);
+            o.BlobServiceClient           = new BlobServiceClient(blobConnectionString);
         });
     })
     .ConfigureServices(services =>

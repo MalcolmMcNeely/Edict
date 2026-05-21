@@ -1,0 +1,5 @@
+Edict wiring is invalid:
+  - Missing streams provider: call silo.AddEdictAzureStreams(...) (or another streams provider) at silo startup.
+  - Missing persistence provider: call silo.AddEdictAzurePersistence(...) (or another persistence provider) at silo startup.
+  - OutboxJitterFraction must be in the range [0, 1] but was 1.5.
+  - OutboxMaxAttempts must be at least 1 but was 0.

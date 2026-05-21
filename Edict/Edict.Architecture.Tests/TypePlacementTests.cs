@@ -186,9 +186,9 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void EdictOutboxOptions_ShouldResideInEdictContractsConfiguration()
+    public void EdictOptions_ShouldResideInEdictContractsConfiguration()
     {
-        var rule = Types().That().HaveNameMatching("^EdictOutboxOptions$")
+        var rule = Types().That().HaveNameMatching("^EdictOptions$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Configuration$");
 
         rule.Check(Architecture);
@@ -377,10 +377,19 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void EdictAzureOptions_ShouldResideInEdictAzureClaimCheck()
+    public void EdictAzureStreamsOptions_ShouldResideInEdictAzure()
     {
-        var rule = Classes().That().HaveNameMatching("^EdictAzureOptions$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.ClaimCheck$");
+        var rule = Classes().That().HaveNameMatching("^EdictAzureStreamsOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictAzurePersistenceOptions_ShouldResideInEdictAzure()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictAzurePersistenceOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure$");
 
         rule.Check(Architecture);
     }

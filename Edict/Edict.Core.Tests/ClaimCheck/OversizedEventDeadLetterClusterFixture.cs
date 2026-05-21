@@ -74,11 +74,11 @@ public sealed class OversizedEventDeadLetterClusterFixture : IAsyncLifetime
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            siloBuilder.Services.Configure<EdictOptions>(o =>
             {
-                MaxAttempts = 3,
-                BaseDelay = TimeSpan.FromSeconds(2),
-                JitterFraction = 0,
+                o.OutboxMaxAttempts = 3;
+                o.OutboxBaseDelay = TimeSpan.FromSeconds(2);
+                o.OutboxJitterFraction = 0;
             });
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>

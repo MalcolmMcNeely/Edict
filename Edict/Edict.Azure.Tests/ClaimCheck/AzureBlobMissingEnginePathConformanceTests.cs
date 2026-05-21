@@ -116,11 +116,11 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             new FakeStreamProvider(),
             reminders,
             [invokeExecutor, publishExecutor],
-            new EdictOutboxOptions
+            new EdictOptions
             {
-                MaxAttempts = 1,
-                BaseDelay = TimeSpan.FromMilliseconds(10),
-                JitterFraction = 0,
+                OutboxMaxAttempts = 1,
+                OutboxBaseDelay = TimeSpan.FromMilliseconds(10),
+                OutboxJitterFraction = 0,
             },
             clock,
             promoter,

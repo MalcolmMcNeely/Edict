@@ -71,11 +71,11 @@ public sealed class DeadLetterPromoteClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
             // MaxAttempts kept small so the test promotes after a handful of
             // force-drain cycles rather than the default 8.
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            siloBuilder.Services.Configure<EdictOptions>(o =>
             {
-                MaxAttempts = 3,
-                BaseDelay = TimeSpan.FromSeconds(2),
-                JitterFraction = 0,
+                o.OutboxMaxAttempts = 3;
+                o.OutboxBaseDelay = TimeSpan.FromSeconds(2);
+                o.OutboxJitterFraction = 0;
             });
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>

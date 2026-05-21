@@ -11,6 +11,7 @@ using Edict.Telemetry;
 using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Orleans.Providers;
 using Orleans.Runtime;
@@ -180,7 +181,7 @@ public abstract class EdictCommandHandler<TState>
             this.GetStreamProvider("edict"),
             new GrainReminderRegistrar(this),
             ServiceProvider.GetServices<IOutboxEffectExecutor>(),
-            ServiceProvider.GetRequiredService<EdictOutboxOptions>(),
+            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),

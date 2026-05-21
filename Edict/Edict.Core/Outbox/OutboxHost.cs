@@ -42,7 +42,7 @@ sealed class OutboxHost<TPayload>
     readonly IStreamProvider _streamProvider;
     readonly IReminderRegistrar _reminders;
     readonly IReadOnlyDictionary<OutboxEffectKind, IOutboxEffectExecutor> _executors;
-    readonly EdictOutboxOptions _options;
+    readonly EdictOptions _options;
     readonly TimeProvider _timeProvider;
     readonly IDeadLetterPromoter _promoter;
     readonly Func<EdictEvent, Task>? _deferredDispatch;
@@ -58,7 +58,7 @@ sealed class OutboxHost<TPayload>
         IStreamProvider streamProvider,
         IReminderRegistrar reminders,
         IEnumerable<IOutboxEffectExecutor> executors,
-        EdictOutboxOptions options,
+        EdictOptions options,
         TimeProvider timeProvider,
         IDeadLetterPromoter promoter,
         string grainKey,
@@ -207,7 +207,7 @@ sealed class OutboxHost<TPayload>
                 State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
 
                 var bumped = State.Outbox.Pending.FirstOrDefault(p => p.EntryId == entry.EntryId);
-                if (bumped is not null && bumped.AttemptCount >= _options.MaxAttempts)
+                if (bumped is not null && bumped.AttemptCount >= _options.OutboxMaxAttempts)
                 {
                     var promoted = _promoter.Promote(
                         bumped, exception, _grainKey, _grainTypeName, now);
@@ -243,7 +243,7 @@ sealed class OutboxHost<TPayload>
     async Task RegisterDrainReminderAsync()
     {
         await _reminders.RegisterOrUpdateReminderAsync(
-            DrainReminderName, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            DrainReminderName, _options.OutboxDrainReminderPeriod, _options.OutboxDrainReminderPeriod);
         _drainReminderRegistered = true;
     }
 

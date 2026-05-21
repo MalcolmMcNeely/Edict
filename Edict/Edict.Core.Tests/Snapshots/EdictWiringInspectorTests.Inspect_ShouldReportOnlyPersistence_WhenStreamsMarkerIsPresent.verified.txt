@@ -1,0 +1,3 @@
+[
+  Missing persistence provider: call silo.AddEdictAzurePersistence(...) (or another persistence provider) at silo startup.
+]

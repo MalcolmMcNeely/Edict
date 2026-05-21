@@ -1,0 +1,5 @@
+[
+  OutboxJitterFraction must be in the range [0, 1] but was 2.,
+  OutboxMaxAttempts must be at least 1 but was 0.,
+  OutboxDrainReminderPeriod must be at least one minute (Orleans' reminder floor) but was 00:00:10.
+]

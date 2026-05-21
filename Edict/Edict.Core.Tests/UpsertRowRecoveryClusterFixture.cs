@@ -63,12 +63,12 @@ public sealed class UpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton(TimeProvider.System);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            siloBuilder.Services.Configure<EdictOptions>(o =>
             {
                 // Tiny, deterministic backoff so the recovery drain is testable
                 // in real time without a (delivery-stalling) frozen clock.
-                BaseDelay = TimeSpan.FromMilliseconds(200),
-                JitterFraction = 0,
+                o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
+                o.OutboxJitterFraction = 0;
             });
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(_tableStoreFactory);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();

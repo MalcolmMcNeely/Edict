@@ -1,0 +1,3 @@
+[
+  IdempotencyWindowSize must be at least 1 but was 0.
+]

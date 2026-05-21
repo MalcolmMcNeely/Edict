@@ -54,7 +54,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
     /// <inheritdoc />
     protected override async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
-        EnsureRingInitialized();
+        EnsureWindowInitialized();
 
         if (Contains(evt.EventId))
         {

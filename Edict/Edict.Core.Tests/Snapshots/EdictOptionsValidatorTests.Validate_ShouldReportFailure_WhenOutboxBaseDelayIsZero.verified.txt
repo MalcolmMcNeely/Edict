@@ -1,0 +1,3 @@
+[
+  OutboxBaseDelay must be greater than zero but was 00:00:00.
+]

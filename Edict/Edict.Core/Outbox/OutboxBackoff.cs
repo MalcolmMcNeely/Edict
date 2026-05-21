@@ -23,7 +23,7 @@ public static class OutboxBackoff
     /// entry is reproducible while sibling entries spread apart.
     /// </summary>
     public static DateTimeOffset NextAttemptUtc(
-        int attemptCount, DateTimeOffset now, Guid entryId, EdictOutboxOptions options)
+        int attemptCount, DateTimeOffset now, Guid entryId, EdictOptions options)
     {
         if (attemptCount <= 0)
         {
@@ -32,15 +32,15 @@ public static class OutboxBackoff
 
         var exponent = attemptCount - 1;
         // Cap the exponent so the shift cannot overflow; anything past the
-        // ceiling clamps to MaxDelay regardless.
+        // ceiling clamps to OutboxMaxDelay regardless.
         var factor = exponent >= 30 ? double.PositiveInfinity : 1L << exponent;
-        var delaySeconds = options.BaseDelay.TotalSeconds * factor;
+        var delaySeconds = options.OutboxBaseDelay.TotalSeconds * factor;
 
-        var delay = delaySeconds >= options.MaxDelay.TotalSeconds
-            ? options.MaxDelay
+        var delay = delaySeconds >= options.OutboxMaxDelay.TotalSeconds
+            ? options.OutboxMaxDelay
             : TimeSpan.FromSeconds(delaySeconds);
 
-        var jittered = ApplyJitter(delay, entryId, options.JitterFraction, options.MaxDelay);
+        var jittered = ApplyJitter(delay, entryId, options.OutboxJitterFraction, options.OutboxMaxDelay);
         return now + jittered;
     }
 

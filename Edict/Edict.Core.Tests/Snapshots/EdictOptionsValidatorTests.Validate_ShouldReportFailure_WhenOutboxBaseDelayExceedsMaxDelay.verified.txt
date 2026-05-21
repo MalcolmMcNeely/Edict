@@ -1,0 +1,3 @@
+[
+  OutboxBaseDelay (00:10:00) must not exceed OutboxMaxDelay (00:05:00).
+]

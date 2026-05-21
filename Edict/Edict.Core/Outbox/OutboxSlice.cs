@@ -53,7 +53,7 @@ public sealed record OutboxSlice
     /// separate decision once attempts are exhausted. Total: a no-op when no
     /// entry matches.
     /// </summary>
-    public OutboxSlice FailWithBackoff(Guid entryId, DateTimeOffset now, EdictOutboxOptions options)
+    public OutboxSlice FailWithBackoff(Guid entryId, DateTimeOffset now, EdictOptions options)
     {
         var index = IndexOf(entryId);
         if (index < 0)

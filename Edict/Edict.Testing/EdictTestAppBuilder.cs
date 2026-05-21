@@ -13,7 +13,7 @@ namespace Edict.Testing;
 public sealed class EdictTestAppBuilder
 {
     /// <summary>
-    /// Mirrors <c>EdictAzureOptions.ClaimCheckThresholdBytes</c> so the
+    /// Mirrors <c>EdictAzureStreamsOptions.ClaimCheckThresholdBytes</c> so the
     /// in-memory test framework exercises the same commit pipeline as
     /// production (ADR 0024). Override per test via
     /// <see cref="WithClaimCheckThresholdBytes"/> to force the path on a

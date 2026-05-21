@@ -11,7 +11,7 @@ namespace Edict.Core.Tests.ClaimCheck;
 /// reaped it), the stream-observer bifurcation stages an
 /// <c>InvokeHandler</c> entry; the engine's per-entry retry calls
 /// <c>ClaimCheckUnwrap</c>, fails the fetch, bumps backoff; on
-/// <see cref="EdictOutboxOptions.MaxAttempts"/> exhaustion the standard
+/// <see cref="EdictOptions.OutboxMaxAttempts"/> exhaustion the standard
 /// <c>IDeadLetterPromoter</c> path routes through the BlobMissing failure-kind
 /// mapping into the same fleet-wide forensic projection publisher-side
 /// failures use.

@@ -24,8 +24,8 @@ namespace Edict.Core.Tests.ClaimCheck;
 /// loop (ADR 0024, slice 3). Real <see cref="TimeProvider.System"/> — the
 /// memory-stream pulling agent reads <see cref="TimeProvider"/> from DI and a
 /// frozen clock stalls delivery — paired with a tiny deterministic
-/// <see cref="EdictOutboxOptions.BaseDelay"/> and a small
-/// <see cref="EdictOutboxOptions.MaxAttempts"/> so the loop exhausts in well
+/// <see cref="EdictOptions.OutboxBaseDelay"/> and a small
+/// <see cref="EdictOptions.OutboxMaxAttempts"/> so the loop exhausts in well
 /// under a second. The framework-shipped
 /// <see cref="EdictDeadLetterProjectionBuilder"/> grain consumes the
 /// <c>edict-dead-letter</c> stream and the auto-wired repository surfaces the
@@ -85,10 +85,10 @@ public sealed class BlobMissingDeadLetterClusterFixture : IAsyncLifetime
                 // Tight retry loop so the test exhausts in well under a second
                 // without forcing a virtual clock that would stall the
                 // memory-stream pulling agent.
-                o.BaseDelay = TimeSpan.FromMilliseconds(30);
-                o.MaxDelay = TimeSpan.FromMilliseconds(60);
-                o.JitterFraction = 0;
-                o.MaxAttempts = 3;
+                o.OutboxBaseDelay = TimeSpan.FromMilliseconds(30);
+                o.OutboxMaxDelay = TimeSpan.FromMilliseconds(60);
+                o.OutboxJitterFraction = 0;
+                o.OutboxMaxAttempts = 3;
             });
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

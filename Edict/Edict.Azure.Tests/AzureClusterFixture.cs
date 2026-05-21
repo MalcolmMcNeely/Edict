@@ -2,11 +2,14 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure.DeadLetter;
 using Edict.Azure.TableStorage;
+using Edict.Contracts.Configuration;
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
@@ -87,12 +90,17 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
-            // AddEdict() registers the receiver-side ClaimCheckUnwrap that
-            // every EdictIdempotencyBase consumer resolves on the stream
-            // observer path (ADR 0024, slice 3). Without it, every stream
-            // delivery throws before the consumer's Handle runs.
-            siloBuilder.Services.AddEdict();
-            siloBuilder.Services.AddEdictOutbox();
+            siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
+                new AzureTableRepository<EdictDeadLetterEntry>(
+                    _tableServiceClient, EdictDeadLetterProjectionBuilder.DeadLetterPartition));
+            // The fixture wires its own custom Azure streams/storage (with
+            // shorter visibility timeout + in-memory PubSubStore for test
+            // isolation) so it registers the wiring markers manually; the
+            // EdictAzureSiloBuilderExtensionsTests cover the production
+            // AddEdictAzureStreams + AddEdictAzurePersistence paths.
+            siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
+            siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             // PubSubStore stays on memory storage in this fixture — Orleans's
             // internal pub-sub state is out of scope for the Edict substrate
@@ -132,7 +140,9 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddSingleton(_tableServiceClient);
             clientBuilder.Services.AddEdict();
-            clientBuilder.Services.AddEdictAzureDeadLetterRepository();
+            clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
+                new AzureTableRepository<EdictDeadLetterEntry>(
+                    _tableServiceClient, EdictDeadLetterProjectionBuilder.DeadLetterPartition));
         }
     }
 }

@@ -60,7 +60,7 @@ public sealed class OutboxRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddSingleton<TimeProvider>(_clock);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions());
+            siloBuilder.Services.AddOptions<EdictOptions>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
             siloBuilder.UseInMemoryReminderService();

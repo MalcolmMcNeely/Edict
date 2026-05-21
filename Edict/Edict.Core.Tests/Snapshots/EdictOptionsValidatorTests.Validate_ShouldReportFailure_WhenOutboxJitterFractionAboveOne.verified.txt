@@ -1,0 +1,3 @@
+[
+  OutboxJitterFraction must be in the range [0, 1] but was 1.5.
+]

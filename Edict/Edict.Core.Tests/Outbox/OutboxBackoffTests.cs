@@ -21,7 +21,7 @@ public sealed class OutboxBackoffTests
     [Fact]
     public Task NextAttemptUtc_ShouldGrowExponentiallyThenClampToCeiling()
     {
-        var options = new EdictOutboxOptions();
+        var options = new EdictOptions();
 
         var schedule = Enumerable.Range(0, 12)
             .Select(attemptCount => new
@@ -37,7 +37,7 @@ public sealed class OutboxBackoffTests
     [Fact]
     public Task NextAttemptUtc_ShouldSpreadEntriesByDeterministicJitter_PreventingStampede()
     {
-        var options = new EdictOutboxOptions();
+        var options = new EdictOptions();
 
         // Same attempt count, two different entries: identical exponential
         // term, different jitter offset — proves the anti-stampede spread.
@@ -55,11 +55,11 @@ public sealed class OutboxBackoffTests
     [Fact]
     public Task NextAttemptUtc_ShouldHonourConsumerConfiguredBaseAndCeiling()
     {
-        var options = new EdictOutboxOptions
+        var options = new EdictOptions
         {
-            BaseDelay = TimeSpan.FromSeconds(10),
-            MaxDelay = TimeSpan.FromMinutes(2),
-            JitterFraction = 0,
+            OutboxBaseDelay = TimeSpan.FromSeconds(10),
+            OutboxMaxDelay = TimeSpan.FromMinutes(2),
+            OutboxJitterFraction = 0,
         };
 
         var schedule = Enumerable.Range(0, 10)

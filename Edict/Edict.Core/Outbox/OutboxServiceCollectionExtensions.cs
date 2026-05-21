@@ -23,12 +23,17 @@ public static class OutboxServiceCollectionExtensions
 {
     public static IServiceCollection AddEdictOutbox(
         this IServiceCollection services,
-        Action<EdictOutboxOptions>? configure = null)
+        Action<EdictOptions>? configure = null)
     {
-        var options = new EdictOutboxOptions();
-        configure?.Invoke(options);
+        if (configure is not null)
+        {
+            services.AddOptions<EdictOptions>().Configure(configure);
+        }
+        else
+        {
+            services.AddOptions<EdictOptions>();
+        }
 
-        services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, SendCommandExecutor>();

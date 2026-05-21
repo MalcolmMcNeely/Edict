@@ -10,6 +10,7 @@ using Edict.Core.Outbox;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Orleans.Providers;
 using Orleans.Runtime;
@@ -66,10 +67,15 @@ public abstract class EdictIdempotencyBase<TPayload>
     ClaimCheckUnwrap? _unwrap;
 
     /// <summary>
-    /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered.
-    /// Override in the subclass to tune for expected redelivery volume.
+    /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered
+    /// in the dedup window. The silo-wide default comes from
+    /// <see cref="EdictOptions.IdempotencyWindowSize"/>; override in a specific
+    /// subclass (e.g. a high-throughput singleton consumer) to use a different
+    /// window for that grain type.
     /// </summary>
-    protected virtual int RingSize => 100;
+    protected virtual int WindowSize =>
+        ServiceProvider.GetService<IOptions<EdictOptions>>()?.Value.IdempotencyWindowSize
+            ?? new EdictOptions().IdempotencyWindowSize;
 
     IdempotencyState Idempotency => base.State.Idempotency;
 
@@ -155,14 +161,14 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <see cref="OutboxEffectKind.InvokeHandler"/> entry carrying the envelope
     /// itself as its payload, in one atomic write. The engine's per-entry
     /// retry runs the fetch via <see cref="ClaimCheckUnwrap"/> inside
-    /// <c>InvokeHandlerExecutor</c>; on <see cref="EdictOutboxOptions.MaxAttempts"/>
+    /// <c>InvokeHandlerExecutor</c>; on <see cref="EdictOptions.OutboxMaxAttempts"/>
     /// exhaustion the standard dead-letter promotion synthesises an
     /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind
     /// and the original claim-check key.
     /// </summary>
     async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
     {
-        EnsureRingInitialized();
+        EnsureWindowInitialized();
 
         if (Contains(envelope.EventId))
         {
@@ -212,7 +218,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// </summary>
     protected virtual async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
-        EnsureRingInitialized();
+        EnsureWindowInitialized();
 
         if (Contains(evt.EventId))
         {
@@ -268,11 +274,11 @@ public abstract class EdictIdempotencyBase<TPayload>
         where TEvent : EdictEvent
         => handler(evt);
 
-    private protected void EnsureRingInitialized()
+    private protected void EnsureWindowInitialized()
     {
-        if (Idempotency.HandledEventIds.Length != RingSize)
+        if (Idempotency.HandledEventIds.Length != WindowSize)
         {
-            Idempotency.HandledEventIds = new Guid[RingSize];
+            Idempotency.HandledEventIds = new Guid[WindowSize];
             Idempotency.Head = 0;
             Idempotency.Count = 0;
         }
@@ -291,9 +297,9 @@ public abstract class EdictIdempotencyBase<TPayload>
     private protected void Commit(Guid eventId)
     {
         Idempotency.HandledEventIds[Idempotency.Head] = eventId;
-        Idempotency.Head = (Idempotency.Head + 1) % RingSize;
+        Idempotency.Head = (Idempotency.Head + 1) % WindowSize;
 
-        if (Idempotency.Count < RingSize)
+        if (Idempotency.Count < WindowSize)
         {
             Idempotency.Count++;
         }
@@ -315,7 +321,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             this.GetStreamProvider("edict"),
             new GrainReminderRegistrar(this),
             ServiceProvider.GetServices<IOutboxEffectExecutor>(),
-            ServiceProvider.GetRequiredService<EdictOutboxOptions>(),
+            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),

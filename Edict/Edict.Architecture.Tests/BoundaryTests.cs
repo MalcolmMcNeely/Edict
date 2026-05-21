@@ -148,4 +148,54 @@ public class BoundaryTests
             dir = dir.Parent;
         return dir?.FullName ?? AppContext.BaseDirectory;
     }
+
+    // ADR 0028: every tunable knob lives on an options class with its default
+    // in the constructor; literals in mechanism code are forbidden. This guard
+    // catches a regression like a future maintainer slipping a
+    // TimeSpan.FromMinutes(1) into the engine instead of surfacing it through
+    // EdictOptions. Options classes (filenames matching *Options.cs) are the
+    // sanctioned home for literals — the test scans every other source file
+    // in Edict.Core and Edict.Azure.
+    [Fact]
+    public void EdictMechanismCode_ShouldNotContainTimeSpanLiteralDefaults()
+    {
+        var solutionRoot = GetSolutionRoot();
+        var mechanismRoots = new[]
+        {
+            Path.Combine(solutionRoot, "Edict.Core"),
+            Path.Combine(solutionRoot, "Edict.Azure"),
+        };
+
+        var literalPattern = new System.Text.RegularExpressions.Regex(
+            @"TimeSpan\.From(Minutes|Seconds|Milliseconds|Hours)\s*\(\s*\d",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        var violations = new List<string>();
+        foreach (var root in mechanismRoots.Where(Directory.Exists))
+        {
+            foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+            {
+                if (file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
+                    || file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+                {
+                    continue;
+                }
+                if (Path.GetFileName(file).EndsWith("Options.cs", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var lines = File.ReadAllLines(file);
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    if (literalPattern.IsMatch(lines[i]))
+                    {
+                        violations.Add($"{file}:{i + 1}: {lines[i].Trim()}");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(violations);
+    }
 }

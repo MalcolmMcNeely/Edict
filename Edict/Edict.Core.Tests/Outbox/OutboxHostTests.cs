@@ -42,11 +42,11 @@ public sealed class OutboxHostTests
         Payload = [1, 2, 3],
     };
 
-    static EdictOutboxOptions PromotionOptions() => new()
+    static EdictOptions PromotionOptions() => new()
     {
-        MaxAttempts = 3,
-        BaseDelay = TimeSpan.FromSeconds(2),
-        JitterFraction = 0,
+        OutboxMaxAttempts = 3,
+        OutboxBaseDelay = TimeSpan.FromSeconds(2),
+        OutboxJitterFraction = 0,
     };
 
     static OutboxHost<EdictUnit> Host(
@@ -54,7 +54,7 @@ public sealed class OutboxHostTests
         FakeReminderRegistrar reminders,
         IOutboxEffectExecutor executor,
         FakeTimeProvider clock,
-        EdictOutboxOptions? options = null,
+        EdictOptions? options = null,
         IDeadLetterPromoter? promoter = null,
         Func<EdictEvent, Task>? deferredDispatch = null,
         ClaimCheckPolicy? claimCheckPolicy = null) =>
@@ -63,7 +63,7 @@ public sealed class OutboxHostTests
             FakeStreamProvider.Instance,
             reminders,
             [executor],
-            options ?? new EdictOutboxOptions(),
+            options ?? new EdictOptions(),
             clock,
             promoter ?? new UnusedPromoter(),
             grainKey: "00000000-0000-0000-0000-000000000000",

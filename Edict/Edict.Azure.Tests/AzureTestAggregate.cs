@@ -110,7 +110,7 @@ public sealed class AzureDedupTestConsumer : EdictIdempotencyBase, IAzureDedupTe
     private readonly List<Guid> _handledEventIds = [];
     private bool _throwOnNext;
 
-    protected override int RingSize => 3;
+    protected override int WindowSize => 3;
 
     protected override Task<bool> DispatchAsync(EdictEvent evt)
     {

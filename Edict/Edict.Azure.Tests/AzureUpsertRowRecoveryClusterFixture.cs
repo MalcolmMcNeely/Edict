@@ -87,20 +87,22 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
             siloBuilder.Services.AddSingleton(TimeProvider.System);
-            siloBuilder.Services.AddSingleton(new EdictOutboxOptions
+            siloBuilder.Services.Configure<EdictOptions>(o =>
             {
                 // Small deterministic backoff; default MaxAttempts so the
                 // failing window never dead-letters before recovery.
-                BaseDelay = TimeSpan.FromMilliseconds(200),
-                JitterFraction = 0,
+                o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
+                o.OutboxJitterFraction = 0;
             });
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableUpsertRowExecutor>();
             siloBuilder.Services.AddSingleton<IDeadLetterPromoter, DeadLetterPromoter>();
-            // AddEdict() registers the receiver-side ClaimCheckUnwrap that
-            // every EdictIdempotencyBase consumer resolves on the stream
-            // observer path (ADR 0024, slice 3).
-            siloBuilder.Services.AddEdict();
+            // Custom Azure provider wiring (test-only AzureControllableUpsertRowExecutor),
+            // so the fixture registers wiring markers manually rather than
+            // calling AddEdictAzureStreams/Persistence.
+            siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
+            siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             // PubSubStore stays on memory storage — Orleans's internal
             // pub-sub state is out of scope for the Edict substrate story
