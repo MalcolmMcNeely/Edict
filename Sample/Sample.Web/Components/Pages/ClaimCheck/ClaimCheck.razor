@@ -1,14 +1,69 @@
 @page "/claim-check"
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Orders.Commands
+@inject IEdictSender Sender
 
 <PageTitle>Claim Check</PageTitle>
 
 <h1>Claim Check</h1>
 
 <p>
-    This page will host a button that places an Order whose payload exceeds the
-    configured claim-check threshold, plus a pointer to the Aspire telemetry
-    dashboard where the <code>envelope.shape=ClaimCheck</code> tag becomes
-    visible on the publish span.
+    Claim Check is the framework's escape hatch for events whose serialized
+    payload would exceed the configured threshold. When the publish path detects
+    an oversize envelope it stores the body in blob storage and ships a small
+    reference through the queue; the receiver transparently unwraps the body
+    before delivery to handlers. The data plane is unchanged — there is no UI
+    signal on this page when claim-check engages.
 </p>
 
-<p><em>Available in an upcoming slice.</em></p>
+<p>
+    Claim Check is observed via telemetry rather than the data plane. Open the
+    Aspire dashboard and look at the publish span for the line-item event: when
+    the threshold trips, the span carries an
+    <code>envelope.shape=ClaimCheck</code> tag. The threshold in
+    <code>Sample.Silo/Program.cs</code> is demo-tuned to 4 KB so a single padded
+    line-item description trips the path.
+</p>
+
+<section>
+    <h2>Place oversize order</h2>
+    <p>
+        Fires a <code>PlaceOrderCommand</code> followed by an
+        <code>AddLineItemCommand</code> whose SKU is padded above the 4 KB
+        threshold. The resulting <code>LineItemAddedEvent</code> exceeds the
+        threshold and publishes through the Claim Check path.
+    </p>
+    <button @onclick="OnPlaceOversize">Place oversize order</button>
+    @if (!string.IsNullOrEmpty(_lastMessage))
+    {
+        <p><em>@_lastMessage</em></p>
+    }
+</section>
+
+@code {
+    string _lastMessage = "";
+
+    async Task OnPlaceOversize()
+    {
+        var orderId = Guid.NewGuid();
+        var place = await Sender.Send(new PlaceOrderCommand(orderId, "CLAIM-CHECK-DEMO"));
+        if (place is not EdictCommandResult.Accepted)
+        {
+            _lastMessage = $"Place was unexpectedly {Describe(place)}.";
+            return;
+        }
+
+        var paddedSku = "SKU-" + new string('X', 5000);
+        var lineItemId = Guid.NewGuid();
+        var add = await Sender.Send(new AddLineItemCommand(orderId, lineItemId, paddedSku, 1));
+        _lastMessage = add is EdictCommandResult.Accepted
+            ? $"Placed oversize order {orderId}. Check the Aspire dashboard for envelope.shape=ClaimCheck on the publish span."
+            : $"AddLineItem unexpectedly {Describe(add)}.";
+    }
+
+    static string Describe(EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected r
+            ? $"Rejected: {string.Join(", ", r.Reasons.Select(x => x.Code))}"
+            : "Accepted";
+}

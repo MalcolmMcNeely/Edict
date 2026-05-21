@@ -50,7 +50,10 @@ var host = Host.CreateDefaultBuilder(args)
         silo.AddEdictAzureStreams(o =>
         {
             o.StreamProviderName       = "edict";
-            o.ClaimCheckThresholdBytes = 30_720;
+            // Tuned for demo, not production: ClaimCheckThresholdBytes is lowered
+            // so the Claim Check button trips the oversize-event path on a
+            // single padded line item instead of needing realistic payload sizes.
+            o.ClaimCheckThresholdBytes = 4 * 1024;
             o.QueuePollingPeriod       = TimeSpan.FromMilliseconds(500);
             o.QueueServiceClient       = new QueueServiceClient(queueConnectionString);
         });

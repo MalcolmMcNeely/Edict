@@ -5,9 +5,30 @@
 <h1>Idempotency</h1>
 
 <p>
-    This page will explain the Event Handler dedup ring — framework-stamped
-    EventIds the consumer cannot forge — and link to the relevant telemetry on
-    the Aspire dashboard.
+    Every event the framework publishes carries a framework-stamped
+    <code>EventId</code>. Event Handlers run behind a per-handler dedup ring
+    keyed by <code>EventId</code>: if the same id arrives twice (the at-least-once
+    delivery guarantee permits this), the second invocation is a no-op. The
+    ring's size is tuned via <code>EdictOptions.IdempotencyWindowSize</code>
+    (set in <code>Sample.Silo/Program.cs</code>) — large enough to absorb the
+    reorder window the stream provider can produce.
 </p>
 
-<p><em>Available in an upcoming slice.</em></p>
+<p>
+    This page is prose only. There is no button. A consumer cannot mint a
+    duplicate <code>EventId</code> from the data plane — the field is stamped
+    inside the framework as the event is constructed, before publish. The only
+    way to artificially repeat an id would be a chaos seam on the outbox, and
+    that would tax every event flowing through the common path. We considered
+    the demo value of an interactive duplicate-and-watch-it-be-dropped button
+    insufficient to justify the cost, so the demonstration is left to the
+    framework's own tests.
+</p>
+
+<p>
+    The dedup ring is part of <code>EdictIdempotencyBase</code>, which every
+    consumer's Event Handler inherits transitively via
+    <code>EdictEventHandler</code>. Chaos delivery (always-on under
+    <code>Edict.Testing</code>) exercises this path implicitly in every
+    multi-step workflow test in the framework test suites.
+</p>
