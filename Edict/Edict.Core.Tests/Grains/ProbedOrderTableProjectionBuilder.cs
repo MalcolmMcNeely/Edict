@@ -9,8 +9,29 @@ using MessagePack;
 
 using Orleans;
 using Orleans.Runtime;
+using Orleans.Streams;
 
 namespace Edict.Core.Tests.Grains;
+
+public interface IProjectionPublisherGrain : IGrainWithGuidKey
+{
+    Task PublishToStreamAsync(string streamName, EdictEvent evt);
+}
+
+/// <summary>
+/// Test-only grain: publishes any event directly to a named domain stream,
+/// bypassing EdictCommandHandler. Used by mechanism tests to inject events
+/// with known EventIds.
+/// </summary>
+public sealed class ProjectionPublisherGrain : Grain, IProjectionPublisherGrain
+{
+    public Task PublishToStreamAsync(string streamName, EdictEvent evt)
+    {
+        var stream = this.GetStreamProvider("edict")
+            .GetStream<EdictEvent>(StreamId.Create(streamName, this.GetPrimaryKey()));
+        return stream.OnNextAsync(evt);
+    }
+}
 
 /// <summary>Table row for the probed table-projection mechanism tests.</summary>
 [GenerateSerializer]

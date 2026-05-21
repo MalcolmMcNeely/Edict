@@ -14,6 +14,8 @@ using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 
+using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Serialization;
@@ -131,6 +133,8 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
+            siloBuilder.Services.AddSingleton<IValidator<AzureValidateSkuCommand>, AzureSkuRequiredValidator>();
+            siloBuilder.Services.AddSingleton<IValidator<AzureStateCheckCommand>, AzureGrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));

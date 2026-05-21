@@ -1,15 +1,14 @@
 using Edict.Azure.TableStorage;
 
-namespace Edict.Azure.Tests;
+namespace Edict.Azure.Tests.Projections;
 
 /// <summary>
 /// End-to-end test proving the Azure Table Storage write seam: grain writes via
 /// <see cref="AzureTableWriteStoreFactory"/>, consumer reads back via
 /// <see cref="AzureTableRepository{T}"/>. One test suffices to prove the Azure round-trip.
-/// Relocated from Edict.Core.Tests per ADR 0016 (provider-scoped test layering).
 /// </summary>
 [Collection(AzureClusterCollection.Name)]
-public sealed class TableProjectionBuilderAzureE2ETests(AzureClusterFixture fixture)
+public sealed class TableProjectionBuilderWritesRowTests(AzureClusterFixture fixture)
 {
     [Fact]
     public async Task HandleAsync_ShouldWriteRowReadableViaAzureTableRepository()

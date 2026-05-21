@@ -1,18 +1,24 @@
 using System.Diagnostics;
+
 using Edict.Contracts.Commands;
 using Edict.Telemetry;
 
-namespace Edict.Core.Tests.Grains;
+namespace Edict.Azure.Tests.Commands;
 
-[Collection(EdictClusterCollection.Name)]
-public sealed class CommandValidatorTests(EdictClusterFixture fixture)
+/// <summary>
+/// Azurite/Testcontainers conformance for the FluentValidation pipeline on
+/// command dispatch (ADR 0009 / ADR 0029): validator failure → Rejected
+/// envelope, not a thrown exception; validator success delegates to Handle;
+/// grain state is injected into RootContextData. Lifted from
+/// <c>CommandValidatorTests</c> in Core.Tests.
+/// </summary>
+[Collection(AzureClusterCollection.Name)]
+public sealed class CommandValidatorTests(AzureClusterFixture fixture)
 {
-    // Tracer bullet: the core contract — validator failure → Rejected envelope,
-    // not a thrown exception.
     [Fact]
     public async Task Validator_ShouldReturnRejectedWithMappedReasons_WhenValidationFails()
     {
-        var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
+        var result = await fixture.Sender.Send(new AzureValidateSkuCommand(Guid.NewGuid(), string.Empty));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
@@ -22,7 +28,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     [Fact]
     public async Task Validator_ShouldAllowHandleToRunAndReturnAccepted_WhenValidationPasses()
     {
-        var result = await fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
+        var result = await fixture.Sender.Send(new AzureValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -30,8 +36,8 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     [Fact]
     public async Task Handle_ShouldDispatchCommandNormally_WhenNoValidatorPresent()
     {
-        // PlaceOrderCommand has no registered validator in this cluster.
-        var result = await fixture.Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
+        // AzurePlaceOrderCommand has no registered validator in this cluster.
+        var result = await fixture.Sender.Send(new AzurePlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -49,7 +55,7 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
         ActivitySource.AddActivityListener(listener);
 
         var orderId = Guid.NewGuid();
-        await fixture.Sender.Send(new ValidateSkuCommand(orderId, string.Empty));
+        await fixture.Sender.Send(new AzureValidateSkuCommand(orderId, string.Empty));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem("edict.command.route_key")));
         Assert.Equal(ActivityStatusCode.Unset, span.Status);
@@ -58,11 +64,11 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     [Fact]
     public async Task Validator_ShouldReceiveGrainStateViaRootContextData()
     {
-        // GrainStateRequiredValidator rejects with "missing_state" if
-        // RootContextData[GrainState] is absent or null. OrderCommandHandler overrides
-        // GetValidationState() to return a non-null marker, so the command
-        // passes → Accepted proves injection happened.
-        var result = await fixture.Sender.Send(new StateCheckCommand(Guid.NewGuid()));
+        // AzureGrainStateRequiredValidator rejects with "missing_state" if
+        // RootContextData[GrainState] is absent or null. AzureOrderCommandHandler
+        // overrides GetValidationState() to return a non-null marker, so the
+        // command passes → Accepted proves injection happened.
+        var result = await fixture.Sender.Send(new AzureStateCheckCommand(Guid.NewGuid()));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -75,8 +81,8 @@ public sealed class CommandValidatorTests(EdictClusterFixture fixture)
     public async Task ConcurrentCommands_ShouldCompleteWithoutInterleaving_WhenTargetingSameGrain()
     {
         var orderId = Guid.NewGuid();
-        var t1 = fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-A"));
-        var t2 = fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-B"));
+        var t1 = fixture.Sender.Send(new AzureValidateSkuCommand(orderId, "SKU-A"));
+        var t2 = fixture.Sender.Send(new AzureValidateSkuCommand(orderId, "SKU-B"));
         var results = await Task.WhenAll(t1, t2);
 
         Assert.All(results, r => Assert.IsType<EdictCommandResult.Accepted>(r));
