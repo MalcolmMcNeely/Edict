@@ -1,0 +1,14 @@
+{
+  EntryId: {Scrubbed},
+  Kind: PublishEvent,
+  AttemptCount: 2,
+  DeadLetteredAt: {Scrubbed},
+  SourceGrainKey: {Scrubbed},
+  SourceGrainType: Edict.Azure.Tests.Outbox.AzureCounterAggregate,
+  EffectTarget: AzureCounters/AzureCounterIncrementedEvent,
+  TraceParent: {Scrubbed},
+  ExceptionType: System.InvalidOperationException,
+  Reason: controllable publish failure (azure outbox test),
+  PayloadJson: {Scrubbed},
+  SourceEventId: {Scrubbed}
+}
