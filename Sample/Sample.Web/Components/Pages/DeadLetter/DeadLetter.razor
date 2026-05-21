@@ -1,0 +1,14 @@
+@page "/dead-letter"
+
+<PageTitle>Dead Letter</PageTitle>
+
+<h1>Dead Letter</h1>
+
+<p>
+    This page will host three buttons that trigger permanent failures — a
+    handler throw (POISON cancel reason), a saga-dispatched command that the
+    target handler always rejects, and a Command Validator rejection — plus the
+    live contents of the dead-letter projection.
+</p>
+
+<p><em>Available in an upcoming slice.</em></p>

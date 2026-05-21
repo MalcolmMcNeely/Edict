@@ -17,7 +17,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sample.Silo/Sample.Silo.csproj" />
-        <ProjectReference Include="../Sample.Api/Sample.Api.csproj" />
+        <ProjectReference Include="../Sample.Web/Sample.Web.csproj" />
     </ItemGroup>
 
 </Project>

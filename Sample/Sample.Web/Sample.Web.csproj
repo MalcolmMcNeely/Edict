@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Sample.Api</RootNamespace>
+        <RootNamespace>Sample.Web</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

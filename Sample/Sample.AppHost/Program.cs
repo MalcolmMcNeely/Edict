@@ -16,7 +16,8 @@ builder.AddProject<Projects.Sample_Silo>("silo")
     .WithReference(queues)
     .WithReference(tables)
     .WithReference(blobs);
-builder.AddProject<Projects.Sample_Api>("api")
-    .WithReference(tables);
+builder.AddProject<Projects.Sample_Web>("web")
+    .WithReference(tables)
+    .WithReference(blobs);
 
 await builder.Build().RunAsync();
