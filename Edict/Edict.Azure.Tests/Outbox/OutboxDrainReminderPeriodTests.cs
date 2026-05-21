@@ -1,7 +1,7 @@
 namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
-/// ADR 0028 wiring proof on Azurite: <see cref="EdictOptions.OutboxDrainReminderPeriod"/>
+/// wiring proof on Azurite: <see cref="EdictOptions.OutboxDrainReminderPeriod"/>
 /// flows through <c>AddEdict(o =&gt; ...)</c> on the silo, and a failing
 /// drain registers the lazy <c>edict-outbox-drain</c> reminder. The pure-
 /// logic equivalent in <c>Edict.Core.Tests</c> proved the exact period value

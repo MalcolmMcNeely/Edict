@@ -8,7 +8,7 @@ namespace Edict.Azure.Tests.Outbox;
 /// caller still sees <c>Accepted</c>, the State mutation persists (no
 /// rollback), the entry stays pending (stop-at-head), and a lazy Reminder is
 /// registered. Once downstream heals and the Reminder fires, the pending
-/// entry publishes and the Reminder unwinds to zero (ADR 0018).
+/// entry publishes and the Reminder unwinds to zero.
 /// Lifted from <c>OutboxRecoveryTests</c>; now exercises real Azure Blob
 /// grain storage and the real reminder service path against Azurite.
 /// </summary>
@@ -39,7 +39,7 @@ public sealed class OutboxRecoveryAfterCrashTests(AzureOutboxRecoveryClusterFixt
 
         // Recovery: downstream heals, the Reminder's drain publishes the
         // still-pending entry, and once the Outbox is empty it unregisters
-        // itself (zero reminders in steady state — ADR 0018).
+        // itself (zero reminders in steady state).
         AzureControllableOutboxExecutor.ShouldFail = false;
         await Task.Delay(TimeSpan.FromMilliseconds(500));
         await probe.ForceDrainViaReminderAsync();

@@ -3,8 +3,8 @@ using Edict.Azure.TableStorage;
 namespace Edict.Azure.Tests;
 
 /// <summary>
-/// ADR 0016 provider conformance proof that ADR 0012's double-apply gap is
-/// <b>closed</b> (ADR 0018). Over the real Azure Queue stream + real Azure
+/// provider conformance proof that's double-apply gap is
+/// <b>closed</b>. Over the real Azure Queue stream + real Azure
 /// Table stack (Azurite via Testcontainers): a crash between the ring/outbox
 /// commit and the row write leaves no row written; on the recovery drain the
 /// <c>UpsertRow</c> effect applies the row, and the dedup ring (committed

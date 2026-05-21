@@ -6,7 +6,7 @@ namespace Edict.Core.Sagas;
 /// Orleans grain-interface root for every saga. The
 /// <see cref="EdictSagaGenerator"/>-emitted <c>I{Saga}</c> partial interface
 /// derives from this, mirroring <c>IEdictProjectionBuilder</c> for the
-/// projection role (ADR 0020). Consumer-facing surface, so brand-prefixed.
+/// projection role. Consumer-facing surface, so brand-prefixed.
 /// <para>
 /// <see cref="GetEdictProgressAsync"/> is the framework's typed-state probe
 /// for tests (and operator inspection): every saga exposes its durable

@@ -5,7 +5,7 @@ using Edict.Telemetry;
 namespace Edict.Azure.Tests.EventHandler;
 
 /// <summary>
-/// ADR 0003 trace-context stitch end-to-end on the real Azure Queue transport:
+/// trace-context stitch end-to-end on the real Azure Queue transport:
 /// a command raises an event, the framework publish span fires from the outbox
 /// publish executor, the deferred-invocation span (raised when the
 /// InvokeHandler executor drains the staged entry) hangs off the publish

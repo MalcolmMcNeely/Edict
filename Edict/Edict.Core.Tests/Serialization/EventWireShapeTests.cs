@@ -7,7 +7,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// ADR 0007 schema-drift guard for Events. Mirrors CommandWireShapeTests: each
+// schema-drift guard for Events. Mirrors CommandWireShapeTests: each
 // test serialises a concrete event to MessagePack bytes, converts to JSON, and
 // snapshots the result. A renamed or removed property changes the string key
 // and fails CI before the breaking wire change can ship silently. Fixed inputs

@@ -7,7 +7,7 @@ namespace Edict.Azure.Tests.Commands;
 
 /// <summary>
 /// Azurite/Testcontainers conformance for the FluentValidation pipeline on
-/// command dispatch (ADR 0009 / ADR 0029): validator failure → Rejected
+/// command dispatch: validator failure → Rejected
 /// envelope, not a thrown exception; validator success delegates to Handle;
 /// grain state is injected into RootContextData. Lifted from
 /// <c>CommandValidatorTests</c> in Core.Tests.

@@ -4,7 +4,7 @@ namespace Edict.Azure.Tests.EventHandler;
 
 /// <summary>
 /// Azurite/Testcontainers conformance for the <c>EdictEventHandler</c>
-/// stream-callback path (ADR 0023). Publishing a handled event onto the real
+/// stream-callback path. Publishing a handled event onto the real
 /// Azure Queue stream provider lands one invocation of the consumer's
 /// <c>Handle</c> — observably, via the handler probe — without any
 /// in-memory shortcut. Lifted from <c>EdictEventHandlerStreamCallbackTests</c>

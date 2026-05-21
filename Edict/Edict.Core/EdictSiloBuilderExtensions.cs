@@ -8,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 namespace Edict.Core;
 
 /// <summary>
-/// Silo-side installation surface (ADR 0028). Three <see cref="ISiloBuilder"/>
+/// Silo-side installation surface. Three <see cref="ISiloBuilder"/>
 /// extensions replace the previous seven-call interleaving of
 /// <c>silo.Services.AddEdict*</c> and Orleans silo-builder calls. The streams
 /// and persistence provider extensions live in the provider assembly so the

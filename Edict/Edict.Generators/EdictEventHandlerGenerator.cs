@@ -11,13 +11,13 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the event-handler spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.EventHandler.EdictEventHandler</c> (ADR 0023): the Orleans
+/// <c>Edict.Core.EventHandler.EdictEventHandler</c>: the Orleans
 /// grain interface, one <c>[ImplicitStreamSubscription]</c> per unique stream
 /// across the grain's <c>Handle(TEvent)</c> overloads, a <c>DispatchAsync</c>
-/// type-switch with per-event handler spans (ADR 0003), and — distinct from
+/// type-switch with per-event handler spans, and — distinct from
 /// projection-builder / saga emit — a synchronous <c>HandlesType</c> pre-flight
 /// the stream-callback path uses to gate ring-slot consumption so an unhandled
-/// event type stays a pure no-op (ADR 0023, contracts-vs-roles consequence).
+/// event type stays a pure no-op (a contracts-vs-roles consequence).
 /// <para>
 /// Mirrors <see cref="EdictProjectionGenerator"/> shape-for-shape with the
 /// additional <c>HandlesType</c> emit; the contract change is invisible to
@@ -26,8 +26,8 @@ namespace Edict.Generators;
 /// <c>EdictEventHandler</c>'s overridden stream callback).
 /// </para>
 /// <para>
-/// ADR 0005: this generator references no Edict assembly. It matches Edict's
-/// base type and annotations purely by fully-qualified name.
+/// This generator references no Edict assembly. It matches Edict's base type
+/// and annotations purely by fully-qualified name.
 /// </para>
 /// </summary>
 [Generator]
@@ -160,7 +160,7 @@ public sealed class EdictEventHandlerGenerator : IIncrementalGenerator
         // edict.event.handle span — the InvokeHandlerExecutor already opened
         // one outer-span using the entry's captured traceparent so the
         // deferred invocation nests correctly under the publish span across
-        // backoff (ADR 0003 / ADR 0023). Adding a per-arm span here would
+        // backoff. Adding a per-arm span here would
         // double-wrap every invocation as two sibling spans under publish.
         var dispatchArms = new StringBuilder();
         foreach (var handler in grain.Handlers)

@@ -28,7 +28,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Azurite-backed cluster for the receiver-side missing-blob dead-letter loop
-/// (ADR 0026, supersedes ADR 0024 slice 3) against the real Azure provider
+/// against the real Azure provider
 /// stack: Azure Blob claim-check store, Azure Queue streams, Azure Blob grain
 /// storage, Azure Table dead-letter projection. Tunes
 /// <see cref="EdictOptions.OutboxMaxAttempts"/> down to 3 and shrinks the

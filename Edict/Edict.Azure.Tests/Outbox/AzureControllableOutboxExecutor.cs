@@ -11,7 +11,7 @@ namespace Edict.Azure.Tests.Outbox;
 /// a flippable <see cref="OutboxEffectKind.PublishEvent"/> executor so the
 /// conformance tests can simulate a crash between the ring/outbox commit and
 /// the publish, then drive a recovery drain against the <b>real Azure Queue +
-/// Azure Blob</b> stack (ADR 0018/0029). Delegates to the real
+/// Azure Blob</b> stack. Delegates to the real
 /// <see cref="PublishEventExecutor"/> when not failing, so a successful drain
 /// actually publishes to the stream.
 /// </summary>

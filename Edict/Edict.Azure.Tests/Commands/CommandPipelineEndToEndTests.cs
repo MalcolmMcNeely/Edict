@@ -3,7 +3,7 @@ using Edict.Contracts.Commands;
 namespace Edict.Azure.Tests.Commands;
 
 /// <summary>
-/// Azurite/Testcontainers conformance for the command pipeline (ADR 0029):
+/// Azurite/Testcontainers conformance for the command pipeline:
 /// <c>IEdictSender.Send</c> routes a command to its handler and surfaces the
 /// outcome envelope (Accepted/Rejected) across the real Azure-substrate
 /// cluster. Lifted from <c>CommandPipelineEndToEndTests</c> in Core.Tests so

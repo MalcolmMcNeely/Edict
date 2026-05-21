@@ -23,11 +23,11 @@ namespace Edict.Azure.Tests;
 /// Azurite-backed cluster with a real <see cref="PublishEventExecutor"/> (so the
 /// published event reaches the projection over the <b>real Azure Queue
 /// stream</b>) and a flippable <see cref="AzureControllableUpsertRowExecutor"/>
-/// writing to <b>real Azure Table Storage</b>. Drives the ADR-0016 provider
-/// conformance proof that ADR 0012's double-apply gap is closed: a crash
+/// writing to <b>real Azure Table Storage</b>. Drives the provider
+/// conformance proof that's double-apply gap is closed: a crash
 /// between the ring/outbox commit and the row write recovers effectively-once.
 /// Shares the assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>) and
-/// uses per-fixture Guid-prefixed container/table names (ADR 0029).
+/// uses per-fixture Guid-prefixed container/table names.
 /// </summary>
 public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
 {
@@ -134,10 +134,9 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableUpsertRowExecutor>();
             siloBuilder.UseInMemoryReminderService();
             // PubSubStore stays on memory storage — Orleans's internal
-            // pub-sub state is out of scope for the Edict substrate story
-            // (ADR 0025 keeps it on Tables in production).
+            // pub-sub state is out of scope for the Edict substrate story.
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            // edict-state on Azure Blob (ADR 0025) — provider conformance
+            // edict-state on Azure Blob — provider conformance
             // tests must exercise the same substrate the sample silo wires.
             // Container is Guid-prefixed for cross-collection isolation.
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>

@@ -2,7 +2,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Single source of truth for fully-qualified type names used by generators and
-/// analyzers to match Edict's public surface by FQN (ADR 0005 / ADR 0013).
+/// analyzers to match Edict's public surface by FQN.
 /// Referenced by both generator assemblies when they split; do not inline these
 /// strings into individual files.
 /// </summary>

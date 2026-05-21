@@ -3,7 +3,7 @@ namespace Edict.Azure.Tests;
 /// <summary>
 /// A Guid-prefixed bundle of Azurite resource names for a single test or
 /// fixture instance. Cross-collection isolation is the whole point: two
-/// collections sharing the assembly-scoped Azurite (ADR 0029) must not collide
+/// collections sharing the assembly-scoped Azurite must not collide
 /// on table, queue, or blob container names. Tests that create ad-hoc
 /// resources (per-test tables or claim-check containers) construct one of
 /// these via <c>fixture.NewResourceNames()</c>; fixtures use one of their own

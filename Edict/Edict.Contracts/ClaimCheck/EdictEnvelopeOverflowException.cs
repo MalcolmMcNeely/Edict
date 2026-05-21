@@ -3,7 +3,7 @@ namespace Edict.Contracts.ClaimCheck;
 /// <summary>
 /// Thrown at the Outbox commit boundary when the envelope-wrapped bytes
 /// of a single event still exceed the storage per-property cap after the
-/// claim-check threshold has been applied (ADR 0024). Carries the route
+/// claim-check threshold has been applied. Carries the route
 /// key, event type, and measured byte length so the operator sees a
 /// designed framework failure instead of an Azure Table 400 surfaced
 /// from deep inside Orleans's storage layer.

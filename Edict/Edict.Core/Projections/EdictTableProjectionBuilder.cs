@@ -16,15 +16,15 @@ namespace Edict.Core.Projections;
 
 /// <summary>
 /// Projection builder whose read model lives in an external keyed store so grain
-/// activation stays small regardless of how large the model grows (ADR 0012 / ADR 0015).
+/// activation stays small regardless of how large the model grows.
 /// The backing store is supplied via <see cref="IEdictTableStoreFactory"/>; Azure is
 /// one implementation — a future DynamoDB or in-memory provider implements the same seam.
 /// <para>
 /// The row write is expressed as an <see cref="OutboxEffectKind.UpsertRow"/>
 /// effect committed atomically with the dedup-ring commit in the one
-/// grain-state write, then drained at-least-once (ADR 0018). The upsert is
+/// grain-state write, then drained at-least-once. The upsert is
 /// idempotent by pk/rk (a full-row replace), so at-least-once redelivery of the
-/// effect does not double-apply. This <b>closes</b> ADR 0012's former
+/// effect does not double-apply. This closes the former table-projection
 /// double-apply gap — it is no longer an accepted limitation.
 /// </para>
 /// </summary>
@@ -49,7 +49,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// the event's <c>[EdictRouteKey]</c> Guid, making it the natural PartitionKey.
     /// Global-singleton projections override to use a different strategy (e.g. the
     /// built-in dead-letter projection collapses every entry into one fixed
-    /// partition for cheap fleet-wide reads, ADR 0022).
+    /// partition for cheap fleet-wide reads).
     /// </summary>
     protected virtual string DefaultPartitionKey => this.GetPrimaryKey().ToString();
 
@@ -75,7 +75,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// direct handler call; this override loads the row, runs the handler, then
     /// stages the computed row as an <see cref="OutboxEffectKind.UpsertRow"/>
     /// effect (the actual store write happens in the engine drain, atomic with
-    /// the dedup-ring commit — ADR 0018).
+    /// the dedup-ring commit).
     /// </summary>
     protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
     {
@@ -104,7 +104,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
 
     OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, T row)
     {
-        // ADR 0027: the row type identity that travels with the effect is the
+        // The row type identity that travels with the effect is the
         // frozen [Alias] literal, captured here via TypeConverter.Format so the
         // string that survives a class rename is what the drain resolves with
         // TypeConverter.Parse. Replaces the previous AssemblyQualifiedName hop
@@ -120,7 +120,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         };
 
         // Nest the deferred upsert under the live handle span as parent-child,
-        // even when a crash-recovery drain runs much later (ADR 0003).
+        // even when a crash-recovery drain runs much later.
         var current = Activity.Current;
         var traceParent = current is not null
             ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())

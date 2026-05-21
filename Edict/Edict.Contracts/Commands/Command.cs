@@ -7,7 +7,7 @@ namespace Edict.Contracts.Commands;
 /// aggregate grain via a direct grain call. Concrete commands derive from this.
 /// Carries only a framework-assigned <see cref="CommandId"/>; it deliberately
 /// holds no trace-correlation fields because a direct grain call propagates
-/// <see cref="System.Diagnostics.Activity"/> context natively (ADR 0003).
+/// <see cref="System.Diagnostics.Activity"/> context natively.
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
 public abstract record EdictCommand

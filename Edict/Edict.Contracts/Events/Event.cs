@@ -6,9 +6,9 @@ namespace Edict.Contracts.Events;
 /// Base for a notification that state has changed, published to a domain
 /// stream after a Command Handler returns <c>Accepted</c>. Concrete events
 /// derive from this and carry only their domain payload; all framework fields
-/// are stamped at flush by the runtime (ADR 0011). W3C trace fields stitch
+/// are stamped at flush by the runtime. W3C trace fields stitch
 /// the <c>Command → Publish → Handle</c> chain as parent-child spans across
-/// the stream hop (ADR 0003).
+/// the stream hop.
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
 public abstract record EdictEvent

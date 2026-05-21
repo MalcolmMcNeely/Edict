@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace Edict.Telemetry.Tests;
 
 /// <summary>
-/// Integration tests: the Command → Publish → Handle span tree (ADR 0003).
+/// Integration tests: the Command → Publish → Handle span tree.
 /// Asserts EdictDiagnostics lives in Edict.Telemetry and the span shape is intact.
 /// </summary>
 [Collection(TelemetryClusterCollection.Name)]

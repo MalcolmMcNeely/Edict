@@ -7,7 +7,7 @@ using Sample.Contracts.Orders.Events;
 namespace Sample.Silo.Orders;
 
 /// <summary>
-/// Sample <see cref="EdictEventHandler"/> (ADR 0023): reacts to
+/// Sample <see cref="EdictEventHandler"/>: reacts to
 /// <see cref="OrderPlacedEvent"/> by simulating an order-confirmation email
 /// send. The Sample app stays self-contained per CONTEXT.md — no real SMTP — but
 /// rides the same Azurite-backed Outbox/dead-letter pipeline that ships in

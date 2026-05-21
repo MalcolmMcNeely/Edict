@@ -5,8 +5,8 @@ using Edict.Telemetry;
 namespace Edict.Azure.Tests.Sagas;
 
 /// <summary>
-/// ADR 0003 trace-context stitch end-to-end on the real Azure Queue + Azure
-/// Blob substrate (ADR 0029) for the saga Event→Command hop: the dispatched
+/// trace-context stitch end-to-end on the real Azure Queue + Azure
+/// Blob substrate for the saga Event→Command hop: the dispatched
 /// command's span tree nests under the saga's handle span as parent-child
 /// across the in-grain dispatch (no Azure Queue hop on the command leg — the
 /// SendCommand outbox effect resolves via <c>IEdictSender</c>). This guards

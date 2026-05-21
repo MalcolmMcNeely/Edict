@@ -6,7 +6,7 @@ using Edict.Contracts.Configuration;
 namespace Edict.Azure.Tests.Load;
 
 /// <summary>
-/// Liveness + invariants load test (parent PRD #83, ADR 0029, this slice #98).
+/// Liveness + invariants load test (parent PRD #83, this slice #98).
 /// Dispatches 1000 commands across 1000 unique aggregates against Azurite, then
 /// waits for the downstream projection effect (not the handler return) and
 /// asserts three invariants:

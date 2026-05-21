@@ -8,11 +8,11 @@ namespace Edict.Testing.Chaos;
 /// rely on exactly-once. <see cref="EdictTestAppBuilder.WithoutChaos"/>
 /// disables it; <see cref="EdictTestAppBuilder.WithChaosSeed"/> overrides the
 /// seed. <see cref="InvocationsEnabled"/> is the per-axis gate for
-/// <c>EdictEventHandler</c> deliveries (ADR 0023, issue #67): default
+/// <c>EdictEventHandler</c> deliveries: default
 /// <b>off</b> so a consumer's mock-call-count assertions are deterministic
 /// before the consumer has reasoned about chaos; opt-in via
 /// <see cref="EdictTestAppBuilder.WithChaosForInvocations"/>. Internal: no
-/// consumer types it directly (ADR 0017 brand rule).
+/// consumer types it directly (brand rule).
 /// </summary>
 sealed record ChaosOptions(
     bool Enabled,
@@ -24,9 +24,9 @@ sealed record ChaosOptions(
     /// <summary>The shipped default: chaos on, fixed seed, half of all
     /// publishes are duplicated once, but <see cref="EdictEventHandler"/>
     /// deliveries are excluded so a consumer's first event-handler test
-    /// surfaces deterministic mock counts (ADR 0023). The fixed default
+    /// surfaces deterministic mock counts. The fixed default
     /// keeps the Verify snapshot stable run-to-run; the duplicate redelivery
-    /// exercises the dedup ring (ADR 0002) on every saga/projection test
+    /// exercises the dedup ring on every saga/projection test
     /// for free.</summary>
     public static ChaosOptions Default { get; } = new(
         Enabled: true,

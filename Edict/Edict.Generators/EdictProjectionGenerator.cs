@@ -14,13 +14,13 @@ namespace Edict.Generators;
 /// <c>Edict.Core.Projections.EdictProjectionBuilder</c>: the Orleans grain interface,
 /// one <c>[ImplicitStreamSubscription]</c> per unique stream across the grain's
 /// <c>Handle(TEvent)</c> overloads, and a <c>DispatchAsync</c> type-switch with
-/// per-event handler spans (ADR 0003). Stream wiring is pure-implicit and lives
+/// per-event handler spans. Stream wiring is pure-implicit and lives
 /// on <c>EdictIdempotencyBase</c> (the implicit-subscription guide's canonical
 /// shape — the hybrid pattern broke referenced-assembly memory-stream delivery
 /// in #53), so the generator emits nothing stream-binding beyond the attribute.
 /// <para>
-/// ADR 0005: this generator references no Edict assembly. It matches Edict's
-/// base type and annotations purely by fully-qualified name.
+/// This generator references no Edict assembly. It matches Edict's base type
+/// and annotations purely by fully-qualified name.
 /// </para>
 /// </summary>
 [Generator]

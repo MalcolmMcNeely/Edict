@@ -2,7 +2,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Receiver-side claim-check conformance against the real Azure stack
-/// (ADR 0024 slice 3, ADR 0026): a pointer-bearing <c>EdictEventEnvelope</c>
+///: a pointer-bearing <c>EdictEventEnvelope</c>
 /// arrives at an <c>EdictEventHandler</c> via the real Azure Queue Storage
 /// stream. The consumer base's stream observer stages an
 /// <c>OutboxEffectKind.InvokeHandler</c> entry; the engine's

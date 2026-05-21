@@ -2,7 +2,7 @@ namespace Edict.Azure.Tests.Projections;
 
 /// <summary>
 /// Azurite/Testcontainers conformance for <c>EdictProjectionBuilder</c>
-/// (ADR 0029): an accepted command's raised event is delivered to the
+///: an accepted command's raised event is delivered to the
 /// per-aggregate projection grain; an unhandled event on the same stream is
 /// a pure no-op. Lifted from <c>ProjectionBuilderTests</c> in Core.Tests.
 /// The publish→handle span stitch across the Azure Queue hop is proved once

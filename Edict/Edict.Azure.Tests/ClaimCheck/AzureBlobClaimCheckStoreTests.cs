@@ -8,7 +8,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Azurite-backed conformance for <see cref="AzureBlobClaimCheckStore"/>
-/// (ADR 0024). Uses the assembly-shared Azurite (ADR 0029) and a per-class
+///. Uses the assembly-shared Azurite and a per-class
 /// Guid-prefixed container so it never collides with other tests against the
 /// same Azurite. The test does not need a <see cref="TestCluster"/> — it
 /// exercises the blob store directly.
@@ -67,7 +67,7 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
     [Fact]
     public void AzureBlobClaimCheckStore_ShouldNotExposeDeleteApi()
     {
-        // Append-only invariant (Model B, ADR 0024). The seam already forbids
+        // Append-only invariant (Model B). The seam already forbids
         // DeleteAsync; this guard is a belt-and-braces structural check that
         // the Azure provider does not add one through a side door.
         var method = typeof(AzureBlobClaimCheckStore).GetMethod("DeleteAsync");

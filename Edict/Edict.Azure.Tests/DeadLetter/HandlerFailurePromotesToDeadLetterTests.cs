@@ -6,7 +6,7 @@ using Edict.Core.DeadLetter;
 namespace Edict.Azure.Tests.DeadLetter;
 
 /// <summary>
-/// Full-loop coverage of ADR 0022 against the real Azure stack: a permanent
+/// Full-loop coverage of against the real Azure stack: a permanent
 /// publish failure on an aggregate's raised event drives the engine through
 /// <see cref="Contracts.Configuration.EdictOptions.OutboxMaxAttempts"/> retries
 /// and into the promotion path. The engine swaps the failing entry for an
@@ -17,7 +17,7 @@ namespace Edict.Azure.Tests.DeadLetter;
 /// <para>
 /// Lifted from <c>Edict.Core.Tests/DeadLetter/DeadLetterEndToEndTests</c>
 /// (now removed) — the in-memory cluster did not exercise the real Azure Queue
-/// + Azure Blob transport ADR 0022 is meant to survive (ADR 0029). The smoke
+/// + Azure Blob transport is meant to survive. The smoke
 /// version in <c>Outbox/OutboxDeadLetterPromotionTests</c> only asserted
 /// <c>SourceGrainKey</c>; this version pins every RCA field plus a Verify
 /// snapshot so any drift in the promoted row's shape trips CI.
@@ -52,7 +52,7 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
         // (EdictDeadLetterRaised) at the tail. Heal the controllable so the
         // dead-letter event itself publishes — without this flip the controllable
         // would fail every promoted entry too, looping promotions and never
-        // landing the row (ADR 0026: the promoted entry rides the same backoff /
+        // landing the row (the promoted entry rides the same backoff /
         // max-attempts rules as any other PublishEvent).
         AzureControllableOutboxExecutor.ShouldFail = false;
 

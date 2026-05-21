@@ -107,11 +107,11 @@ public sealed class ApiFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(_tableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(_tableServiceClient));
-            // PubSubStore stays on Tables — Orleans-internal, bounded shape, not subject to Outbox-growth dynamics. ADR 0025.
+            // PubSubStore stays on Tables — Orleans-internal, bounded shape, not subject to Outbox-growth dynamics..
             siloBuilder.AddAzureTableGrainStorage("PubSubStore", options =>
                 options.TableServiceClient = _tableServiceClient);
             // edict-state on Azure Blob — mirrors Sample.Silo so the integration
-            // tests exercise the same substrate as production. ADR 0025.
+            // tests exercise the same substrate as production..
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
             {
                 options.BlobServiceClient = _blobServiceClient;

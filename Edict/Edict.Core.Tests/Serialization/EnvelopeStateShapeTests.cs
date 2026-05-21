@@ -11,8 +11,8 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// Drift guard for the persisted grain-state envelope (ADR 0017 frozen-alias
-// rule, ADR 0018 unified envelope). The envelope is Orleans [GenerateSerializer]
+// Drift guard for the persisted grain-state envelope (the frozen-alias
+// rule, unified envelope). The envelope is Orleans [GenerateSerializer]
 // grain state, so the guard round-trips it through the *Orleans* serializer
 // (binary on Azure, the actual persistence path) rather than MessagePack: a
 // renamed/removed [Id] member or a changed [Alias] drops the value on the

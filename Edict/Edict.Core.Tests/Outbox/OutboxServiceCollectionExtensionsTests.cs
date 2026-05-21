@@ -6,8 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Edict.Core.Tests.Outbox;
 
-// AddEdictOutbox ships sensible defaults the consumer can selectively override
-// (ADR 0018 / 0022, knobs surfaced under the flat ADR-0028 EdictOptions class).
+// AddEdictOutbox ships sensible defaults the consumer can selectively override.
 // Single behavioral facts, so targeted Asserts rather than a snapshot.
 public sealed class OutboxServiceCollectionExtensionsTests
 {

@@ -14,12 +14,12 @@ using Orleans.Streams;
 namespace Edict.Core.EventHandler;
 
 /// <summary>
-/// Consumer-facing base for the "Event Handler" role (ADR 0023 / 0026): an
+/// Consumer-facing base for the "Event Handler" role: an
 /// idempotent consumer whose stream-callback path stages a deferred
 /// <see cref="OutboxEffectKind.InvokeHandler"/> Outbox entry instead of running
 /// the consumer's <c>Handle(TEvent)</c> inline. The actual invocation runs
 /// later through the composed <see cref="OutboxHost{TPayload}"/> — picking up
-/// its per-entry retry/backoff and ADR-0022 dead-letter promotion for free, so
+/// its per-entry retry/backoff and dead-letter promotion for free, so
 /// transient external-I/O failures are framework-managed and permanent
 /// failures land on the queryable dead-letter projection.
 /// <para>
@@ -64,9 +64,9 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
         if (!HandlesType(evt))
         {
-            // Unhandled types are a pure no-op (ADR 0023): no ring slot
-            // consumed, no Outbox entry staged. Keeps the dedup window for
-            // events this handler actually handles.
+            // Unhandled types are a pure no-op: no ring slot consumed,
+            // no Outbox entry staged. Keeps the dedup window for events
+            // this handler actually handles.
             return;
         }
 
@@ -80,7 +80,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
     {
         // The deferred-invocation span — opened later by InvokeHandlerExecutor —
         // must nest under the publish span as parent-child even when backoff
-        // defers the call (ADR 0003). The event itself carries the publish
+        // defers the call. The event itself carries the publish
         // span's identity in its TraceId/SpanId fields (stamped by
         // PublishEventExecutor) so the parent is recoverable even when the
         // stream transport did not propagate Activity.Current across the hop
@@ -108,10 +108,10 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
-        // ADR 0026: InvokeHandler entry payloads are serialised
-        // EdictEventEnvelopes (inline or pointer). The inline-branch case the
-        // EventHandler stream-callback hits gets wrapped here; the executor
-        // unwraps via ClaimCheckUnwrap before dispatching.
+        // InvokeHandler entry payloads are serialised EdictEventEnvelopes
+        // (inline or pointer). The inline-branch case the EventHandler
+        // stream-callback hits gets wrapped here; the executor unwraps
+        // via ClaimCheckUnwrap before dispatching.
         var envelope = evt is EdictEventEnvelope already
             ? already
             : EnvelopeCodec.WrapInline(serializer.SerializeToArray<EdictEvent>(evt));

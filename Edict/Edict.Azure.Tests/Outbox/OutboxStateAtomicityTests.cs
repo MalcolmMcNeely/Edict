@@ -4,7 +4,7 @@ namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
 /// The {State, Outbox} commit is a single atomic write to the
-/// <c>edict-state</c> grain document (ADR 0018, ADR 0025). Proving it
+/// <c>edict-state</c> grain document. Proving it
 /// end-to-end on Azurite: a forced deactivate/reactivate round trip — where
 /// the persisted grain document is the only thing that survives — must
 /// preserve the count mutation a previous command applied, so a second

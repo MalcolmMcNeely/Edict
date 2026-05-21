@@ -9,16 +9,6 @@ using Edict.Core.Outbox;
 
 namespace Edict.Core.DeadLetter;
 
-/// <summary>
-/// Pure module that promotes a failing <see cref="OutboxEntry"/> to an
-/// <see cref="EdictDeadLetterRaised"/> event (ADR 0022). No DI, no I/O — owns
-/// the effect-kind → <c>EffectTarget</c> mapping, the System.Text.Json
-/// serialization of the payload for operator inspection (distinct from the
-/// MessagePack wire format per ADR 0007), trace context propagation
-/// (ADR 0003), and exception capture. The engine deserializes the entry
-/// payload via its existing Orleans serializer and hands the deserialized
-/// effect in.
-/// </summary>
 static class DeadLetterPromotion
 {
     public static EdictDeadLetterRaised Build(
@@ -50,15 +40,6 @@ static class DeadLetterPromotion
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 
-    /// <summary>
-    /// Specialised overload for <see cref="OutboxEffectKind.InvokeHandler"/>
-    /// promotions (ADR 0023): populates the new
-    /// <see cref="EdictDeadLetterRaised.SourceEventType"/> /
-    /// <see cref="EdictDeadLetterRaised.SourceEventId"/> fields from the
-    /// failing entry's <see cref="EdictEvent"/> payload so an operator can
-    /// filter the dead-letter projection by event type without parsing payload
-    /// bytes. Existing kinds leave the two fields null.
-    /// </summary>
     public static EdictDeadLetterRaised BuildForInvokeHandler(
         OutboxEntry entry,
         EdictEvent evt,
@@ -78,20 +59,6 @@ static class DeadLetterPromotion
         };
     }
 
-    /// <summary>
-    /// Publisher-side specialisation for an oversized event (ADR 0024, slice 4).
-    /// The failing Outbox entry's payload is a pointer-bearing
-    /// <see cref="EdictEventEnvelope"/> — the inner body is in the claim-check
-    /// blob store, not on the wire. The forensic row lifts
-    /// <see cref="EdictEventEnvelope.ClaimCheckKey"/> onto the
-    /// <see cref="EdictDeadLetterRaised"/> so an operator clicks through to the
-    /// blob; <see cref="EdictDeadLetterRaised.PayloadJson"/> stays null because
-    /// the >32 KB body never fits into the Azure Table property the dead-letter
-    /// projection writes (the failure mode claim-check was designed to prevent).
-    /// <see cref="EdictDeadLetterFailureKind.EffectFailure"/> stays the
-    /// discriminator — this is still a publisher-side promotion, distinct from
-    /// the receiver-side <see cref="EdictDeadLetterFailureKind.BlobMissing"/>.
-    /// </summary>
     public static EdictDeadLetterRaised BuildForEnvelopeFailure(
         OutboxEntry entry,
         EdictEventEnvelope envelope,
@@ -127,17 +94,6 @@ static class DeadLetterPromotion
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 
-    /// <summary>
-    /// Receiver-side specialisation (ADR 0024 / 0026): builds an
-    /// <see cref="EdictDeadLetterRaised"/> for an inbound event whose
-    /// claim-check blob could not be fetched after <c>MaxAttempts</c>. After
-    /// the ADR-0026 fold the missing-blob failure is just an
-    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry exhaustion — the
-    /// failing entry's identity (EntryId, AttemptCount, TraceParent) carries
-    /// onto the forensic row alongside the pointer-envelope-derived stream
-    /// address and claim-check key.
-    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/> is the discriminator.
-    /// </summary>
     public static EdictDeadLetterRaised BuildForBlobMissing(
         OutboxEntry entry,
         EdictEventEnvelope envelope,
@@ -196,7 +152,7 @@ static class DeadLetterPromotion
             command.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance),
             p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
             ?? throw new InvalidOperationException(
-                $"Command {command.GetType().Name} is missing a [EdictRouteKey] Guid property (ADR 0011).");
+                $"Command {command.GetType().Name} is missing a [EdictRouteKey] Guid property.");
 
         return (Guid)routeKeyProp.GetValue(command)!;
     }

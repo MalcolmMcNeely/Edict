@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Azure.Tests.DeadLetter;
 
-// ADR 0016 provider conformance battery for IEdictDeadLetterRepository: the
+// provider conformance battery for IEdictDeadLetterRepository: the
 // same observable behaviour the in-memory facade test proves in Core.Tests,
-// re-run against real Azurite via Testcontainers (ADR 0022). The repo is
+// re-run against real Azurite via Testcontainers. The repo is
 // provider-agnostic — the only thing the Azure provider plugs is the
 // IEdictTableRepository<EdictDeadLetterEntry> seam — so the test exercises
 // that exact composition: the Core facade wrapping AzureTableRepository over
@@ -101,7 +101,7 @@ public sealed class TableBackedDeadLetterRepositoryAzureTests(AzureClusterFixtur
         // Proves the wiring acceptance criterion: AddEdict() + the Azure
         // provider's helper together let the client resolve a working,
         // Azure-backed IEdictDeadLetterRepository — exactly the operator's
-        // surface (ADR 0022).
+        // surface.
         var repo = fixture.Cluster.Client.ServiceProvider
             .GetRequiredService<IEdictDeadLetterRepository>();
 

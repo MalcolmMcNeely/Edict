@@ -12,7 +12,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
-// ADR 0023 dead-letter promotion: a failed InvokeHandler entry exhausts its
+// dead-letter promotion: a failed InvokeHandler entry exhausts its
 // retries, the DeadLetterPromoter builds an EdictDeadLetterRaised carrying the
 // originating event's type and id in SourceEventType + SourceEventId so
 // operators can filter the dead-letter projection by event type without

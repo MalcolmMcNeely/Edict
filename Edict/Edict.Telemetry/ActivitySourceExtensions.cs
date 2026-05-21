@@ -4,7 +4,7 @@ namespace Edict.Telemetry;
 
 /// <summary>
 /// Extension methods on <see cref="ActivitySource"/> for starting the named Edict
-/// spans: command dispatch, event publish, and dedup (ADR 0003).
+/// spans: command dispatch, event publish, and dedup.
 /// </summary>
 public static class ActivitySourceExtensions
 {

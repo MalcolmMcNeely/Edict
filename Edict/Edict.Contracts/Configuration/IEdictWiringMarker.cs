@@ -3,7 +3,7 @@ namespace Edict.Contracts.Configuration;
 /// <summary>
 /// Tag interface: each provider extension (streams, persistence) registers an
 /// implementation in DI so <see cref="WiringInspector"/> can detect a missing
-/// provider call at startup (ADR 0028). Lives in the shared kernel so a future
+/// provider call at startup. Lives in the shared kernel so a future
 /// non-Azure provider package can register its own marker without depending on
 /// <c>Edict.Core</c>.
 /// </summary>

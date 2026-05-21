@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace Edict.Telemetry;
 
 /// <summary>
-/// The single <see cref="ActivitySource"/> identity for all Edict instrumentation (ADR 0003).
+/// The single <see cref="ActivitySource"/> identity for all Edict instrumentation.
 /// Registered by the generated <c>AddEdict()</c>. Keys for the stream-hop
 /// <see cref="Orleans.Runtime.RequestContext"/> capture are internal to this assembly.
 /// </summary>

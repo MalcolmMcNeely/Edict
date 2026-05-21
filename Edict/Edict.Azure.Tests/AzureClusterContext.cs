@@ -18,7 +18,7 @@ namespace Edict.Azure.Tests;
 /// and the configurator reads the same key off the silo's
 /// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>.
 /// Keeping the (necessarily static) registry on a helper class — not on the
-/// fixture itself — satisfies the ADR 0029 "no <c>static</c> field in any
+/// fixture itself — satisfies the "no <c>static</c> field in any
 /// cluster fixture" rule that the previous shape violated.
 /// </summary>
 sealed record AzureClusterContext(

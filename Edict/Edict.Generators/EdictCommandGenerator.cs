@@ -15,10 +15,10 @@ namespace Edict.Generators;
 /// the <c>Dispatch</c> type-switch override, an Orleans surrogate + converter
 /// per concrete command, and the per-assembly <c>EdictRouteRegistrar</c> plus
 /// the <c>[assembly: EdictRoutes]</c> annotation that the hand-authored
-/// <c>AddEdict()</c> in Edict.Core walks at startup (ADR 0021).
+/// <c>AddEdict()</c> in Edict.Core walks at startup.
 /// <para>
-/// ADR 0005: this generator references no Edict assembly. It matches Edict's
-/// base type and annotations purely by fully-qualified name.
+/// This generator references no Edict assembly. It matches Edict's base type
+/// and annotations purely by fully-qualified name.
 /// </para>
 /// </summary>
 [Generator]
@@ -218,7 +218,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
     // Matches both the non-generic shim (EdictCommandHandler : EdictCommandHandler<EdictUnit>)
     // and a consumer's own stateful base (EdictCommandHandler<MyState>). Mirrors the
     // projection generator's OriginalDefinition base-chain walk; the generics-stripped
-    // FQN keeps the single ADR-0005 well-known-name comparison (no Edict assembly ref).
+    // FQN keeps the single well-known-name comparison (no Edict assembly ref).
     private static bool DerivesFromCommandHandler(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)

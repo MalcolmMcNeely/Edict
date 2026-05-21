@@ -8,31 +8,6 @@ using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
-/// <summary>
-/// The single Outbox component (ADR 0018 / 0022 / 0026): owns the persisted
-/// <see cref="GrainEnvelope{TPayload}"/>, the drain algorithm (per-entry
-/// independent retry, exponential backoff, max-attempts dead-letter promotion),
-/// and the lazy drain Reminder lifecycle. Lives as a field on each
-/// consumer-facing grain shell (<c>EdictCommandHandler&lt;TState&gt;</c>,
-/// <c>EdictIdempotencyBase&lt;TPayload&gt;</c>); the shell is a thin Orleans
-/// lifecycle adapter that forwards <c>OnActivateAsync</c> and
-/// <c>ReceiveReminder</c> to this component. Bare-named — no consumer types
-/// it.
-/// <para>
-/// Drain (ADR 0026) walks <see cref="OutboxSlice.Pending"/> in insertion
-/// order. For each entry: if <see cref="OutboxEntry.NextAttemptUtc"/> is in
-/// the future the entry is skipped; otherwise the executor runs. On success
-/// the entry is acked, state is written, and the walk restarts from the head
-/// so any newly-enqueued entry surfaces immediately. On failure the entry
-/// is bumped via backoff (no head privilege) and the walk continues past it
-/// — a poison entry no longer blocks subsequent effects. At
-/// <see cref="EdictOutboxOptions.MaxAttempts"/> the host promotes the failing
-/// entry via <see cref="IDeadLetterPromoter"/>: the failing entry is removed
-/// and a new <see cref="OutboxEffectKind.PublishEvent"/> entry carrying an
-/// <c>EdictDeadLetterRaised</c> notification is appended at the tail, in the
-/// same one grain-state write.
-/// </para>
-/// </summary>
 sealed class OutboxHost<TPayload>
     where TPayload : new()
 {
@@ -84,7 +59,7 @@ sealed class OutboxHost<TPayload>
     /// <summary>The persisted envelope <c>{ Payload, Outbox, Idempotency }</c>.</summary>
     public GrainEnvelope<TPayload> State => _state.State;
 
-    /// <summary>Drain-on-activation: catches anything left from a crash before the grain serves traffic (ADR 0018).</summary>
+    /// <summary>Drain-on-activation: catches anything left from a crash before the grain serves traffic.</summary>
     public async Task OnActivateAsync()
     {
         if (State.Outbox.Pending.Count > 0)
@@ -122,7 +97,7 @@ sealed class OutboxHost<TPayload>
     }
 
     /// <summary>
-    /// Event-aware commit boundary (ADR 0024, slice 2). Routes every buffered
+    /// Event-aware commit boundary. Routes every buffered
     /// event through <see cref="ClaimCheckPolicy"/> in parallel via
     /// <see cref="Task.WhenAll(IEnumerable{Task})"/>, so a Handle that raises
     /// N oversized events pays one I/O round trip rather than N. Each policy
@@ -168,7 +143,7 @@ sealed class OutboxHost<TPayload>
     }
 
     /// <summary>
-    /// Drains pending effects with per-entry independent retry (ADR 0026):
+    /// Drains pending effects with per-entry independent retry:
     /// walks <see cref="OutboxSlice.Pending"/> in insertion order, skipping
     /// backoff-gated entries and continuing past failures. On success restarts
     /// the walk from the head so a newly-enqueued entry surfaces immediately.
@@ -201,8 +176,8 @@ sealed class OutboxHost<TPayload>
                 // backoff; if attempts are now exhausted, promote the failing
                 // entry in the SAME one commit — the failing entry is removed
                 // and an EdictDeadLetterRaised PublishEvent entry is appended
-                // at the tail (atomic by construction, ADR 0022). Then
-                // CONTINUE past this entry (ADR 0026): no head privilege,
+                // at the tail (atomic by construction). Then CONTINUE
+                // past this entry: no head privilege,
                 // later entries get a fair shot.
                 State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
 
@@ -226,7 +201,7 @@ sealed class OutboxHost<TPayload>
             State.Outbox = State.Outbox.Ack(entry.EntryId);
             await _state.WriteStateAsync();
             // Restart from the head so a newly-enqueued entry surfaces
-            // immediately (ADR 0026).
+            // immediately.
             index = 0;
         }
 

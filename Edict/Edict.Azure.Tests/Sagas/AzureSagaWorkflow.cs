@@ -12,8 +12,8 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.Sagas;
 
-// End-to-end saga fixture (ADR 0020) lifted from Edict.Core.Tests/Saga so the
-// proof runs on Azurite via Testcontainers (ADR 0029): an event on the
+// End-to-end saga fixture lifted from Edict.Core.Tests/Saga so the
+// proof runs on Azurite via Testcontainers: an event on the
 // AzureSagaWorkflow stream drives AzureWorkflowSaga, which records durable
 // Progress and dispatches exactly one AzureSagaTrackerCommand. The ring slot,
 // Progress, and the SendCommand effect commit in the one grain-document write,
@@ -52,7 +52,7 @@ public sealed class AzureTrackerState : IEdictPersistedState
 }
 
 // Hand-written probes (Orleans codegen sees these, unlike the Edict-generated
-// grain interface — ADR 0006).
+// grain interface).
 public interface IAzureSagaProgressProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledAsync();

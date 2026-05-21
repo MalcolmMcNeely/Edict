@@ -5,7 +5,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Outbox;
 
-// Backoff is a pure function of AttemptCount (ADR 0019): exponential from a
+// Backoff is a pure function of AttemptCount: exponential from a
 // configured base delay, clamped to a configured ceiling, then spread by a
 // deterministic per-entry jitter so a fleet of entries that fail together do
 // not stampede the same retry instant. Pure and reproducible — the jitter is a

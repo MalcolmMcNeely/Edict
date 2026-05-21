@@ -2,7 +2,7 @@ namespace Edict.Contracts.Routing;
 
 /// <summary>
 /// Generator-applied annotation that points <c>AddEdict()</c> at the
-/// per-assembly route registrar (ADR 0021). One attribute per consumer
+/// per-assembly route registrar. One attribute per consumer
 /// assembly that contains at least one <c>EdictCommandHandler</c>; the
 /// referenced static type exposes a <c>Register(Dictionary&lt;Type,
 /// CommandRoute&gt;)</c> method that contributes this assembly's routes to

@@ -4,7 +4,7 @@ namespace Sample.Silo.Tests.ClaimCheck;
 
 /// <summary>
 /// Conformance for the shipped in-memory <see cref="InMemoryClaimCheckStore"/>
-/// (ADR 0024). Lives in the Sample test project because that is the only
+///. Lives in the Sample test project because that is the only
 /// suite with a project reference to <c>Edict.Testing</c>. Mirrors the
 /// publisher-side seam contract — <c>PutAsync</c> round-trips via
 /// <c>GetAsync</c>; a missing-blob fetch throws a recognisable exception

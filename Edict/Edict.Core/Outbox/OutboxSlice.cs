@@ -4,18 +4,17 @@ namespace Edict.Core.Outbox;
 
 /// <summary>
 /// The Outbox slice of the grain-state envelope and its pure, total
-/// state-machine transitions (ADR 0018 / 0022 / 0026). Every transition returns
-/// a new slice; none mutate in place and none perform I/O — the engine composes
-/// them and owns the single grain-state write that makes a move atomic.
-/// Persisted state, so a frozen string-literal <c>[Alias]</c> survives a class
-/// rename (ADR 0017); <c>ORLEANS0010</c> is never suppressed.
+/// state-machine transitions. Every transition returns a new slice; none mutate
+/// in place and none perform I/O — the engine composes them and owns the single
+/// grain-state write that makes a move atomic. Persisted state, so a frozen
+/// string-literal <c>[Alias]</c> survives a class rename;
+/// <c>ORLEANS0010</c> is never suppressed.
 /// <para>
-/// ADR 0026 dropped FIFO stop-at-head: transitions are keyed by
-/// <see cref="OutboxEntry.EntryId"/> rather than head position. The
-/// <see cref="Pending"/> list still keeps insertion order — that is the order
-/// the drain walks — but no entry is privileged. A failing entry stays in
-/// place and is gated by <see cref="OutboxEntry.NextAttemptUtc"/>; the drain
-/// continues past it.
+/// Transitions are keyed by <see cref="OutboxEntry.EntryId"/> rather than head
+/// position — no FIFO stop-at-head. The <see cref="Pending"/> list still keeps
+/// insertion order — that is the order the drain walks — but no entry is
+/// privileged. A failing entry stays in place and is gated by
+/// <see cref="OutboxEntry.NextAttemptUtc"/>; the drain continues past it.
 /// </para>
 /// </summary>
 [GenerateSerializer]
@@ -49,7 +48,7 @@ public sealed record OutboxSlice
     /// bumps its <c>AttemptCount</c> and gates the next attempt via
     /// <see cref="OutboxBackoff"/>. The entry stays at the same position in
     /// <see cref="Pending"/> (insertion order is preserved); the drain walks
-    /// past it without privilege (ADR 0026). Promotion is the caller's
+    /// past it without privilege. Promotion is the caller's
     /// separate decision once attempts are exhausted. Total: a no-op when no
     /// entry matches.
     /// </summary>
@@ -75,7 +74,7 @@ public sealed record OutboxSlice
     /// <summary>
     /// Removes the entry with <paramref name="entryId"/> and appends
     /// <paramref name="promoted"/> at the tail — the dead-letter promotion
-    /// transition the engine commits in one grain-state write (ADR 0022). Both
+    /// transition the engine commits in one grain-state write. Both
     /// mutations land together so the original effect and the dead-letter
     /// notification cannot disagree. Total: a no-op when no entry matches (the
     /// caller's exhaustion check is the gate).

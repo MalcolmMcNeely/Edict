@@ -8,7 +8,7 @@ namespace Edict.Azure.TableStorage;
 /// <summary>
 /// Azure Table Storage implementation of <see cref="IEdictTableRepository{T}"/>.
 /// Registered by the consumer's DI setup; <see cref="IEdictTableRepository{T}"/> is
-/// the substitution seam in <c>Edict.Contracts</c> (ADR 0008 / ADR 0012 / ADR 0015).
+/// the substitution seam in <c>Edict.Contracts</c>.
 /// Maps plain POCO rows via <see cref="AzureTablePocoMapper"/>.
 /// </summary>
 public sealed class AzureTableRepository<T>(TableServiceClient tableServiceClient, string tableName) : IEdictTableRepository<T>

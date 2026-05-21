@@ -13,7 +13,7 @@ namespace Sample.Silo.Tests.Orders;
 /// raised event → <see cref="OrderEmailHandler"/> deferred invocation, and the
 /// resulting workflow surfaces on one Verify-shaped <see cref="EdictTestApp.Timeline"/>
 /// with the new <c>Invocation</c> kind alongside <c>Command</c> and
-/// <c>Event</c> entries (issue #67 / ADR 0023).
+/// <c>Event</c> entries (issue #67 /).
 /// </summary>
 public sealed class OrderEmailHandlerTests
 {

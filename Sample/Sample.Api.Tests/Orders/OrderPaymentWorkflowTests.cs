@@ -7,7 +7,7 @@ namespace Sample.Api.Tests.Orders;
 
 /// <summary>
 /// Exercises the OrderPayment saga end-to-end through the Api over real Azurite
-/// (ADR 0020): the happy path (PaymentAuthorized → ConfirmOrder) and the
+///: the happy path (PaymentAuthorized → ConfirmOrder) and the
 /// compensation branch (PaymentDeclined → CancelOrder), selected by the submit
 /// amount against PaymentCommandHandler.DeclineThreshold.
 /// </summary>

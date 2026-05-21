@@ -10,8 +10,8 @@ using Orleans.Serialization;
 namespace Edict.Core.ClaimCheck;
 
 /// <summary>
-/// Publisher-side decision point at the Outbox commit boundary (ADR 0024,
-/// slice 2). Serialises the buffered event, measures the byte length, and
+/// Publisher-side decision point at the Outbox commit boundary.
+/// Serialises the buffered event, measures the byte length, and
 /// either rides it on the wire as itself (under threshold) or uploads the
 /// body to <see cref="IEdictClaimCheckStore"/> and substitutes a pointer
 /// <see cref="EdictEventEnvelope"/> (over threshold). Conditional-wrap shape:

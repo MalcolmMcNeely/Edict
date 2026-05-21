@@ -31,7 +31,7 @@ namespace Edict.Azure.Tests.Outbox;
 /// <see cref="EdictOptions.OutboxMaxAttempts"/>). Dead-letter promotion tests
 /// override <c>OutboxMaxAttempts</c> via their own scenario configuration.
 /// Shares the assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>) with
-/// per-fixture Guid-prefixed container/table names (ADR 0029).
+/// per-fixture Guid-prefixed container/table names.
 /// </summary>
 public sealed class AzureOutboxRecoveryClusterFixture : IAsyncLifetime
 {

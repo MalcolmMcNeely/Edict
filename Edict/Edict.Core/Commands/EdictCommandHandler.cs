@@ -23,11 +23,11 @@ namespace Edict.Core.Commands;
 /// Base for an aggregate grain. The framework owns durable aggregate state: the
 /// persisted document is the single-write <see cref="GrainEnvelope{TPayload}"/>
 /// <c>{ Payload, Outbox, Idempotency }</c>, so a state change and its outbound
-/// effect commit atomically in one write (ADR 0018, amends ADR 0004). Command
-/// Handlers never touch the <see cref="GrainEnvelope{TPayload}.Idempotency"/>
-/// slot (a Command is a direct grain call, so there is deliberately no
-/// deduplication — dedup is for at-least-once stream delivery, which Commands
-/// never use — ADR 0004). All outbox plumbing — drain algorithm, lazy
+/// effect commit atomically in one write. Command Handlers never touch
+/// the <see cref="GrainEnvelope{TPayload}.Idempotency"/> slot (a Command
+/// is a direct grain call, so there is deliberately no deduplication —
+/// dedup is for at-least-once stream delivery, which Commands never use).
+/// All outbox plumbing — drain algorithm, lazy
 /// reminder, drain-on-activation — lives on the composed
 /// <see cref="OutboxHost{TPayload}"/> field; the grain itself is a thin Orleans
 /// lifecycle shell that forwards <c>OnActivateAsync</c> and
@@ -54,7 +54,7 @@ public abstract class EdictCommandHandler<TState>
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
     /// inside <c>Handle</c>; it is the payload slot of the persisted envelope,
-    /// committed atomically with the Outbox (ADR 0018).
+    /// committed atomically with the Outbox.
     /// </summary>
     protected new TState State => base.State.Payload;
 
@@ -70,7 +70,7 @@ public abstract class EdictCommandHandler<TState>
 
     /// <summary>
     /// Drains anything left from a crash before the grain serves traffic
-    /// (drain-on-activation, ADR 0018). Steady state has nothing pending so
+    /// (drain-on-activation). Steady state has nothing pending so
     /// this is a cheap check.
     /// </summary>
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
@@ -87,7 +87,7 @@ public abstract class EdictCommandHandler<TState>
     /// Buffers an event to be staged onto the Outbox after the current command
     /// returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler throw.
     /// Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context when
-    /// the drain publishes it (ADR 0011).
+    /// the drain publishes it.
     /// </summary>
     protected void Raise(EdictEvent theEvent)
     {
@@ -100,7 +100,7 @@ public abstract class EdictCommandHandler<TState>
     /// entries, commits <c>{ State, Outbox }</c> in one write, then awaits the
     /// inline FIFO drain. Called by the generated <c>Dispatch</c> after
     /// <c>Handle</c> returns <c>Accepted</c>. A post-commit publish failure does
-    /// not roll back and does not surface — the Reminder retries (ADR 0018).
+    /// not roll back and does not surface — the Reminder retries.
     /// </summary>
     protected async Task CommitAndDrainRaisedEventsAsync()
     {
@@ -113,7 +113,7 @@ public abstract class EdictCommandHandler<TState>
         }
 
         // Capture the live command trace so the publish span nests under it as
-        // parent-child even when a crash-recovery drain runs much later (ADR 0003).
+        // parent-child even when a crash-recovery drain runs much later.
         var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
         var traceParent = traceId is not null && spanId is not null
             ? ActivityExtensions.BuildTraceParent(traceId, spanId)

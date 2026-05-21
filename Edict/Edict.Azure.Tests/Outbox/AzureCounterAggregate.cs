@@ -17,7 +17,7 @@ namespace Edict.Azure.Tests.Outbox;
 // Mirrors Edict.Core.Tests' CounterAggregate but raises events on the
 // AzureCounters stream so the Azurite-backed cluster can observe end-to-end
 // {State, Outbox} commit + inline FIFO drain over the real Azure Queue
-// transport (ADR 0018, ADR 0029).
+// transport.
 
 [GenerateSerializer]
 [Alias("Edict.Azure.Tests.Outbox.AzureCounterState")]
@@ -51,7 +51,7 @@ public sealed partial record AzureCounterIncrementedEvent(Guid CounterId, int Ne
 }
 
 // Hand-written probe interface (Orleans codegen cannot see the Edict-generated
-// grain interface — ADR 0006) so tests can read framework-owned State, force
+// grain interface) so tests can read framework-owned State, force
 // deactivation, and drive the deterministic Reminder recovery path.
 public interface IAzureCounterProbe : IGrainWithGuidKey
 {

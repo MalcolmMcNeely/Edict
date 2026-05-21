@@ -6,7 +6,7 @@ namespace Edict.Telemetry;
 
 /// <summary>
 /// Extension methods on <see cref="Activity"/> for Edict tag-writing and the
-/// ADR-0003 stream-hop <see cref="RequestContext"/> capture / restore.
+/// stream-hop <see cref="RequestContext"/> capture / restore.
 /// </summary>
 public static class ActivityExtensions
 {
@@ -17,7 +17,7 @@ public static class ActivityExtensions
     /// <summary>
     /// Captures the current activity's W3C trace context into Orleans
     /// <see cref="RequestContext"/> so that <see cref="RestoreFromRequestContext"/>
-    /// can reconstitute it on the handler-grain side of the stream hop (ADR 0003).
+    /// can reconstitute it on the handler-grain side of the stream hop.
     /// </summary>
     public static void CaptureToRequestContext(this Activity activity)
     {
@@ -70,7 +70,7 @@ public static class ActivityExtensions
     /// <summary>
     /// Builds a W3C <c>traceparent</c> (sampled) from raw hex trace/span ids,
     /// captured onto an <see cref="Orleans.Runtime"/>-free Outbox entry so a
-    /// crash-recovery drain still nests under the originating span (ADR 0003).
+    /// crash-recovery drain still nests under the originating span.
     /// </summary>
     public static string BuildTraceParent(string traceId, string spanId)
         => $"00-{traceId}-{spanId}-01";

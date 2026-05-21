@@ -27,7 +27,7 @@ namespace Edict.Core.Idempotency;
 /// stream-observer callback, suppresses at-least-once redeliveries via a
 /// configurable bounded window of recently handled
 /// <see cref="EdictEvent.EventId"/>s, and commits progress only after the
-/// subclass's dispatch succeeds (ADR 0002). All outbox plumbing — drain
+/// subclass's dispatch succeeds. All outbox plumbing — drain
 /// algorithm, lazy reminder, drain-on-activation — lives on the composed
 /// <see cref="OutboxHost{TPayload}"/> field; the grain itself is a thin
 /// Orleans lifecycle shell that forwards <c>OnActivateAsync</c> and
@@ -38,14 +38,14 @@ namespace Edict.Core.Idempotency;
 /// <c>{ Payload, Outbox, Idempotency }</c>: the dedup state is a sibling slot
 /// (<see cref="GrainEnvelope{TPayload}.Idempotency"/>), the consumer payload is
 /// the <see cref="GrainEnvelope{TPayload}.Payload"/> slot, and the Outbox slice
-/// shares the same atomic write (ADR 0018).
+/// shares the same atomic write.
 /// </para>
 /// <para>
-/// Receiver-side bifurcation (ADR 0026 fold): the stream-observer callback
-/// splits on the wire-frame's claim-check shape. Non-envelopes and
-/// inline-payload envelopes flow through <see cref="OnStreamEventAsync"/>
-/// inline — ADR-0012 ring-equals-row atomicity is preserved for the common
-/// case. Pointer-bearing envelopes commit the ring slot for the envelope's
+/// Receiver-side bifurcation: the stream-observer callback splits on the
+/// wire-frame's claim-check shape. Non-envelopes and inline-payload
+/// envelopes flow through <see cref="OnStreamEventAsync"/> inline —
+/// ring-equals-row atomicity is preserved for the common case.
+/// Pointer-bearing envelopes commit the ring slot for the envelope's
 /// wire-frame <see cref="EdictEvent.EventId"/> and stage an
 /// <see cref="OutboxEffectKind.InvokeHandler"/> entry in one atomic write; the
 /// engine takes over from there (fetch blob → dispatch via the
@@ -90,7 +90,7 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     /// <summary>
     /// Drains anything left from a crash before the grain serves traffic
-    /// (drain-on-activation, ADR 0018). Steady state has nothing pending so
+    /// (drain-on-activation). Steady state has nothing pending so
     /// this is a cheap check.
     /// </summary>
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
@@ -133,11 +133,11 @@ public abstract class EdictIdempotencyBase<TPayload>
     public Task OnEdictEventAsync(EdictEvent evt) => UnwrapAndDispatchAsync(evt, null);
 
     /// <summary>
-    /// Receiver-side bifurcation (ADR 0026, supersedes ADR 0024 slice 3):
-    /// non-envelope payloads and inline-payload envelopes dispatch inline
-    /// through <see cref="OnStreamEventAsync"/> (ring check → DispatchAsync →
-    /// ring commit + any staged effects atomic, ADR-0012 ring-equals-row
-    /// preserved). Pointer-bearing envelopes commit the ring slot for the
+    /// Receiver-side bifurcation: non-envelope payloads and inline-payload
+    /// envelopes dispatch inline through <see cref="OnStreamEventAsync"/>
+    /// (ring check → DispatchAsync → ring commit + any staged effects
+    /// atomic, ring-equals-row preserved). Pointer-bearing envelopes
+    /// commit the ring slot for the
     /// envelope's wire-frame <see cref="EdictEvent.EventId"/> and stage an
     /// <see cref="OutboxEffectKind.InvokeHandler"/> entry in one atomic write;
     /// the engine's per-entry retry takes the fetch-and-dispatch from there.
@@ -184,7 +184,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         // PublishEventExecutor) over Activity.Current — Azure Queue streams do
         // not propagate Activity.Current across the hop, but the publish span's
         // identity rides on the event itself so the deferred handle span
-        // still nests as parent-child (ADR 0003).
+        // still nests as parent-child.
         string? traceParent;
         string? traceState;
         if (envelope.TraceId is { Length: 32 } evtTraceId && envelope.SpanId is { Length: 16 } evtSpanId)
@@ -228,13 +228,13 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by the bifurcation for the
-    /// non-envelope / inline-payload-envelope branch (ADR 0026); the
+    /// non-envelope / inline-payload-envelope branch; the
     /// pointer-envelope branch bypasses this in favour of an
     /// <see cref="OutboxEffectKind.InvokeHandler"/> entry the engine drains.
     /// <c>EdictEventHandler</c> overrides this to swap inline dispatch for a
     /// deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
     /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
-    /// retry/backoff/dead-letter wrapping (ADR 0023).
+    /// retry/backoff/dead-letter wrapping.
     /// </summary>
     protected virtual async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
     {
@@ -253,9 +253,9 @@ public abstract class EdictIdempotencyBase<TPayload>
             Commit(evt.EventId);
 
             // The ring slot and any outbox effect the subclass staged commit
-            // in the SAME one WriteStateAsync (ADR 0018): a Table Projection
-            // Builder's row write is an UpsertRow effect atomic with this ring
-            // commit, then drained at-least-once — closing the ADR-0012
+            // in the SAME one WriteStateAsync: a Table Projection Builder's
+            // row write is an UpsertRow effect atomic with this ring commit,
+            // then drained at-least-once — closing the table-projection
             // double-apply gap. Plain consumers stage nothing, so the path
             // stays a single ring-only write with no engine/reminder churn.
             var entries = CollectPendingOutboxEntries();
@@ -285,8 +285,8 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// Called by the generated <c>DispatchAsync</c> for each matched event type.
     /// The default passes the event directly to <paramref name="handler"/>.
     /// <c>EdictTableProjectionBuilder&lt;T&gt;</c> wraps it with
-    /// load-apply-writeback (ADR 0012); <c>EdictSaga&lt;TProgress&gt;</c> wraps
-    /// it to reset the single outbound-command buffer per event (ADR 0020).
+    /// load-apply-writeback; <c>EdictSaga&lt;TProgress&gt;</c> wraps
+    /// it to reset the single outbound-command buffer per event.
     /// Lives on the shared idempotency root so every consumer role — handler,
     /// projection builder, saga — shares one dispatch seam.
     /// </summary>

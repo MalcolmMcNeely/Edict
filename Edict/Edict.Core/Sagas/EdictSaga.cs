@@ -16,11 +16,11 @@ namespace Edict.Core.Sagas;
 /// <summary>
 /// Base for a saga: an idempotent consumer that coordinates a multi-step
 /// cross-aggregate workflow, reacting to Events and issuing exactly one Command
-/// per Event while holding durable <see cref="Progress"/> (ADR 0020). It closes
+/// per Event while holding durable <see cref="Progress"/>. It closes
 /// the generic idempotency root on <typeparamref name="TProgress"/>, so the
 /// "Event Handlers, Sagas, and Projection Builders all inherit
-/// <see cref="EdictIdempotencyBase{TPayload}"/>" relationship — and ADR 0017
-/// brand clause (b) — stays literally true.
+/// <see cref="EdictIdempotencyBase{TPayload}"/>" relationship — and brand
+/// clause (b) — stays literally true.
 /// <para>
 /// The dedup ring, the outbound Command (a <see cref="OutboxEffectKind.SendCommand"/>
 /// effect), and <see cref="Progress"/> commit atomically in the one
@@ -78,7 +78,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // Build the SendCommand entry here, while the handle span is still
         // Activity.Current, so its captured traceparent makes the dispatched
         // command nest under the saga handle span as parent-child even when a
-        // crash-recovery drain runs much later (ADR 0003). CollectPendingOutboxEntries
+        // crash-recovery drain runs much later. CollectPendingOutboxEntries
         // runs after the span has been disposed, so capturing there would orphan
         // the command span.
         var command = _dispatchBuffer.Take();
@@ -104,7 +104,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     OutboxEntry BuildSendCommandEntry(EdictCommand command)
     {
         // Nest the deferred command under the live handle span as parent-child,
-        // even when a crash-recovery drain runs much later (ADR 0003).
+        // even when a crash-recovery drain runs much later.
         var current = Activity.Current;
         var traceParent = current is not null
             ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())

@@ -21,7 +21,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Azurite-backed conformance for the receiver-side missing-blob dead-letter
-/// path after the ADR-0026 fold: a pointer-bearing
+/// path after the fold: a pointer-bearing
 /// <see cref="EdictEventEnvelope"/> staged as an
 /// <see cref="OutboxEffectKind.InvokeHandler"/> entry is drained by the
 /// engine; <see cref="InvokeHandlerExecutor"/> calls
@@ -32,7 +32,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 /// <see cref="EdictOutboxOptions.MaxAttempts"/> exhaustion routes
 /// <see cref="DeadLetterPromoter.Promote"/> through the BlobMissing branch.
 /// Replaces the prior <c>HandleBlobMissingAsync</c> integration coverage
-/// (ADR 0024 slice 3) against the Azure provider stack — the
+/// against the Azure provider stack — the
 /// <c>BlobMissingDeadLetterEndToEndTests</c> in <c>Edict.Core.Tests</c> proves
 /// the in-memory variant; this test proves the Azurite-backed exception shape
 /// flows through the same engine path unchanged.

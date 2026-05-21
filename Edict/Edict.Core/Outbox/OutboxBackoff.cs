@@ -3,7 +3,7 @@ using Edict.Contracts.Configuration;
 namespace Edict.Core.Outbox;
 
 /// <summary>
-/// Exponential backoff as a pure function of <c>AttemptCount</c> (ADR 0019).
+/// Exponential backoff as a pure function of <c>AttemptCount</c>.
 /// No schedule is persisted beyond the per-entry <c>AttemptCount</c>/
 /// <c>NextAttemptUtc</c>; the same one lazy Reminder gates retries on the
 /// timestamp, so there is no second scheduling primitive. The delay is clamped

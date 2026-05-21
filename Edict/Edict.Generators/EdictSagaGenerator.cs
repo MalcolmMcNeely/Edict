@@ -15,16 +15,15 @@ namespace Edict.Generators;
 /// interface (rooted at <c>IEdictSaga</c>), one
 /// <c>[ImplicitStreamSubscription]</c> per unique stream across the grain's
 /// <c>Handle(TEvent)</c> overloads, and a <c>DispatchAsync</c> type-switch with
-/// per-event handler spans (ADR 0003). Stream wiring is pure-implicit and lives
+/// per-event handler spans. Stream wiring is pure-implicit and lives
 /// on <c>EdictIdempotencyBase</c> (the implicit-subscription guide's canonical
 /// shape — the hybrid pattern broke referenced-assembly memory-stream delivery
 /// in #53). Mirrors <see cref="EdictProjectionGenerator"/>; the only emitted
-/// difference is the grain-interface root (ADR 0020).
+/// difference is the grain-interface root.
 /// <para>
-/// ADR 0005: this generator references no Edict assembly. It matches Edict's
-/// base type and annotations purely by fully-qualified name; the generic base
-/// is matched via a generics-stripped base-chain walk (mirrors the command
-/// generator).
+/// This generator references no Edict assembly. It matches Edict's base type
+/// and annotations purely by fully-qualified name; the generic base is matched
+/// via a generics-stripped base-chain walk (mirrors the command generator).
 /// </para>
 /// </summary>
 [Generator]
@@ -116,7 +115,7 @@ public sealed class EdictSagaGenerator : IIncrementalGenerator
 
     // Matches a consumer's saga base EdictSaga<TProgress>. Mirrors the command
     // generator's OriginalDefinition base-chain walk with a generics-stripped
-    // FQN, keeping the single ADR-0005 well-known-name comparison.
+    // FQN, keeping the single well-known-name comparison.
     private static bool DerivesFromSaga(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)

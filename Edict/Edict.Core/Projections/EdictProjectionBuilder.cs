@@ -7,6 +7,6 @@ namespace Edict.Core.Projections;
 /// (<c>DispatchEventAsync</c>) now lives on the shared idempotency root
 /// <see cref="EdictIdempotencyBase{TPayload}"/> so sagas share it too;
 /// <c>EdictTableProjectionBuilder&lt;T&gt;</c> overrides it for
-/// load-apply-writeback (ADR 0012).
+/// load-apply-writeback.
 /// </summary>
 public abstract class EdictProjectionBuilder : EdictIdempotencyBase;

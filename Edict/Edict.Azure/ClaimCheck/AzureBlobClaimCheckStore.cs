@@ -7,14 +7,14 @@ namespace Edict.Azure.ClaimCheck;
 
 /// <summary>
 /// Azure Blob-backed <see cref="IEdictClaimCheckStore"/> for the production
-/// claim-check escape hatch (ADR 0024). Append-only — the seam exposes no
+/// claim-check escape hatch. Append-only — the seam exposes no
 /// delete; retention is the storage account's lifecycle policy. Key
 /// generation is the store's responsibility: each payload lands at a fresh
 /// GUID-based key so collisions are impossible and operator forensics can
 /// click through the dead-letter row's <c>ClaimCheckKey</c> to the blob.
 /// <para>
 /// Lives under <c>Edict.Azure</c> so the <c>Azure.*</c> dependency stays
-/// inside the provider assembly (per project topology, ADR 0014).
+/// inside the provider assembly.
 /// </para>
 /// </summary>
 public sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore

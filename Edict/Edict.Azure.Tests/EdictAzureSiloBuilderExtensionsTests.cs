@@ -3,7 +3,7 @@ using Edict.Contracts.Sending;
 
 namespace Edict.Azure.Tests;
 
-// ADR 0028 conformance: the three new ISiloBuilder calls
+// conformance: the three new ISiloBuilder calls
 // (silo.AddEdict() + silo.AddEdictAzureStreams() + silo.AddEdictAzurePersistence())
 // deploy an Orleans silo against a real Azurite. Successful fixture
 // initialisation is the proof — TestCluster.DeployAsync surfaces any

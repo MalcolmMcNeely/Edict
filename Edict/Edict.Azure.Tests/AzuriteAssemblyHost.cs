@@ -9,7 +9,7 @@ namespace Edict.Azure.Tests;
 /// <see cref="AppDomain.ProcessExit"/> rather than per-fixture <c>DisposeAsync</c>
 /// because xUnit collections may overlap and a fixture-scoped dispose would
 /// strand the next collection. The leak is bounded to a single Azurite process
-/// for the lifetime of the test assembly. (ADR 0029 — one Azurite per assembly.)
+/// for the lifetime of the test assembly.
 /// </summary>
 static class AzuriteAssemblyHost
 {

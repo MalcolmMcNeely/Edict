@@ -10,25 +10,6 @@ using Orleans.Serialization;
 
 namespace Edict.Core.DeadLetter;
 
-/// <summary>
-/// Default <see cref="IDeadLetterPromoter"/> implementation (ADR 0022 / 0026).
-/// Owns the Orleans-serializer hop needed to read the failing entry's payload
-/// and — only when promoting a <see cref="OutboxEffectKind.SendCommand"/>
-/// entry — the <see cref="CommandRouteResolver"/> hop needed to resolve the
-/// target grain class name. The resolver is fetched lazily via
-/// <see cref="IServiceProvider"/> so hosts that wire the Outbox without a
-/// route map (the host-plumbing fixtures, for example) still construct the
-/// engine cleanly. Delegates the pure mapping to
-/// <see cref="DeadLetterPromotion"/> and its peers, then re-serialises the
-/// resulting <see cref="EdictDeadLetterRaised"/> as a new
-/// <see cref="OutboxEffectKind.PublishEvent"/> entry the engine appends at
-/// the tail. After the ADR-0026 fold the receiver-side missing-blob promotion
-/// path collapses into <see cref="Promote"/>: a failing
-/// <see cref="OutboxEffectKind.InvokeHandler"/> entry whose deserialised
-/// payload is a pointer-bearing <see cref="EdictEventEnvelope"/> routes
-/// through <see cref="DeadLetterPromotion.BuildForBlobMissing"/>. Bare-named
-/// — no consumer types it.
-/// </summary>
 sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services)
     : IDeadLetterPromoter
 {
@@ -64,10 +45,10 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
         var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
-        // ADR 0024 slice 4: an oversized event rides as a pointer-bearing
-        // envelope on the wire. Lift the pointer onto the forensic row instead
-        // of trying to JSON-serialise the body into a 32 KB Azure Table
-        // property — the very failure mode claim-check exists to avoid.
+        // An oversized event rides as a pointer-bearing envelope on the
+        // wire. Lift the pointer onto the forensic row instead of trying
+        // to JSON-serialise the body into a 32 KB Azure Table property —
+        // the very failure mode claim-check exists to avoid.
         if (evt is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } envelope)
         {
             return DeadLetterPromotion.BuildForEnvelopeFailure(
@@ -96,11 +77,11 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
         var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
-        // ADR 0026: post-fold, an InvokeHandler entry whose payload is a
-        // pointer-bearing envelope represents a receiver-side missing-blob
-        // exhaustion — route through the BlobMissing failure-kind mapping so
-        // the forensic row carries the claim-check key (the field issue #74
-        // added) and the inline-payload envelope path stays unchanged.
+        // An InvokeHandler entry whose payload is a pointer-bearing envelope
+        // represents a receiver-side missing-blob exhaustion — route through
+        // the BlobMissing failure-kind mapping so the forensic row carries
+        // the claim-check key and the inline-payload envelope path stays
+        // unchanged.
         if (evt is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } pointer)
         {
             return DeadLetterPromotion.BuildForBlobMissing(

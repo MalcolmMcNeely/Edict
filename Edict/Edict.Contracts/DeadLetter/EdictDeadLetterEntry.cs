@@ -5,13 +5,13 @@ using MessagePack;
 namespace Edict.Contracts.DeadLetter;
 
 /// <summary>
-/// Read-only projection row for a dead-lettered Outbox effect (ADR 0022). The
+/// Read-only projection row for a dead-lettered Outbox effect. The
 /// dead-letter mechanism is forensic-only — when an Outbox entry exhausts
 /// <c>MaxAttempts</c> the engine emits an <see cref="EdictDeadLetterRaised"/>
 /// event, the built-in projection upserts this row, and operators inspect it
 /// via <see cref="IEdictDeadLetterRepository"/>. Brand-prefixed (consumer-typed
 /// per CONTEXT.md clause a) and lives in the Orleans-free shared kernel.
-/// MessagePack annotations like every other contract type (ADR 0005/0007).
+/// MessagePack annotations like every other contract type.
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
 public sealed record EdictDeadLetterEntry : IEdictPersistedState
@@ -42,7 +42,7 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     /// </summary>
     public string EffectTarget { get; init; } = string.Empty;
 
-    /// <summary>The W3C <c>traceparent</c> captured on the original Outbox entry; null when no active trace (ADR 0003).</summary>
+    /// <summary>The W3C <c>traceparent</c> captured on the original Outbox entry; null when no active trace.</summary>
     public string? TraceParent { get; init; }
 
     /// <summary>Full type name of the captured exception, so operators can filter without parsing strings.</summary>
@@ -51,12 +51,12 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     /// <summary>The captured exception <see cref="Exception.Message"/> — not the stack trace.</summary>
     public string? Reason { get; init; }
 
-    /// <summary>The failed effect's payload as JSON for operator inspection; display data, distinct from the MessagePack wire format (ADR 0007).</summary>
+    /// <summary>The failed effect's payload as JSON for operator inspection; display data, distinct from the MessagePack wire format.</summary>
     public string? PayloadJson { get; init; }
 
     /// <summary>
     /// Full type name of the source <c>EdictEvent</c> that triggered the failing
-    /// effect — populated only for <c>InvokeHandler</c> promotions (ADR 0023),
+    /// effect — populated only for <c>InvokeHandler</c> promotions,
     /// null for <c>PublishEvent</c> / <c>SendCommand</c> / <c>UpsertRow</c>.
     /// Lets operators filter dead letters by event type without parsing payload bytes.
     /// </summary>
@@ -64,7 +64,7 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
 
     /// <summary>
     /// <c>EventId</c> of the source event that triggered the failing effect —
-    /// populated only for <c>InvokeHandler</c> promotions (ADR 0023), null
+    /// populated only for <c>InvokeHandler</c> promotions, null
     /// otherwise. Pairs with <see cref="SourceEventType"/> to uniquely identify
     /// the originating event for RCA.
     /// </summary>
@@ -72,7 +72,7 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
 
     /// <summary>
     /// Claim-check store key for the inbound event whose blob could not
-    /// be fetched at the receiver (ADR 0024). Populated only when
+    /// be fetched at the receiver. Populated only when
     /// <see cref="FailureKind"/> is
     /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/>; null on the
     /// existing publisher-side <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
@@ -82,7 +82,7 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     public string? ClaimCheckKey { get; init; }
 
     /// <summary>
-    /// Discriminator over the two dead-letter failure modes (ADR 0024).
+    /// Discriminator over the two dead-letter failure modes.
     /// Defaults to <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
     /// so every existing publisher-side promotion remains valid without
     /// touching the call site.

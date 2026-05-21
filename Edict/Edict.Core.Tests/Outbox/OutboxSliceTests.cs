@@ -5,8 +5,8 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Outbox;
 
-// Pure state-machine semantics of the Outbox slice (ADR 0018 / 0022 / 0026).
-// In-memory, no backend (ADR 0016). Every input is a fixed constant so the
+// Pure state-machine semantics of the Outbox slice.
+// In-memory, no backend. Every input is a fixed constant so the
 // Verify snapshot is deterministic and the literal values are the assertion;
 // Guids/dates are left unscrubbed for the same reason.
 
@@ -70,7 +70,7 @@ public sealed class OutboxSliceTests
     [Fact]
     public Task FailWithBackoff_ShouldBumpAttemptAndGateNextAttempt_OfMatchingEntry()
     {
-        // ADR 0026: failing entry stays in place; insertion order is preserved
+        // failing entry stays in place; insertion order is preserved
         // and the drain walks past it (no head privilege). A second failure
         // bumps AttemptCount again.
         var slice = new OutboxSlice()

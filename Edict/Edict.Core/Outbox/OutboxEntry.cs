@@ -1,10 +1,10 @@
 namespace Edict.Core.Outbox;
 
 /// <summary>
-/// A durable pending side-effect co-located in the one grain-state write (ADR 0018).
+/// A durable pending side-effect co-located in the one grain-state write.
 /// Immutable: the slice's pure transitions produce new entries, never mutate in place.
 /// Persisted grain state, so a frozen string-literal <c>[Alias]</c> survives a class
-/// rename (ADR 0017); <c>ORLEANS0010</c> is never suppressed.
+/// rename; <c>ORLEANS0010</c> is never suppressed.
 /// </summary>
 [GenerateSerializer]
 [Alias("OutboxEntry")]
@@ -20,7 +20,7 @@ public sealed record OutboxEntry
     [Id(2)]
     public byte[] Payload { get; init; } = [];
 
-    /// <summary>W3C <c>traceparent</c> captured at enqueue so a crash-recovery drain still nests under the originating span (ADR 0003).</summary>
+    /// <summary>W3C <c>traceparent</c> captured at enqueue so a crash-recovery drain still nests under the originating span.</summary>
     [Id(3)]
     public string? TraceParent { get; init; }
 

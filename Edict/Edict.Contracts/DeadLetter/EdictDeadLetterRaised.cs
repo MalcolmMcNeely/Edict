@@ -7,7 +7,7 @@ namespace Edict.Contracts.DeadLetter;
 
 /// <summary>
 /// Forensic notification that an Outbox effect exhausted <c>MaxAttempts</c>
-/// and was promoted to a dead-letter publish (ADR 0022). The engine emits one
+/// and was promoted to a dead-letter publish. The engine emits one
 /// of these in the same one grain-state write that removes the failed entry
 /// from the Outbox, so the move is atomic by construction; the built-in
 /// singleton <c>EdictDeadLetterProjectionBuilder</c> consumes the stream and
@@ -24,7 +24,7 @@ public sealed record EdictDeadLetterRaised : EdictEvent
     /// Fixed grain key the dead-letter projection grain is addressed by — every
     /// <see cref="EdictDeadLetterRaised"/> carries this same value as its
     /// <see cref="SingletonKey"/>, routing all fleet-wide dead letters to one
-    /// singleton projection grain (ADR 0022).
+    /// singleton projection grain.
     /// </summary>
     public static readonly Guid SingletonGrainKey =
         new("d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1");
@@ -61,7 +61,7 @@ public sealed record EdictDeadLetterRaised : EdictEvent
     /// </summary>
     public string EffectTarget { get; init; } = string.Empty;
 
-    /// <summary>The W3C <c>traceparent</c> captured on the originating Outbox entry (ADR 0003); null when no active trace.</summary>
+    /// <summary>The W3C <c>traceparent</c> captured on the originating Outbox entry; null when no active trace.</summary>
     public string? TraceParent { get; init; }
 
     /// <summary>Full type name of the captured exception.</summary>
@@ -70,28 +70,28 @@ public sealed record EdictDeadLetterRaised : EdictEvent
     /// <summary>The captured exception <see cref="Exception.Message"/> — not the stack trace.</summary>
     public string? Reason { get; init; }
 
-    /// <summary>The failed effect's payload as JSON for operator inspection (display data, distinct from MessagePack wire format per ADR 0007).</summary>
+    /// <summary>The failed effect's payload as JSON for operator inspection (display data, distinct from MessagePack wire format).</summary>
     public string? PayloadJson { get; init; }
 
     /// <summary>
     /// Full type name of the source <see cref="EdictEvent"/> that triggered the
-    /// failing effect — populated only for <c>InvokeHandler</c> promotions
-    /// (ADR 0023), null for <c>PublishEvent</c> / <c>SendCommand</c> / <c>UpsertRow</c>.
+    /// failing effect — populated only for <c>InvokeHandler</c> promotions,
+    /// null for <c>PublishEvent</c> / <c>SendCommand</c> / <c>UpsertRow</c>.
     /// Lets operators filter dead letters by event type without parsing payload bytes.
     /// </summary>
     public string? SourceEventType { get; init; }
 
     /// <summary>
     /// <see cref="EdictEvent.EventId"/> of the source event that triggered the
-    /// failing effect — populated only for <c>InvokeHandler</c> promotions
-    /// (ADR 0023), null otherwise. Pairs with <see cref="SourceEventType"/> to
+    /// failing effect — populated only for <c>InvokeHandler</c> promotions,
+    /// null otherwise. Pairs with <see cref="SourceEventType"/> to
     /// uniquely identify the originating event for RCA.
     /// </summary>
     public Guid? SourceEventId { get; init; }
 
     /// <summary>
     /// Claim-check store key for the inbound event whose blob could not
-    /// be fetched at the receiver (ADR 0024). Populated only when
+    /// be fetched at the receiver. Populated only when
     /// <see cref="FailureKind"/> is
     /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/>; null on the
     /// existing publisher-side <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
@@ -101,7 +101,7 @@ public sealed record EdictDeadLetterRaised : EdictEvent
     public string? ClaimCheckKey { get; init; }
 
     /// <summary>
-    /// Discriminator over the two dead-letter failure modes (ADR 0024).
+    /// Discriminator over the two dead-letter failure modes.
     /// Defaults to <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
     /// so every existing publisher-side promotion remains valid without
     /// touching the call site.

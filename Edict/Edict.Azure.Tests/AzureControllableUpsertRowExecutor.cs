@@ -11,7 +11,7 @@ namespace Edict.Azure.Tests;
 /// <see cref="OutboxEffectKind.UpsertRow"/> executor so the conformance test can
 /// simulate a crash between the ring/outbox commit and the row write, then a
 /// recovery drain against the <b>real Azure Queue + Azure Table</b> stack
-/// (ADR 0016/0018). Delegates to the genuine <see cref="UpsertRowExecutor"/>
+///. Delegates to the genuine <see cref="UpsertRowExecutor"/>
 /// when not failing.
 /// </summary>
 sealed class AzureControllableUpsertRowExecutor(

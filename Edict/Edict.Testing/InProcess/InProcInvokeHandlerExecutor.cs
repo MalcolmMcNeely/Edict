@@ -11,7 +11,7 @@ namespace Edict.Testing.InProcess;
 
 /// <summary>
 /// Replaces the bare <see cref="OutboxEffectKind.InvokeHandler"/> executor in
-/// the shipped Test Framework (ADR 0023 / 0026). Mirrors the production
+/// the shipped Test Framework. Mirrors the production
 /// executor's behaviour — deserialise the buffered
 /// <see cref="EdictEventEnvelope"/>, materialise the inner event via
 /// <see cref="ClaimCheckUnwrap"/> (inline-payload deserialise / pointer-bearing

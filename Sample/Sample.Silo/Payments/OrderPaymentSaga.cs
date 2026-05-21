@@ -8,7 +8,7 @@ using Sample.Contracts.Payments.Events;
 namespace Sample.Silo.Payments;
 
 /// <summary>
-/// Coordinates the order→payment workflow across two aggregates (ADR 0020),
+/// Coordinates the order→payment workflow across two aggregates,
 /// keyed throughout by the order's Guid (cross-domain re-keying):
 /// <list type="bullet">
 ///   <item><c>OrderSubmitted → AuthorizePayment</c></item>

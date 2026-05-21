@@ -6,7 +6,7 @@ namespace Edict.Azure.Tests.Outbox;
 /// pending entry to exist by failing the controllable PublishEvent executor
 /// on the first command; deactivate the grain; flip the executor to success;
 /// reactivate by issuing a second command — the previously-pending entry
-/// publishes during activation (ADR 0018, real Azure Blob grain storage).
+/// publishes during activation.
 /// Lifted from <c>OutboxHostTests.OnActivateAsync_ShouldDrain_WhenOutboxIsNonEmpty</c>.
 /// </summary>
 [Collection(AzureOutboxControllableExecutorCollection.Name)]

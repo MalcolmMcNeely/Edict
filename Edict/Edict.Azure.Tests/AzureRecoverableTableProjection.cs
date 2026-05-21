@@ -42,7 +42,7 @@ public sealed class AzureStreamPublisher : Grain, IAzureStreamPublisher
 }
 
 // Hand-written probe (Orleans codegen can see this, unlike the Edict-generated
-// grain interface — ADR 0006) so the conformance test can read the pending
+// grain interface) so the conformance test can read the pending
 // outbox and drive the deterministic Reminder recovery drain.
 public interface IAzureRecoverableProbe : IGrainWithGuidKey
 {
@@ -52,8 +52,8 @@ public interface IAzureRecoverableProbe : IGrainWithGuidKey
 
 /// <summary>
 /// Table projection whose row write is an UpsertRow outbox effect committed
-/// atomically with the dedup-ring commit (ADR 0018). Backed by real Azure Table
-/// Storage via Azurite; the conformance proof that ADR 0012's gap is closed.
+/// atomically with the dedup-ring commit. Backed by real Azure Table
+/// Storage via Azurite; the conformance proof that's gap is closed.
 /// </summary>
 public sealed partial class AzureRecoverableOrderTableProjectionBuilder
     : EdictTableProjectionBuilder<AzureRecoverableOrderRow>, IAzureRecoverableProbe

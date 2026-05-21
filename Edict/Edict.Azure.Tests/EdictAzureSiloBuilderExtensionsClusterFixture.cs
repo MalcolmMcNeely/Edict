@@ -15,8 +15,8 @@ using Orleans.TestingHost;
 namespace Edict.Azure.Tests;
 
 /// <summary>
-/// Conformance cluster for the ADR-0028 silo-builder extensions: boots a real
-/// Azurite (assembly-shared per ADR 0029), then wires the silo through
+/// Conformance cluster for the silo-builder extensions: boots a real
+/// Azurite (assembly-shared per), then wires the silo through
 /// <c>silo.AddEdict()</c> + <c>silo.AddEdictAzureStreams()</c> +
 /// <c>silo.AddEdictAzurePersistence()</c> only (no manual provider
 /// registrations) so a passing round-trip is proof that the consumer-facing
@@ -123,7 +123,7 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             });
 
             // The three new ISiloBuilder calls wire the consumer-facing surface
-            // we want to prove (ADR 0028). Memory reminders + memory PubSub are
+            // we want to prove. Memory reminders + memory PubSub are
             // pre-registered so the test focuses on the Edict-specific Azurite
             // substrate (streams, grain-state blob, dead-letter table) rather
             // than co-validating Orleans' own Azure Table reminder/pubsub init
@@ -143,7 +143,7 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
                 o.BlobServiceClient = ctx.BlobServiceClient;
                 // Per-fixture Guid-prefixed names — assembly-shared Azurite
                 // means two collections must not collide on container/table
-                // identity (ADR 0029).
+                // identity.
                 o.GrainStateContainerName = ctx.GrainStateContainerName;
                 o.DeadLetterTableName = ctx.DeadLetterTableName;
                 o.ClaimCheckBlobContainerName = claimCheckContainer;

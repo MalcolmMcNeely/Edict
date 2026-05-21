@@ -6,7 +6,7 @@ using Edict.Core.TableStorage;
 namespace Edict.Azure.TableStorage;
 
 /// <summary>
-/// Azure Table Storage implementation of <see cref="IEdictTableStoreFactory"/> (ADR 0015).
+/// Azure Table Storage implementation of <see cref="IEdictTableStoreFactory"/>.
 /// Creates a <see cref="AzureTableWriteStore{T}"/> for each named table and ensures the
 /// table exists before the grain starts consuming events.
 /// </summary>

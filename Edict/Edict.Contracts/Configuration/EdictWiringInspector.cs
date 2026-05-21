@@ -2,7 +2,7 @@ namespace Edict.Contracts.Configuration;
 
 /// <summary>
 /// Pure function over the DI-resolved set of <see cref="IEdictWiringMarker"/>
-/// instances (ADR 0028). Returns the list of missing-provider descriptions —
+/// instances. Returns the list of missing-provider descriptions —
 /// each names the <c>silo.AddEdict*</c> extension the consumer forgot. The
 /// host validator turns this list (plus the options-validator failures) into
 /// one aggregated <see cref="InvalidOperationException"/> at

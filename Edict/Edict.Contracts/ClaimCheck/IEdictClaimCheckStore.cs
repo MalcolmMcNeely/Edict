@@ -2,7 +2,7 @@ namespace Edict.Contracts.ClaimCheck;
 
 /// <summary>
 /// Framework-internal seam over the append-only blob store that backs the
-/// claim-check escape hatch for oversized events (ADR 0024). The surface is
+/// claim-check escape hatch for oversized events. The surface is
 /// deliberately minimal — only <see cref="PutAsync"/> and
 /// <see cref="GetAsync"/>:
 /// <list type="bullet">

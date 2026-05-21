@@ -25,7 +25,7 @@ namespace Edict.Azure.Tests;
 
 /// <summary>
 /// Full-stack Azurite-backed cluster fixture for the Azure provider test suite
-/// (ADR 0029). Uses the assembly-shared Azurite container
+///. Uses the assembly-shared Azurite container
 /// (<see cref="AzuriteAssemblyHost"/>) and per-fixture Guid-prefixed resource
 /// names so two collections running in parallel against the same Azurite never
 /// collide. The previous shape held connection-string and service-client state
@@ -149,10 +149,10 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.UseInMemoryReminderService();
             // PubSubStore stays on memory storage in this fixture — Orleans's
             // internal pub-sub state is out of scope for the Edict substrate
-            // story (ADR 0025 keeps it on Tables in production, but the
+            // story (production keeps PubSubStore on Tables, but the
             // provider-conformance suite isolates the change under test).
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            // edict-state on Azure Blob (ADR 0025). Substrate-behaviour tests
+            // edict-state on Azure Blob. Substrate-behaviour tests
             // (including GrainStateOnBlobSubstrateAtomicityTests) exercise the
             // same provider the sample silo wires in production. The container
             // name is per-fixture (Guid-prefixed) so parallel collections do

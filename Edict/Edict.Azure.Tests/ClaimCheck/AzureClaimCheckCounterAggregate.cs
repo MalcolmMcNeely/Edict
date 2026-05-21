@@ -16,8 +16,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 // Stateful command-handler aggregate + raw stream capture grain + Edict event
 // handler used by the ClaimCheck lift suite (issue #90). Its event rides the
 // AzureClaimCheckCounters stream so the publish + receiver-unwrap paths can
-// be observed end-to-end against the real Azure Queue + Azure Blob transport
-// (ADR 0024, ADR 0029).
+// be observed end-to-end against the real Azure Queue + Azure Blob transport.
 
 [GenerateSerializer]
 [Alias("Edict.Azure.Tests.ClaimCheck.AzureClaimCheckCounterState")]

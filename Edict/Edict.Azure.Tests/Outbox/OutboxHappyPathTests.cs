@@ -4,7 +4,7 @@ using Edict.Contracts.Events;
 namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
-/// End-to-end Outbox engine happy path on Azurite (ADR 0018, ADR 0029):
+/// End-to-end Outbox engine happy path on Azurite:
 /// a stateful command commits {State, Outbox} in one write, the inline FIFO
 /// drain publishes via <c>PublishEventExecutor</c> over the real Azure Queue
 /// stream provider, and steady state holds zero pending plus no Reminder.

@@ -9,7 +9,7 @@ namespace Sample.Silo.Orders;
 
 // End-to-end demo of the inline-drain path: the handler mutates framework-owned
 // State and raises events; Edict commits {State, Outbox} in one write and the
-// inline FIFO drain publishes (ADR 0018). No volatile aggregate fields.
+// inline FIFO drain publishes. No volatile aggregate fields.
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
     public Task<EdictCommandResult> Handle(PlaceOrderCommand command)

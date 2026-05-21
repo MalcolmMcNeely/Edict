@@ -1,7 +1,7 @@
 namespace Edict.Azure.Tests;
 
 /// <summary>
-/// ADR 0002 idempotency proof against the real Azure Queue provider (ADR 0016).
+/// idempotency proof against the real Azure Queue provider.
 /// Proves the dedup ring works end-to-end with Azure Queue Storage streams,
 /// including the commit-on-success invariant under simulated redelivery.
 /// Real queue redelivery (visibility-timeout expiry) is exercised by
@@ -59,7 +59,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         Assert.Single(await grain.GetHandledEventIdsAsync());
     }
 
-    // Cycle 3 — EventId committed only after dispatch succeeds (ADR-0002 commit-on-success proof).
+    // Cycle 3 — EventId committed only after dispatch succeeds (commit-on-success proof).
     // Orleans' Azure Queue stream provider retries failed deliveries within the silo;
     // the dedup ring must accept the retry (EventId not yet committed after the throw)
     // and commit on the successful attempt. Subsequent deliveries must be suppressed.

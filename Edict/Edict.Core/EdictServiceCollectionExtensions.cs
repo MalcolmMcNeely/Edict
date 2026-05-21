@@ -20,7 +20,7 @@ using Orleans.Serialization;
 namespace Edict.Core;
 
 /// <summary>
-/// Hand-authored DI front door for Edict (ADR 0021). Discoverable the moment
+/// Hand-authored DI front door for Edict. Discoverable the moment
 /// the package is referenced — IntelliSense and F12 land here, not in a
 /// generator-emitted phantom. The generator's per-assembly
 /// <c>EdictRouteRegistrar</c> contributes routes; <c>AddEdict()</c> walks the
@@ -59,8 +59,8 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
         // Forensic dead-letter repository is auto-wired so the framework's
-        // no-silent-loss guarantee holds without consumer configuration
-        // (ADR 0022). The provider plugs IEdictTableRepository<EdictDeadLetterEntry>:
+        // no-silent-loss guarantee holds without consumer configuration.
+        // The provider plugs IEdictTableRepository<EdictDeadLetterEntry>:
         // Edict.Testing's in-memory store factory in tests, Edict.Azure's table
         // repository in production. The framework-shipped projection grain
         // (EdictDeadLetterProjectionBuilder) is discovered by Orleans via the
@@ -74,16 +74,16 @@ public static class EdictServiceCollectionExtensions
             new TableBackedDeadLetterRepository(
                 sp.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
 
-        // Receiver-side claim-check unwrap (ADR 0024, slice 3). Every
+        // Receiver-side claim-check unwrap. Every
         // EdictIdempotencyBase consumer resolves this on the stream-observer
         // path, so the framework's front door is the right home — independent
         // of whether the host opted into AddEdictOutbox for publisher-side
         // policy. The IEdictClaimCheckStore is optional: a host with no store
         // still passes non-envelope and inline-payload events through.
-        // ADR 0024 slice 4: EdictDeadLetterProjectionBuilder is the one
-        // framework consumer for which the fetch is suppressed — the dead-letter
-        // row stores the pointer instead of inflating a >32 KB body into a
-        // 32 KB Azure Table property. Every other consumer fetches by default.
+        // EdictDeadLetterProjectionBuilder is the one framework consumer
+        // for which the fetch is suppressed — the dead-letter row stores
+        // the pointer instead of inflating a >32 KB body into a 32 KB
+        // Azure Table property. Every other consumer fetches by default.
         services.TryAddSingleton(sp => new ClaimCheckUnwrap(
             sp.GetRequiredService<Serializer>(),
             sp.GetService<IEdictClaimCheckStore>(),

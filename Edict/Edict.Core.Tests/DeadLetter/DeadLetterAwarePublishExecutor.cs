@@ -8,7 +8,7 @@ using Orleans.Streams;
 namespace Edict.Core.Tests.DeadLetter;
 
 // Test executor that fails every PublishEvent EXCEPT EdictDeadLetterRaised
-// (ADR 0022). The point of the end-to-end test is to drive the engine's
+//. The point of the end-to-end test is to drive the engine's
 // promotion path on a real event: the original publish fails permanently, the
 // engine promotes at MaxAttempts to an EdictDeadLetterRaised entry, and that
 // notification must itself publish cleanly so the projection grain can write

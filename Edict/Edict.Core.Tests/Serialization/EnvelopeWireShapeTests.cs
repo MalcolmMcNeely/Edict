@@ -6,7 +6,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// ADR 0007 schema-drift guard for EdictEventEnvelope (ADR 0024). Two
+// schema-drift guard for EdictEventEnvelope. Two
 // snapshots — one per branch — fix the MessagePack key set the publisher
 // and receiver will rely on. A renamed or removed property changes the
 // snapshot and fails CI before the breaking wire change can ship.

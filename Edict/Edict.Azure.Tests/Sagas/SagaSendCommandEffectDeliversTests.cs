@@ -1,13 +1,13 @@
 namespace Edict.Azure.Tests.Sagas;
 
 /// <summary>
-/// Azurite/Testcontainers conformance for the ADR-0020 SendCommand outbox
+/// Azurite/Testcontainers conformance for the SendCommand outbox
 /// effect on a saga: when an event is delivered to <see cref="AzureWorkflowSaga"/>
 /// the saga records durable <c>Progress</c>, dispatches exactly one
 /// <see cref="AzureSagaTrackerCommand"/>, and the inline outbox drain routes
 /// the command to its handler. Lifted from <c>SagaWorkflowTests</c> in
 /// Core.Tests so the proof runs on the same Azure Queue + Azure Blob
-/// substrate the sample silo wires in production (ADR 0029).
+/// substrate the sample silo wires in production.
 /// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class SagaSendCommandEffectDeliversTests(AzureClusterFixture fixture)

@@ -7,7 +7,7 @@ namespace Edict.Contracts.Commands;
 /// events, the event stream's <c>sourceAggregateGuid</c> — one correlation id
 /// flowing command → grain → event → handler. Named <c>RouteKey</c> rather
 /// than <c>Key</c> to avoid colliding with
-/// <c>System.ComponentModel.DataAnnotations.KeyAttribute</c> (ADR 0004).
+/// <c>System.ComponentModel.DataAnnotations.KeyAttribute</c>.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class EdictRouteKeyAttribute : Attribute;

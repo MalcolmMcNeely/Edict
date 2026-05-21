@@ -16,7 +16,7 @@ interface IInMemoryUpsert
 /// <summary>
 /// In-memory write store backing one (tableName, T) pair. Idempotent by
 /// (partitionKey, rowKey) — a full-row replace — so the Outbox's at-least-once
-/// UpsertRow redelivery does not double-apply (ADR 0012/0018).
+/// UpsertRow redelivery does not double-apply.
 /// </summary>
 sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
     where T : class, new()
@@ -46,7 +46,7 @@ sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IEdictTableR
 /// <summary>
 /// The shipped in-memory <see cref="IEdictTableStoreFactory"/>: one store per
 /// (tableName, T). Caches stores so a test can read back the rows a projection
-/// builder wrote without any Azure dependency (ADR 0016).
+/// builder wrote without any Azure dependency.
 /// </summary>
 sealed class InMemoryEdictTableStoreFactory : IEdictTableStoreFactory
 {

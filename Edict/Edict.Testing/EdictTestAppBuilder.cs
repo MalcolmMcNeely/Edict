@@ -15,7 +15,7 @@ public sealed class EdictTestAppBuilder
     /// <summary>
     /// Mirrors <c>EdictAzureStreamsOptions.ClaimCheckThresholdBytes</c> so the
     /// in-memory test framework exercises the same commit pipeline as
-    /// production (ADR 0024). Override per test via
+    /// production. Override per test via
     /// <see cref="WithClaimCheckThresholdBytes"/> to force the path on a
     /// small payload.
     /// </summary>
@@ -59,7 +59,7 @@ public sealed class EdictTestAppBuilder
     /// <summary>
     /// Opts <see cref="Edict.Core.EventHandler.EdictEventHandler"/> deliveries
     /// into the duplicate-redelivery chaos that other consumer roles get by
-    /// default (ADR 0023, issue #67). Use only when a test specifically wants
+    /// default. Use only when a test specifically wants
     /// to exercise the dedup ring under chaos for an event handler — the
     /// shipped default is off so a consumer's first mock-call-count assertion
     /// is deterministic.
@@ -71,7 +71,7 @@ public sealed class EdictTestAppBuilder
     }
 
     /// <summary>
-    /// Overrides the claim-check byte-length threshold for this test (ADR 0024).
+    /// Overrides the claim-check byte-length threshold for this test.
     /// Lower the value to force the path on a small payload — useful when a
     /// test wants to stress the publisher pipeline without raising a 30 KB
     /// event.

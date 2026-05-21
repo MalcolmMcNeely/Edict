@@ -9,7 +9,7 @@ using Orleans;
 namespace Edict.Core.DeadLetter;
 
 /// <summary>
-/// Built-in singleton table projection for the dead-letter pivot (ADR 0022).
+/// Built-in singleton table projection for the dead-letter pivot.
 /// Consumes the <c>edict-dead-letter</c> stream — every
 /// <see cref="EdictDeadLetterRaised"/> the engine emits — and upserts an
 /// <see cref="EdictDeadLetterEntry"/> row into the fleet-wide
@@ -30,7 +30,7 @@ public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory sto
     : EdictTableProjectionBuilder<EdictDeadLetterEntry>(storeFactory)
 {
     /// <summary>
-    /// The single partition every dead-letter row is written to (ADR 0022). All
+    /// The single partition every dead-letter row is written to. All
     /// fleet-wide reads scan this partition.
     /// </summary>
     public const string DeadLetterPartition = "deadletter";

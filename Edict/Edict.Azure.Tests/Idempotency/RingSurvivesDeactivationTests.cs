@@ -2,10 +2,10 @@ namespace Edict.Azure.Tests.Idempotency;
 
 /// <summary>
 /// The dedup ring lives in the persisted <c>GrainEnvelope.Idempotency</c> slot
-/// (ADR 0018) and must survive grain deactivation: a redelivery of an
+/// and must survive grain deactivation: a redelivery of an
 /// already-handled event id after the grain reactivates must still be
 /// suppressed. The Azurite-backed cluster writes <c>edict-state</c> to real
-/// Azure Blob grain storage (ADR 0025), so this proof exercises the same
+/// Azure Blob grain storage, so this proof exercises the same
 /// substrate the sample silo wires in production — a stronger guarantee than
 /// the previous in-memory grain-storage version.
 /// </summary>

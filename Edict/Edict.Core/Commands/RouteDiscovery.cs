@@ -6,14 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Edict.Core.Commands;
 
-/// <summary>
-/// Pure-ish discovery core for the hand-authored <c>AddEdict()</c>: scans
-/// candidate assemblies for <c>[assembly: EdictRoutes(typeof(...))]</c>,
-/// invokes each registrar's <c>Register(Dictionary&lt;Type, CommandRoute&gt;)</c>,
-/// and returns the merged command-to-route map. Deliberately has no DI
-/// dependency so it is unit-testable against in-memory <see cref="Assembly"/>
-/// builders (ADR 0021).
-/// </summary>
 static class RouteDiscovery
 {
     public static IDictionary<Type, CommandRoute> Discover(

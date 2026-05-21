@@ -122,7 +122,7 @@ public class PersistedStateContractAnalyzerTests
     {
         // Scope of the [Id(n)] check is *declared* public instance properties
         // only — a property the type inherits from a base class does not fire,
-        // because the base class owns its own [Id(n)] discipline (ADR 0027).
+        // because the base class owns its own [Id(n)] discipline.
         const string source = """
             using Edict.Contracts.Persistence;
             using Orleans;

@@ -30,13 +30,13 @@ using Orleans.TestingHost;
 namespace Edict.Testing;
 
 /// <summary>
-/// The shipped in-memory Test Framework entry point (ADR 0016). Boots the
+/// The shipped in-memory Test Framework entry point. Boots the
 /// consumer's grains on an in-memory Orleans cluster with Edict auto-wired and
 /// runs the <em>real</em> Outbox/saga engine over memory streams, an in-memory
 /// single store and a virtual <see cref="TimeProvider"/> — so consumer code
 /// behaves identically under test and in production. A whole workflow is
 /// asserted with one <c>await Verify(app.Timeline)</c>. Traces are not
-/// captured (ADR 0016).
+/// captured.
 /// </summary>
 public sealed class EdictTestApp : IAsyncDisposable
 {
@@ -97,7 +97,7 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// interface plus a class-name prefix, not the generator-emitted
     /// <c>I{Saga}</c>, because Orleans's codegen runs before Edict's generator
     /// and so does not produce a client proxy for the generator-emitted
-    /// interface (ADR 0006). Routing via the hand-written brand interface keeps
+    /// interface. Routing via the hand-written brand interface keeps
     /// the typed test surface without fighting that ordering.
     /// </para>
     /// </summary>
@@ -114,8 +114,9 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <see cref="EdictTableProjectionBuilder{T}"/> last wrote for the supplied
     /// <c>(tableName, partitionKey, rowKey)</c>, or <c>null</c> when the
     /// projection's <c>Handle</c> never ran for this key. Tests Verify the row
-    /// directly — the same load-apply-writeback shape ADR 0012 guarantees in
-    /// production, but reading the in-memory store instead of Azure Table.
+    /// directly — the same load-apply-writeback shape the table-projection
+    /// builder guarantees in production, but reading the in-memory store
+    /// instead of Azure Table.
     /// </summary>
     public async Task<TRow?> GetProjectionRow<TRow>(string tableName, string partitionKey, string rowKey)
         where TRow : class, new()
@@ -165,7 +166,7 @@ public sealed class EdictTestApp : IAsyncDisposable
 
     /// <summary>
     /// Advances the virtual clock so backoff/dead-letter timing elapses with no
-    /// real wait, then drains. The clock is the ADR 0018/0019 seam the engine
+    /// real wait, then drains. The clock is the seam the engine
     /// reads for backoff gating.
     /// </summary>
     public async Task AdvanceClock(TimeSpan by)
@@ -184,13 +185,13 @@ public sealed class EdictTestApp : IAsyncDisposable
 
     // Drives the hand-authored AddEdict() with the explicit-assemblies overload
     // so EdictTestApp routes are sourced from the consumer assembly alone
-    // (ADR 0021 — deterministic for test contexts; the AppDomain-scan happy-path
-    // is the consumer-app entry only).
+    // Deterministic for test contexts; the AppDomain-scan happy-path
+    // is the consumer-app entry only.
     static void InvokeAddEdict(IServiceCollection services, Assembly consumerAssembly) =>
         services.AddEdict(consumerAssembly);
 
     // Plug the in-memory IEdictTableRepository<EdictDeadLetterEntry> behind
-    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade (ADR 0022).
+    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade.
     // The store is held on the harness context, so silo (write) and client
     // (read) share one backing dictionary — the test can call
     // IEdictDeadLetterRepository.ListAllAsync() on the client and see the row
@@ -219,11 +220,11 @@ public sealed class EdictTestApp : IAsyncDisposable
             ConfigureSerialization(ctx, siloBuilder.Services);
 
             // Register the virtual clock before AddEdictOutbox so its
-            // TryAddSingleton(TimeProvider.System) is a no-op (ADR 0018 seam).
+            // TryAddSingleton(TimeProvider.System) is a no-op (the engine reads this seam for backoff gating).
             siloBuilder.Services.AddSingleton<TimeProvider>(ctx.Clock);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
             // Claim-check seam registered before AddEdictOutbox so its default
-            // policy registration picks up the in-memory store (ADR 0024).
+            // policy registration picks up the in-memory store.
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore);
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
@@ -248,7 +249,7 @@ public sealed class EdictTestApp : IAsyncDisposable
                 ActivatorUtilities.CreateInstance<InProcPublishEventExecutor>(sp, ctx.Recorder));
 
             // Swap the bare InvokeHandler executor for the recording variant so
-            // EdictEventHandler invocations surface on the timeline (ADR 0023).
+            // EdictEventHandler invocations surface on the timeline.
             var originalInvoke = siloBuilder.Services.Single(d =>
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(InvokeHandlerExecutor));

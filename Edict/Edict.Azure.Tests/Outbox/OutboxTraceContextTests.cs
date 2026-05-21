@@ -6,7 +6,7 @@ using Edict.Telemetry;
 namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
-/// Two ADR 0003 invariants the Outbox engine + <c>PublishEventExecutor</c>
+/// Two invariants the Outbox engine + <c>PublishEventExecutor</c>
 /// must preserve, end-to-end on Azurite:
 /// <list type="number">
 ///   <item>An active Activity at command time stitches the
@@ -61,7 +61,7 @@ public sealed class OutboxTraceContextTests(AzureClusterFixture fixture)
     {
         // Caller-side Activity stitches the Command → Publish → Handle span
         // tree across the stream hop. Capturing the consumer-side handle span
-        // and asserting its TraceId matches the caller's is the ADR 0003
+        // and asserting its TraceId matches the caller's is the
         // parent-child stitch proof on the real Azure Queue transport.
         var stopped = new List<Activity>();
         using var listener = new ActivityListener

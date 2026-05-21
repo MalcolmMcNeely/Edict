@@ -1,7 +1,7 @@
 namespace Edict.Contracts.Configuration;
 
 /// <summary>
-/// Flat, consumer-tunable knobs over the framework's core mechanisms (ADR 0028).
+/// Flat, consumer-tunable knobs over the framework's core mechanisms.
 /// Every constructor default is the literal previously embedded in mechanism
 /// code — moving those literals here is the principle the ADR pins down:
 /// every framework knob is a property on an options class with a default, a
@@ -13,7 +13,7 @@ public sealed class EdictOptions
 {
     /// <summary>
     /// Maximum number of distinct <c>EdictEvent.EventId</c> values remembered
-    /// per consumer for at-least-once redelivery dedup (ADR 0002). The
+    /// per consumer for at-least-once redelivery dedup. The
     /// silo-wide default; a per-consumer <c>WindowSize</c> override on
     /// <c>EdictIdempotencyBase</c> lets a singleton grain run a much larger
     /// window than the default.
@@ -28,7 +28,7 @@ public sealed class EdictOptions
 
     /// <summary>
     /// Attempts before a permanently failing Outbox entry is promoted to a
-    /// dead-letter publish (ADR 0022). The failing attempt that reaches this
+    /// dead-letter publish. The failing attempt that reaches this
     /// count removes the entry and appends an <c>EdictDeadLetterRaised</c>
     /// publish entry at the FIFO tail in one write.
     /// </summary>
@@ -43,7 +43,7 @@ public sealed class EdictOptions
     public double OutboxJitterFraction { get; set; } = 0.2;
 
     /// <summary>
-    /// Period of the lazy Outbox drain reminder (ADR 0018). Orleans' reminder
+    /// Period of the lazy Outbox drain reminder. Orleans' reminder
     /// floor is one minute; values below that throw at startup.
     /// </summary>
     public TimeSpan OutboxDrainReminderPeriod { get; set; } = TimeSpan.FromMinutes(1);

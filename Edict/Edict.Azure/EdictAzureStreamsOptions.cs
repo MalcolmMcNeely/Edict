@@ -3,7 +3,7 @@ using Azure.Storage.Queues;
 namespace Edict.Azure;
 
 /// <summary>
-/// Tuning knobs for the Azure streams provider (ADR 0028). Lives in
+/// Tuning knobs for the Azure streams provider. Lives in
 /// <c>Edict.Azure</c> because the wire-cap that constrains
 /// <see cref="ClaimCheckThresholdBytes"/> is the Azure Queue / Azure Table
 /// per-property limit; a future Kafka provider would expose its own
@@ -16,8 +16,8 @@ public sealed class EdictAzureStreamsOptions
 
     /// <summary>
     /// Inner-event byte length above which the commit pipeline uploads to
-    /// the claim-check blob store instead of riding the body inline (ADR
-    /// 0024). Default 30 720 — 2 KB of headroom against the 32 KB
+    /// the claim-check blob store instead of riding the body inline.
+    /// Default 30 720 — 2 KB of headroom against the 32 KB
     /// per-property cap to absorb envelope framing.
     /// </summary>
     public int ClaimCheckThresholdBytes { get; set; } = 30_720;

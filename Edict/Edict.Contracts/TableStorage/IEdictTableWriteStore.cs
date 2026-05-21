@@ -1,7 +1,7 @@
 namespace Edict.Contracts.TableStorage;
 
 /// <summary>
-/// Framework-internal write-store seam for table projections (ADR 0015). The grain
+/// Framework-internal write-store seam for table projections. The grain
 /// base owns the load→apply→writeback orchestration; this interface keeps the
 /// backing store trivial to implement. Not part of the consumer contract surface —
 /// application code depends only on <see cref="IEdictTableRepository{T}"/>.

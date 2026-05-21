@@ -4,7 +4,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Configuration;
 
-// Pure-function tests over EdictOptions (ADR 0028). The validator returns the
+// Pure-function tests over EdictOptions. The validator returns the
 // full failure list per invocation so a host with two problems sees two
 // problems; one Verify snapshot per scenario keeps the messages themselves as
 // the assertion (drift in wording fails CI).

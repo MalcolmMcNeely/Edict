@@ -51,7 +51,7 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // ADR 0014: Edict.Telemetry may reference Orleans.Core (RequestContext) but must never
+    // Edict.Telemetry may reference Orleans.Core (RequestContext) but must never
     // pull in the Orleans server runtime (grain bases, hosting, etc.).
     [Fact]
     public void EdictTelemetry_ShouldNotDependOnOrleansGrainBase()
@@ -66,7 +66,7 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // ADR 0012: ITableRepository lives in Edict.Contracts; Azure.Data.Tables is Azure-provider-only.
+    // ITableRepository lives in Edict.Contracts; Azure.Data.Tables is Azure-provider-only.
     [Fact]
     public void EdictContracts_ShouldNotDependOnAzureDataTables()
     {
@@ -80,7 +80,7 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // ADR 0015: EdictTableProjectionBuilder is provider-neutral; Azure stays in the
+    // EdictTableProjectionBuilder is provider-neutral; Azure stays in the
     // write-store implementation, not in the grain base.
     [Fact]
     public void EdictTableProjectionBuilder_ShouldNotDependOnAzure()
@@ -95,7 +95,7 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // ADR 0014: Azure implementations live in Edict.Azure, not Edict.Core — so taking
+    // Azure implementations live in Edict.Azure, not Edict.Core — so taking
     // Core does not drag any Azure SDK into a non-Azure deployment.
     [Fact]
     public void EdictCore_ShouldNotDependOnAnyAzureSdkPackages()
@@ -107,7 +107,7 @@ public class BoundaryTests
                  && a.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase));
     }
 
-    // ADR 0013: every public, non-nested type in Edict.Contracts is Edict-prefixed.
+    // every public, non-nested type in Edict.Contracts is Edict-prefixed.
     // The prefix signals "consumer contract with the framework"; unprefixed public types
     // would dilute that signal and risk naming collisions.
     [Fact]
@@ -149,7 +149,7 @@ public class BoundaryTests
         return dir?.FullName ?? AppContext.BaseDirectory;
     }
 
-    // ADR 0028: every tunable knob lives on an options class with its default
+    // every tunable knob lives on an options class with its default
     // in the constructor; literals in mechanism code are forbidden. This guard
     // catches a regression like a future maintainer slipping a
     // TimeSpan.FromMinutes(1) into the engine instead of surfacing it through

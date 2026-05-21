@@ -23,7 +23,7 @@ namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
 /// Azurite-backed cluster that configures a non-default
-/// <see cref="EdictOptions.OutboxDrainReminderPeriod"/> (ADR 0028) — the value
+/// <see cref="EdictOptions.OutboxDrainReminderPeriod"/> — the value
 /// the <c>OutboxHost</c> passes to <c>RegisterOrUpdateReminderAsync</c>. The
 /// scenario test below asserts the option flows through silo configuration
 /// and that a failing drain registers the lazy reminder. The exact period

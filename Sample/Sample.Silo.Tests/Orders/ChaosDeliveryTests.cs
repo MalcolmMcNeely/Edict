@@ -11,7 +11,7 @@ namespace Sample.Silo.Tests.Orders;
 /// <summary>
 /// Proves the chaos default (seeded duplicate redelivery) is on by default and
 /// genuinely fires, by reading the recorder's underlying event count. The
-/// snapshot itself stays stable because the dedup ring (ADR 0002) suppresses
+/// snapshot itself stays stable because the dedup ring suppresses
 /// the duplicate before any handler runs — that stability is the whole reason
 /// chaos can be on by default.
 /// </summary>

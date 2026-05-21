@@ -7,7 +7,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Receiver-side missing-blob dead-letter loop end-to-end against the real
-/// Azure provider stack (ADR 0026, supersedes ADR 0024 slice 3, lift from
+/// Azure provider stack (supersedes the earlier receiver-side slice, lift from
 /// <c>Edict.Core.Tests/ClaimCheck/BlobMissingDeadLetterEndToEndTests</c>):
 /// when an <see cref="EdictEventEnvelope"/> arrives carrying a
 /// <see cref="EdictEventEnvelope.ClaimCheckKey"/> that does not exist in the

@@ -13,8 +13,8 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.Resilience;
 
-// Dedicated event/saga types for the transport-fault suite (ADR 0029 +
-// issue #96). The resilience cluster has its own Azurite container so it can
+// Dedicated event/saga types for the transport-fault suite (issue #96).
+// The resilience cluster has its own Azurite container so it can
 // be paused/restarted without affecting other collections; the workflow types
 // here mirror the AzureSagaWorkflow shape but route on their own stream so a
 // failure in the resilience suite does not contaminate the standard saga
@@ -61,7 +61,7 @@ public sealed class ResilienceTrackerState : IEdictPersistedState
     public Guid LastWorkflowId { get; set; }
 }
 
-// Hand-written probes — Orleans codegen needs to see these (ADR 0006).
+// Hand-written probes — Orleans codegen needs to see these.
 public interface IResilienceSagaProgressProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledAsync();

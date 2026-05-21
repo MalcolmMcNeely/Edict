@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Edict.Analyzers.Persistence;
 
 /// <summary>
-/// EDICT011 — enforces the consumer-owned half of the ADR 0027 attribute-placement
+/// EDICT011 — enforces the consumer-owned half of the attribute-placement
 /// policy on every <c>IEdictPersistedState</c> implementer. The generator owns
 /// <c>[Alias]</c> + <c>[MessagePackObject(true)]</c> on commands and events
 /// (values safe to recompute every build from current syntax); the consumer owns
@@ -128,7 +128,7 @@ public sealed class PersistedStateContractAnalyzer : DiagnosticAnalyzer
             }
 
             // Scope is *declared* public instance properties on this type only;
-            // a property inherited from a base does not fire (ADR 0027).
+            // a property inherited from a base does not fire.
             if (!SymbolEqualityComparer.Default.Equals(member.ContainingType, type))
             {
                 continue;

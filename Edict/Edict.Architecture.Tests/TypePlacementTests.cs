@@ -28,7 +28,7 @@ public class TypePlacementTests
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
-    // Contracts: Event, [Stream], [RouteKey], ITableRepository — ADR 0008 / ADR 0012
+    // Contracts: Event, [Stream], [RouteKey], ITableRepository.
 
     [Fact]
     public void EdictEvent_ShouldResideInEdictContracts()
@@ -75,7 +75,7 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Core runtime: EdictIdempotencyBase, EdictProjectionBuilder, EdictTableProjectionBuilder — ADR 0008 / ADR 0017
+    // Core runtime: EdictIdempotencyBase, EdictProjectionBuilder, EdictTableProjectionBuilder.
 
     [Fact]
     public void EdictIdempotencyBase_ShouldResideInEdictCoreIdempotency()
@@ -105,7 +105,7 @@ public class TypePlacementTests
     }
 
     // Saga: EdictSaga<TProgress> + IEdictSaga are consumer-facing (brand-prefixed)
-    // and live in Edict.Core/Sagas/; the dispatch-buffer mechanism is bare. ADR 0020.
+    // and live in Edict.Core/Sagas/; the dispatch-buffer mechanism is bare..
 
     [Fact]
     public void EdictSaga_ShouldResideInEdictCoreSagas()
@@ -137,7 +137,7 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // EdictUnit: the stateless-payload shim type — consumer-visible surface, ADR 0008 / 0017
+    // EdictUnit: the stateless-payload shim type — consumer-visible surface / 0017
 
     [Fact]
     public void EdictUnit_ShouldResideInEdictContracts()
@@ -148,7 +148,7 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Outbox/DeadLetter engine: ADR 0018 / 0019 — folders Outbox/ and DeadLetter/,
+    // Outbox/DeadLetter engine: / 0019 — folders Outbox/ and DeadLetter/,
     // bare-named (no consumer types it; the engine stays internal).
 
     [Fact]
@@ -161,11 +161,11 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // ADR 0022 consumer surface: the read-only repository + its DTO are
+    // consumer surface: the read-only repository + its DTO are
     // consumer-facing, so they are brand-prefixed and live in Edict.Contracts
     // (mirroring IEdictTableRepository). The in-grain dead-letter slice, its
     // operator-recovery admin grain interface, and the saturated-intake
-    // exception are all removed under ADR 0022 — no placement tests for them.
+    // exception are all removed under — no placement tests for them.
 
     [Fact]
     public void IEdictDeadLetterRepository_ShouldResideInEdictContracts()
@@ -200,7 +200,7 @@ public class TypePlacementTests
         // EdictDeadLetterProjectionBuilder is the deliberate brand-prefixed
         // exception: the framework-shipped projection grain whose role-named
         // subclass naturally inherits the brand from EdictTableProjectionBuilder
-        // (ADR 0022 — auto-wired by AddEdict()). The pre-refactor
+        //). The pre-refactor
         // EdictDurableConsumerBase exception is gone (#69 — composition).
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
@@ -291,9 +291,9 @@ public class TypePlacementTests
         Assert.Empty(leakingMembers);
     }
 
-    // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory — ADR 0014
+    // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory
 
-    // EdictEventHandler: ADR 0023 — the consumer-facing terminal side-effect
+    // EdictEventHandler: — the consumer-facing terminal side-effect
     // base lives in Edict.Core/EventHandler/; its InvokeHandler executor is
     // internal and bare-named; the new OutboxEffectKind value lives in
     // Edict.Core.Outbox alongside the other three.
@@ -318,7 +318,7 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Claim-check contracts: ADR 0024 — universal wire-format envelope,
+    // Claim-check contracts: — universal wire-format envelope,
     // append-only store seam, post-wrap overflow exception, and dead-letter
     // failure-kind discriminator. All live in Edict.Contracts (Orleans-free).
 

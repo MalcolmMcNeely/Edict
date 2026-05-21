@@ -14,7 +14,7 @@ namespace Edict.Core.Tests.Grains;
 
 // A stateful command handler: mutates framework-owned State and raises an
 // event. Exercises the Outbox engine end-to-end — {State, Outbox} commit in
-// one write, then the inline FIFO drain publishes (ADR 0018).
+// one write, then the inline FIFO drain publishes.
 
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Grains.CounterState")]
@@ -48,7 +48,7 @@ public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCoun
 }
 
 // Hand-written probe interface (Orleans' codegen can see this, unlike the
-// Edict-generated grain interface — ADR 0006), so a test can read the
+// Edict-generated grain interface), so a test can read the
 // framework-owned State and force deactivation to prove it persisted.
 public interface ICounterProbe : IGrainWithGuidKey
 {
@@ -69,7 +69,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
     }
 
     // Raises several events in one command so a test can prove the inline
-    // drain publishes them FIFO (per-aggregate causal order, ADR 0018).
+    // drain publishes them FIFO (per-aggregate causal order).
     public Task<EdictCommandResult> Handle(BatchIncrementCounterCommand command)
     {
         for (var i = 0; i < command.Times; i++)

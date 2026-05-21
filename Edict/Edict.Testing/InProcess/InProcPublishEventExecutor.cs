@@ -27,7 +27,7 @@ namespace Edict.Testing.InProcess;
 /// <c>RecordingPublishEventExecutor</c> used to wrap), and stamps identity /
 /// time / trace exactly as the real <see cref="PublishEventExecutor"/> does
 /// so a consumer's <see cref="EdictEvent.EventId"/> / <c>OccurredAt</c>
-/// expectations are identical under test and in production (ADR 0003).
+/// expectations are identical under test and in production.
 /// </para>
 /// </summary>
 sealed class InProcPublishEventExecutor(
@@ -70,7 +70,7 @@ sealed class InProcPublishEventExecutor(
 
         // The engine's dead-letter promotion path bypasses the InvokeHandler
         // executor on the final attempt — it appends an EdictDeadLetterRaised
-        // PublishEvent entry instead (ADR 0022 / 0023). Recording the
+        // PublishEvent entry instead. Recording the
         // DeadLettered Invocation entry here closes the loop so the timeline
         // shows the same "event arrived → ran (or dead-lettered)" pair the
         // shipped contract documents.
@@ -96,9 +96,9 @@ sealed class InProcPublishEventExecutor(
         {
             var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
             // Per-subscriber chaos gate: EdictEventHandler deliveries are
-            // excluded from chaos extra deliveries by default (ADR 0023,
-            // issue #67) so a consumer's mock-call-count assertions are
-            // deterministic before they have reasoned about chaos.
+            // excluded from chaos extra deliveries by default so a
+            // consumer's mock-call-count assertions are deterministic
+            // before they have reasoned about chaos.
             var deliveries = 1 + ExtraDeliveriesFor(grainClass);
             for (var i = 0; i < deliveries; i++)
             {
@@ -110,7 +110,7 @@ sealed class InProcPublishEventExecutor(
     }
 
     // Seeded duplicate redelivery (#52 chaos AC): production streams redeliver,
-    // so every consumer test exercises the ADR-0002 dedup ring for free. The
+    // so every consumer test exercises the dedup ring for free. The
     // dedup ring suppresses the duplicate, so saga progress / projection rows /
     // recorder counts stay stable across runs.
     int ExtraDeliveriesFor(Type grainClass)

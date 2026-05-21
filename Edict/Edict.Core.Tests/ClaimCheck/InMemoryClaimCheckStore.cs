@@ -6,7 +6,7 @@ namespace Edict.Core.Tests.ClaimCheck;
 
 /// <summary>
 /// Test-double <see cref="IEdictClaimCheckStore"/> used by the in-memory
-/// cluster fixture (ADR 0024). The shipped <c>InMemoryClaimCheckStore</c> in
+/// cluster fixture. The shipped <c>InMemoryClaimCheckStore</c> in
 /// <c>Edict.Testing</c> is the customer-facing one; this is the lightweight
 /// fake the framework's own provider-agnostic tests use so the Core test
 /// assembly does not take a dependency on the test framework. Mirrors the

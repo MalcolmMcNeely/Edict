@@ -21,8 +21,8 @@ using Orleans.Serialization;
 namespace Edict.Azure;
 
 /// <summary>
-/// Provider extensions on <see cref="ISiloBuilder"/> for the Azure substrate
-/// (ADR 0028). One call per decision the consumer is making: streams provider,
+/// Provider extensions on <see cref="ISiloBuilder"/> for the Azure substrate.
+/// One call per decision the consumer is making: streams provider,
 /// persistence provider. Each call internally chains the Orleans
 /// silo-builder primitives (<c>AddAzureQueueStreams</c>,
 /// <c>AddAzureBlobGrainStorage</c>, <c>AddAzureTableGrainStorage</c>,
@@ -35,7 +35,7 @@ public static class EdictAzureSiloBuilderExtensions
 {
     /// <summary>
     /// Registers the Azure Queue stream provider, the claim-check threshold
-    /// (wire-cap concern, hence on the streams side per ADR 0028), and the
+    /// (wire-cap concern, hence on the streams side), and the
     /// <see cref="EdictStreamsProviderMarker"/> the startup validator inspects.
     /// </summary>
     public static ISiloBuilder AddEdictAzureStreams(
@@ -110,10 +110,10 @@ public static class EdictAzureSiloBuilderExtensions
             ?? throw new InvalidOperationException(
                 "AddEdictAzurePersistence requires either a DI-registered BlobServiceClient singleton instance or one set on EdictAzurePersistenceOptions.BlobServiceClient.");
 
-        // PubSubStore stays on Tables — Orleans-internal, bounded shape (ADR 0025).
+        // PubSubStore stays on Tables — Orleans-internal, bounded shape.
         silo.AddAzureTableGrainStorage("PubSubStore", opt => opt.TableServiceClient = tableClient);
 
-        // edict-state on Blob — single-blob ETag atomicity, no per-property cap (ADR 0025).
+        // edict-state on Blob — single-blob ETag atomicity, no per-property cap.
         var stateContainer = options.GrainStateContainerName;
         silo.AddAzureBlobGrainStorage(stateContainer, opt =>
         {

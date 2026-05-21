@@ -11,7 +11,7 @@ using Orleans.Serialization;
 
 namespace Edict.Core.Tests.ClaimCheck;
 
-// ADR 0024 slice 4: the receiver-side unwrap registered by AddEdict() must
+// slice 4: the receiver-side unwrap registered by AddEdict() must
 // suppress the blob fetch for EdictDeadLetterProjectionBuilder so a
 // pointer-bearing envelope on the dead-letter stream is never auto-fetched
 // into a 32 KB property — the framework consumer is the one type that holds

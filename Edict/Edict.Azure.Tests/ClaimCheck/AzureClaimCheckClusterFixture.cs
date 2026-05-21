@@ -25,13 +25,13 @@ namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
 /// Azurite-backed cluster for the lifted ClaimCheck publish + receiver-unwrap
-/// scenarios (issue #90, ADR 0024). Wires a real
+/// scenarios (issue #90). Wires a real
 /// <see cref="AzureBlobClaimCheckStore"/> against the shared Azurite blob
 /// service and overrides <see cref="ClaimCheckPolicy"/> with a 1-byte
 /// threshold so every raised event takes the pointer branch — the publish
 /// path always uploads to blob and the receiver always unwraps from blob.
 /// Uses the assembly-scoped Azurite host (<see cref="AzuriteAssemblyHost"/>)
-/// with per-fixture Guid-prefixed resource names (ADR 0029) so it does not
+/// with per-fixture Guid-prefixed resource names so it does not
 /// collide with the other collections sharing the same Azurite.
 /// </summary>
 public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime

@@ -9,7 +9,7 @@ namespace Edict.Analyzers.Tests;
 
 /// <summary>
 /// Guards against the <c>EdictWellKnownNames.cs</c> file diverging between
-/// <c>Edict.Generators</c> and <c>Edict.Analyzers</c> (ADR 0014 / ADR 0005).
+/// <c>Edict.Generators</c> and <c>Edict.Analyzers</c>.
 /// The file is compile-linked (not duplicated), so the test mainly protects
 /// against accidental inline copies or accidental renames of the shared source.
 /// </summary>

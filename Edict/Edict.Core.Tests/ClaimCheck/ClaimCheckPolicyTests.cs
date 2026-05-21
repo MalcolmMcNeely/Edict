@@ -13,7 +13,7 @@ using Orleans.Serialization;
 namespace Edict.Core.Tests.ClaimCheck;
 
 /// <summary>
-/// Pure unit tests for the publisher-side claim-check decision (ADR 0024, slice 2).
+/// Pure unit tests for the publisher-side claim-check decision.
 /// The policy is callable without an Orleans runtime — a tiny in-memory store
 /// stands in for the Azure Blob implementation. Conditional-wrap shape: under
 /// threshold the buffered event rides the wire as itself; over threshold the

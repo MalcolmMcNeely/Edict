@@ -13,7 +13,7 @@ using Orleans.Serialization;
 namespace Edict.Core.Tests.ClaimCheck;
 
 /// <summary>
-/// Pure unit tests for the receiver-side claim-check decision (ADR 0024, slice 3).
+/// Pure unit tests for the receiver-side claim-check decision.
 /// Mirrors <see cref="ClaimCheckPolicyTests"/>: callable without an Orleans
 /// runtime, a tiny fake store stands in for the Azure Blob implementation.
 /// The unwrap returns the concrete event the consumer's <c>Handle</c> sees;

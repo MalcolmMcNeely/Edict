@@ -6,7 +6,7 @@ using Orleans.Serialization.TypeSystem;
 
 namespace Edict.Azure.Tests.Outbox;
 
-// ADR 0027 rename-survival proof — closes the AQTN hole resiliency-analysis.md
+// rename-survival proof — closes the AQTN hole resiliency-analysis.md
 // §3.2.3 flagged on UpsertRowEffect.RowTypeName. The previous shape used the
 // row POCO's AssemblyQualifiedName as identity, so a consumer who renamed the
 // class dead-lettered every in-flight entry. The new shape captures the
@@ -71,7 +71,7 @@ public sealed class UpsertRowRenameSurvivalTests(AzureClusterFixture fixture)
         // gives a literal the consumer chose; drain's Parse returns the same
         // Type even when the class identifier has changed since. A class
         // rename now requires only that the [Alias] literal stay intact —
-        // exactly the discipline ADR 0017 already mandated and EDICT011
+        // exactly the discipline already mandated and EDICT011
         // enforces.
         var converter = fixture.Cluster.ServiceProvider.GetRequiredService<TypeConverter>();
 

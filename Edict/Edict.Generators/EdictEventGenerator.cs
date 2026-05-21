@@ -11,11 +11,10 @@ namespace Edict.Generators;
 /// Emits a stable <c>[Alias]</c> partial for every concrete <c>partial record</c>
 /// that derives from <c>Edict.Contracts.Events.EdictEvent</c>.
 /// <para>
-/// Discovery is semantic and by base type (ADR 0011): the generator never
+/// Discovery is semantic and by base type: the generator never
 /// scans <c>Handle</c> bodies, so the publisher's assembly gets an alias even
-/// when nothing local handles the event. ADR 0005 by-name matching is
-/// preserved — the alias is the simple type name, stable across namespace
-/// renames (ADR 0010).
+/// when nothing local handles the event. By-name matching is preserved —
+/// the alias is the simple type name, stable across namespace renames.
 /// </para>
 /// </summary>
 [Generator]

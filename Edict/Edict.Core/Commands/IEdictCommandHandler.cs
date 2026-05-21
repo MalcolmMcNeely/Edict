@@ -7,7 +7,7 @@ namespace Edict.Core.Commands;
 /// source generator emits a per-aggregate interface that derives from this and
 /// a <c>Dispatch</c> override that type-switches to the consumer's strongly
 /// typed <c>Handle(TCommand)</c> overloads. Type safety lives on those
-/// overloads, not here — no human authors or reads this interface (ADR 0004).
+/// overloads, not here — no human authors or reads this interface.
 /// </summary>
 public interface IEdictCommandHandler : IGrainWithGuidKey
 {

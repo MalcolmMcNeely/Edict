@@ -6,11 +6,11 @@ namespace Edict.Testing.ClaimCheck;
 
 /// <summary>
 /// In-memory <see cref="IEdictClaimCheckStore"/> shipped with the test
-/// framework (ADR 0024). Mirrors the production threshold default so test
+/// framework. Mirrors the production threshold default so test
 /// runs exercise the same commit pipeline as production; per-test override
 /// is available via <c>EdictTestAppBuilder.WithClaimCheckThresholdBytes</c>.
 /// Append-only — no <c>DeleteAsync</c>, in keeping with the seam contract
-/// (Model B, ADR 0024).
+/// (the append-only model).
 /// </summary>
 public sealed class InMemoryClaimCheckStore : IEdictClaimCheckStore
 {

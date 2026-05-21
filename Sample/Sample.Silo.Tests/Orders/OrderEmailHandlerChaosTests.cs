@@ -9,8 +9,8 @@ namespace Sample.Silo.Tests.Orders;
 
 /// <summary>
 /// Opts <see cref="OrderEmailHandler"/> deliveries into the chaos duplicate
-/// redelivery (off-by-default for <c>EdictEventHandler</c> per ADR 0023 /
-/// issue #67). The dedup ring (ADR 0002) must still suppress the duplicate so
+/// redelivery (off-by-default for <c>EdictEventHandler</c> per /
+/// issue #67). The dedup ring must still suppress the duplicate so
 /// exactly one <c>Invocation</c> entry surfaces on the timeline — proving the
 /// chaos-for-invocations opt-in is wired and that the dedup guarantee holds
 /// under it.

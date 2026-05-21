@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Edict.Core.Configuration;
 
 /// <summary>
-/// Host-start validator (ADR 0028): at <see cref="StartAsync"/>, accumulates
+/// Host-start validator: at <see cref="StartAsync"/>, accumulates
 /// both <see cref="EdictWiringInspector"/>'s missing-provider list and
 /// <see cref="EdictOptionsValidator"/>'s invalid-value list into one
 /// <see cref="InvalidOperationException"/>. A consumer with two problems sees

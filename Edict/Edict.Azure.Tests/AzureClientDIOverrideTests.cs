@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Azure.Tests;
 
-// ADR 0028: a DI-registered TableServiceClient / BlobServiceClient /
+// a DI-registered TableServiceClient / BlobServiceClient /
 // QueueServiceClient takes precedence over the options-bag instance. This
 // lets a power user share one set of Azure SDK clients across multiple
 // features (AddAzureClients() pattern) without double-registering them on

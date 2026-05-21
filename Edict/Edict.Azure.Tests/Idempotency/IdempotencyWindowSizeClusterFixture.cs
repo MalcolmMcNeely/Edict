@@ -28,7 +28,7 @@ namespace Edict.Azure.Tests.Idempotency;
 /// (whose dedup consumer overrides <c>WindowSize</c> for ring-eviction reasons).
 /// Same Azurite-backed shape as <see cref="AzureClusterFixture"/>: shared
 /// assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>), per-fixture
-/// Guid-prefixed grain-state container, no <c>static</c> fields (ADR 0029).
+/// Guid-prefixed grain-state container, no <c>static</c> fields.
 /// </summary>
 public sealed class IdempotencyWindowSizeClusterFixture : IAsyncLifetime
 {

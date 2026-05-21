@@ -7,7 +7,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.DeadLetter;
 
-// Pure unit tests of the promotion module (ADR 0022). No cluster, no DI, no
+// Pure unit tests of the promotion module. No cluster, no DI, no
 // I/O — DeadLetterPromotion's contract is "given a failing Outbox entry +
 // resolved effect payload + source identity, produce a fully-populated
 // EdictDeadLetterRaised". Fixed Guids/time keep the snapshot deterministic.
@@ -178,7 +178,7 @@ public sealed class DeadLetterPromotionTests
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
-    // ADR 0024 slice 4: an oversized event whose publish permanently fails rides
+    // slice 4: an oversized event whose publish permanently fails rides
     // the Outbox as a pointer-bearing EdictEventEnvelope. Promotion must lift
     // ClaimCheckKey onto the dead-letter event and leave PayloadJson null — the
     // forensic surface preserves the operator's click-through to the blob while

@@ -42,7 +42,7 @@ sealed class InProcImplicitSubscriberMap
 
         // Scan the consumer assembly for its sagas/projections plus the
         // framework assembly for shipped projections (the dead-letter
-        // projection, ADR 0022) — without this the in-process executor would
+        // projection) — without this the in-process executor would
         // skip the framework's own auto-wired subscribers.
         var assemblies = new[] { consumerAssembly, consumerInterface.Assembly }
             .Distinct();
@@ -91,7 +91,7 @@ sealed class InProcImplicitSubscriberMap
     /// <c>true</c> when the subscriber grain class is an
     /// <see cref="EdictEventHandler"/> — used by
     /// <see cref="InProcPublishEventExecutor"/> to gate the chaos extra
-    /// deliveries off-by-default for that role (ADR 0023, issue #67).
+    /// deliveries off-by-default for that role.
     /// </summary>
     public static bool IsEventHandler(Type grainClass) =>
         typeof(EdictEventHandler).IsAssignableFrom(grainClass);

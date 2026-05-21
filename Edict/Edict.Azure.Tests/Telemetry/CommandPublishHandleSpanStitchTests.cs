@@ -6,7 +6,7 @@ using Edict.Telemetry;
 namespace Edict.Azure.Tests.Telemetry;
 
 /// <summary>
-/// ADR 0003 end-to-end span-stitch proof on the real Azure Queue Storage
+/// end-to-end span-stitch proof on the real Azure Queue Storage
 /// transport: dispatching a command through <see cref="Sender"/> opens a
 /// Command span, the framework publish path opens a Publish span under it,
 /// and the deferred-invocation Handle span (raised after the dispatch

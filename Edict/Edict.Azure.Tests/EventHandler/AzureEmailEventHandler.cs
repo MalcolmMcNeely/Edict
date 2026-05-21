@@ -36,7 +36,7 @@ public sealed partial record AzureUnhandledEvent(Guid AggregateId, int Sequence)
 // Command that drives the framework publish path so the span-stitch test
 // observes a real "edict.event.publish AzureCustomerNotifiedEvent" span
 // (a bare stream.OnNextAsync from the publisher grain bypasses the outbox
-// publish executor and emits no publish span — ADR 0003 stitch is owned by
+// publish executor and emits no publish span stitch is owned by
 // the framework path, not by raw stream publishes).
 public sealed partial record AzureNotifyCustomerCommand(Guid CustomerId, string Reason) : EdictCommand
 {
@@ -55,7 +55,7 @@ public partial class AzureCustomerNotificationCommandHandler : EdictCommandHandl
     }
 }
 
-// ── Publisher (bare stream → exercises ADR-0023 stream callback path) ──────
+// ── Publisher (bare stream → exercises stream callback path) ──────
 
 public interface IAzureEmailEventPublisher : IGrainWithGuidKey
 {

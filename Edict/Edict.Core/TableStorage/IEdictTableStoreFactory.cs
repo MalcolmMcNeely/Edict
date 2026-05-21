@@ -3,7 +3,7 @@ using Edict.Contracts.TableStorage;
 namespace Edict.Core.TableStorage;
 
 /// <summary>
-/// Framework-internal factory that resolves a write store for a named table (ADR 0015).
+/// Framework-internal factory that resolves a write store for a named table.
 /// The grain base calls this in <see cref="Orleans.Grain.OnActivateAsync"/> so each
 /// concrete grain targets its own table without coupling to a specific provider.
 /// </summary>
@@ -12,7 +12,7 @@ public interface IEdictTableStoreFactory
     Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default) where T : class, new();
 
     /// <summary>
-    /// Non-generic upsert seam for the Outbox <c>UpsertRow</c> drain (ADR 0018):
+    /// Non-generic upsert seam for the Outbox <c>UpsertRow</c> drain:
     /// the drained effect carries the row as a deserialized <see cref="object"/>
     /// (its concrete CLR type is reconstructed from the entry), so the executor
     /// cannot call the generic <see cref="CreateAsync{T}"/>. Idempotent by

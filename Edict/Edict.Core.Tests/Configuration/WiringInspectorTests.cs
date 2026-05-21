@@ -4,7 +4,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Configuration;
 
-// Pure-function tests over the marker-collection inspector (ADR 0028). The
+// Pure-function tests over the marker-collection inspector. The
 // inspector is the seam EdictWiringValidator uses to turn a DI-resolved
 // IEnumerable<IEdictWiringMarker> into a list of missing-provider
 // descriptions; failures are accumulated, not short-circuited, so a host

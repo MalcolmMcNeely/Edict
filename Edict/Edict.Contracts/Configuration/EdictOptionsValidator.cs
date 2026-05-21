@@ -1,7 +1,7 @@
 namespace Edict.Contracts.Configuration;
 
 /// <summary>
-/// Pure validation surface over the framework's options classes (ADR 0028).
+/// Pure validation surface over the framework's options classes.
 /// Returns the full list of failure messages per invocation — a host with two
 /// problems sees two problems — so the <see cref="EdictWiringValidator"/>
 /// hosted service can aggregate every option-bag's failures into one

@@ -3,7 +3,7 @@ using Edict.Contracts.Events;
 namespace Edict.Azure.Tests.EventHandler;
 
 /// <summary>
-/// ADR 0023 at-most-once *staging* over ADR 0002 at-least-once delivery: the
+/// at-most-once *staging* over at-least-once delivery: the
 /// EdictIdempotencyBase dedup ring suppresses redelivery of the same EventId
 /// even when the Azure Queue stream provider re-delivers (visibility-timeout
 /// expiry or duplicate publish). Re-stage of the InvokeHandler entry would

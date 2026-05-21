@@ -1,7 +1,7 @@
 namespace Edict.Azure.Tests.Idempotency;
 
 /// <summary>
-/// ADR 0028: <c>EdictIdempotencyBase.WindowSize</c> reads its silo-wide
+/// <c>EdictIdempotencyBase.WindowSize</c> reads its silo-wide
 /// default from <c>EdictOptions.IdempotencyWindowSize</c>, while a per-grain
 /// override still wins — a high-throughput singleton consumer can pick its
 /// own window without changing the operator-picked default for everyone else.

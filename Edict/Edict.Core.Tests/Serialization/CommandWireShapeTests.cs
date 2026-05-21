@@ -6,7 +6,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// ADR 0007 M4 schema-drift guard. Each test serialises a concrete command to
+// M4 schema-drift guard. Each test serialises a concrete command to
 // MessagePack bytes, converts to a JSON string, and snapshots the result.
 // Renaming or removing a property changes the string key in the snapshot and
 // fails CI before the breaking wire change can ship silently. Inputs are fixed

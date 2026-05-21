@@ -93,7 +93,7 @@ public sealed class PersistedStateContractCodeFixProvider : CodeFixProvider
             // The nameof(...) defeat: replace the argument with a frozen
             // literal defaulted to the simple class name. The consumer edits
             // this once if they want a fully-qualified flavour, but it now
-            // survives a class rename — the whole point of ADR 0027.
+            // survives a class rename — the whole point of the rule.
             var oldSyntax = aliasAttribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
             if (oldSyntax is not null)
             {

@@ -17,7 +17,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
-// InvokeHandlerExecutor unit tests against the ADR-0026-widened payload
+// InvokeHandlerExecutor unit tests against the payload
 // shape: the buffered EdictEvent is always an EdictEventEnvelope (inline or
 // pointer), and the executor calls ClaimCheckUnwrap.ApplyAsync before
 // invoking the deferred-dispatch callback. No grain, no cluster: the
@@ -30,7 +30,7 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldDispatchInnerEvent_WhenInlineEnvelopeEntry()
     {
-        // The common case after ADR 0026: EventHandler's stream callback wrapped
+        // The common case after: EventHandler's stream callback wrapped
         // a concrete event into an inline-payload envelope before staging.
         var evt = new OrderPlacedEvent(
             OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
@@ -58,7 +58,7 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldFetchAndDispatchInnerEvent_WhenPointerEnvelopeEntry()
     {
-        // ADR 0026 fold: pointer-bearing envelope entries (the receiver-side
+        // fold: pointer-bearing envelope entries (the receiver-side
         // path for oversized events) run the same executor; ClaimCheckUnwrap
         // hits the store, materialises the inner event, and the deferred
         // dispatch fires against the concrete event.

@@ -16,7 +16,7 @@ sealed class EdictTimelineRecorder
 {
     // The framework-owned envelope fields. Excluded from the rendered payload so
     // the Verify snapshot is deterministic — only the consumer's domain data
-    // remains (ids/timestamps/trace ctx are stamped by the runtime, ADR 0011).
+    // remains (ids/timestamps/trace ctx are stamped by the runtime).
     static readonly HashSet<string> EnvelopeFields =
     [
         nameof(EdictCommand.CommandId),
@@ -39,7 +39,7 @@ sealed class EdictTimelineRecorder
 
     /// <summary>
     /// Records an <see cref="Edict.Core.EventHandler.EdictEventHandler"/>'s
-    /// deferred invocation (ADR 0023): a single entry per drained
+    /// deferred invocation: a single entry per drained
     /// <c>InvokeHandler</c> Outbox effect, carrying the source event type, the
     /// source event id and the outcome — <c>Ran</c> when the consumer's
     /// <c>Handle</c> returned, or <c>DeadLettered</c> when the engine exhausted
