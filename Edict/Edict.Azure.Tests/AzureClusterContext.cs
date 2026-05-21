@@ -50,5 +50,15 @@ static class AzureClusterContextRegistry
             : throw new InvalidOperationException(
                 $"No cluster context registered for key '{key}'.");
 
+    /// <summary>
+    /// Replace an existing entry's context — needed when Azurite is restarted
+    /// mid-fixture and its connection string + service clients change. The
+    /// silo configurator captures whichever context the registry holds when a
+    /// new grain activates, so refreshing the entry rather than minting a new
+    /// key keeps the cluster builder's stamped property still valid.
+    /// </summary>
+    public static void Replace(string key, AzureClusterContext context) =>
+        _entries[key] = context;
+
     public static void Unregister(string key) => _entries.TryRemove(key, out _);
 }
