@@ -128,7 +128,10 @@ public sealed class EdictTestApp : IAsyncDisposable
     {
         // Custom in-proc sync stream provider dispatches on publish; nothing
         // truly asynchronous is left in the event hop, so the drain just polls
-        // for the in-silo SendCommand fan-out cascade to settle.
+        // for the in-silo SendCommand fan-out cascade to settle. On every
+        // stability window we flush the chaos-held queue and, if it released
+        // anything, re-poll until the cascade settles again — release is the
+        // load-bearing trigger, never a wall-clock wait.
         var stableWindow = TimeSpan.FromMilliseconds(250);
         var timeout = TimeSpan.FromSeconds(10);
         var start = DateTime.UtcNow;
@@ -145,7 +148,16 @@ public sealed class EdictTestApp : IAsyncDisposable
             }
             else if (DateTime.UtcNow - lastChange >= stableWindow)
             {
-                return;
+                var flushed = _context.PublishExecutor is { } exec
+                    ? await exec.FlushHeldAsync()
+                    : 0;
+                if (flushed == 0)
+                {
+                    return;
+                }
+                // Released events trigger consumer invocations + cascades:
+                // reset the stability gate and keep polling.
+                lastChange = DateTime.UtcNow;
             }
             await Task.Delay(25);
         }
@@ -225,7 +237,11 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton(ctx.SubscriberMap);
             siloBuilder.Services.AddSingleton(ctx.Chaos);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
-                ActivatorUtilities.CreateInstance<InProcPublishExecutor>(sp, ctx.Recorder));
+            {
+                var inst = ActivatorUtilities.CreateInstance<InProcPublishExecutor>(sp, ctx.Recorder);
+                ctx.PublishExecutor = inst;
+                return inst;
+            });
 
             // Swap the bare InvokeHandler executor for the recording variant so
             // EdictEventHandler invocations surface on the timeline.

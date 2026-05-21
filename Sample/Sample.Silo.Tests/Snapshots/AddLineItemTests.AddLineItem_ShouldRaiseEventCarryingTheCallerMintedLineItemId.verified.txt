@@ -26,14 +26,6 @@
       }
     },
     {
-      Kind: Invocation,
-      Type: OrderPlacedEvent,
-      Data: {
-        EventId: Guid_3,
-        Outcome: Ran
-      }
-    },
-    {
       Kind: Event,
       Type: LineItemAddedEvent,
       Data: {
@@ -41,6 +33,14 @@
         OrderId: Guid_1,
         Quantity: 1,
         Sku: SKU-1
+      }
+    },
+    {
+      Kind: Invocation,
+      Type: OrderPlacedEvent,
+      Data: {
+        EventId: Guid_3,
+        Outcome: Ran
       }
     }
   ]

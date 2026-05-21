@@ -33,6 +33,13 @@ sealed class HarnessContext(
     public InMemoryClaimCheckStore ClaimCheckStore => claimCheckStore;
     public int ClaimCheckThresholdBytes => claimCheckThresholdBytes;
     public IReadOnlyList<Action<IServiceCollection>> Replacements => replacements;
+
+    // Captured by the silo's executor-factory delegate so the test-process
+    // Drain loop can reach into the silo-side held queue and flush it. Null
+    // until the outbox drain engine resolves the executor for the first time
+    // (i.e. before any event has been published, when there is nothing to
+    // flush anyway).
+    public InProcPublishExecutor? PublishExecutor { get; set; }
 }
 
 static class HarnessRegistry

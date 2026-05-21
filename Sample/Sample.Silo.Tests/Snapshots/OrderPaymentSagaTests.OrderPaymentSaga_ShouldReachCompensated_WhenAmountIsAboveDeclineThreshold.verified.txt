@@ -3,7 +3,6 @@
     Stage: Compensated
   },
   row: {
-    Status: Cancelled,
-    ItemCount: 1
+    Status: Cancelled
   }
 }

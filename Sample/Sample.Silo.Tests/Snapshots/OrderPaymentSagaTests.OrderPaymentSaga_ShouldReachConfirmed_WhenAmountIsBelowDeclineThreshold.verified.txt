@@ -3,7 +3,6 @@
     Stage: Confirmed
   },
   row: {
-    Status: Submitted,
-    ItemCount: 1
+    Status: Submitted
   }
 }

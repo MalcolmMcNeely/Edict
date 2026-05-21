@@ -19,7 +19,10 @@ namespace Edict.Testing.Internal;
 /// point of view (Kind = <see cref="OutboxEffectKind.PublishEvent"/>), so the
 /// rest of the Outbox pipeline is unchanged. Also records the event on the
 /// timeline and stamps identity / time / trace exactly as the real
-/// <see cref="PublishEventExecutor"/> does.
+/// <c>PublishEventExecutor</c> does. Orchestrates over <see cref="ChaosRoller"/>
+/// (per-arrival reorder rolls, per-emission duplicate rolls) and
+/// <see cref="HeldQueue"/> (per-subscriber K-counter holds) so every consumer
+/// test exercises both the dedup ring and the reorder-tolerance contract.
 /// </summary>
 sealed class InProcPublishExecutor(
     Serializer serializer,
@@ -30,8 +33,9 @@ sealed class InProcPublishExecutor(
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    readonly Random _chaosRng = new(chaos.Seed);
-    readonly Lock _chaosLock = new();
+    readonly ChaosRoller _roller = new(chaos);
+    readonly HeldQueue _held = new();
+    readonly Lock _heldLock = new();
 
     public Task ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
@@ -80,38 +84,55 @@ sealed class InProcPublishExecutor(
         // the full cascade.
         foreach (var grainClass in subscribers.SubscribersFor(stamped))
         {
-            var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
-            var deliveries = 1 + ExtraDeliveriesFor(grainClass);
-            for (var i = 0; i < deliveries; i++)
+            var subscriberKey = new SubscriberKey(grainClass, routeKey);
+            var (hold, holdDistance) = _roller.ShouldHold(grainClass);
+
+            IReadOnlyList<EdictEvent> readyToEmit;
+            lock (_heldLock)
             {
-                _ = grain.OnEdictEventAsync(stamped);
+                readyToEmit = _held.OnArrival(subscriberKey, stamped, hold ? holdDistance : 0);
+            }
+
+            foreach (var ready in readyToEmit)
+            {
+                Dispatch(grainClass, routeKey, ready);
             }
         }
 
         return Task.CompletedTask;
     }
 
-    // Seeded duplicate redelivery: production streams redeliver, so every
-    // consumer test exercises the dedup ring for free. The dedup ring
-    // suppresses the duplicate, so saga progress / projection rows / recorder
-    // counts stay stable across runs.
-    int ExtraDeliveriesFor(Type grainClass)
+    /// <summary>
+    /// Empties the held queue through the same dispatch path used on arrival,
+    /// in original arrival order across subscribers. Duplicate rolls still
+    /// apply at emission time. The harness's <c>Drain</c> calls this once the
+    /// timeline has gone quiet so reorder-held events get a chance to land
+    /// before the test asserts.
+    /// </summary>
+    public Task<int> FlushHeldAsync()
     {
-        if (chaos.MaxExtraDeliveries <= 0)
+        IReadOnlyList<(object SubscriberKey, EdictEvent Event)> flushed;
+        lock (_heldLock)
         {
-            return 0;
+            flushed = _held.FlushAll();
         }
 
-        if (SubscriberMap.IsEventHandler(grainClass) && !chaos.InvocationsEnabled)
+        foreach (var (key, evt) in flushed)
         {
-            return 0;
+            var (grainClass, routeKey) = (SubscriberKey)key;
+            Dispatch(grainClass, routeKey, evt);
         }
 
-        lock (_chaosLock)
+        return Task.FromResult(flushed.Count);
+    }
+
+    void Dispatch(Type grainClass, Guid routeKey, EdictEvent evt)
+    {
+        var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
+        var deliveries = 1 + _roller.ExtraDeliveries(grainClass);
+        for (var i = 0; i < deliveries; i++)
         {
-            return _chaosRng.NextDouble() < chaos.DuplicateProbability
-                ? _chaosRng.Next(1, chaos.MaxExtraDeliveries + 1)
-                : 0;
+            _ = grain.OnEdictEventAsync(evt);
         }
     }
 
@@ -131,4 +152,6 @@ sealed class InProcPublishExecutor(
         var parts = traceParent.Split('-');
         return parts.Length == 4 ? (parts[1], parts[2]) : (null, null);
     }
+
+    readonly record struct SubscriberKey(Type GrainClass, Guid RouteKey);
 }

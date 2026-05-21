@@ -18,6 +18,7 @@
     <Project Path="Edict.Azure.Tests/Edict.Azure.Tests.csproj" />
     <Project Path="Edict.Generators.Tests/Edict.Generators.Tests.csproj" />
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
+    <Project Path="Edict.Testing.Tests/Edict.Testing.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
