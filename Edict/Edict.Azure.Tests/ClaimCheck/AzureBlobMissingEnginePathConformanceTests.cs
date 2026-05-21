@@ -17,8 +17,6 @@ using Orleans.Runtime;
 using Orleans.Serialization;
 using Orleans.Streams;
 
-using Testcontainers.Azurite;
-
 namespace Edict.Azure.Tests.ClaimCheck;
 
 /// <summary>
@@ -41,22 +39,15 @@ namespace Edict.Azure.Tests.ClaimCheck;
 /// </summary>
 public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
 {
-    AzuriteContainer _azurite = null!;
     BlobServiceClient _blobServiceClient = null!;
     Serializer _serializer = null!;
+    string _claimCheckContainerName = "";
 
     public async Task InitializeAsync()
     {
-        _azurite = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
-            .WithCreateParameterModifier(p =>
-            {
-                p.Cmd ??= [];
-                p.Cmd.Add("--skipApiVersionCheck");
-            })
-            .Build();
-        await _azurite.StartAsync();
-        _blobServiceClient = new BlobServiceClient(_azurite.GetConnectionString());
+        var connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
+        _blobServiceClient = new BlobServiceClient(connectionString);
+        _claimCheckContainerName = $"edict-claim-check-conformance-{Guid.NewGuid():N}";
 
         var services = new ServiceCollection();
         services.AddSerializer(b =>
@@ -67,18 +58,12 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         _serializer = services.BuildServiceProvider().GetRequiredService<Serializer>();
     }
 
-    public async Task DisposeAsync()
-    {
-        if (_azurite is not null)
-        {
-            await _azurite.DisposeAsync();
-        }
-    }
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task EnginePath_ShouldPromoteToBlobMissingDeadLetter_WhenAzureBlobClaimCheckStoreReturns404()
     {
-        var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, "edict-claim-check-conformance");
+        var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _claimCheckContainerName);
         var unwrap = new ClaimCheckUnwrap(_serializer, store);
         var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap);
         var publishExecutor = new RecordingPublishEventExecutor(_serializer);

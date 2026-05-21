@@ -1,0 +1,50 @@
+using System.Collections.Concurrent;
+
+using Azure.Data.Tables;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
+
+namespace Edict.Azure.Tests;
+
+/// <summary>
+/// Per-fixture-instance bag of Azurite-derived state the silo configurator
+/// needs at <c>ISiloConfigurator.Configure</c> time. Lives in a registry
+/// because <see cref="Orleans.TestingHost.ISiloConfigurator"/> implementations
+/// are instantiated by Orleans (we cannot pass fixture state through their
+/// constructor); the fixture writes its registry key into the
+/// <see cref="Orleans.TestingHost.TestClusterBuilder.Properties"/> dictionary
+/// and the configurator reads the same key off the silo's
+/// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>.
+/// Keeping the (necessarily static) registry on a helper class — not on the
+/// fixture itself — satisfies the ADR 0029 "no <c>static</c> field in any
+/// cluster fixture" rule that the previous shape violated.
+/// </summary>
+sealed record AzureClusterContext(
+    string ConnectionString,
+    TableServiceClient TableServiceClient,
+    BlobServiceClient BlobServiceClient,
+    QueueServiceClient QueueServiceClient,
+    string GrainStateContainerName,
+    string DeadLetterTableName);
+
+static class AzureClusterContextRegistry
+{
+    public const string ContextKeyProperty = "Edict.Azure.Tests.ClusterContextKey";
+
+    static readonly ConcurrentDictionary<string, AzureClusterContext> _entries = new();
+
+    public static string Register(AzureClusterContext context)
+    {
+        var key = Guid.NewGuid().ToString("N");
+        _entries[key] = context;
+        return key;
+    }
+
+    public static AzureClusterContext Get(string key) =>
+        _entries.TryGetValue(key, out var v)
+            ? v
+            : throw new InvalidOperationException(
+                $"No cluster context registered for key '{key}'.");
+
+    public static void Unregister(string key) => _entries.TryRemove(key, out _);
+}

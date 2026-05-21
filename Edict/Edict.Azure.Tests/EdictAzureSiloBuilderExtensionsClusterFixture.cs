@@ -12,13 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
-using Testcontainers.Azurite;
-
 namespace Edict.Azure.Tests;
 
 /// <summary>
-/// Conformance cluster for the new ADR-0028 silo-builder extensions:
-/// boots a real Azurite, then wires the silo through
+/// Conformance cluster for the ADR-0028 silo-builder extensions: boots a real
+/// Azurite (assembly-shared per ADR 0029), then wires the silo through
 /// <c>silo.AddEdict()</c> + <c>silo.AddEdictAzureStreams()</c> +
 /// <c>silo.AddEdictAzurePersistence()</c> only (no manual provider
 /// registrations) so a passing round-trip is proof that the consumer-facing
@@ -26,35 +24,58 @@ namespace Edict.Azure.Tests;
 /// </summary>
 public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifetime
 {
-    static string _connectionString = "";
-    static TableServiceClient _tableServiceClient = null!;
-    static BlobServiceClient _blobServiceClient = null!;
-    static QueueServiceClient _queueServiceClient = null!;
-
-    AzuriteContainer _azurite = null!;
+    string _connectionString = "";
+    TableServiceClient _tableServiceClient = null!;
+    BlobServiceClient _blobServiceClient = null!;
+    QueueServiceClient _queueServiceClient = null!;
+    string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
 
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
+    public TableServiceClient TableServiceClient => _tableServiceClient;
+
+    public BlobServiceClient BlobServiceClient => _blobServiceClient;
+
+    public QueueServiceClient QueueServiceClient => _queueServiceClient;
+
+    public string GrainStateContainerName { get; private set; } = "";
+
+    public string DeadLetterTableName { get; private set; } = "";
+
+    public string ClaimCheckContainerName { get; private set; } = "";
+
+    public AzuriteResourceNames NewResourceNames() => AzuriteResourceNames.Generate("eabx");
+
     public async Task InitializeAsync()
     {
-        _azurite = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
-            .WithCreateParameterModifier(p =>
-            {
-                p.Cmd ??= [];
-                p.Cmd.Add("--skipApiVersionCheck");
-            })
-            .Build();
-        await _azurite.StartAsync();
-        _connectionString = _azurite.GetConnectionString();
+        _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
         _blobServiceClient = new BlobServiceClient(_connectionString);
         _queueServiceClient = new QueueServiceClient(_connectionString);
 
+        var token = Guid.NewGuid().ToString("N");
+        GrainStateContainerName = $"edict-state-{token}";
+        DeadLetterTableName = $"edictdeadletter{token}";
+        ClaimCheckContainerName = $"edict-claim-check-{token}";
+
+        var context = new AzureClusterContext(
+            _connectionString,
+            _tableServiceClient,
+            _blobServiceClient,
+            _queueServiceClient,
+            GrainStateContainerName,
+            DeadLetterTableName)
+        { };
+        _contextKey = AzureClusterContextRegistry.Register(context);
+
         var builder = new TestClusterBuilder();
+        builder.Properties[AzureClusterContextRegistry.ContextKeyProperty] = _contextKey;
+        // Stash the claim-check container in a second property so the
+        // configurator can read it without widening the shared context shape.
+        builder.Properties[ClaimCheckContainerProperty] = ClaimCheckContainerName;
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
         Cluster = builder.Build();
@@ -67,11 +88,10 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
         {
             await Cluster.DisposeAsync();
         }
-        if (_azurite is not null)
-        {
-            await _azurite.DisposeAsync();
-        }
+        AzureClusterContextRegistry.Unregister(_contextKey);
     }
+
+    const string ClaimCheckContainerProperty = "Edict.Azure.Tests.ClaimCheckContainer";
 
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
@@ -83,6 +103,14 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
+            var key = siloBuilder.Configuration[AzureClusterContextRegistry.ContextKeyProperty]
+                ?? throw new InvalidOperationException(
+                    "ClusterContextKey missing from silo configuration.");
+            var ctx = AzureClusterContextRegistry.Get(key);
+            var claimCheckContainer = siloBuilder.Configuration[ClaimCheckContainerProperty]
+                ?? throw new InvalidOperationException(
+                    "ClaimCheckContainer missing from silo configuration.");
+
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             // Azurite first-time table creation can run past Orleans' default
@@ -107,12 +135,18 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             siloBuilder.AddEdict();
             siloBuilder.AddEdictAzureStreams(o =>
             {
-                o.QueueServiceClient = _queueServiceClient;
+                o.QueueServiceClient = ctx.QueueServiceClient;
             });
             siloBuilder.AddEdictAzurePersistence(o =>
             {
-                o.TableServiceClient = _tableServiceClient;
-                o.BlobServiceClient = _blobServiceClient;
+                o.TableServiceClient = ctx.TableServiceClient;
+                o.BlobServiceClient = ctx.BlobServiceClient;
+                // Per-fixture Guid-prefixed names — assembly-shared Azurite
+                // means two collections must not collide on container/table
+                // identity (ADR 0029).
+                o.GrainStateContainerName = ctx.GrainStateContainerName;
+                o.DeadLetterTableName = ctx.DeadLetterTableName;
+                o.ClaimCheckBlobContainerName = claimCheckContainer;
             });
         }
     }

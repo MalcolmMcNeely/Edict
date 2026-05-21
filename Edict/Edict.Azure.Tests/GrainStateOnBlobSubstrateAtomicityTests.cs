@@ -43,7 +43,7 @@ public sealed class GrainStateOnBlobSubstrateAtomicityTests(AzureClusterFixture 
             .ToArray();
         await Task.WhenAll(tasks);
 
-        var container = fixture.BlobServiceClient.GetBlobContainerClient("edict-state");
+        var container = fixture.BlobServiceClient.GetBlobContainerClient(fixture.GrainStateContainerName);
         var blobs = new List<BlobItem>();
         await foreach (var blob in container.GetBlobsAsync())
         {
@@ -65,7 +65,7 @@ public sealed class GrainStateOnBlobSubstrateAtomicityTests(AzureClusterFixture 
         {
             throw new Xunit.Sdk.XunitException(
                 $"Expected exactly one matching blob for grain key {keyD} / {keyN}; " +
-                $"saw {matching.Count}. All blobs in container 'edict-state': " +
+                $"saw {matching.Count}. All blobs in container '{fixture.GrainStateContainerName}': " +
                 string.Join(", ", blobs.Select(b => b.Name)));
         }
 

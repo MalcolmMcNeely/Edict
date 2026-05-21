@@ -1,0 +1,10 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "_comment_purpose": "ADR 0029 — explicit parallelism for Edict.Azure.Tests. The prior shape held connection strings and service clients in static fields on the cluster fixtures, which xUnit's defaults (test collections parallelised within an assembly) silently raced on. The combined fixture refactor (one assembly-shared Azurite, instance fields, per-fixture Guid-prefixed resource names) restores cross-collection safety; this file documents the parallel model so future contributors do not have to infer it from xUnit defaults.",
+  "_comment_parallelizeAssembly": "true — run other test assemblies in parallel with this one. Defaults to false in xUnit v2; set explicitly because the integration battery dominates wall-clock time and the rest of the suite is independent of Azurite.",
+  "parallelizeAssembly": true,
+  "_comment_parallelizeTestCollections": "true — run test collections within this assembly concurrently. Each collection spins its own TestCluster against the shared Azurite, and per-fixture Guid-prefixed resource names provide cross-collection isolation. xUnit v2 defaults to true; restated here so the contract is explicit.",
+  "parallelizeTestCollections": true,
+  "_comment_methodDisplay": "method — show the test method name in the runner without the class FQN. Integration-test names are scenario-shaped (ADR 0029) and the class adds little once the suite is folder-organised.",
+  "methodDisplay": "method"
+}
