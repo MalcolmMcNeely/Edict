@@ -2,33 +2,30 @@ using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
-using Edict.Testing.Recording;
 
 using Orleans.Serialization;
 using Orleans.Streams;
 
-namespace Edict.Testing.InProcess;
+namespace Edict.Testing.Internal;
 
 /// <summary>
 /// Replaces the bare <see cref="OutboxEffectKind.InvokeHandler"/> executor in
-/// the shipped Test Framework. Mirrors the production
-/// executor's behaviour — deserialise the buffered
-/// <see cref="EdictEventEnvelope"/>, materialise the inner event via
-/// <see cref="ClaimCheckUnwrap"/> (inline-payload deserialise / pointer-bearing
-/// fetch), restore the captured <c>traceparent</c>, open the
-/// deferred-invocation span, and route the dispatch back through the host's
-/// deferred-dispatch callback — but also records an <c>Invocation</c> timeline
-/// entry with the <c>Ran</c> outcome once the consumer's <c>Handle</c>
-/// returns. Permanent-failure outcomes (dead-letter promotion) are recorded
-/// out-of-band by the <c>InProcPublishEventExecutor</c> when it observes the
-/// framework's <c>EdictDeadLetterRaised</c> event with
+/// the shipped Test Framework. Mirrors the production executor — deserialise
+/// the buffered <see cref="EdictEventEnvelope"/>, materialise the inner event
+/// via <see cref="ClaimCheckUnwrap"/>, restore the captured
+/// <c>traceparent</c>, open the deferred-invocation span, and route the
+/// dispatch back through the host's deferred-dispatch callback — but also
+/// records an <c>Invocation</c> timeline entry with the <c>Ran</c> outcome
+/// once the consumer's <c>Handle</c> returns. Permanent-failure outcomes
+/// (dead-letter promotion) are recorded out-of-band by the publish executor
+/// when it observes the framework's <c>EdictDeadLetterRaised</c> event with
 /// <c>Kind = InvokeHandler</c>, because the host's promotion path bypasses
-/// this executor on the final attempt. Bare-named — no consumer types it.
+/// this executor on the final attempt.
 /// </summary>
 sealed class InProcInvokeHandlerExecutor(
     Serializer serializer,
     ClaimCheckUnwrap unwrap,
-    EdictTimelineRecorder recorder) : IOutboxEffectExecutor
+    TimelineRecorder recorder) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 

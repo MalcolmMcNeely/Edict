@@ -1,5 +1,6 @@
 using Edict.Core.EventHandler;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sample.Contracts.Orders.Events;
@@ -8,17 +9,22 @@ namespace Sample.Silo.Orders;
 
 /// <summary>
 /// Sample <see cref="EdictEventHandler"/>: reacts to
-/// <see cref="OrderPlacedEvent"/> by simulating an order-confirmation email
-/// send. The Sample app stays self-contained per CONTEXT.md — no real SMTP — but
-/// rides the same Azurite-backed Outbox/dead-letter pipeline that ships in
-/// production, so a transient log of the simulated send still appears off the
-/// stream-callback hot path with framework-managed retry/backoff. The canonical
-/// external-API idempotency-key pattern (<c>evt.EventId</c>) is shown in the log.
+/// <see cref="OrderPlacedEvent"/> by delegating to the consumer-injected
+/// <see cref="IEmailNotifier"/>. When no notifier is registered (e.g. an
+/// <c>EdictTestApp</c> that does not call <c>.Replace&lt;IEmailNotifier&gt;</c>)
+/// it falls back to a structured log line so the deferred-invocation path
+/// still surfaces on the timeline without forcing every test to fake a
+/// collaborator.
 /// </summary>
 public sealed partial class OrderEmailHandler(ILogger<OrderEmailHandler> logger) : EdictEventHandler
 {
     public Task Handle(OrderPlacedEvent evt)
     {
+        if (ServiceProvider.GetService<IEmailNotifier>() is { } notifier)
+        {
+            return notifier.SendOrderPlacedAsync(evt.OrderId, evt.EventId);
+        }
+
         logger.LogInformation(
             "Simulated email send for order {OrderId} (idempotency key {EventId}).",
             evt.OrderId,

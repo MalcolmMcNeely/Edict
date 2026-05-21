@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
 
-namespace Edict.Testing.InProcess;
+namespace Edict.Testing.Internal;
 
 /// <summary>Non-generic upsert seam so the factory can write a row whose
 /// concrete type is only known at drain time (the Outbox UpsertRow path).</summary>
@@ -18,7 +18,7 @@ interface IInMemoryUpsert
 /// (partitionKey, rowKey) — a full-row replace — so the Outbox's at-least-once
 /// UpsertRow redelivery does not double-apply.
 /// </summary>
-sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
+sealed class InMemoryTableStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
     where T : class, new()
 {
     readonly ConcurrentDictionary<(string pk, string rk), T> _rows = new();
@@ -48,20 +48,20 @@ sealed class InMemoryEdictTableStore<T> : IEdictTableWriteStore<T>, IEdictTableR
 /// (tableName, T). Caches stores so a test can read back the rows a projection
 /// builder wrote without any Azure dependency.
 /// </summary>
-sealed class InMemoryEdictTableStoreFactory : IEdictTableStoreFactory
+sealed class InMemoryTableStoreFactory : IEdictTableStoreFactory
 {
     readonly ConcurrentDictionary<string, object> _stores = new();
 
     public Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
         where T : class, new() =>
         Task.FromResult((IEdictTableWriteStore<T>)_stores.GetOrAdd(
-            $"{tableName}:{typeof(T).FullName}", _ => new InMemoryEdictTableStore<T>()));
+            $"{tableName}:{typeof(T).FullName}", _ => new InMemoryTableStore<T>()));
 
     public Task UpsertRowAsync(string tableName, string partitionKey, string rowKey, object row, CancellationToken cancellationToken = default)
     {
         var store = _stores.GetOrAdd(
             $"{tableName}:{row.GetType().FullName}",
-            _ => Activator.CreateInstance(typeof(InMemoryEdictTableStore<>).MakeGenericType(row.GetType()))!);
+            _ => Activator.CreateInstance(typeof(InMemoryTableStore<>).MakeGenericType(row.GetType()))!);
         ((IInMemoryUpsert)store).UpsertObject(partitionKey, rowKey, row);
         return Task.CompletedTask;
     }

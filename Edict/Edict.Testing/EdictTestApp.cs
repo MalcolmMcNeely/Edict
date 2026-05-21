@@ -1,10 +1,12 @@
 using System.Reflection;
 
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
+using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
@@ -12,15 +14,9 @@ using Edict.Core.Outbox;
 using Edict.Core.Sagas;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Contracts.ClaimCheck;
-using Edict.Core.ClaimCheck;
-using Edict.Testing.ClaimCheck;
-using Edict.Testing.Hosting;
-using Edict.Testing.InProcess;
-using Edict.Testing.Recording;
+using Edict.Testing.Internal;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
@@ -41,9 +37,9 @@ namespace Edict.Testing;
 public sealed class EdictTestApp : IAsyncDisposable
 {
     readonly TestCluster _cluster;
-    readonly EdictTestHarnessContext _context;
+    readonly HarnessContext _context;
 
-    EdictTestApp(TestCluster cluster, EdictTestHarnessContext context)
+    EdictTestApp(TestCluster cluster, HarnessContext context)
     {
         _cluster = cluster;
         _context = context;
@@ -57,20 +53,21 @@ public sealed class EdictTestApp : IAsyncDisposable
         var builder = new EdictTestAppBuilder();
         configure(builder);
 
-        var context = new EdictTestHarnessContext(
+        var context = new HarnessContext(
             builder.ConsumerAssembly,
-            new EdictTimelineRecorder(),
+            new TimelineRecorder(),
             new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
-            new InMemoryEdictTableStoreFactory(),
-            InProcImplicitSubscriberMap.Build(builder.ConsumerAssembly),
-            builder.Chaos,
+            new InMemoryTableStoreFactory(),
+            SubscriberMap.Build(builder.ConsumerAssembly),
+            ChaosOptions.Default,
             new InMemoryClaimCheckStore(),
-            builder.ClaimCheckThresholdBytes);
+            EdictTestAppBuilder.DefaultClaimCheckThresholdBytes,
+            builder.Replacements);
 
         TestCluster cluster;
         // The id flows down the async flow into the Orleans-instantiated
         // configurators, which resolve this context from the registry.
-        using (EdictTestHarnessRegistry.Activate(Guid.NewGuid().ToString("N"), context))
+        using (HarnessRegistry.Activate(Guid.NewGuid().ToString("N"), context))
         {
             var clusterBuilder = new TestClusterBuilder(1);
             clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
@@ -89,16 +86,15 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>
     /// Typed probe over <see cref="IEdictSaga.GetEdictProgressAsync"/>: returns
     /// the saga grain's durable <c>Progress</c> for direct Verify-snapshot
-    /// assertion (the state-first assertion pivot captured in #53). Tests pass
-    /// the saga implementation class plus its progress type — e.g.
+    /// assertion. Tests pass the saga implementation class plus its progress
+    /// type — e.g.
     /// <c>app.GetSagaProgress&lt;OrderPaymentSaga, OrderPaymentProgress&gt;(orderId)</c>.
     /// <para>
     /// The probe goes through the hand-written <see cref="IEdictSaga"/>
     /// interface plus a class-name prefix, not the generator-emitted
     /// <c>I{Saga}</c>, because Orleans's codegen runs before Edict's generator
     /// and so does not produce a client proxy for the generator-emitted
-    /// interface. Routing via the hand-written brand interface keeps
-    /// the typed test surface without fighting that ordering.
+    /// interface.
     /// </para>
     /// </summary>
     public async Task<TProgress> GetSagaProgress<TSaga, TProgress>(Guid key)
@@ -113,17 +109,11 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// Typed probe over the in-memory table store: returns the projection row a
     /// <see cref="EdictTableProjectionBuilder{T}"/> last wrote for the supplied
     /// <c>(tableName, partitionKey, rowKey)</c>, or <c>null</c> when the
-    /// projection's <c>Handle</c> never ran for this key. Tests Verify the row
-    /// directly — the same load-apply-writeback shape the table-projection
-    /// builder guarantees in production, but reading the in-memory store
-    /// instead of Azure Table.
+    /// projection's <c>Handle</c> never ran for this key.
     /// </summary>
     public async Task<TRow?> GetProjectionRow<TRow>(string tableName, string partitionKey, string rowKey)
         where TRow : class, new()
     {
-        // The factory caches one store per (tableName, T); the upsert path the
-        // engine drained writes through the SAME store, so reading via the
-        // typed lookup is a coherent point-in-time read.
         var store = await _context.TableStoreFactory.CreateAsync<TRow>(tableName);
         return await store.GetAsync(partitionKey, rowKey);
     }
@@ -136,9 +126,6 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// </summary>
     public async Task Drain()
     {
-        // The window must exceed the worst-case single memory-stream hop
-        // (publish → pulling agent → consumer Handle → next dispatch), incl.
-        // first-activation latency, so a saga cascade is never cut short.
         // Custom in-proc sync stream provider dispatches on publish; nothing
         // truly asynchronous is left in the event hop, so the drain just polls
         // for the in-silo SendCommand fan-out cascade to settle.
@@ -166,8 +153,8 @@ public sealed class EdictTestApp : IAsyncDisposable
 
     /// <summary>
     /// Advances the virtual clock so backoff/dead-letter timing elapses with no
-    /// real wait, then drains. The clock is the seam the engine
-    /// reads for backoff gating.
+    /// real wait, then drains. The clock is the seam the engine reads for
+    /// backoff gating.
     /// </summary>
     public async Task AdvanceClock(TimeSpan by)
     {
@@ -177,26 +164,19 @@ public sealed class EdictTestApp : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => await _cluster.DisposeAsync();
 
-    static void ConfigureSerialization(EdictTestHarnessContext ctx, IServiceCollection services) =>
+    static void ConfigureSerialization(HarnessContext ctx, IServiceCollection services) =>
         services.AddSerializer(s => s
             .AddAssembly(ctx.ConsumerAssembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer());
 
-    // Drives the hand-authored AddEdict() with the explicit-assemblies overload
-    // so EdictTestApp routes are sourced from the consumer assembly alone
-    // Deterministic for test contexts; the AppDomain-scan happy-path
-    // is the consumer-app entry only.
     static void InvokeAddEdict(IServiceCollection services, Assembly consumerAssembly) =>
         services.AddEdict(consumerAssembly);
 
     // Plug the in-memory IEdictTableRepository<EdictDeadLetterEntry> behind
-    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade.
-    // The store is held on the harness context, so silo (write) and client
-    // (read) share one backing dictionary — the test can call
-    // IEdictDeadLetterRepository.ListAllAsync() on the client and see the row
-    // the engine wrote on the silo.
-    static void RegisterInMemoryDeadLetterTable(IServiceCollection services, EdictTestHarnessContext ctx) =>
+    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade so silo
+    // (write) and client (read) share one backing dictionary.
+    static void RegisterInMemoryDeadLetterTable(IServiceCollection services, HarnessContext ctx) =>
         services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
             (IEdictTableRepository<EdictDeadLetterEntry>)
                 ctx.TableStoreFactory
@@ -206,25 +186,24 @@ public sealed class EdictTestApp : IAsyncDisposable
     // Re-point IEdictSender at the recording decorator wrapping the real sender,
     // so a saga's in-silo dispatched Command and a test's client Command share
     // one timeline. Last AddSingleton wins in MS DI.
-    static void DecorateSender(IServiceCollection services, EdictTimelineRecorder recorder) =>
+    static void DecorateSender(IServiceCollection services, TimelineRecorder recorder) =>
         services.AddSingleton<IEdictSender>(sp =>
-            new RecordingEdictSender(ActivatorUtilities.CreateInstance<EdictSender>(sp), recorder));
+            new RecordingSender(ActivatorUtilities.CreateInstance<EdictSender>(sp), recorder));
 
     sealed class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
-            var ctx = EdictTestHarnessRegistry.Current;
+            var ctx = HarnessRegistry.Current;
 
             siloBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, siloBuilder.Services);
 
             // Register the virtual clock before AddEdictOutbox so its
-            // TryAddSingleton(TimeProvider.System) is a no-op (the engine reads this seam for backoff gating).
+            // TryAddSingleton(TimeProvider.System) is a no-op (the engine
+            // reads this seam for backoff gating).
             siloBuilder.Services.AddSingleton<TimeProvider>(ctx.Clock);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
-            // Claim-check seam registered before AddEdictOutbox so its default
-            // policy registration picks up the in-memory store.
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore);
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
@@ -236,9 +215,9 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddEdictOutbox();
 
             // Swap the bare PublishEvent executor for the in-process dispatcher
-            // (the single Event choke point — records and fan-outs in one). The
-            // drain engine indexes executors by Kind, so the original must be
-            // removed, not added to.
+            // (the single Event choke point — records and fan-outs in one).
+            // The drain engine indexes executors by Kind, so the original must
+            // be removed, not added to.
             var original = siloBuilder.Services.Single(d =>
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(PublishEventExecutor));
@@ -246,7 +225,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton(ctx.SubscriberMap);
             siloBuilder.Services.AddSingleton(ctx.Chaos);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
-                ActivatorUtilities.CreateInstance<InProcPublishEventExecutor>(sp, ctx.Recorder));
+                ActivatorUtilities.CreateInstance<InProcPublishExecutor>(sp, ctx.Recorder));
 
             // Swap the bare InvokeHandler executor for the recording variant so
             // EdictEventHandler invocations surface on the timeline.
@@ -259,15 +238,21 @@ public sealed class EdictTestApp : IAsyncDisposable
 
             DecorateSender(siloBuilder.Services, ctx.Recorder);
 
+            // Builder-supplied fakes win over every harness/AddEdict
+            // registration above — MS DI resolves the last AddSingleton, so the
+            // replacements run last.
+            foreach (var apply in ctx.Replacements)
+            {
+                apply(siloBuilder.Services);
+            }
+
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");
-            // Memory streams are still registered because
-            // EdictIdempotencyBase's OutboxHost asks for one via the silo's
-            // "edict" stream provider,
+            // Memory streams are registered because EdictIdempotencyBase's
+            // OutboxHost asks for one via the silo's "edict" stream provider,
             // but the in-process dispatcher bypasses it — no event is ever
-            // pushed to a memory queue, so the pulling-agent that fails for
-            // referenced-assembly consumers in #53 is out of the loop.
+            // pushed to a memory queue.
             siloBuilder.AddMemoryStreams("edict");
         }
     }
@@ -278,13 +263,17 @@ public sealed class EdictTestApp : IAsyncDisposable
             Microsoft.Extensions.Configuration.IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
-            var ctx = EdictTestHarnessRegistry.Current;
+            var ctx = HarnessRegistry.Current;
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
             InvokeAddEdict(clientBuilder.Services, ctx.ConsumerAssembly);
             RegisterInMemoryDeadLetterTable(clientBuilder.Services, ctx);
             DecorateSender(clientBuilder.Services, ctx.Recorder);
+
+            foreach (var apply in ctx.Replacements)
+            {
+                apply(clientBuilder.Services);
+            }
         }
     }
 }
-

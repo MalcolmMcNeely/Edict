@@ -1,6 +1,8 @@
 using System.Reflection;
 
-using Edict.Testing.Chaos;
+using Edict.Testing.Internal;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Testing;
 
@@ -8,22 +10,15 @@ namespace Edict.Testing;
 /// Configures an <see cref="EdictTestApp"/>. The consumer's grain assembly is
 /// the only required input — Edict is auto-wired from it (the generated route
 /// map plus the real Outbox/saga engine), so consumer code is identical under
-/// test and in production.
+/// test and in production. Chaos delivery is implicit and always on; tests
+/// cannot opt out.
 /// </summary>
 public sealed class EdictTestAppBuilder
 {
-    /// <summary>
-    /// Mirrors <c>EdictAzureStreamsOptions.ClaimCheckThresholdBytes</c> so the
-    /// in-memory test framework exercises the same commit pipeline as
-    /// production. Override per test via
-    /// <see cref="WithClaimCheckThresholdBytes"/> to force the path on a
-    /// small payload.
-    /// </summary>
-    public const int DefaultClaimCheckThresholdBytes = 30_720;
+    internal const int DefaultClaimCheckThresholdBytes = 30_720;
 
     Assembly? _consumerAssembly;
-    ChaosOptions _chaos = ChaosOptions.Default;
-    int _claimCheckThresholdBytes = DefaultClaimCheckThresholdBytes;
+    readonly List<Action<IServiceCollection>> _replacements = new();
 
     /// <summary>
     /// The consumer assembly whose grains, commands/events and generated
@@ -36,49 +31,19 @@ public sealed class EdictTestAppBuilder
     }
 
     /// <summary>
-    /// Disables the default seeded chaos (duplicate redelivery). Use only when
-    /// a test specifically wants the no-redelivery baseline — production
-    /// streams redeliver, so leaving chaos on is the better default.
+    /// Registers <paramref name="fake"/> as the resolved implementation of
+    /// <typeparamref name="TService"/> on both the silo and client containers.
+    /// Performs last-<c>AddSingleton</c>-wins, so any previous registration of
+    /// the same service type (e.g. the consumer's default) is overridden for
+    /// this test. Use this to swap a consumer-injected collaborator — for
+    /// example an <c>IEmailNotifier</c> an Event Handler depends on — with a
+    /// recording or stubbed substitute. Grain implementations are <b>not</b>
+    /// swappable through this seam; they are framework-owned.
     /// </summary>
-    public EdictTestAppBuilder WithoutChaos()
+    public EdictTestAppBuilder Replace<TService>(TService fake) where TService : class
     {
-        _chaos = ChaosOptions.Off;
-        return this;
-    }
-
-    /// <summary>
-    /// Overrides the seed of the default chaos policy. Same seed across runs
-    /// yields the same delivery pattern, so the Verify snapshot stays stable.
-    /// </summary>
-    public EdictTestAppBuilder WithChaosSeed(int seed)
-    {
-        _chaos = _chaos with { Seed = seed };
-        return this;
-    }
-
-    /// <summary>
-    /// Opts <see cref="Edict.Core.EventHandler.EdictEventHandler"/> deliveries
-    /// into the duplicate-redelivery chaos that other consumer roles get by
-    /// default. Use only when a test specifically wants
-    /// to exercise the dedup ring under chaos for an event handler — the
-    /// shipped default is off so a consumer's first mock-call-count assertion
-    /// is deterministic.
-    /// </summary>
-    public EdictTestAppBuilder WithChaosForInvocations()
-    {
-        _chaos = _chaos with { InvocationsEnabled = true };
-        return this;
-    }
-
-    /// <summary>
-    /// Overrides the claim-check byte-length threshold for this test.
-    /// Lower the value to force the path on a small payload — useful when a
-    /// test wants to stress the publisher pipeline without raising a 30 KB
-    /// event.
-    /// </summary>
-    public EdictTestAppBuilder WithClaimCheckThresholdBytes(int thresholdBytes)
-    {
-        _claimCheckThresholdBytes = thresholdBytes;
+        ArgumentNullException.ThrowIfNull(fake);
+        _replacements.Add(services => services.AddSingleton(typeof(TService), fake));
         return this;
     }
 
@@ -86,7 +51,5 @@ public sealed class EdictTestAppBuilder
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
 
-    internal ChaosOptions Chaos => _chaos;
-
-    internal int ClaimCheckThresholdBytes => _claimCheckThresholdBytes;
+    internal IReadOnlyList<Action<IServiceCollection>> Replacements => _replacements;
 }

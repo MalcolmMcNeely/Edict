@@ -62,6 +62,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices(services =>
     {
+        services.AddSingleton<IEmailNotifier, LoggingEmailNotifier>();
+
         services.AddOpenTelemetry()
             .WithTracing(tracing => tracing.AddSource(EdictDiagnostics.SourceName))
             .UseOtlpExporter();

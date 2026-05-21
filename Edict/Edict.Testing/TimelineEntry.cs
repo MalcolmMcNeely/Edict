@@ -1,4 +1,4 @@
-namespace Edict.Testing.Recording;
+namespace Edict.Testing;
 
 /// <summary>
 /// One observable step in a workflow, captured by the Test Framework and

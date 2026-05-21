@@ -8,42 +8,30 @@ using Edict.Core.Idempotency;
 using Orleans;
 using Orleans.Streams;
 
-namespace Edict.Testing.InProcess;
+namespace Edict.Testing.Internal;
 
 /// <summary>
 /// Reflection-built table of <c>[ImplicitStreamSubscription]</c> predicates per
-/// grain class. The Test Framework's in-process delivery
-/// (<see cref="InProcPublishEventExecutor"/>) uses it to fan out an event
-/// publish synchronously to every implicit subscriber — the substitute for the
-/// Orleans memory-stream pulling agent that does not deliver to
-/// referenced-assembly consumers in #53.
-/// <para>
-/// Only grain types deriving from <see cref="IEdictEventConsumer"/> (every
-/// saga and projection builder) are considered. Other Orleans implicit
-/// subscribers in the assembly (test fixtures, fakes) are out of scope because
-/// they do not share the framework's dedup-guarded delivery seam.
-/// </para>
+/// grain class. The in-process executor uses it to fan out a publish
+/// synchronously to every implicit subscriber, sidestepping the Orleans
+/// memory-stream pulling agent which doesn't deliver to referenced-assembly
+/// consumers. Only grain types deriving from <see cref="IEdictEventConsumer"/>
+/// (every saga and projection builder) are considered.
 /// </summary>
-sealed class InProcImplicitSubscriberMap
+sealed class SubscriberMap
 {
     readonly IReadOnlyList<(Type GrainClass, IStreamNamespacePredicate Predicate)> _bindings;
 
-    // Cache of (event CLR type → ordered list of subscribers) to avoid the
-    // O(bindings) match per event published.
     readonly ConcurrentDictionary<Type, IReadOnlyList<Type>> _byEventType = new();
 
-    InProcImplicitSubscriberMap(IReadOnlyList<(Type, IStreamNamespacePredicate)> bindings) =>
+    SubscriberMap(IReadOnlyList<(Type, IStreamNamespacePredicate)> bindings) =>
         _bindings = bindings;
 
-    public static InProcImplicitSubscriberMap Build(Assembly consumerAssembly)
+    public static SubscriberMap Build(Assembly consumerAssembly)
     {
         var consumerInterface = typeof(IEdictEventConsumer);
         var bindings = new List<(Type, IStreamNamespacePredicate)>();
 
-        // Scan the consumer assembly for its sagas/projections plus the
-        // framework assembly for shipped projections (the dead-letter
-        // projection) — without this the in-process executor would
-        // skip the framework's own auto-wired subscribers.
         var assemblies = new[] { consumerAssembly, consumerInterface.Assembly }
             .Distinct();
 
@@ -63,7 +51,7 @@ sealed class InProcImplicitSubscriberMap
             }
         }
 
-        return new InProcImplicitSubscriberMap(bindings);
+        return new SubscriberMap(bindings);
     }
 
     /// <summary>Subscriber grain classes for the supplied event's stream.</summary>
@@ -87,12 +75,6 @@ sealed class InProcImplicitSubscriberMap
             return matched;
         });
 
-    /// <summary>
-    /// <c>true</c> when the subscriber grain class is an
-    /// <see cref="EdictEventHandler"/> — used by
-    /// <see cref="InProcPublishEventExecutor"/> to gate the chaos extra
-    /// deliveries off-by-default for that role.
-    /// </summary>
     public static bool IsEventHandler(Type grainClass) =>
         typeof(EdictEventHandler).IsAssignableFrom(grainClass);
 }

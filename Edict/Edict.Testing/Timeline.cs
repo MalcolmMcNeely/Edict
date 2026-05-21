@@ -1,4 +1,4 @@
-namespace Edict.Testing.Recording;
+namespace Edict.Testing;
 
 /// <summary>
 /// The single Verify-shaped view of a whole workflow: dispatched Commands,
