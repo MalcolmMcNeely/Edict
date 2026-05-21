@@ -1,8 +1,0 @@
-[
-  {
-    Name: CommandId,
-    Type: Guid,
-    CanRead: true,
-    HasInitOnlySetter: true
-  }
-]
