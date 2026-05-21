@@ -1,6 +1,8 @@
 # Provider-scoped test layering: Core.Tests is provider-independent; provider suites own the mechanism battery
 
-**Status:** accepted — supersedes the CLAUDE.md mandate "Edict's own tests use the Orleans TestCluster against Azurite via Testcontainers (real at-least-once redelivery)" as the *blanket* rule; the `edict-test-cluster-wiring` auto-memory is updated
+**Status:** superseded by [ADR 0029](0029-integration-first-test-layering-and-parallelism.md) — the "Core.Tests = fast in-mem inner loop; Azure.Tests = full battery" split is inverted: Core.Tests becomes pure-logic-only, the mechanism battery (plus resilience + load) lives in Azure.Tests against Azurite, the in-memory `EdictClusterFixture` is deleted, and the per-test-file-per-source-class rule is dropped in favour of folder-mirrors-source-plus-scenario-named-files. See ADR 0029 for the rationale and consequences.
+
+~~accepted — supersedes the CLAUDE.md mandate "Edict's own tests use the Orleans TestCluster against Azurite via Testcontainers (real at-least-once redelivery)" as the *blanket* rule; the `edict-test-cluster-wiring` auto-memory is updated~~
 
 Every `Edict.Core.Tests` test currently pays the Azurite/Testcontainers cost and re-proves Azure behaviour other tests already own — the duplication this restructure exists to remove. Tests are re-layered by *what they prove*:
 
