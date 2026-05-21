@@ -19,8 +19,7 @@ Subscribing to that event is just as small:
 ```csharp
 public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHandler
 {
-    public Task Handle(OrderPlacedEvent evt) =>
-        email.SendConfirmation(evt.OrderId, idempotencyKey: evt.EventId);
+    public Task Handle(OrderPlacedEvent evt) => email.SendConfirmation(evt.OrderId, evt.EventId);
 }
 ```
 
