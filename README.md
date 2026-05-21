@@ -80,6 +80,16 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 - **Configurable with sensible defaults.** Every framework knob is an options property with a default and startup validation — change what you need, leave the rest.
 - **In-memory test framework.** Snapshot-test commands, events, and projection/saga state without containers; the framework itself is tested against real Azurite via Testcontainers.
 
+## What's next
+
+- **Operational telemetry.** Today there's tracing but no metrics. Next: outbox depth + oldest-entry age, dedup-window hit rate, dead-letter rate by failure kind, stream lag (event-time vs wire-time), claim-check size distribution, handler p99 by command/event type, saga-progress age, drain-cycle stability. Standard alerting recipes shipped alongside — "outbox stalled", "dead-letter spike", "stream falling behind".
+- **Saga timeouts.** Declarative deadlines per saga step with automatic compensation — today a saga that never gets its next event sits forever.
+- **`OccurredAt` becomes intent time.** Stamp at `Raise`, not at outbox drain. A retry under backoff currently reports wire time, which is wrong for any audit-grade consumer.
+- **Sharded dead-letter projection.** Today it's a single grain — under a poison-event storm the *thing recording the storm* becomes the bottleneck.
+- **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
+- **Rate-limiter and monotonic-sequence primitives.** Token bucket as a grain base; per-aggregate gap-free `Seq` on events for audit consumers.
+- **Provider packages beyond Azure.** `Edict.Postgres` drops p99 latency by an order of magnitude and gives SQL queryability on projections; `Edict.Kafka` adds a partitioned bus with native long retention. Most of the latency and throughput ceilings on Edict today are Azure-provider limits, not framework-design limits.
+
 ## Running locally
 
 You'll need .NET 10 and Docker (for the Azurite emulator that Aspire spins up).
