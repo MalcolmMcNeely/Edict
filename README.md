@@ -45,7 +45,7 @@ await Verify(progress);
 
 Three commands flow through a command handler, a saga, and a projection builder — all in-process, no containers — and one Verify snapshot captures the entire outcome.
 
-Chaos is on by default. The in-memory executor models at-least-once delivery — seeded duplicate redelivery, and bounded reorder ([#115](https://github.com/MalcolmMcNeely/Edict/issues/115), in flight) — so each test exercises the dedup ring and the reorder-tolerance contract the production substrate requires, as a side-effect of asserting business behaviour. The framework itself is tested against real Azurite via Testcontainers, so the in-memory seam stays honest.
+Chaos is on by default: the in-memory executor models at-least-once delivery — duplicate redelivery and bounded reorder, seeded for determinism — so every test exercises the dedup ring and reorder-tolerance guarantees the production substrate requires. The framework itself is tested against real Azurite via Testcontainers, so the in-memory seam stays honest.
 
 ## Why I built this
 
