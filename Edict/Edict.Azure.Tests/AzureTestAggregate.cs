@@ -87,6 +87,7 @@ public interface IAzureDedupTestConsumer : IGrainWithGuidKey
 {
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
     Task ArmThrowOnNextAsync();
+    Task DeactivateSelfAsync();
 }
 
 public interface IAzureDedupPublisherGrain : IGrainWithGuidKey
@@ -133,6 +134,12 @@ public sealed class AzureDedupTestConsumer : EdictIdempotencyBase, IAzureDedupTe
     public Task ArmThrowOnNextAsync()
     {
         _throwOnNext = true;
+        return Task.CompletedTask;
+    }
+
+    public Task DeactivateSelfAsync()
+    {
+        DeactivateOnIdle();
         return Task.CompletedTask;
     }
 }
