@@ -4,6 +4,8 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
+using Edict.Contracts.ClaimCheck;
+
 namespace Edict.Azure.Tests;
 
 /// <summary>
@@ -25,7 +27,9 @@ sealed record AzureClusterContext(
     BlobServiceClient BlobServiceClient,
     QueueServiceClient QueueServiceClient,
     string GrainStateContainerName,
-    string DeadLetterTableName);
+    string DeadLetterTableName,
+    string ClaimCheckContainerName = "",
+    IEdictClaimCheckStore? ClaimCheckStore = null);
 
 static class AzureClusterContextRegistry
 {
