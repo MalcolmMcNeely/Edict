@@ -4,7 +4,9 @@ using Azure.Storage.Queues;
 
 using Edict.Azure.TableStorage;
 using Edict.Contracts.Configuration;
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
@@ -17,20 +19,23 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
-namespace Edict.Azure.Tests;
+namespace Edict.Azure.Tests.Outbox;
 
 /// <summary>
-/// Azurite-backed cluster with a real <see cref="PublishEventExecutor"/> (so the
-/// published event reaches the projection over the <b>real Azure Queue
-/// stream</b>) and a flippable <see cref="AzureControllableUpsertRowExecutor"/>
-/// writing to <b>real Azure Table Storage</b>. Drives the ADR-0016 provider
-/// conformance proof that ADR 0012's double-apply gap is closed: a crash
-/// between the ring/outbox commit and the row write recovers effectively-once.
-/// Shares the assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>) and
-/// uses per-fixture Guid-prefixed container/table names (ADR 0029).
+/// Azurite-backed cluster that configures a non-default
+/// <see cref="EdictOptions.OutboxDrainReminderPeriod"/> (ADR 0028) — the value
+/// the <c>OutboxHost</c> passes to <c>RegisterOrUpdateReminderAsync</c>. The
+/// scenario test below asserts the option flows through silo configuration
+/// and that a failing drain registers the lazy reminder. The exact period
+/// value the host hands to Orleans is a pure-logic seam already proven by
+/// the surviving <c>Edict.Core.Tests/Outbox/OutboxHostTests</c> pure tests —
+/// trying to observe it through Orleans's reminder service requires reaching
+/// into internals, so this lifted scenario settles for the wiring proof.
 /// </summary>
-public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
+public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
 {
+    public static readonly TimeSpan ConfiguredPeriod = TimeSpan.FromMinutes(2);
+
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
@@ -39,17 +44,8 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public TableServiceClient TableServiceClient => _tableServiceClient;
-
-    public BlobServiceClient BlobServiceClient => _blobServiceClient;
-
-    public QueueServiceClient QueueServiceClient => _queueServiceClient;
-
-    public string GrainStateContainerName { get; private set; } = "";
-
-    public string DeadLetterTableName { get; private set; } = "";
-
-    public AzuriteResourceNames NewResourceNames() => AzuriteResourceNames.Generate("aurc");
+    public IEdictSender Sender =>
+        Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
     public async Task InitializeAsync()
     {
@@ -59,16 +55,16 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
         _queueServiceClient = new QueueServiceClient(_connectionString);
 
         var token = Guid.NewGuid().ToString("N");
-        GrainStateContainerName = $"edict-state-{token}";
-        DeadLetterTableName = $"deadletter{token}";
+        var grainStateContainer = $"edict-state-{token}";
+        var deadLetterTable = $"deadletter{token}";
 
         var context = new AzureClusterContext(
             _connectionString,
             _tableServiceClient,
             _blobServiceClient,
             _queueServiceClient,
-            GrainStateContainerName,
-            DeadLetterTableName);
+            grainStateContainer,
+            deadLetterTable);
         _contextKey = AzureClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -108,38 +104,27 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
+            siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
+                new AzureTableRepository<EdictDeadLetterEntry>(
+                    ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton(TimeProvider.System);
-            // Custom Azure provider wiring (test-only AzureControllableUpsertRowExecutor),
-            // so the fixture registers wiring markers manually rather than
-            // calling AddEdictAzureStreams/Persistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict(o =>
             {
-                // Small deterministic backoff; default MaxAttempts so the
-                // failing window never dead-letters before recovery.
+                o.OutboxDrainReminderPeriod = ConfiguredPeriod;
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
                 o.OutboxJitterFraction = 0;
             });
-            // Replace the auto-registered UpsertRowExecutor with the controllable
-            // one. The previous shape pre-registered both PublishEventExecutor and
-            // AzureControllableUpsertRowExecutor before calling AddEdict(), which
-            // appended duplicate IOutboxEffectExecutor entries — the OutboxHost
-            // ctor's ToDictionary on OutboxEffectKind throws on the duplicate
-            // PublishEvent and UpsertRow keys (see memory/upsertrow-gapclosure-azure-flake).
-            var upsert = siloBuilder.Services.Single(d =>
+            // Replace the auto-registered PublishEventExecutor with the
+            // controllable one (see AzureOutboxRecoveryClusterFixture).
+            var publish = siloBuilder.Services.Single(d =>
                 d.ServiceType == typeof(IOutboxEffectExecutor)
-                && d.ImplementationType == typeof(UpsertRowExecutor));
-            siloBuilder.Services.Remove(upsert);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableUpsertRowExecutor>();
+                && d.ImplementationType == typeof(PublishEventExecutor));
+            siloBuilder.Services.Remove(publish);
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableOutboxExecutor>();
             siloBuilder.UseInMemoryReminderService();
-            // PubSubStore stays on memory storage — Orleans's internal
-            // pub-sub state is out of scope for the Edict substrate story
-            // (ADR 0025 keeps it on Tables in production).
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            // edict-state on Azure Blob (ADR 0025) — provider conformance
-            // tests must exercise the same substrate the sample silo wires.
-            // Container is Guid-prefixed for cross-collection isolation.
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
             {
                 options.BlobServiceClient = ctx.BlobServiceClient;
@@ -171,9 +156,3 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
     }
 }
 
-[CollectionDefinition(Name)]
-public sealed class AzureUpsertRowRecoveryClusterCollection
-    : ICollectionFixture<AzureUpsertRowRecoveryClusterFixture>
-{
-    public const string Name = "AzureUpsertRowRecoveryCluster";
-}

@@ -1,27 +1,29 @@
 using Edict.Contracts.Persistence;
-using Edict.Core.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using Orleans.Hosting;
 using Orleans.Serialization.TypeSystem;
 
-namespace Edict.Core.Tests.Outbox;
+namespace Edict.Azure.Tests.Outbox;
 
 // ADR 0027 rename-survival proof — closes the AQTN hole resiliency-analysis.md
 // §3.2.3 flagged on UpsertRowEffect.RowTypeName. The previous shape used the
 // row POCO's AssemblyQualifiedName as identity, so a consumer who renamed the
-// class dead-lettered every in-flight entry. The new shape captures the frozen
-// [Alias] literal via Orleans's TypeConverter and resolves it back on drain.
-// The class-name-differs-from-alias scenario here is the "after rename" state:
-// proving that even when the C# identifier and the alias literal diverge, the
-// publish→drain round-trip remains stable.
+// class dead-lettered every in-flight entry. The new shape captures the
+// frozen [Alias] literal via Orleans's TypeConverter and resolves it back on
+// drain. The class-name-differs-from-alias scenario here is the "after
+// rename" state: proving that even when the C# identifier and the alias
+// literal diverge, the publish→drain round-trip remains stable.
+//
+// Lifted unchanged-in-spirit from Edict.Core.Tests; now resolved against the
+// real Azurite-backed cluster's TypeConverter (registered by AddEdict() with
+// the full assembly walk) rather than the in-memory EdictClusterFixture's.
 
 // A row POCO whose class name (RenamedRowAfterAdr0027) deliberately differs
 // from its frozen [Alias] literal ("OriginalRowNameBeforeAdr0027"). This is
 // exactly the state a consumer ends up in after they rename the class but
-// preserve the alias — the rename the previous AQTN-based mechanism would have
-// dead-lettered every in-flight entry through.
+// preserve the alias — the rename the previous AQTN-based mechanism would
+// have dead-lettered every in-flight entry through.
 [GenerateSerializer]
 [Alias("OriginalRowNameBeforeAdr0027")]
 public sealed class RenamedRowAfterAdr0027 : IEdictPersistedState
@@ -30,17 +32,17 @@ public sealed class RenamedRowAfterAdr0027 : IEdictPersistedState
     public int Marker { get; set; }
 }
 
-[Collection(EdictClusterCollection.Name)]
-public sealed class UpsertRowRenameSurvivalTests(EdictClusterFixture fixture)
+[Collection(AzureClusterCollection.Name)]
+public sealed class UpsertRowRenameSurvivalTests(AzureClusterFixture fixture)
 {
     [Fact]
     public void Format_ShouldCaptureFrozenAliasLiteral_NotSimpleClassName()
     {
         // The TypeConverter Format hop is what the publisher
         // (EdictTableProjectionBuilder.BuildUpsertEntry) calls; its output is
-        // what RowAlias on the UpsertRowEffect carries. The literal "...Before...",
-        // not the C# identifier "...After...", is what travels — the rename has
-        // not broken the wire identity.
+        // what RowAlias on the UpsertRowEffect carries. The literal
+        // "...Before...", not the C# identifier "...After...", is what
+        // travels — the rename has not broken the wire identity.
         var converter = fixture.Cluster.ServiceProvider.GetRequiredService<TypeConverter>();
 
         var formatted = converter.Format(typeof(RenamedRowAfterAdr0027));
@@ -69,7 +71,8 @@ public sealed class UpsertRowRenameSurvivalTests(EdictClusterFixture fixture)
         // gives a literal the consumer chose; drain's Parse returns the same
         // Type even when the class identifier has changed since. A class
         // rename now requires only that the [Alias] literal stay intact —
-        // exactly the discipline ADR 0017 already mandated and EDICT011 enforces.
+        // exactly the discipline ADR 0017 already mandated and EDICT011
+        // enforces.
         var converter = fixture.Cluster.ServiceProvider.GetRequiredService<TypeConverter>();
 
         var formatted = converter.Format(typeof(RenamedRowAfterAdr0027));
