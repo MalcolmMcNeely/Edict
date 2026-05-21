@@ -10,6 +10,8 @@ using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Telemetry;
 
+using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -51,8 +53,11 @@ public static class EdictServiceCollectionExtensions
     static IServiceCollection AddEdictCore(IServiceCollection services, IEnumerable<Assembly> assemblies, bool requireAttribute)
     {
         var logger = ResolveStartupLogger(services);
-        var discovered = RouteDiscovery.Discover(assemblies, requireAttribute, logger);
+        var materialised = assemblies as IReadOnlyCollection<Assembly> ?? assemblies.ToArray();
+        var discovered = RouteDiscovery.Discover(materialised, requireAttribute, logger);
         var routes = new Dictionary<Type, CommandRoute>(discovered);
+
+        services.AddValidatorsFromAssemblies(materialised);
 
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton<IEdictSender, EdictSender>();
