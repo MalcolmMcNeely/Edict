@@ -5,24 +5,6 @@ using Edict.Core.DeadLetter;
 
 namespace Edict.Azure.Tests.DeadLetter;
 
-/// <summary>
-/// Full-loop coverage of against the real Azure stack: a permanent
-/// publish failure on an aggregate's raised event drives the engine through
-/// <see cref="Contracts.Configuration.EdictOptions.OutboxMaxAttempts"/> retries
-/// and into the promotion path. The engine swaps the failing entry for an
-/// <see cref="EdictDeadLetterRaised"/> PublishEvent entry in the same commit;
-/// the controllable is then healed so the dead-letter publish itself succeeds;
-/// the framework-shipped <see cref="EdictDeadLetterProjectionBuilder"/> consumes
-/// the stream and upserts a row to the literal <c>"deadletter"</c> Azure Table.
-/// <para>
-/// Lifted from <c>Edict.Core.Tests/DeadLetter/DeadLetterEndToEndTests</c>
-/// (now removed) — the in-memory cluster did not exercise the real Azure Queue
-/// + Azure Blob transport is meant to survive. The smoke
-/// version in <c>Outbox/OutboxDeadLetterPromotionTests</c> only asserted
-/// <c>SourceGrainKey</c>; this version pins every RCA field plus a Verify
-/// snapshot so any drift in the promoted row's shape trips CI.
-/// </para>
-/// </summary>
 [Collection(AzureOutboxControllableExecutorCollection.Name)]
 public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLetterClusterFixture fixture)
 {
@@ -37,10 +19,9 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
 
         var probe = fixture.Cluster.GrainFactory.GetGrain<IAzureCounterProbe>(counterId);
 
-        // Drive reminder ticks until the original entry has failed twice (the
-        // MaxAttempts=2 threshold). Each drain bumps the per-entry backoff by
-        // 200ms (OutboxBaseDelay), so we wait through that gate between forced
-        // drains.
+        // Drive reminder ticks until the entry hits MaxAttempts=2. Each drain
+        // bumps backoff by OutboxBaseDelay (200ms), so the loop waits past
+        // that gate between forced drains.
         await WaitUntilAsync(async () =>
         {
             await Task.Delay(TimeSpan.FromMilliseconds(250));
@@ -48,12 +29,9 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
             return AzureControllableOutboxExecutor.FailedAttempts >= 2;
         });
 
-        // The host has promoted the original entry to a dead-letter PublishEvent
-        // (EdictDeadLetterRaised) at the tail. Heal the controllable so the
-        // dead-letter event itself publishes — without this flip the controllable
-        // would fail every promoted entry too, looping promotions and never
-        // landing the row (the promoted entry rides the same backoff /
-        // max-attempts rules as any other PublishEvent).
+        // Heal the controllable so the promoted EdictDeadLetterRaised entry
+        // can publish — otherwise it would loop on the same fail/promote
+        // cycle and never land the row.
         AzureControllableOutboxExecutor.ShouldFail = false;
 
         await WaitUntilAsync(async () =>
@@ -63,10 +41,9 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
             return await probe.GetPendingOutboxCountAsync() == 0;
         });
 
-        // The EdictDeadLetterProjectionBuilder writes to its literal TableName
-        // ("deadletter") — independent of the fixture's per-collection
-        // DeadLetterTableName (which backs the operator-facing repository
-        // facade). Read directly from the literal table to observe the row.
+        // The projection writes to its literal "deadletter" table —
+        // independent of the fixture's per-collection DeadLetterTableName
+        // (which backs the operator-facing repository facade).
         var deadLetterTable = new AzureTableRepository<EdictDeadLetterEntry>(
             fixture.TableServiceClient,
             EdictDeadLetterProjectionBuilder.DeadLetterPartition);
@@ -90,11 +67,6 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
         Assert.Equal("controllable publish failure (azure outbox test)", entry.Reason);
         Assert.NotNull(entry.PayloadJson);
 
-        // Pin the stable RCA fields with a single snapshot. EntryId,
-        // DeadLetteredAt, TraceParent, PayloadJson, SourceGrainKey, and
-        // SourceEventId are volatile (Guid/clock/trace-driven) so they are
-        // scrubbed; their structural shape is checked above through the
-        // dedicated Asserts.
         await Verify(entry).DontScrubGuids().DontScrubDateTimes()
             .ScrubMember<EdictDeadLetterEntry>(e => e.EntryId)
             .ScrubMember<EdictDeadLetterEntry>(e => e.DeadLetteredAt)

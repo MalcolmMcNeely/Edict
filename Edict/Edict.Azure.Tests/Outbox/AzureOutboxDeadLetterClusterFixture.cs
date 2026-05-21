@@ -21,16 +21,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Outbox;
 
-/// <summary>
-/// Azurite-backed cluster for the lifted dead-letter promotion scenario.
-/// Same shape as <see cref="AzureOutboxRecoveryClusterFixture"/> but with
-/// <see cref="EdictOptions.OutboxMaxAttempts"/> dialled down to 2 so the
-/// controllable PublishEvent executor reaches the promotion threshold in
-/// seconds. Promoted entries publish an <see cref="EdictDeadLetterRaised"/>
-/// event which the auto-wired <c>EdictDeadLetterProjectionBuilder</c> upserts
-/// into the Azure Table repository — the test reads that table to prove the
-/// host walked the entry to its dead-letter terminus and the drain continued.
-/// </summary>
 public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -115,15 +105,11 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict(o =>
             {
-                // Two attempts then promote — the scenario exhausts attempts
-                // within a couple of reminder ticks.
                 o.OutboxMaxAttempts = 2;
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
                 o.OutboxJitterFraction = 0;
             });
-            // Replace the auto-registered PublishEventExecutor with the
-            // controllable one (see AzureOutboxRecoveryClusterFixture for the
-            // duplicate-key reasoning).
+            // Must replace, not append — see AzureOutboxRecoveryClusterFixture.
             var publish = siloBuilder.Services.Single(d =>
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(PublishEventExecutor));

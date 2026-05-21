@@ -17,12 +17,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
-// InvokeHandlerExecutor unit tests against the payload
-// shape: the buffered EdictEvent is always an EdictEventEnvelope (inline or
-// pointer), and the executor calls ClaimCheckUnwrap.ApplyAsync before
-// invoking the deferred-dispatch callback. No grain, no cluster: the
-// callback is replaced by a fake so the executor's logic body is the only
-// thing under test.
 public sealed class InvokeHandlerExecutorTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -30,8 +24,6 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldDispatchInnerEvent_WhenInlineEnvelopeEntry()
     {
-        // The common case after: EventHandler's stream callback wrapped
-        // a concrete event into an inline-payload envelope before staging.
         var evt = new OrderPlacedEvent(
             OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
             Sku: "WIDGET")
@@ -58,10 +50,6 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldFetchAndDispatchInnerEvent_WhenPointerEnvelopeEntry()
     {
-        // fold: pointer-bearing envelope entries (the receiver-side
-        // path for oversized events) run the same executor; ClaimCheckUnwrap
-        // hits the store, materialises the inner event, and the deferred
-        // dispatch fires against the concrete event.
         var inner = new OrderPlacedEvent(
             OrderId: new Guid("22222222-2222-2222-2222-222222222222"),
             Sku: "OVERSIZED")
@@ -91,9 +79,6 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldSurfaceFetchFailure_WhenPointerEnvelopeBlobMissing()
     {
-        // The engine catches the throw, bumps backoff via the per-entry retry
-        // path, and (at MaxAttempts) promotes via the standard IDeadLetterPromoter
-        // path. The executor's job ends with the rethrow.
         var key = "edict-claim-check/missing";
         var envelope = EnvelopeCodec.WrapPointer(key);
         var entry = new OutboxEntry

@@ -23,15 +23,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests;
 
-/// <summary>
-/// Full-stack Azurite-backed cluster fixture for the Azure provider test suite
-///. Uses the assembly-shared Azurite container
-/// (<see cref="AzuriteAssemblyHost"/>) and per-fixture Guid-prefixed resource
-/// names so two collections running in parallel against the same Azurite never
-/// collide. The previous shape held connection-string and service-client state
-/// in <c>static</c> fields with xUnit's default cross-collection parallelism
-/// active — a latent race that this rewrite removes.
-/// </summary>
 public sealed class AzureClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -51,29 +42,14 @@ public sealed class AzureClusterFixture : IAsyncLifetime
 
     public QueueServiceClient QueueServiceClient => _queueServiceClient;
 
-    /// <summary>
-    /// Per-fixture Guid-prefixed blob container name backing the Orleans
-    /// <c>edict-state</c> grain storage provider. The provider <i>name</i>
-    /// stays <c>edict-state</c> (it is hardcoded in
-    /// <c>[PersistentState("state", "edict-state")]</c> consumer attributes
-    /// in tests); only the underlying blob container is per-fixture-unique
-    /// so collections running in parallel against the shared Azurite do not
-    /// collide on container existence or contents.
-    /// </summary>
+    // The provider name stays "edict-state" (hardcoded in consumer
+    // [PersistentState("state", "edict-state")] attributes); only the
+    // underlying blob container is per-fixture-unique so parallel collections
+    // against the shared Azurite do not collide on container contents.
     public string GrainStateContainerName { get; private set; } = "";
 
-    /// <summary>
-    /// Per-fixture Guid-prefixed Azure Table name used by the dead-letter
-    /// projection and repository for this collection.
-    /// </summary>
     public string DeadLetterTableName { get; private set; } = "";
 
-    /// <summary>
-    /// Mint a fresh Guid-prefixed resource-name bundle for a single test that
-    /// needs to create ad-hoc Azurite resources (per-test tables, claim-check
-    /// containers, etc.). Reused across test files so the prefixing pattern
-    /// is uniform.
-    /// </summary>
     public AzuriteResourceNames NewResourceNames() => AzuriteResourceNames.Generate("acf");
 
     public async Task InitializeAsync()
@@ -138,25 +114,15 @@ public sealed class AzureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
-            // The fixture wires its own custom Azure streams/storage (with
-            // shorter visibility timeout + in-memory PubSubStore for test
-            // isolation) so it registers the wiring markers manually; the
-            // EdictAzureSiloBuilderExtensionsTests cover the production
-            // AddEdictAzureStreams + AddEdictAzurePersistence paths.
+            // The fixture wires its own Azure streams/storage (shorter
+            // visibility timeout + in-memory PubSubStore for test isolation),
+            // so it registers the wiring markers manually rather than going
+            // through AddEdictAzureStreams + AddEdictAzurePersistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();
-            // PubSubStore stays on memory storage in this fixture — Orleans's
-            // internal pub-sub state is out of scope for the Edict substrate
-            // story (production keeps PubSubStore on Tables, but the
-            // provider-conformance suite isolates the change under test).
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
-            // edict-state on Azure Blob. Substrate-behaviour tests
-            // (including GrainStateOnBlobSubstrateAtomicityTests) exercise the
-            // same provider the sample silo wires in production. The container
-            // name is per-fixture (Guid-prefixed) so parallel collections do
-            // not share state.
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
             {
                 options.BlobServiceClient = ctx.BlobServiceClient;
@@ -167,8 +133,8 @@ public sealed class AzureClusterFixture : IAsyncLifetime
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>
                 {
                     o.QueueServiceClient = new QueueServiceClient(ctx.ConnectionString);
-                    // Short visibility timeout lets the at-least-once redelivery
-                    // test observe a real queue re-queue within seconds.
+                    // Short timeout lets the at-least-once redelivery test
+                    // observe a real queue re-queue within seconds.
                     o.MessageVisibilityTimeout = TimeSpan.FromSeconds(5);
                 }));
                 configure.ConfigurePullingAgent(opt => opt.Configure(o =>

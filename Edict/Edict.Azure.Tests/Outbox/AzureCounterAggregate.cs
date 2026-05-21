@@ -13,12 +13,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.Outbox;
 
-// Stateful command-handler aggregate used by the outbox lift suite (issue #88).
-// Mirrors Edict.Core.Tests' CounterAggregate but raises events on the
-// AzureCounters stream so the Azurite-backed cluster can observe end-to-end
-// {State, Outbox} commit + inline FIFO drain over the real Azure Queue
-// transport.
-
 [GenerateSerializer]
 [Alias("Edict.Azure.Tests.Outbox.AzureCounterState")]
 public sealed class AzureCounterState : IEdictPersistedState
@@ -50,9 +44,9 @@ public sealed partial record AzureCounterIncrementedEvent(Guid CounterId, int Ne
     public int NewCount { get; init; } = NewCount;
 }
 
-// Hand-written probe interface (Orleans codegen cannot see the Edict-generated
-// grain interface) so tests can read framework-owned State, force
-// deactivation, and drive the deterministic Reminder recovery path.
+// Hand-written probe (Orleans codegen can't see the Edict-generated grain
+// interface) so tests can read framework-owned State and drive the Reminder
+// recovery path deterministically.
 public interface IAzureCounterProbe : IGrainWithGuidKey
 {
     Task<int> GetCountAsync();

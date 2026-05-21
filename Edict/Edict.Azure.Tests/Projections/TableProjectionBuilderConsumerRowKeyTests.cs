@@ -2,12 +2,6 @@ using Edict.Azure.TableStorage;
 
 namespace Edict.Azure.Tests.Projections;
 
-/// <summary>
-/// Azurite/Testcontainers conformance for <c>EdictTableProjectionBuilder</c>'s
-/// consumer-specified <c>GetRowKey</c> seam: the RowKey is independent of the
-/// PartitionKey (grain key). Lifted from <c>TableProjectionBuilderTests</c> in
-/// Core.Tests.
-/// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class TableProjectionBuilderConsumerRowKeyTests(AzureClusterFixture fixture)
 {
@@ -20,7 +14,6 @@ public sealed class TableProjectionBuilderConsumerRowKeyTests(AzureClusterFixtur
 
         await fixture.Sender.Send(new AzurePlaceOrderCommand(orderId, "SKU-C"));
 
-        // PartitionKey = orderId (grain key), RowKey = "summary" (consumer-specified fixed key)
         await WaitForRowAsync(repository, orderId.ToString(), "summary");
         var row = await repository.GetAsync(orderId.ToString(), "summary");
 

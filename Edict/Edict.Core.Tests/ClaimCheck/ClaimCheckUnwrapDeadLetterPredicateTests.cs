@@ -11,12 +11,6 @@ using Orleans.Serialization;
 
 namespace Edict.Core.Tests.ClaimCheck;
 
-// slice 4: the receiver-side unwrap registered by AddEdict() must
-// suppress the blob fetch for EdictDeadLetterProjectionBuilder so a
-// pointer-bearing envelope on the dead-letter stream is never auto-fetched
-// into a 32 KB property — the framework consumer is the one type that holds
-// the pointer instead of inflating the body. Every other consumer type still
-// fetches by default.
 public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
 {
     [Fact]

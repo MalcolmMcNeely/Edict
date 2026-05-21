@@ -9,7 +9,6 @@ namespace Edict.Core.Tests;
 
 // Sample-shaped consumer code. The generator runs over this assembly and emits
 // IOrderCommandHandler, OrderCommandHandler.Dispatch, the Orleans surrogates and AddEdict().
-
 public sealed partial record PlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -31,8 +30,6 @@ public sealed partial record FailOrderCommand(Guid OrderId) : EdictCommand
     public Guid OrderId { get; init; } = OrderId;
 }
 
-// Commands used by the Command Validator tests (issue #12).
-
 public sealed partial record ValidateSkuCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -47,7 +44,6 @@ public sealed partial record StateCheckCommand(Guid OrderId) : EdictCommand
     public Guid OrderId { get; init; } = OrderId;
 }
 
-// The domain event raised when a PlaceOrderCommand is accepted.
 [EdictStream("Orders")]
 public sealed partial record OrderPlacedEvent(Guid OrderId, string Sku) : EdictEvent
 {

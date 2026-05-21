@@ -8,14 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Azure.Tests.DeadLetter;
 
-// provider conformance battery for IEdictDeadLetterRepository: the
-// same observable behaviour the in-memory facade test proves in Core.Tests,
-// re-run against real Azurite via Testcontainers. The repo is
-// provider-agnostic — the only thing the Azure provider plugs is the
-// IEdictTableRepository<EdictDeadLetterEntry> seam — so the test exercises
-// that exact composition: the Core facade wrapping AzureTableRepository over
-// the dead-letter table. Per-test unique tables isolate the shared cluster
-// fixture (every Edict.Azure.Tests collection shares one Azurite).
 [Collection(AzureClusterCollection.Name)]
 public sealed class TableBackedDeadLetterRepositoryAzureTests(AzureClusterFixture fixture)
 {
@@ -85,9 +77,8 @@ public sealed class TableBackedDeadLetterRepositoryAzureTests(AzureClusterFixtur
     [Fact]
     public async Task ListAllAsync_ShouldReturnEmpty_WhenPartitionEmpty()
     {
-        // AzureTableRepository tolerates the 404 a never-created table returns,
-        // which is the same observable shape as an existing empty partition —
-        // either is "empty" from the repository's contract perspective.
+        // AzureTableRepository tolerates the 404 from a never-created table —
+        // contract-wise that is the same shape as an existing empty partition.
         var repo = NewRepository(UniqueTable());
 
         var results = await repo.ListAllAsync();
@@ -98,10 +89,6 @@ public sealed class TableBackedDeadLetterRepositoryAzureTests(AzureClusterFixtur
     [Fact]
     public void AddEdictAzureDeadLetterRepository_ShouldResolveAzureBackedFacade()
     {
-        // Proves the wiring acceptance criterion: AddEdict() + the Azure
-        // provider's helper together let the client resolve a working,
-        // Azure-backed IEdictDeadLetterRepository — exactly the operator's
-        // surface.
         var repo = fixture.Cluster.Client.ServiceProvider
             .GetRequiredService<IEdictDeadLetterRepository>();
 

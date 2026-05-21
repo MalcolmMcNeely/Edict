@@ -5,25 +5,8 @@ using Edict.Contracts.Configuration;
 
 namespace Edict.Azure.Tests.Load;
 
-/// <summary>
-/// Liveness + invariants load test (parent PRD #83, this slice #98).
-/// Dispatches 1000 commands across 1000 unique aggregates against Azurite, then
-/// waits for the downstream projection effect (not the handler return) and
-/// asserts three invariants:
-/// <list type="bullet">
-/// <item>No message loss — exactly 1000 rows appear in the projection table.</item>
-/// <item>Exactly-once effect — every row has <c>OrderCount == 1</c>, so any
-/// at-least-once redelivery was suppressed by the dedup ring rather than
-/// double-applied.</item>
-/// <item>Dedup ring stays bounded — a sample of projection grains' persisted
-/// idempotency state shows the ring sized to
-/// <see cref="EdictOptions.IdempotencyWindowSize"/>, catching a regression
-/// that swaps the bounded ring for an unbounded structure.</item>
-/// </list>
-/// Deliberately loose ~2-minute wall-clock ceiling so the test catches
-/// order-of-magnitude regressions on slow CI runners without flaking. Runs in
-/// the default CI build, not behind a flag.
-/// </summary>
+// Deliberately loose ~2-minute wall-clock ceiling: catches order-of-magnitude
+// regressions on slow CI runners without flaking.
 [Collection(AzureClusterCollection.Name)]
 public sealed class DispatchThroughputTests(AzureClusterFixture fixture)
 {
@@ -65,16 +48,11 @@ public sealed class DispatchThroughputTests(AzureClusterFixture fixture)
         Assert.True(stopwatch.Elapsed < WallClockCeiling,
             $"Load test exceeded {WallClockCeiling} ceiling: observed {stopwatch.Elapsed}.");
 
-        // Invariant 1 — no message loss.
         Assert.Equal(CommandCount, rows.Count);
-
-        // Invariant 2 — exactly-once effect across all 1000 commands.
         Assert.All(rows.Values, row => Assert.Equal(1, row.OrderCount));
 
-        // Invariant 3 — dedup ring is bounded at the configured WindowSize on
-        // a sample of projection grains. Per-aggregate consumers each see one
-        // event, so Count == 1; what matters is that Capacity matches the
-        // configured ring size and has not silently grown.
+        // Per-aggregate consumers each see one event; Capacity here catches
+        // a regression that swaps the bounded ring for an unbounded structure.
         var defaultWindowSize = new EdictOptions().IdempotencyWindowSize;
         foreach (var orderId in orderIds.Take(RingProbeSampleSize))
         {

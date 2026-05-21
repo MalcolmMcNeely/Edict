@@ -5,13 +5,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Outbox;
 
-// Backoff is a pure function of AttemptCount: exponential from a
-// configured base delay, clamped to a configured ceiling, then spread by a
-// deterministic per-entry jitter so a fleet of entries that fail together do
-// not stampede the same retry instant. Pure and reproducible — the jitter is a
-// stable hash of EntryId, never a clock or RNG, so the literal timestamps in
-// the snapshot are themselves the assertion.
-
 public sealed class OutboxBackoffTests
 {
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);

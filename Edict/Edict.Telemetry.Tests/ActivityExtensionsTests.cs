@@ -6,10 +6,6 @@ using Orleans.Runtime;
 
 namespace Edict.Telemetry.Tests;
 
-/// <summary>
-/// Unit tests for the Edict.Telemetry surface: identity, span-start extensions,
-/// tag-writing extensions, and the RequestContext round-trip. No cluster needed.
-/// </summary>
 public sealed class ActivityExtensionsTests : IDisposable
 {
     private readonly ActivityListener _listener;
@@ -28,14 +24,12 @@ public sealed class ActivityExtensionsTests : IDisposable
 
     public void Dispose() => _listener.Dispose();
 
-    // Cycle 1 — tracer bullet: SourceName identity
     [Fact]
     public void EdictDiagnostics_ShouldHaveSourceNameEdict()
     {
         Assert.Equal("Edict", EdictDiagnostics.SourceName);
     }
 
-    // Cycle 2 — StartEdictCommand starts an activity with the given name
     [Fact]
     public void StartEdictCommand_ShouldStartActivityWithGivenOperationName()
     {
@@ -45,7 +39,6 @@ public sealed class ActivityExtensionsTests : IDisposable
         Assert.Contains(_stopped, a => a.OperationName == "edict.command TestCommand");
     }
 
-    // Cycle 3 — SetEdictCommandTags writes edict.command.route_key
     [Fact]
     public void SetEdictCommandTags_ShouldSetEdictCommandRouteKeyTag()
     {
@@ -60,7 +53,6 @@ public sealed class ActivityExtensionsTests : IDisposable
         Assert.Equal(routeKey, span.GetTagItem("edict.command.route_key"));
     }
 
-    // Cycle 4 — CaptureToRequestContext + ReadRequestContext round-trip
     [Fact]
     public void ReadRequestContext_ShouldReturnSameTraceIds_WhenPreviouslyCaptured()
     {
@@ -77,7 +69,6 @@ public sealed class ActivityExtensionsTests : IDisposable
         Assert.Equal(span.SpanId.ToHexString(), capturedSpanId);
     }
 
-    // Cycle 4b — RestoreFromStrings reconstructs ActivityContext from hex strings
     [Fact]
     public void RestoreFromStrings_ShouldReconstructActivityContext_WhenStringsAreValid()
     {

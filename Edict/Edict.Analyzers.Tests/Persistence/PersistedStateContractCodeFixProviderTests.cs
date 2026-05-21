@@ -20,9 +20,8 @@ public class PersistedStateContractCodeFixProviderTests
     [Fact]
     public async Task EDICT011_CodeFix_ShouldInsertEveryMissingAttributeInOneAction_WhenAllArePresent()
     {
-        // Composite-case proof: a type missing every consumer-owned attribute
-        // resolves in ONE codefix invocation — the batched Quick Action the
-        // ADR mandates so the consumer doesn't fix three diagnostics by hand.
+        // One codefix invocation must satisfy every missing attribute so the
+        // consumer doesn't fix three diagnostics by hand.
         const string source = """
             using Edict.Contracts.Persistence;
             namespace Sample;

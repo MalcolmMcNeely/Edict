@@ -5,13 +5,6 @@ using Edict.Telemetry;
 
 namespace Edict.Azure.Tests.Commands;
 
-/// <summary>
-/// Azurite/Testcontainers conformance for the FluentValidation pipeline on
-/// command dispatch: validator failure → Rejected
-/// envelope, not a thrown exception; validator success delegates to Handle;
-/// grain state is injected into RootContextData. Lifted from
-/// <c>CommandValidatorTests</c> in Core.Tests.
-/// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class CommandValidatorTests(AzureClusterFixture fixture)
 {
@@ -36,7 +29,6 @@ public sealed class CommandValidatorTests(AzureClusterFixture fixture)
     [Fact]
     public async Task Handle_ShouldDispatchCommandNormally_WhenNoValidatorPresent()
     {
-        // AzurePlaceOrderCommand has no registered validator in this cluster.
         var result = await fixture.Sender.Send(new AzurePlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
@@ -64,19 +56,13 @@ public sealed class CommandValidatorTests(AzureClusterFixture fixture)
     [Fact]
     public async Task Validator_ShouldReceiveGrainStateViaRootContextData()
     {
-        // AzureGrainStateRequiredValidator rejects with "missing_state" if
-        // RootContextData[GrainState] is absent or null. AzureOrderCommandHandler
-        // overrides GetValidationState() to return a non-null marker, so the
-        // command passes → Accepted proves injection happened.
+        // AzureGrainStateRequiredValidator rejects on missing GrainState in
+        // RootContextData; Accepted here proves the handler injected it.
         var result = await fixture.Sender.Send(new AzureStateCheckCommand(Guid.NewGuid()));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
 
-    // Orleans' single-threaded grain activation guarantees that the validator
-    // and Handle within one Dispatch call are never interleaved with other
-    // messages. This test exercises concurrent sends to the same grain and
-    // asserts both complete correctly — a regression guard for that guarantee.
     [Fact]
     public async Task ConcurrentCommands_ShouldCompleteWithoutInterleaving_WhenTargetingSameGrain()
     {

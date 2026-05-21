@@ -7,13 +7,9 @@ using Orleans.Streams;
 
 namespace Edict.Core.Tests.DeadLetter;
 
-// Test executor that fails every PublishEvent EXCEPT EdictDeadLetterRaised
-//. The point of the end-to-end test is to drive the engine's
-// promotion path on a real event: the original publish fails permanently, the
-// engine promotes at MaxAttempts to an EdictDeadLetterRaised entry, and that
-// notification must itself publish cleanly so the projection grain can write
-// the row. Delegates to the real PublishEventExecutor for the dead-letter
-// notification.
+// Fails every PublishEvent except EdictDeadLetterRaised — drives the engine's
+// promotion path while letting the dead-letter notification itself publish
+// cleanly so the projection grain can write the row.
 sealed class DeadLetterAwarePublishExecutor(Serializer serializer) : IOutboxEffectExecutor
 {
     readonly PublishEventExecutor _inner = new(serializer);

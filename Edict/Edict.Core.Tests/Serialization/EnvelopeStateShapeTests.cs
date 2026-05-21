@@ -11,14 +11,9 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// Drift guard for the persisted grain-state envelope (the frozen-alias
-// rule, unified envelope). The envelope is Orleans [GenerateSerializer]
-// grain state, so the guard round-trips it through the *Orleans* serializer
-// (binary on Azure, the actual persistence path) rather than MessagePack: a
-// renamed/removed [Id] member or a changed [Alias] drops the value on the
-// round-trip and fails CI on the snapshot diff. Inputs are fixed constants so
-// the literals are the assertion.
-
+// Round-trips through the Orleans serializer rather than MessagePack: the
+// envelope is Orleans [GenerateSerializer] grain state, and binary on Azure
+// is the actual persistence path.
 public sealed class EnvelopeStateShapeTests
 {
     static readonly Guid EntryId = new("aaaaaaaa-0000-0000-0000-000000000001");

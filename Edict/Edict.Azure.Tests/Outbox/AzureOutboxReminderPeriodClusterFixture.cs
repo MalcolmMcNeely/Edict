@@ -21,17 +21,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Outbox;
 
-/// <summary>
-/// Azurite-backed cluster that configures a non-default
-/// <see cref="EdictOptions.OutboxDrainReminderPeriod"/> — the value
-/// the <c>OutboxHost</c> passes to <c>RegisterOrUpdateReminderAsync</c>. The
-/// scenario test below asserts the option flows through silo configuration
-/// and that a failing drain registers the lazy reminder. The exact period
-/// value the host hands to Orleans is a pure-logic seam already proven by
-/// the surviving <c>Edict.Core.Tests/Outbox/OutboxHostTests</c> pure tests —
-/// trying to observe it through Orleans's reminder service requires reaching
-/// into internals, so this lifted scenario settles for the wiring proof.
-/// </summary>
 public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
 {
     public static readonly TimeSpan ConfiguredPeriod = TimeSpan.FromMinutes(2);
@@ -116,8 +105,7 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
                 o.OutboxJitterFraction = 0;
             });
-            // Replace the auto-registered PublishEventExecutor with the
-            // controllable one (see AzureOutboxRecoveryClusterFixture).
+            // Must replace, not append — see AzureOutboxRecoveryClusterFixture.
             var publish = siloBuilder.Services.Single(d =>
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(PublishEventExecutor));

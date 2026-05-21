@@ -4,14 +4,6 @@ using Edict.Telemetry;
 
 namespace Edict.Azure.Tests.Idempotency;
 
-/// <summary>
-/// A suppressed redelivery must surface as a span tagged
-/// <c>edict.deduplicated=true</c> so operators can see at-least-once
-/// duplicates without trawling logs. Proves the suppression branch of
-/// <see cref="Core.Idempotency.EdictIdempotencyBase{TPayload}.OnStreamEventAsync"/>
-/// emits the diagnostic span when the event arrives via the real Azure Queue
-/// stream provider (parent trace context is rehydrated from the wire payload).
-/// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class DedupSpanEmissionTests(AzureClusterFixture fixture)
 {
@@ -41,8 +33,6 @@ public sealed class DedupSpanEmissionTests(AzureClusterFixture fixture)
         await publisher.PublishAsync(evt);
         await WaitForHandledCountAsync(consumer, expectedCount: 1);
 
-        // Republish the same event id; the consumer must drop it and emit the
-        // dedup span.
         await publisher.PublishAsync(evt);
 
         var deadline = DateTimeOffset.UtcNow.AddSeconds(20);

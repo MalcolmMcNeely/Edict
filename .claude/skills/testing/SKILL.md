@@ -32,7 +32,7 @@ The shipped Test Framework (`Edict.Testing`) is the *only* place in-memory wirin
 - `_When{Condition}` only when there *is* a condition — drop it for unconditional facts.
 - Examples: `Send_ShouldReturnRejected_WhenValidatorFails`, `EDICT001_ShouldNotRaise_WhenGrainIsPartial`, `CommandResult_ShouldBeClosedHierarchy`.
 
-Structure every test Arrange / Act / Assert.
+Structure every test Arrange / Act / Assert. The `// Arrange`, `// Act`, `// Assert` markers are a permitted readability convention in test bodies — they are the one exception to the general "no comments that restate what the code does" rule.
 
 ## Verify
 

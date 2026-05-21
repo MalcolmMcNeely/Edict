@@ -6,13 +6,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// M4 schema-drift guard. Each test serialises a concrete command to
-// MessagePack bytes, converts to a JSON string, and snapshots the result.
-// Renaming or removing a property changes the string key in the snapshot and
-// fails CI before the breaking wire change can ship silently. Inputs are fixed
-// constants so snapshots are deterministic. No Orleans cluster is needed —
-// pure MessagePack serialisation only.
-
 // Codec-breadth probe: spans every primitive the contract codec must carry —
 // Guid, string, int, bool, double, DateTimeOffset and a nullable string. The
 // order commands (Guid + string only) do not exercise this breadth.

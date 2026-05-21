@@ -7,14 +7,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// schema-drift guard for Events. Mirrors CommandWireShapeTests: each
-// test serialises a concrete event to MessagePack bytes, converts to JSON, and
-// snapshots the result. A renamed or removed property changes the string key
-// and fails CI before the breaking wire change can ship silently. Fixed inputs
-// keep the snapshot deterministic.
-//
-// OrderPlacedEvent lives in Edict.Core.Tests (SampleOrderAggregate.cs).
-
 public sealed class EventWireShapeTests
 {
     private static readonly Guid FixedEventId = new("33333333-3333-3333-3333-333333333333");

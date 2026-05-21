@@ -12,13 +12,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.Sagas;
 
-// End-to-end saga fixture lifted from Edict.Core.Tests/Saga so the
-// proof runs on Azurite via Testcontainers: an event on the
-// AzureSagaWorkflow stream drives AzureWorkflowSaga, which records durable
-// Progress and dispatches exactly one AzureSagaTrackerCommand. The ring slot,
-// Progress, and the SendCommand effect commit in the one grain-document write,
-// then the inline drain routes the command.
-
 [EdictStream("AzureSagaWorkflow")]
 public sealed partial record AzureSagaTriggerEvent(Guid WorkflowId) : EdictEvent
 {
@@ -90,9 +83,8 @@ public partial class AzureSagaTrackerCommandHandler : EdictCommandHandler<AzureT
     public Task<Guid> GetLastWorkflowIdAsync() => Task.FromResult(State.LastWorkflowId);
 }
 
-// Publisher: pushes an event directly onto the saga's stream so the test
-// can inject a SagaTriggerEvent with a known EventId without going through
-// a command. Mirrors AzureEmailEventPublisher in the EventHandler suite.
+// Pushes an event directly onto the saga's stream so the test can inject
+// a SagaTriggerEvent with a known EventId without going through a command.
 public interface IAzureSagaEventPublisher : IGrainWithGuidKey
 {
     Task PublishAsync(EdictEvent evt);

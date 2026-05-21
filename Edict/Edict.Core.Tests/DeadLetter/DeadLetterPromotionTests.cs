@@ -7,10 +7,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.DeadLetter;
 
-// Pure unit tests of the promotion module. No cluster, no DI, no
-// I/O — DeadLetterPromotion's contract is "given a failing Outbox entry +
-// resolved effect payload + source identity, produce a fully-populated
-// EdictDeadLetterRaised". Fixed Guids/time keep the snapshot deterministic.
 public sealed class DeadLetterPromotionTests
 {
     static readonly Guid FixedEntryId = new("11111111-1111-1111-1111-111111111111");
@@ -178,11 +174,9 @@ public sealed class DeadLetterPromotionTests
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
-    // slice 4: an oversized event whose publish permanently fails rides
-    // the Outbox as a pointer-bearing EdictEventEnvelope. Promotion must lift
-    // ClaimCheckKey onto the dead-letter event and leave PayloadJson null — the
-    // forensic surface preserves the operator's click-through to the blob while
-    // the >32 KB body never tries to fit into the Azure Table property.
+    // A pointer-bearing envelope must lift ClaimCheckKey onto the dead-letter
+    // event and leave PayloadJson null — the >32 KB body never tries to fit
+    // into the Azure Table property.
     [Fact]
     public Task BuildForEnvelopeFailure_ShouldCarryClaimCheckKeyAndOmitPayloadJson()
     {

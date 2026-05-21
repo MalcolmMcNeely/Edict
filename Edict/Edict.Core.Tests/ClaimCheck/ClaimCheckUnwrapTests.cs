@@ -12,13 +12,6 @@ using Orleans.Serialization;
 
 namespace Edict.Core.Tests.ClaimCheck;
 
-/// <summary>
-/// Pure unit tests for the receiver-side claim-check decision.
-/// Mirrors <see cref="ClaimCheckPolicyTests"/>: callable without an Orleans
-/// runtime, a tiny fake store stands in for the Azure Blob implementation.
-/// The unwrap returns the concrete event the consumer's <c>Handle</c> sees;
-/// the consumer never sees an <see cref="EdictEventEnvelope"/>.
-/// </summary>
 public sealed class ClaimCheckUnwrapTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -164,9 +157,8 @@ public sealed class ClaimCheckUnwrapTests
     [Fact]
     public async Task ApplyAsync_ShouldSurfaceStoreException_WhenBlobIsMissing()
     {
-        // The store throws KeyNotFoundException for an unknown key; the unwrap
-        // must not catch — the caller (EdictIdempotencyBase) is the one that
-        // funnels missing-blob into the receiver-side dead-letter promotion.
+        // The unwrap must not catch — EdictIdempotencyBase is what funnels a
+        // missing blob into receiver-side dead-letter promotion.
         var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob-missing");
         var store = new RecordingStore();
         var unwrap = new ClaimCheckUnwrap(Serializer, store);

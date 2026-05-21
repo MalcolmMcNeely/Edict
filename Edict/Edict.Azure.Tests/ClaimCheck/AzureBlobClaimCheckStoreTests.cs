@@ -6,13 +6,6 @@ using Edict.Contracts.ClaimCheck;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-/// <summary>
-/// Azurite-backed conformance for <see cref="AzureBlobClaimCheckStore"/>
-///. Uses the assembly-shared Azurite and a per-class
-/// Guid-prefixed container so it never collides with other tests against the
-/// same Azurite. The test does not need a <see cref="TestCluster"/> — it
-/// exercises the blob store directly.
-/// </summary>
 public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
 {
     BlobServiceClient _blobServiceClient = null!;
@@ -42,10 +35,9 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
     [Fact]
     public async Task GetAsync_ShouldThrowRequestFailed_WhenBlobMissing()
     {
-        // The receiver-side dead-letter promotion path (slice 3) keys on
-        // RequestFailed with status 404 to fold a missing blob into the
-        // existing IDeadLetterPromoter pipeline — assert the exception type
-        // is what that path will recognise.
+        // The receiver-side dead-letter promotion path keys on RequestFailed
+        // with status 404 to fold a missing blob into the IDeadLetterPromoter
+        // pipeline — this asserts the exception shape that path recognises.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
 
         var ex = await Assert.ThrowsAsync<RequestFailedException>(
@@ -67,9 +59,9 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
     [Fact]
     public void AzureBlobClaimCheckStore_ShouldNotExposeDeleteApi()
     {
-        // Append-only invariant (Model B). The seam already forbids
-        // DeleteAsync; this guard is a belt-and-braces structural check that
-        // the Azure provider does not add one through a side door.
+        // Append-only invariant: the seam forbids DeleteAsync; this is a
+        // structural guard that the Azure provider doesn't add one through a
+        // side door.
         var method = typeof(AzureBlobClaimCheckStore).GetMethod("DeleteAsync");
         Assert.Null(method);
     }

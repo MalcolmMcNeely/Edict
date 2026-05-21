@@ -62,11 +62,9 @@ public class EdictEventHandlerGeneratorTests
         }
         """;
 
-    // Cross-assembly contract-event case — guards the [[generator-alias-cross-assembly-trap]]
-    // by referencing an event type assumed to live in a contracts assembly
-    // (not the consumer's own). The generator emits FQN-only references so the
-    // semantic walk is syntax-scoped to the current compilation; no
-    // [Alias]-aware dispatch is required.
+    // Cross-assembly trap: the generator must emit FQN-only references and
+    // keep the semantic walk syntax-scoped to the current compilation, so an
+    // event type that lives in a separate contracts assembly still dispatches.
     private const string CrossAssemblyContractConsumer = """
         using System;
         using System.Threading.Tasks;

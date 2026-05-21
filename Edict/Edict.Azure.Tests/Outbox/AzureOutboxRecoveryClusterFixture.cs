@@ -21,18 +21,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Outbox;
 
-/// <summary>
-/// Azurite-backed cluster wired with a flippable
-/// <see cref="AzureControllableOutboxExecutor"/> (PublishEvent kind) so the
-/// lifted Outbox tests (issue #88) can drive a crash between the ring/outbox
-/// commit and the publish over the <b>real Azure Queue + Azure Blob</b> stack,
-/// then a recovery drain. Small deterministic backoff lets the recovery
-/// scenarios finish in seconds without ever dead-lettering (default
-/// <see cref="EdictOptions.OutboxMaxAttempts"/>). Dead-letter promotion tests
-/// override <c>OutboxMaxAttempts</c> via their own scenario configuration.
-/// Shares the assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>) with
-/// per-fixture Guid-prefixed container/table names.
-/// </summary>
 public sealed class AzureOutboxRecoveryClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -117,21 +105,14 @@ public sealed class AzureOutboxRecoveryClusterFixture : IAsyncLifetime
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton(TimeProvider.System);
-            // Custom Azure provider wiring (test-only controllable executor), so
-            // the fixture registers the wiring markers manually rather than
-            // calling AddEdictAzureStreams/Persistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
-            // siloBuilder.AddEdict wires AddEdictOutbox under the hood, which
-            // registers PublishEventExecutor. The OutboxHost ctor's ToDictionary
-            // on OutboxEffectKind throws on duplicate keys — so we have to
-            // *replace* the auto-registered PublishEventExecutor descriptor
-            // with the controllable one rather than appending.
+            // AddEdict registers PublishEventExecutor; appending the
+            // controllable one would make OutboxHost ctor's ToDictionary on
+            // OutboxEffectKind throw on duplicate keys — so it is *replaced*
+            // (see ReplacePublishEventExecutorWithControllable below).
             siloBuilder.AddEdict(o =>
             {
-                // Small deterministic backoff so the recovery drain triggers in
-                // seconds. Default MaxAttempts keeps the failing window from
-                // dead-lettering before the controllable flip heals.
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
                 o.OutboxJitterFraction = 0;
             });
@@ -184,11 +165,8 @@ public sealed class AzureOutboxControllableExecutorCollection
       ICollectionFixture<AzureOutboxDeadLetterClusterFixture>,
       ICollectionFixture<AzureOutboxReminderPeriodClusterFixture>
 {
-    // One shared xUnit collection for every test that touches the
-    // process-wide AzureControllableOutboxExecutor static flag. Three
-    // fixtures, three TestCluster shapes (default backoff, MaxAttempts=2,
-    // configured drain reminder period) — but tests in the same xUnit
-    // collection serialise, so the static ShouldFail / FailedAttempts cannot
-    // race across the recovery, dead-letter, and reminder-period scenarios.
+    // Tests in the same xUnit collection serialise, so the process-wide
+    // AzureControllableOutboxExecutor static ShouldFail / FailedAttempts
+    // cannot race across the three fixture shapes.
     public const string Name = "AzureOutboxControllableExecutor";
 }

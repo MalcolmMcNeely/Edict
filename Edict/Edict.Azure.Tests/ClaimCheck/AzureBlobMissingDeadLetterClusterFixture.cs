@@ -26,17 +26,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-/// <summary>
-/// Azurite-backed cluster for the receiver-side missing-blob dead-letter loop
-/// against the real Azure provider
-/// stack: Azure Blob claim-check store, Azure Queue streams, Azure Blob grain
-/// storage, Azure Table dead-letter projection. Tunes
-/// <see cref="EdictOptions.OutboxMaxAttempts"/> down to 3 and shrinks the
-/// backoff arithmetic so the engine exhausts retries in well under a second
-/// when the claim-check fetch keeps throwing
-/// <see cref="Azure.RequestFailedException"/> (404 from Azurite) for a key
-/// that does not exist in the blob container.
-/// </summary>
 public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -70,10 +59,9 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
         DeadLetterTableName = $"deadletter{token}";
         ClaimCheckContainerName = $"edict-claim-check-{token}";
 
-        // Pre-build the claim-check store off the grain task scheduler — the
-        // sync-over-async path inside a lazy singleton factory hung the first
-        // run of the sibling ClaimCheck collection on first activation
-        // (see [[azure-blob-claim-check-grain-thread-hang]]).
+        // Pre-build the claim-check store off the grain task scheduler — a
+        // sync-over-async path in a lazy singleton factory deadlocks on first
+        // activation.
         var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
             _blobServiceClient, ClaimCheckContainerName);
 
@@ -134,9 +122,6 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict(o =>
             {
-                // Tight retry loop: three attempts then promotion, with a
-                // ~30 ms base delay so two reminder ticks exhaust attempts
-                // and the dead-letter row lands within seconds.
                 o.OutboxMaxAttempts = 3;
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(30);
                 o.OutboxMaxDelay = TimeSpan.FromMilliseconds(60);
@@ -190,13 +175,9 @@ public sealed class AzureBlobMissingDeadLetterCollection
     public const string Name = "AzureBlobMissingDeadLetter";
 }
 
-/// <summary>
-/// Test-only consumer for the receiver-side missing-blob dead-letter scenario:
-/// exposes the in-process <c>OnEdictEventAsync</c> seam as a remote method so
-/// a test can stage a pointer-bearing envelope, and a reminder-tick seam so a
-/// test can drive the engine's drain loop deterministically (Orleans's
-/// in-memory reminder service still floors due-time at one minute).
-/// </summary>
+// Exposes OnEdictEventAsync and reminder-tick as remote methods so a test
+// can stage a pointer envelope and drive the drain deterministically without
+// Orleans' in-memory reminder service flooring due-time at one minute.
 public interface IAzureBlobMissingConsumer : IGrainWithGuidKey
 {
     Task DeliverAsync(EdictEvent evt);

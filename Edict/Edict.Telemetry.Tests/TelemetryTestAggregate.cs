@@ -11,9 +11,6 @@ using Orleans.Streams;
 
 namespace Edict.Telemetry.Tests;
 
-// Minimal consumer-shaped grains for telemetry integration tests.
-// The generator runs over this assembly and emits IOrderCommandHandler, Dispatch, and AddEdict().
-
 public sealed partial record TelPlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]

@@ -4,10 +4,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Configuration;
 
-// Pure-function tests over EdictOptions. The validator returns the
-// full failure list per invocation so a host with two problems sees two
-// problems; one Verify snapshot per scenario keeps the messages themselves as
-// the assertion (drift in wording fails CI).
 public sealed class EdictOptionsValidatorTests
 {
     [Fact]
@@ -96,9 +92,6 @@ public sealed class EdictOptionsValidatorTests
         return Verify(failures);
     }
 
-    // The validator's job is to report the full list per invocation so a host
-    // with three problems sees three problems — proof the failure-accumulation
-    // contract holds across rules.
     [Fact]
     public Task Validate_ShouldReportEveryFailure_WhenMultipleValuesAreInvalid()
     {

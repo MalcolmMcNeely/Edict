@@ -6,13 +6,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Serialization;
 
-// schema-drift guard for the new dead-letter contracts.
-// Each test serialises a fully-populated instance to MessagePack bytes,
-// converts to JSON, and snapshots the result. A renamed or removed property
-// changes the string key in the snapshot and fails CI before the breaking
-// wire change can ship silently. Inputs are fixed constants so snapshots are
-// deterministic.
-
 public sealed class DeadLetterContractWireShapeTests
 {
     static readonly Guid FixedEntryId = new("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");

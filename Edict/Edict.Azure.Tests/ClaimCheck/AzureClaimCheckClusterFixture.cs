@@ -23,17 +23,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-/// <summary>
-/// Azurite-backed cluster for the lifted ClaimCheck publish + receiver-unwrap
-/// scenarios (issue #90). Wires a real
-/// <see cref="AzureBlobClaimCheckStore"/> against the shared Azurite blob
-/// service and overrides <see cref="ClaimCheckPolicy"/> with a 1-byte
-/// threshold so every raised event takes the pointer branch — the publish
-/// path always uploads to blob and the receiver always unwraps from blob.
-/// Uses the assembly-scoped Azurite host (<see cref="AzuriteAssemblyHost"/>)
-/// with per-fixture Guid-prefixed resource names so it does not
-/// collide with the other collections sharing the same Azurite.
-/// </summary>
 public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -67,10 +56,9 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
         DeadLetterTableName = $"deadletter{token}";
         ClaimCheckContainerName = $"edict-claim-check-{token}";
 
-        // Create the AzureBlobClaimCheckStore eagerly here (async-safe) so the
-        // silo registration can hand back the instance without a sync-over-async
-        // .GetAwaiter().GetResult() on the grain task scheduler — that path
-        // hung the first run of these tests on container creation.
+        // The store is created eagerly here so silo registration can hand
+        // back the instance — a sync-over-async .GetAwaiter().GetResult() on
+        // the grain task scheduler deadlocks first-time container creation.
         var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
             _blobServiceClient, ClaimCheckContainerName);
 
@@ -127,26 +115,16 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton(TimeProvider.System);
 
-            // Real Azure Blob claim-check store, against the shared Azurite
-            // with a per-fixture container. The instance was created eagerly
-            // in the fixture's InitializeAsync — registering it here as an
-            // instance avoids running the async container-creation on the
-            // grain task scheduler during first resolution.
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore!);
 
-            // Override the default ClaimCheckPolicy (threshold=int.MaxValue,
-            // registered via TryAddSingleton in AddEdictOutbox) with a 1-byte
-            // threshold so every raised event takes the pointer branch and we
-            // can observe the publish-via-blob + receiver-unwrap paths without
-            // having to inflate payload size.
+            // 1-byte threshold forces every raised event onto the pointer
+            // branch, exercising publish-via-blob + receiver-unwrap without
+            // inflating payload size.
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
                 store: sp.GetRequiredService<IEdictClaimCheckStore>()));
 
-            // Custom Azure wiring (test-only stream + storage shape), so the
-            // fixture registers the wiring markers manually rather than
-            // calling AddEdictAzureStreams/Persistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict();

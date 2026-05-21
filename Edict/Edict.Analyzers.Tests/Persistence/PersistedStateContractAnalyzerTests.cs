@@ -120,9 +120,8 @@ public class PersistedStateContractAnalyzerTests
     [Fact]
     public void EDICT011_ShouldNotRaisePropertyMissingId_WhenPropertyIsInheritedFromBaseClass()
     {
-        // Scope of the [Id(n)] check is *declared* public instance properties
-        // only — a property the type inherits from a base class does not fire,
-        // because the base class owns its own [Id(n)] discipline.
+        // The check covers *declared* public instance properties only; a
+        // base class owns its own [Id(n)] discipline.
         const string source = """
             using Edict.Contracts.Persistence;
             using Orleans;
@@ -162,9 +161,8 @@ public class PersistedStateContractAnalyzerTests
     [Fact]
     public void EDICT011_ShouldRaiseEveryViolation_WhenPersistedStateMissesAllAttributes()
     {
-        // Composite-case proof: a single type missing every consumer-owned
-        // attribute fires one diagnostic per sub-descriptor — the codefix's
-        // batched Quick Action then satisfies them all in one edit.
+        // One diagnostic per missing sub-descriptor so the codefix's batched
+        // Quick Action satisfies them all in one edit.
         const string source = """
             using Edict.Contracts.Persistence;
             namespace Sample;

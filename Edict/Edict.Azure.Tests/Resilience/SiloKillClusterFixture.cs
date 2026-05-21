@@ -24,18 +24,9 @@ using Testcontainers.Azurite;
 
 namespace Edict.Azure.Tests.Resilience;
 
-/// <summary>
-/// Dedicated cluster fixture for the silo-kill scenario (issue #97). Held
-/// separate from <see cref="ResilienceClusterFixture"/> because
-/// <c>KillSiloAsync</c> + <c>RestartSiloAsync</c> permanently mutates the
-/// cluster's membership state — the dead silo is replaced by a fresh
-/// activation with a new <see cref="SiloAddress"/>, and Orleans' stream
-/// PubSub bookkeeping does not always reconverge cleanly enough for the
-/// transport-fault tests that come after to observe their published events
-/// within a reasonable budget. Each scenario class owns the disruption it
-/// introduces; sharing a cluster across silo-kill and Azurite-pause
-/// scenarios produces flake under parallel load.
-/// </summary>
+// Owns its own cluster: KillSiloAsync permanently mutates membership, and
+// Orleans' stream PubSub bookkeeping doesn't reconverge cleanly enough for
+// other transport-fault tests to share the cluster reliably.
 public sealed class SiloKillClusterFixture : IAsyncLifetime
 {
     AzuriteContainer _azurite = null!;
@@ -107,12 +98,8 @@ public sealed class SiloKillClusterFixture : IAsyncLifetime
         }
     }
 
-    /// <summary>
-    /// Locate the <see cref="SiloHandle"/> whose address matches
-    /// <paramref name="address"/>, captured by the slow projection on
-    /// <c>Handle</c> entry. Lets the test target the kill at the silo that
-    /// actually owns the in-flight activation.
-    /// </summary>
+    // Lets a test target the kill at the silo that actually owns the
+    // in-flight activation, captured by the slow projection on Handle entry.
     public SiloHandle FindSiloByAddress(SiloAddress address)
     {
         if (Cluster.Primary is { } primary && primary.SiloAddress.Equals(address))
@@ -163,8 +150,6 @@ public sealed class SiloKillClusterFixture : IAsyncLifetime
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>
                 {
                     o.QueueServiceClient = new QueueServiceClient(ctx.ConnectionString);
-                    // Short visibility timeout so redelivery after the kill
-                    // lands inside the test's wait budget.
                     o.MessageVisibilityTimeout = TimeSpan.FromSeconds(5);
                 }));
                 configure.ConfigurePullingAgent(opt => opt.Configure(o =>

@@ -73,6 +73,14 @@ Edict.Core/
 
 `Idempotency/` is the shared inheritance root — it is not an Events concept and does not live under `Events/`. Add new concept sub-folders only when a clear grouping emerges.
 
+## Comment policy
+
+Comments are differentiated by kind. Each kind has a different bar.
+
+- **XML doc (`///`)** is **required** on the consumer-facing `Edict*` surface in `Edict.Contracts` and on the public bases in `Edict.Core`. It is **forbidden** on internal-only types unless the type's purpose is non-obvious from its name — in that case, prefer renaming the type over adding a summary.
+- **Inline (`//`)** is only for non-obvious **WHY**, and the prose must stand alone. Do **not** cite ADR numbers — if the comment only earns its keep via a doc pointer, rewrite the prose so it stands alone or delete the comment. Comments that restate **what** the code does should be deleted; well-named identifiers already do that.
+- **Test scaffolding** — `// Arrange`, `// Act`, `// Assert` markers are a permitted readability convention in test bodies.
+
 ## Other conventions
 
 - **No redundant `private`.** Members are private by default — omit the keyword. `.editorconfig` warns (`dotnet_style_require_accessibility_modifiers = never`). The one keep: `{ get; private set; }` where the property's getter is wider — there `private` changes accessibility and is required.

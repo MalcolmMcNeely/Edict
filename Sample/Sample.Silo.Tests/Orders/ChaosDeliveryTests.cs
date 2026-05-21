@@ -8,13 +8,6 @@ using Xunit;
 
 namespace Sample.Silo.Tests.Orders;
 
-/// <summary>
-/// Proves the chaos default (seeded duplicate redelivery) is on by default and
-/// genuinely fires, by reading the recorder's underlying event count. The
-/// snapshot itself stays stable because the dedup ring suppresses
-/// the duplicate before any handler runs — that stability is the whole reason
-/// chaos can be on by default.
-/// </summary>
 public sealed class ChaosDeliveryTests
 {
     [Fact]
@@ -22,7 +15,6 @@ public sealed class ChaosDeliveryTests
     {
         var orderId = Guid.Parse("44444444-4444-4444-4444-444444444444");
 
-        // Default chaos seed: duplicates fire deterministically run-to-run.
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
@@ -36,9 +28,8 @@ public sealed class ChaosDeliveryTests
             partitionKey: orderId.ToString(),
             rowKey: "status");
 
-        // Exactly two line items applied (count is increment, not assignment —
-        // the projection cleanest at catching dedup bugs). If the dedup ring
-        // missed a duplicate, ItemCount would be > 2.
+        // The projection counts via increment, so a missed dedup would push
+        // ItemCount above 2 — the snapshot fixes it at 2.
         await Verify(row);
     }
 }

@@ -18,8 +18,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests;
 
-// ── Order aggregate (table-projection E2E) ───────────────────────────────────
-
 public sealed partial record AzurePlaceOrderCommand(Guid OrderId, string Sku) : EdictCommand
 {
     [EdictRouteKey]
@@ -160,10 +158,8 @@ public sealed partial class AzureOrderTableProjectionBuilder
             State.Idempotency.Count));
 }
 
-/// <summary>
-/// Consumer-specified fixed RowKey ("summary"), showing that the RowKey is
-/// independent of the PartitionKey.
-/// </summary>
+// Consumer-specified fixed RowKey ("summary") — proves RowKey is independent
+// of PartitionKey.
 public sealed partial class AzureOrderSummaryTableProjectionBuilder : EdictTableProjectionBuilder<AzureOrderTableRow>
 {
     public AzureOrderSummaryTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
@@ -180,12 +176,9 @@ public sealed partial class AzureOrderSummaryTableProjectionBuilder : EdictTable
     }
 }
 
-/// <summary>
-/// Global-singleton projection grain. Activated at a fixed Guid key and
-/// receives events published directly to its stream key. RowKey = source
-/// aggregate ID, so each aggregate's order is a distinct row under the
-/// singleton PartitionKey.
-/// </summary>
+// Global-singleton projection grain at a fixed Guid key. RowKey is the
+// source aggregate ID, so each aggregate's order is a distinct row under
+// the singleton PartitionKey.
 public sealed partial class AzureGlobalOrderTableProjectionBuilder : EdictTableProjectionBuilder<AzureOrderTableRow>
 {
     public static readonly Guid SingletonKey = new("00000000-0000-0000-0000-000000000001");
@@ -209,8 +202,6 @@ public sealed partial class AzureGlobalOrderTableProjectionBuilder : EdictTableP
     }
 }
 
-// ── In-memory projection (count via grain method) ──────────────────────────
-
 public interface IAzureOrderProjectionAccess : IGrainWithGuidKey
 {
     Task<int> GetOrderCountAsync();
@@ -228,8 +219,6 @@ public sealed partial class AzureOrderProjectionBuilder : EdictProjectionBuilder
         return Task.CompletedTask;
     }
 }
-
-// ── Capture grain: subscribes to "AzureOrders" and buffers events ──────────
 
 public interface IAzureOrderEventCaptureGrain : IGrainWithGuidKey
 {
@@ -255,16 +244,12 @@ public sealed class AzureOrderEventCaptureGrain : Grain, IAzureOrderEventCapture
         Task.FromResult<IReadOnlyList<EdictEvent>>(_events.AsReadOnly());
 }
 
-// ── Unhandled event for the "no-op when unhandled" projection test ─────────
-
 [EdictStream("AzureOrders")]
 public sealed partial record AzureUnknownOrderEvent(Guid AggregateId) : EdictEvent
 {
     [EdictRouteKey]
     public Guid AggregateId { get; init; } = AggregateId;
 }
-
-// ── Dedup aggregate (at-least-once + dedup realism proof) ───────────────────
 
 [EdictStream("AzureDedupTest")]
 public sealed partial record AzureDedupTestEvent(Guid AggregateId, int Sequence) : EdictEvent

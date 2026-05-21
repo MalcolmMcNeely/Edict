@@ -12,12 +12,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
-// dead-letter promotion: a failed InvokeHandler entry exhausts its
-// retries, the DeadLetterPromoter builds an EdictDeadLetterRaised carrying the
-// originating event's type and id in SourceEventType + SourceEventId so
-// operators can filter the dead-letter projection by event type without
-// parsing payload bytes. Existing kinds (PublishEvent / SendCommand /
-// UpsertRow) leave both fields null.
 public sealed class InvokeHandlerDeadLetterPromotionTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -50,9 +44,6 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
             sourceGrainType: "Sample.OrderEmailHandler",
             now: Now);
 
-        // The promoted entry is a new PublishEvent carrying the
-        // EdictDeadLetterRaised — verify its deserialised shape so the
-        // SourceEventType + SourceEventId are observable.
         var raised = Serializer.Deserialize<EdictEvent>(promoted.Payload);
 
         await Verify(raised).DontScrubGuids().DontScrubDateTimes();

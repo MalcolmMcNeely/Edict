@@ -6,8 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace Edict.Core.Tests.Outbox;
 
-// AddEdictOutbox ships sensible defaults the consumer can selectively override.
-// Single behavioral facts, so targeted Asserts rather than a snapshot.
 public sealed class OutboxServiceCollectionExtensionsTests
 {
     [Fact]
@@ -40,7 +38,6 @@ public sealed class OutboxServiceCollectionExtensionsTests
         Assert.Equal(3, options.OutboxMaxAttempts);
         Assert.Equal(0, options.OutboxJitterFraction);
         Assert.Equal(TimeSpan.FromSeconds(10), options.OutboxBaseDelay);
-        // Untouched knobs keep their defaults.
         Assert.Equal(TimeSpan.FromMinutes(5), options.OutboxMaxDelay);
     }
 }

@@ -1,8 +1,5 @@
 namespace Edict.Azure.Tests.EventHandler;
 
-// Shared probe-polling helpers for the EventHandler scenario suite. Per-test
-// helpers duplicated the same poll-until-deadline shape across the lifted
-// files; this is the same body each used.
 static class EventHandlerWaiters
 {
     public static async Task<IReadOnlyList<Guid>> WaitForHandledAsync(

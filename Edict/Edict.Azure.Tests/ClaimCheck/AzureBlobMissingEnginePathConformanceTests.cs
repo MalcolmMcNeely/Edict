@@ -19,24 +19,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-/// <summary>
-/// Azurite-backed conformance for the receiver-side missing-blob dead-letter
-/// path after the fold: a pointer-bearing
-/// <see cref="EdictEventEnvelope"/> staged as an
-/// <see cref="OutboxEffectKind.InvokeHandler"/> entry is drained by the
-/// engine; <see cref="InvokeHandlerExecutor"/> calls
-/// <see cref="ClaimCheckUnwrap"/> which fetches from the real
-/// <see cref="AzureBlobClaimCheckStore"/>, surfaces
-/// <see cref="Azure.RequestFailedException"/> (status 404), the engine's
-/// per-entry retry catches the throw, bumps backoff, and on
-/// <see cref="EdictOutboxOptions.MaxAttempts"/> exhaustion routes
-/// <see cref="DeadLetterPromoter.Promote"/> through the BlobMissing branch.
-/// Replaces the prior <c>HandleBlobMissingAsync</c> integration coverage
-/// against the Azure provider stack — the
-/// <c>BlobMissingDeadLetterEndToEndTests</c> in <c>Edict.Core.Tests</c> proves
-/// the in-memory variant; this test proves the Azurite-backed exception shape
-/// flows through the same engine path unchanged.
-/// </summary>
 public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
 {
     BlobServiceClient _blobServiceClient = null!;
@@ -83,8 +65,8 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             Payload = _serializer.SerializeToArray<EdictEvent>(envelope),
         };
 
-        // Real clock is fine — MaxAttempts=1 promotes on the first failure so
-        // backoff arithmetic never gates the second attempt.
+        // MaxAttempts=1 promotes on the first failure, so backoff arithmetic
+        // never gates the second attempt — real clock is fine.
         var clock = TimeProvider.System;
         var state = new FakePersistentState
         {
@@ -116,15 +98,8 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
 
         await host.DrainAsync();
 
-        // After exhaustion the failing InvokeHandler entry is gone; the
-        // promoted EdictDeadLetterRaised PublishEvent succeeded against the
-        // recording executor and was acked, leaving Pending empty.
         Assert.Empty(state.State.Outbox.Pending);
 
-        // The recording executor captured the serialised dead-letter event so
-        // the BlobMissing failure-kind discriminator and the original
-        // claim-check key are observable on the row that would land in the
-        // forensic projection.
         var raised = Assert.Single(publishExecutor.Published);
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, raised.FailureKind);
         Assert.Equal(missingKey, raised.ClaimCheckKey);

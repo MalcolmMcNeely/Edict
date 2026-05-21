@@ -1,17 +1,5 @@
 namespace Edict.Azure.Tests.Resilience;
 
-/// <summary>
-/// Scenario 3 of the transport-fault suite (issue #96): Azurite is unreachable
-/// when the silo first tries to use it for an operation, then comes back.
-/// Invariant: the silo retries and converges — the operation completes,
-/// exactly once, against the now-available substrate.
-///
-/// The grain key is freshly minted per test so the consumer's first
-/// activation has to hit Azure Blob grain storage to load its dedup state,
-/// and the publisher's first publish has to hit Azure Queue Storage. With
-/// Azurite paused, neither can make progress; once unpaused both reach
-/// through and the event is delivered exactly once.
-/// </summary>
 [Collection(ResilienceCollection.Name)]
 public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fixture)
 {
@@ -30,14 +18,13 @@ public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fi
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        // Pause Azurite BEFORE the first substrate-touching operation, so the
+        // Pausing before the first substrate-touching operation makes the
         // silo's grain activation and stream publish both observe a downed
-        // substrate at the moment they reach for it.
+        // substrate the moment they reach for it.
         await fixture.PauseAzuriteAsync();
 
-        // Fire publish in the background — the call will hang inside the
-        // grain's PublishAsync waiting on the Azure Queue write. Use a
-        // detached task so the test can unpause while the publish is stuck.
+        // Detached task so the test can unpause while PublishAsync is stuck
+        // inside the grain's Azure Queue write.
         var publishTask = Task.Run(() => publisher.PublishEventAsync(evt));
 
         await Task.Delay(TimeSpan.FromSeconds(2));

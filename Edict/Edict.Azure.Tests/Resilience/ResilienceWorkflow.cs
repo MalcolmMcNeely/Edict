@@ -13,13 +13,11 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.Resilience;
 
-// Dedicated event/saga types for the transport-fault suite (issue #96).
-// The resilience cluster has its own Azurite container so it can
-// be paused/restarted without affecting other collections; the workflow types
-// here mirror the AzureSagaWorkflow shape but route on their own stream so a
-// failure in the resilience suite does not contaminate the standard saga
-// proof against the assembly-shared Azurite.
-
+// Dedicated event/saga types for the transport-fault suite. The resilience
+// cluster has its own Azurite container so it can be paused/restarted without
+// affecting other collections; these types route on their own stream so a
+// failure here does not contaminate the standard saga proof against the
+// assembly-shared Azurite.
 [EdictStream("ResilienceEvents")]
 public sealed partial record ResilienceTestEvent(Guid AggregateId, int Sequence) : EdictEvent
 {
@@ -148,15 +146,11 @@ public sealed class ResilienceTestConsumer : EdictIdempotencyBase, IResilienceTe
         Task.FromResult<IReadOnlyList<Guid>>(_handledEventIds.AsReadOnly());
 }
 
-// ── Silo-kill projection (issue #97) ──────────────────────────────────────
-//
 // A slow projection whose first Handle invocation blocks long enough for the
 // test to KillSiloAsync the hosting silo mid-flight. The grain captures the
 // hosting silo's address into SiloKillCoordinator so the test can target the
 // kill at the silo that actually owns the activation. After redelivery the
-// projection row is written exactly once — proving Orleans wiring recovery
-// composes with Edict's at-least-once + dedup story.
-
+// projection row is written exactly once.
 [EdictStream("SiloKillProjection")]
 public sealed partial record SiloKillProjectionEvent(Guid AggregateId) : EdictEvent
 {

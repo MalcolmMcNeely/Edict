@@ -3,14 +3,10 @@ using Edict.Contracts.Sending;
 
 namespace Edict.Azure.Tests;
 
-// conformance: the three new ISiloBuilder calls
-// (silo.AddEdict() + silo.AddEdictAzureStreams() + silo.AddEdictAzurePersistence())
-// deploy an Orleans silo against a real Azurite. Successful fixture
-// initialisation is the proof — TestCluster.DeployAsync surfaces any
-// startup-time wiring fault (missing service, options validation, lifecycle
-// ordering) as an exception out of the fixture, so reaching the assertion
-// below means every Edict-specific registration the extensions emit is
-// internally consistent with Orleans's silo lifecycle.
+// Successful fixture initialisation is the proof: TestCluster.DeployAsync
+// surfaces any wiring fault (missing service, options validation, lifecycle
+// ordering) as an exception, so reaching the assertion means the three
+// ISiloBuilder extensions wire consistently with Orleans's silo lifecycle.
 [Collection(EdictAzureSiloBuilderExtensionsClusterCollection.Name)]
 public sealed class EdictAzureSiloBuilderExtensionsTests(
     EdictAzureSiloBuilderExtensionsClusterFixture fixture)

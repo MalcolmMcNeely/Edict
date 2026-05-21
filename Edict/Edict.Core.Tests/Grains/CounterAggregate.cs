@@ -12,10 +12,6 @@ using Orleans.Runtime;
 
 namespace Edict.Core.Tests.Grains;
 
-// A stateful command handler: mutates framework-owned State and raises an
-// event. Exercises the Outbox engine end-to-end — {State, Outbox} commit in
-// one write, then the inline FIFO drain publishes.
-
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Grains.CounterState")]
 public sealed class CounterState : IEdictPersistedState

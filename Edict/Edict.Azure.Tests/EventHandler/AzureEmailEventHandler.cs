@@ -8,9 +8,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.EventHandler;
 
-// ── Domain events / commands ───────────────────────────────────────────────
-
-// Handled event: the AzureEmailEventHandler has a matching Handle overload.
 [EdictStream("AzureEmailEvents")]
 public sealed partial record AzureCustomerNotifiedEvent(Guid CustomerId, string Reason) : EdictEvent
 {
@@ -20,10 +17,9 @@ public sealed partial record AzureCustomerNotifiedEvent(Guid CustomerId, string 
     public string Reason { get; init; } = Reason;
 }
 
-// Unhandled event: published onto "AzureEmailEvents" so the handler's implicit
-// subscription delivers it, but no Handle overload exists → HandlesType
-// returns false → the stream callback must be a pure no-op (no ring slot,
-// no InvokeHandler entry staged).
+// No Handle overload exists for this event — HandlesType returns false, so
+// the stream callback must be a pure no-op (no ring slot, no InvokeHandler
+// entry staged) when the implicit subscription delivers it.
 [EdictStream("AzureUnhandledEvents")]
 public sealed partial record AzureUnhandledEvent(Guid AggregateId, int Sequence) : EdictEvent
 {
@@ -33,11 +29,9 @@ public sealed partial record AzureUnhandledEvent(Guid AggregateId, int Sequence)
     public int Sequence { get; init; } = Sequence;
 }
 
-// Command that drives the framework publish path so the span-stitch test
-// observes a real "edict.event.publish AzureCustomerNotifiedEvent" span
-// (a bare stream.OnNextAsync from the publisher grain bypasses the outbox
-// publish executor and emits no publish span stitch is owned by
-// the framework path, not by raw stream publishes).
+// Drives the framework publish path so the span-stitch test observes a real
+// edict.event.publish span — a bare stream.OnNextAsync from the publisher
+// grain bypasses the outbox executor and emits no publish span.
 public sealed partial record AzureNotifyCustomerCommand(Guid CustomerId, string Reason) : EdictCommand
 {
     [EdictRouteKey]
@@ -55,8 +49,6 @@ public partial class AzureCustomerNotificationCommandHandler : EdictCommandHandl
     }
 }
 
-// ── Publisher (bare stream → exercises stream callback path) ──────
-
 public interface IAzureEmailEventPublisher : IGrainWithGuidKey
 {
     Task PublishAsync(EdictEvent evt);
@@ -72,19 +64,12 @@ public sealed class AzureEmailEventPublisher : Grain, IAzureEmailEventPublisher
     }
 }
 
-// ── Event handler under test ───────────────────────────────────────────────
-
 public interface IAzureEmailHandlerProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledCountAsync();
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
 }
 
-/// <summary>
-/// Azure-suite <see cref="EdictEventHandler"/>: relies on the generator's
-/// emitted <c>HandlesType</c> + <c>DispatchAsync</c> + implicit-stream
-/// subscription, so this is the same shape consumers ship.
-/// </summary>
 public sealed partial class AzureEmailEventHandler : EdictEventHandler, IAzureEmailHandlerProbe
 {
     readonly List<Guid> _handled = [];

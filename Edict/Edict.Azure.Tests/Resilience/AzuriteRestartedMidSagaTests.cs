@@ -1,18 +1,9 @@
 namespace Edict.Azure.Tests.Resilience;
 
-/// <summary>
-/// Scenario 2 of the transport-fault suite (issue #96): the substrate goes
-/// dark mid-saga and then comes back. Invariant: the saga resumes from its
-/// durable Progress state, no double effect is observed by the tracker.
-///
-/// "Restart" here is modelled as <c>docker pause</c> rather than stop+start
-/// because Azurite re-binds to a new ephemeral port after a true restart,
-/// which would invalidate the silo's already-configured Azure Queue / Blob
-/// clients (a host-side wiring failure unrelated to what the test proves).
-/// The pause-window-long-enough-to-cover-the-saga's-state-write semantic
-/// matches the issue's invariant: durable state survives substrate downtime
-/// and the saga's downstream command is delivered exactly once.
-/// </summary>
+// "Restart" is modelled as docker pause rather than stop+start: a true
+// restart re-binds Azurite to a new ephemeral port, invalidating the silo's
+// already-configured Azure clients (a host-side wiring failure unrelated to
+// what the test proves).
 [Collection(ResilienceCollection.Name)]
 public sealed class AzuriteRestartedMidSagaTests(ResilienceClusterFixture fixture)
 {
@@ -35,11 +26,8 @@ public sealed class AzuriteRestartedMidSagaTests(ResilienceClusterFixture fixtur
 
         await publisher.PublishSagaTriggerAsync(trigger);
 
-        // Pause Azurite long enough to span at least one Azure Queue
-        // visibility timeout (5s — fixture config) so any in-flight delivery
-        // requires redelivery after resume. The saga's outbox-effect commit
-        // and the tracker's command-state commit both must traverse the
-        // substrate-paused window.
+        // Span at least one queue visibility timeout (fixture: 5s) so any
+        // in-flight delivery requires redelivery after resume.
         await fixture.PauseAzuriteAsync();
         await Task.Delay(TimeSpan.FromSeconds(7));
         await fixture.UnpauseAzuriteAsync();

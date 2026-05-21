@@ -4,18 +4,9 @@ using Edict.Telemetry;
 
 namespace Edict.Azure.Tests.Sagas;
 
-/// <summary>
-/// trace-context stitch end-to-end on the real Azure Queue + Azure
-/// Blob substrate for the saga Event→Command hop: the dispatched
-/// command's span tree nests under the saga's handle span as parent-child
-/// across the in-grain dispatch (no Azure Queue hop on the command leg — the
-/// SendCommand outbox effect resolves via <c>IEdictSender</c>). This guards
-/// the orphaned-command-span trap surfaced in #51: capture the traceparent
-/// while the handle span is still <c>Activity.Current</c> inside
-/// <c>EdictSaga.DispatchEventAsync</c>, never later in
-/// <c>CollectPendingOutboxEntries</c>, otherwise the command span lands with
-/// no parent.
-/// </summary>
+// Guards the orphaned-command-span trap: the traceparent must be captured
+// while the handle span is still Activity.Current inside
+// EdictSaga.DispatchEventAsync, not later in CollectPendingOutboxEntries.
 [Collection(AzureClusterCollection.Name)]
 public sealed class SagaCommandSpanNestsUnderHandleSpanTests(AzureClusterFixture fixture)
 {
@@ -42,9 +33,8 @@ public sealed class SagaCommandSpanNestsUnderHandleSpanTests(AzureClusterFixture
         var tracker = fixture.Cluster.GrainFactory.GetGrain<IAzureSagaTrackerProbe>(workflowId);
         await AzureSagaWaiters.WaitForReceivedAsync(tracker);
 
-        // Allow the InvokeHandler / send executors to close their spans —
-        // ActivityStopped fires after each using-scope unwinds, which can lag
-        // the visible tracker increment by a tick.
+        // ActivityStopped fires after each executor's using-scope unwinds,
+        // which can lag the visible tracker increment by a tick.
         await Task.Delay(TimeSpan.FromMilliseconds(500));
 
         Activity handleSpan;

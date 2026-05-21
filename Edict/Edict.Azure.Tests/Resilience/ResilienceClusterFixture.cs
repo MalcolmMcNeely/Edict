@@ -25,17 +25,9 @@ using Testcontainers.Azurite;
 
 namespace Edict.Azure.Tests.Resilience;
 
-/// <summary>
-/// Singleton sequential cluster fixture for the transport-fault suite (issue
-/// #96). Unlike <see cref="AzureClusterFixture"/>, this fixture owns its own
-/// Azurite container instead of sharing
-/// <see cref="AzuriteAssemblyHost"/>: pausing or restarting Azurite mid-test
-/// would otherwise corrupt every other collection running in parallel against
-/// the same Azurite. The trade-off is one extra container per assembly run; in
-/// exchange the resilience tests can freely exercise <c>PauseAsync</c> /
-/// <c>UnpauseAsync</c> / restart on the substrate without coordinating with the
-/// rest of the suite. See <c>Resilience/README.md</c> for the rationale.
-/// </summary>
+// Owns its own Azurite container instead of sharing AzuriteAssemblyHost:
+// pausing or restarting mid-test would corrupt every parallel collection
+// running against the shared instance.
 public sealed class ResilienceClusterFixture : IAsyncLifetime
 {
     AzuriteContainer _azurite = null!;
@@ -106,32 +98,16 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
         }
     }
 
-    /// <summary>
-    /// Pause the Azurite container (<c>docker pause</c>). All blob/queue/table
-    /// calls from the silo hang until <see cref="UnpauseAzuriteAsync"/> runs,
-    /// then complete against the same connection (pause preserves the host
-    /// port binding — unlike stop/start, which would invalidate the silo's
-    /// already-configured Azure clients). Issued via Docker.DotNet because
-    /// Testcontainers .NET 3.10 does not expose <c>PauseAsync</c> on
-    /// <c>IContainer</c>.
-    /// </summary>
+    // Pause preserves the host port binding; Testcontainers 3.10 has no
+    // PauseAsync on IContainer, so the calls go through Docker.DotNet.
     public async Task PauseAzuriteAsync() =>
         await _dockerClient.Containers.PauseContainerAsync(_azurite.Id);
 
     public async Task UnpauseAzuriteAsync() =>
         await _dockerClient.Containers.UnpauseContainerAsync(_azurite.Id);
 
-    /// <summary>
-    /// Stop + start the Azurite container. The container filesystem persists
-    /// across stop/start (Testcontainers reuses the same container), so
-    /// Azurite's on-disk blob/queue/table state survives the restart. The host
-    /// port re-binds on start, so the silo's Azure client wiring must be
-    /// refreshed — done by replacing the cluster-context registry entry; new
-    /// grain activations pick up the new connection string from the registry.
-    /// Already-active grains continue to hold a stale client and so the
-    /// fixture deactivates the silo-side grain singletons between tests by
-    /// design (each test uses a fresh Guid grain key).
-    /// </summary>
+    // Stop+start re-binds the host port — already-active grains keep a stale
+    // client, so each test must use a fresh grain key.
     public async Task RestartAzuriteAsync()
     {
         await _azurite.StopAsync();
@@ -139,11 +115,8 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
         RefreshConnectionState();
     }
 
-    /// <summary>
-    /// Ensure Azurite is running and unpaused. Tests call this on entry so the
-    /// fixture starts each test from a known-good baseline even if a previous
-    /// test panicked partway through pause/restart.
-    /// </summary>
+    // Tests call this on entry so the fixture starts from a known-good
+    // baseline even if a previous test panicked mid pause/restart.
     public async Task EnsureRunningAsync()
     {
         if (_azurite.State != DotNet.Testcontainers.Containers.TestcontainersStates.Running)
@@ -165,10 +138,9 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
 
     void RefreshConnectionState()
     {
-        // Azurite re-binds to a new ephemeral port on restart, so the
-        // connection string changes. Refresh clients and the registry entry
-        // so silo configurators that capture context at grain-activation time
-        // see the new endpoint.
+        // Azurite re-binds to a new ephemeral port on restart, so clients and
+        // the registry entry must be refreshed before silo configurators
+        // capture context at the next grain activation.
         _connectionString = _azurite.GetConnectionString();
         RebuildClients();
         var refreshed = new AzureClusterContext(

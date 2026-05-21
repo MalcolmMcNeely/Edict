@@ -8,11 +8,6 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.Configuration;
 
-// EdictWiringValidator is the IHostedService that fails fast at StartAsync:
-// missing-provider call + invalid-option value both accumulate into ONE
-// InvalidOperationException so a consumer who has two problems sees two
-// problems (PRD user story #6). The aggregated message itself is the
-// assertion — drift in wording fails CI on the snapshot diff.
 public sealed class EdictWiringValidatorTests
 {
     [Fact]

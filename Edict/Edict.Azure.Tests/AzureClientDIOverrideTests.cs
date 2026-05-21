@@ -4,14 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Azure.Tests;
 
-// a DI-registered TableServiceClient / BlobServiceClient /
-// QueueServiceClient takes precedence over the options-bag instance. This
-// lets a power user share one set of Azure SDK clients across multiple
-// features (AddAzureClients() pattern) without double-registering them on
-// Edict's options bag. The resolution lives in
-// AddEdictAzurePersistence as a lazy `sp.GetService<T>() ?? options.T`
-// chain — these tests reproduce the chain in isolation via a keyed factory
-// so the resolution can be asserted without spinning up a silo.
+// AddEdictAzurePersistence resolves clients as `sp.GetService<T>() ??
+// options.T` — these tests reproduce the chain in isolation via a keyed
+// factory so the precedence can be asserted without spinning up a silo.
 public sealed class AzureClientDIOverrideTests
 {
     const string ResolvedKey = "edict-resolved";

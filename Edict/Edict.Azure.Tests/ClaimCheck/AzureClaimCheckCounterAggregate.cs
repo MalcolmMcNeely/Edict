@@ -13,11 +13,6 @@ using Orleans.Streams;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-// Stateful command-handler aggregate + raw stream capture grain + Edict event
-// handler used by the ClaimCheck lift suite (issue #90). Its event rides the
-// AzureClaimCheckCounters stream so the publish + receiver-unwrap paths can
-// be observed end-to-end against the real Azure Queue + Azure Blob transport.
-
 [GenerateSerializer]
 [Alias("Edict.Azure.Tests.ClaimCheck.AzureClaimCheckCounterState")]
 public sealed class AzureClaimCheckCounterState : IEdictPersistedState
@@ -55,11 +50,9 @@ public partial class AzureClaimCheckCounterAggregate : EdictCommandHandler<Azure
     }
 }
 
-// Raw-Grain capture: subscribes to the stream directly, bypassing the Edict
-// consumer base — so it observes the on-the-wire shape (an EdictEventEnvelope
-// when the publisher has taken the pointer branch). An EdictEventHandler
-// would see the unwrapped inner event instead; that's the receiver-unwrap
-// scenario, covered separately.
+// Raw-Grain capture: subscribes directly, bypassing the Edict consumer base,
+// so it observes the on-the-wire shape (an EdictEventEnvelope on the pointer
+// branch) rather than the unwrapped inner event an EdictEventHandler sees.
 public interface IAzureClaimCheckEventCaptureGrain : IGrainWithGuidKey
 {
     Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync();
@@ -89,9 +82,8 @@ public interface IAzureClaimCheckEventHandlerProbe : IGrainWithGuidKey
     Task<IReadOnlyList<AzureClaimCheckCounterIncrementedEvent>> GetHandledEventsAsync();
 }
 
-// EdictEventHandler routes through the framework's stream observer, which
-// runs ClaimCheckUnwrap before dispatch — so Handle sees the inner event,
-// not the pointer envelope. This is the receiver-side contract under test.
+// Handle sees the inner event: EdictEventHandler routes through the
+// framework's stream observer, which runs ClaimCheckUnwrap before dispatch.
 public sealed partial class AzureClaimCheckCounterEventHandler : EdictEventHandler, IAzureClaimCheckEventHandlerProbe
 {
     readonly List<AzureClaimCheckCounterIncrementedEvent> _handled = [];

@@ -14,14 +14,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests;
 
-/// <summary>
-/// Conformance cluster for the silo-builder extensions: boots a real
-/// Azurite (assembly-shared per), then wires the silo through
-/// <c>silo.AddEdict()</c> + <c>silo.AddEdictAzureStreams()</c> +
-/// <c>silo.AddEdictAzurePersistence()</c> only (no manual provider
-/// registrations) so a passing round-trip is proof that the consumer-facing
-/// three-call shape wires Orleans correctly end-to-end.
-/// </summary>
 public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifetime
 {
     string _connectionString = "";
@@ -73,8 +65,8 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
 
         var builder = new TestClusterBuilder();
         builder.Properties[AzureClusterContextRegistry.ContextKeyProperty] = _contextKey;
-        // Stash the claim-check container in a second property so the
-        // configurator can read it without widening the shared context shape.
+        // Carries the claim-check container separately so the configurator
+        // doesn't widen the shared context shape.
         builder.Properties[ClaimCheckContainerProperty] = ClaimCheckContainerName;
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
@@ -114,21 +106,18 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             // Azurite first-time table creation can run past Orleans' default
-            // 30s response timeout when the Edict-Azure storage + reminder
-            // tables all need provisioning in parallel; bumping the timeout
-            // gives the silo headroom for the first command roundtrip.
+            // 30s response timeout when storage + reminder tables provision
+            // in parallel; the bumped timeout gives the silo headroom for
+            // the first command roundtrip.
             siloBuilder.Configure<global::Orleans.Configuration.SiloMessagingOptions>(o =>
             {
                 o.ResponseTimeout = TimeSpan.FromMinutes(2);
             });
 
-            // The three new ISiloBuilder calls wire the consumer-facing surface
-            // we want to prove. Memory reminders + memory PubSub are
-            // pre-registered so the test focuses on the Edict-specific Azurite
-            // substrate (streams, grain-state blob, dead-letter table) rather
-            // than co-validating Orleans' own Azure Table reminder/pubsub init
-            // path that's already covered by AzureClusterFixture's broader
-            // suite.
+            // Memory reminders + PubSub keep the test focused on the
+            // Edict-specific Azurite substrate (streams, grain-state blob,
+            // dead-letter table) — Orleans' own Azure Table reminder/pubsub
+            // path is already covered by AzureClusterFixture.
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
 
@@ -141,9 +130,6 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             {
                 o.TableServiceClient = ctx.TableServiceClient;
                 o.BlobServiceClient = ctx.BlobServiceClient;
-                // Per-fixture Guid-prefixed names — assembly-shared Azurite
-                // means two collections must not collide on container/table
-                // identity.
                 o.GrainStateContainerName = ctx.GrainStateContainerName;
                 o.DeadLetterTableName = ctx.DeadLetterTableName;
                 o.ClaimCheckBlobContainerName = claimCheckContainer;

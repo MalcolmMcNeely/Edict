@@ -28,8 +28,6 @@ public class TypePlacementTests
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
-    // Contracts: Event, [Stream], [RouteKey], ITableRepository.
-
     [Fact]
     public void EdictEvent_ShouldResideInEdictContracts()
     {
@@ -75,8 +73,6 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Core runtime: EdictIdempotencyBase, EdictProjectionBuilder, EdictTableProjectionBuilder.
-
     [Fact]
     public void EdictIdempotencyBase_ShouldResideInEdictCoreIdempotency()
     {
@@ -104,9 +100,6 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Saga: EdictSaga<TProgress> + IEdictSaga are consumer-facing (brand-prefixed)
-    // and live in Edict.Core/Sagas/; the dispatch-buffer mechanism is bare..
-
     [Fact]
     public void EdictSaga_ShouldResideInEdictCoreSagas()
     {
@@ -125,9 +118,6 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // The shared brand-prefixed grain-interface root for every event-consuming
-    // grain (sagas, projection builders) — brand clause (b), co-located with
-    // the base that implements it (#53).
     [Fact]
     public void IEdictEventConsumer_ShouldResideInEdictCoreIdempotency()
     {
@@ -136,8 +126,6 @@ public class TypePlacementTests
 
         rule.Check(Architecture);
     }
-
-    // EdictUnit: the stateless-payload shim type — consumer-visible surface / 0017
 
     [Fact]
     public void EdictUnit_ShouldResideInEdictContracts()
@@ -148,9 +136,6 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // Outbox/DeadLetter engine: / 0019 — folders Outbox/ and DeadLetter/,
-    // bare-named (no consumer types it; the engine stays internal).
-
     [Fact]
     public void OutboxTypes_ShouldResideInEdictCoreOutbox()
     {
@@ -160,12 +145,6 @@ public class TypePlacementTests
 
         rule.Check(Architecture);
     }
-
-    // consumer surface: the read-only repository + its DTO are
-    // consumer-facing, so they are brand-prefixed and live in Edict.Contracts
-    // (mirroring IEdictTableRepository). The in-grain dead-letter slice, its
-    // operator-recovery admin grain interface, and the saturated-intake
-    // exception are all removed under — no placement tests for them.
 
     [Fact]
     public void IEdictDeadLetterRepository_ShouldResideInEdictContracts()
@@ -197,11 +176,8 @@ public class TypePlacementTests
     [Fact]
     public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
     {
-        // EdictDeadLetterProjectionBuilder is the deliberate brand-prefixed
-        // exception: the framework-shipped projection grain whose role-named
-        // subclass naturally inherits the brand from EdictTableProjectionBuilder
-        //). The pre-refactor
-        // EdictDurableConsumerBase exception is gone (#69 — composition).
+        // EdictDeadLetterProjectionBuilder is excluded: its role-named consumer
+        // subclass inherits the brand from EdictTableProjectionBuilder.
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
             .And().DoNotHaveNameStartingWith("EdictDeadLetterProjectionBuilder")
@@ -219,10 +195,6 @@ public class TypePlacementTests
 
         rule.Check(Architecture);
     }
-
-    // #69: composition refactor — the intermediate base, the host seam, and
-    // the standalone drain engine are gone. The replacement OutboxHost lives
-    // as a field on each consumer-facing root.
 
     [Fact]
     public void OutboxHost_ShouldResideInEdictCoreOutboxAsInternalBareNamed()
@@ -291,13 +263,6 @@ public class TypePlacementTests
         Assert.Empty(leakingMembers);
     }
 
-    // Azure provider: AzureTableRepository, AzureTableWriteStoreFactory
-
-    // EdictEventHandler: — the consumer-facing terminal side-effect
-    // base lives in Edict.Core/EventHandler/; its InvokeHandler executor is
-    // internal and bare-named; the new OutboxEffectKind value lives in
-    // Edict.Core.Outbox alongside the other three.
-
     [Fact]
     public void EdictEventHandler_ShouldResideInEdictCoreEventHandler()
     {
@@ -317,10 +282,6 @@ public class TypePlacementTests
 
         rule.Check(Architecture);
     }
-
-    // Claim-check contracts: — universal wire-format envelope,
-    // append-only store seam, post-wrap overflow exception, and dead-letter
-    // failure-kind discriminator. All live in Edict.Contracts (Orleans-free).
 
     [Fact]
     public void EdictEventEnvelope_ShouldResideInEdictContractsEvents()

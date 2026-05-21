@@ -2,15 +2,10 @@ using Testcontainers.Azurite;
 
 namespace Edict.Azure.Tests;
 
-/// <summary>
-/// Assembly-scoped Azurite container: one Testcontainers Azurite is started
-/// lazily on first request and shared by every cluster fixture and self-managed
-/// Azurite test in <c>Edict.Azure.Tests</c>. Container teardown is wired to
-/// <see cref="AppDomain.ProcessExit"/> rather than per-fixture <c>DisposeAsync</c>
-/// because xUnit collections may overlap and a fixture-scoped dispose would
-/// strand the next collection. The leak is bounded to a single Azurite process
-/// for the lifetime of the test assembly.
-/// </summary>
+// Assembly-scoped Azurite container, shared by every cluster fixture and
+// self-managed Azurite test. Teardown is on ProcessExit because xUnit
+// collections may overlap and a fixture-scoped dispose would strand the
+// next collection.
 static class AzuriteAssemblyHost
 {
     static readonly Lazy<Task<AzuriteContainer>> _container =

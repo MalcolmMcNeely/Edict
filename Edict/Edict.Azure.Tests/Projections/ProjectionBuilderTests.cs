@@ -1,13 +1,5 @@
 namespace Edict.Azure.Tests.Projections;
 
-/// <summary>
-/// Azurite/Testcontainers conformance for <c>EdictProjectionBuilder</c>
-///: an accepted command's raised event is delivered to the
-/// per-aggregate projection grain; an unhandled event on the same stream is
-/// a pure no-op. Lifted from <c>ProjectionBuilderTests</c> in Core.Tests.
-/// The publish→handle span stitch across the Azure Queue hop is proved once
-/// by <c>EventHandlerSpanStitchAcrossOutboxHopTests</c>.
-/// </summary>
 [Collection(AzureClusterCollection.Name)]
 public sealed class ProjectionBuilderTests(AzureClusterFixture fixture)
 {
@@ -30,8 +22,6 @@ public sealed class ProjectionBuilderTests(AzureClusterFixture fixture)
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureStreamPublisher>(grainId);
         var projection = fixture.Cluster.GrainFactory.GetGrain<IAzureOrderProjectionAccess>(grainId);
 
-        // AzureUnknownOrderEvent has no Handle in AzureOrderProjectionBuilder
-        // → DispatchAsync returns false; no-op.
         var unhandled = new AzureUnknownOrderEvent(grainId) with
         {
             EventId = Guid.NewGuid(),

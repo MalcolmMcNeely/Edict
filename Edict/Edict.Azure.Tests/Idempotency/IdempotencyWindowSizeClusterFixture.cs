@@ -20,16 +20,6 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Idempotency;
 
-/// <summary>
-/// Dedicated cluster that configures
-/// <see cref="EdictOptions.IdempotencyWindowSize"/> to a non-default value so
-/// the override-vs-default behaviour of <c>EdictIdempotencyBase.WindowSize</c>
-/// is observable without polluting the shared <see cref="AzureClusterFixture"/>
-/// (whose dedup consumer overrides <c>WindowSize</c> for ring-eviction reasons).
-/// Same Azurite-backed shape as <see cref="AzureClusterFixture"/>: shared
-/// assembly-scoped Azurite (<see cref="AzuriteAssemblyHost"/>), per-fixture
-/// Guid-prefixed grain-state container, no <c>static</c> fields.
-/// </summary>
 public sealed class IdempotencyWindowSizeClusterFixture : IAsyncLifetime
 {
     public const int ConfiguredWindowSize = 2;
@@ -106,9 +96,6 @@ public sealed class IdempotencyWindowSizeClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
-            // Custom Azure provider wiring (the silo-wide IdempotencyWindowSize
-            // is the point of this fixture), so wiring markers are registered
-            // manually rather than calling AddEdictAzureStreams/Persistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict(o => o.IdempotencyWindowSize = ConfiguredWindowSize);

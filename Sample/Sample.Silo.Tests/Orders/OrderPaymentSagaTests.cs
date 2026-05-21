@@ -9,15 +9,6 @@ using Xunit;
 
 namespace Sample.Silo.Tests.Orders;
 
-/// <summary>
-/// Cycles 2-3 of #52 (now #53): the OrderPayment saga, end-to-end through the
-/// shipped Test Framework, asserts its durable <see cref="OrderPaymentProgress"/>
-/// via the framework's typed probe — one Verify snapshot per workflow branch so
-/// each test reads as a standalone spec (the assertion-surface pivot captured in
-/// #53). The real engine runs: route map, real saga base, real Outbox drain,
-/// in-memory streams. No timeline assertion here — that surface stays opt-in
-/// (and scrubbed for chaos determinism) per the same pivot.
-/// </summary>
 public sealed class OrderPaymentSagaTests
 {
     [Fact]
