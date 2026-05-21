@@ -9,7 +9,7 @@ using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
 using Edict.Core.Outbox;
-using Edict.Core.Saga;
+using Edict.Core.Sagas;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Contracts.ClaimCheck;

@@ -1,6 +1,6 @@
 using Edict.Contracts.Commands;
 
-namespace Edict.Core.Saga;
+namespace Edict.Core.Sagas;
 
 /// <summary>
 /// The single outbound-command slot behind <c>EdictSaga&lt;TProgress&gt;.Dispatch</c>

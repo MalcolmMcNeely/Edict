@@ -1,4 +1,4 @@
-using Edict.Core.Saga;
+using Edict.Core.Sagas;
 
 namespace Edict.Core.Tests.Saga;
 

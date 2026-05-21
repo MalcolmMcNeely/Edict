@@ -11,7 +11,7 @@ namespace Edict.Generators;
 
 /// <summary>
 /// Emits the saga spine for every <c>partial</c> grain deriving from
-/// <c>Edict.Core.Saga.EdictSaga&lt;TProgress&gt;</c>: the Orleans grain
+/// <c>Edict.Core.Sagas.EdictSaga&lt;TProgress&gt;</c>: the Orleans grain
 /// interface (rooted at <c>IEdictSaga</c>), one
 /// <c>[ImplicitStreamSubscription]</c> per unique stream across the grain's
 /// <c>Handle(TEvent)</c> overloads, and a <c>DispatchAsync</c> type-switch with

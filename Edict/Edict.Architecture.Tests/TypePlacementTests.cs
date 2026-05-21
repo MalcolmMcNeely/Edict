@@ -105,22 +105,22 @@ public class TypePlacementTests
     }
 
     // Saga: EdictSaga<TProgress> + IEdictSaga are consumer-facing (brand-prefixed)
-    // and live in Edict.Core/Saga/; the dispatch-buffer mechanism is bare. ADR 0020.
+    // and live in Edict.Core/Sagas/; the dispatch-buffer mechanism is bare. ADR 0020.
 
     [Fact]
-    public void EdictSaga_ShouldResideInEdictCoreSaga()
+    public void EdictSaga_ShouldResideInEdictCoreSagas()
     {
         var rule = Classes().That().HaveNameStartingWith("EdictSaga")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Saga$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Sagas$");
 
         rule.Check(Architecture);
     }
 
     [Fact]
-    public void IEdictSaga_ShouldResideInEdictCoreSaga()
+    public void IEdictSaga_ShouldResideInEdictCoreSagas()
     {
         var rule = Interfaces().That().HaveNameMatching("^IEdictSaga$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Saga$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Sagas$");
 
         rule.Check(Architecture);
     }

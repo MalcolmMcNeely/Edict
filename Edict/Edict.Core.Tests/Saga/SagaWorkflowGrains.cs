@@ -2,7 +2,7 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Core.Commands;
-using Edict.Core.Saga;
+using Edict.Core.Sagas;
 
 using MessagePack;
 

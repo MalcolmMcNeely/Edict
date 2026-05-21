@@ -1,6 +1,6 @@
 using Edict.Core.Idempotency;
 
-namespace Edict.Core.Saga;
+namespace Edict.Core.Sagas;
 
 /// <summary>
 /// Orleans grain-interface root for every saga. The

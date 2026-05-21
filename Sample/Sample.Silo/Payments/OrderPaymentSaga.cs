@@ -1,4 +1,4 @@
-using Edict.Core.Saga;
+using Edict.Core.Sagas;
 
 using Sample.Contracts.Orders.Commands;
 using Sample.Contracts.Orders.Events;

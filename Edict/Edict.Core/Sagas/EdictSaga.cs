@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Serialization;
 
-namespace Edict.Core.Saga;
+namespace Edict.Core.Sagas;
 
 /// <summary>
 /// Base for a saga: an idempotent consumer that coordinates a multi-step

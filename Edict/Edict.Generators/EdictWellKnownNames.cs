@@ -55,14 +55,14 @@ internal static class EdictWellKnownNames
     public const string EdictEventHandlerFqn =
         "global::Edict.Core.EventHandler.EdictEventHandler";
 
-    // ── Edict.Core.Saga ──────────────────────────────────────────────────────
+    // ── Edict.Core.Sagas ─────────────────────────────────────────────────────
     // EdictSaga is generic; matched via a generics-stripped FQN base-chain walk
     // (mirrors EdictCommandHandler), so this name carries no `1 arity suffix.
     public const string EdictSagaFqn =
-        "global::Edict.Core.Saga.EdictSaga";
+        "global::Edict.Core.Sagas.EdictSaga";
 
     public const string IEdictSagaFqn =
-        "global::Edict.Core.Saga.IEdictSaga";
+        "global::Edict.Core.Sagas.IEdictSaga";
 
     // ── Edict.Contracts.Persistence ──────────────────────────────────────────
     public const string IEdictPersistedStateFqn =
