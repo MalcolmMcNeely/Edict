@@ -47,7 +47,8 @@ public abstract class EdictCommandHandler<TState>
     where TState : IEdictPersistedState, new()
 {
     OutboxHost<TState>? _host;
-    List<EdictEvent>? _raisedEvents;
+    internal List<EdictEvent>? _raisedEvents;
+    internal TimeProvider? _timeProvider;
 
     OutboxHost<TState> Host => _host ??= BuildHost();
 
@@ -86,13 +87,17 @@ public abstract class EdictCommandHandler<TState>
     /// <summary>
     /// Buffers an event to be staged onto the Outbox after the current command
     /// returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler throw.
-    /// Stamped with <c>EventId</c>, <c>OccurredAt</c>, and trace context when
-    /// the drain publishes it.
+    /// Stamped with <c>OccurredAt</c> at this call (via the framework's
+    /// <see cref="TimeProvider"/>) so the timestamp reflects the moment the
+    /// consumer's handler decided to publish and is preserved across any
+    /// subsequent outbox delay. <c>EventId</c> and trace context are stamped
+    /// at drain by the outbox.
     /// </summary>
     protected void Raise(EdictEvent theEvent)
     {
         ArgumentNullException.ThrowIfNull(theEvent);
-        (_raisedEvents ??= []).Add(theEvent);
+        var time = _timeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
+        (_raisedEvents ??= []).Add(theEvent with { OccurredAt = time.GetUtcNow() });
     }
 
     /// <summary>

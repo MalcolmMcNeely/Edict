@@ -34,7 +34,6 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
         var stamped = evt with
         {
             EventId = Guid.NewGuid(),
-            OccurredAt = DateTimeOffset.UtcNow,
             TraceId = publishActivity?.TraceId.ToHexString() ?? fallbackTraceId,
             SpanId = publishActivity?.SpanId.ToHexString() ?? fallbackSpanId,
             TraceState = publishActivity?.TraceStateString ?? entry.TraceState,
