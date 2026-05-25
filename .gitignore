@@ -8,6 +8,7 @@ bin/
 obj/
 out/
 publish/
+BenchmarkDotNet.Artifacts/
 
 # .NET
 *.user

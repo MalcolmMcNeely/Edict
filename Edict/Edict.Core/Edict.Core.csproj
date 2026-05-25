@@ -26,6 +26,10 @@
              (decorating the internal PublishEvent executor) so consumer code
              runs the *real* engine under test (ADR 0016/0018). -->
         <InternalsVisibleTo Include="Edict.Testing" />
+        <!-- The throughput regression-guard benchmark exercises the internal
+             OutboxHost drain path so the perf claim sits next to the code,
+             not a synthetic seam. -->
+        <InternalsVisibleTo Include="Edict.Benchmarks" />
     </ItemGroup>
 
     <ItemGroup>

@@ -70,6 +70,8 @@ Worth naming so the perf review doesn't read as one-sided.
 
 #### 3.2.1 N storage writes per N-event command (`OutboxHost.DrainAsync`)
 
+**Resolved in [#119](https://github.com/MalcolmMcNeely/Edict/issues/119).** `DrainAsync` now accumulates acks in-memory across a pass and flushes one trailing `WriteStateAsync` before reconciling the reminder; failure-path inline writes are retained for `AttemptCount` crash-monotonicity. The historical analysis below is preserved for context.
+
 `Edict.Core/Outbox/OutboxHost.cs:227` — after each successful executor, the drain `Ack`s and calls `await _state.WriteStateAsync()` *per entry*. A command that raises 5 events pays:
 
 | Phase | `WriteStateAsync` calls |
@@ -164,6 +166,8 @@ A `HashSet<Guid>` mirror — rebuilt once on activation from the persisted ring,
 This pairs with the resiliency analysis §3.3.2 "dedup ring is silently bounded" — both want operators to think about `RingSize` for singletons, and the perf fix removes the disincentive to size it up.
 
 #### 3.3.3 Restart-from-head after every ack
+
+**Resolved in [#119](https://github.com/MalcolmMcNeely/Edict/issues/119).** The drain now walks `Pending` monotonically forward; the Ack mutation shifts the next entry into the current slot so the index holds, and the `while`-condition naturally picks up tail-appended entries (e.g. a Promote's dead-letter entry). The historical analysis below is preserved for context.
 
 `OutboxHost.cs:230` — every successful ack restarts the drain walk at `index = 0`. The intent (per ADR 0026) is to surface newly-enqueued entries immediately, but the path that does the enqueue (`EnqueueAndDrainAsync`) commits before calling `DrainAsync` — entries can only appear during a *re-entrant* enqueue, which happens only if an executor itself enqueues (it doesn't, by design).
 

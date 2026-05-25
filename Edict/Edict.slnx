@@ -20,6 +20,9 @@
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
     <Project Path="Edict.Testing.Tests/Edict.Testing.Tests.csproj" />
   </Folder>
+  <Folder Name="/Benchmarks/">
+    <Project Path="Edict.Benchmarks/Edict.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
     <Project Path="../Sample/Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />

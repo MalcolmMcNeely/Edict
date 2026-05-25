@@ -145,15 +145,26 @@ sealed class OutboxHost<TPayload>
     /// <summary>
     /// Drains pending effects with per-entry independent retry:
     /// walks <see cref="OutboxSlice.Pending"/> in insertion order, skipping
-    /// backoff-gated entries and continuing past failures. On success restarts
-    /// the walk from the head so a newly-enqueued entry surfaces immediately.
-    /// At <see cref="EdictOutboxOptions.MaxAttempts"/> the failing entry is
-    /// promoted to a dead-letter publish entry appended at the tail, in the
-    /// same write. Reconciles the lazy Reminder: unregistered when the Outbox
-    /// fully drains, registered while anything remains.
+    /// backoff-gated entries and continuing past failures. Acks accumulate
+    /// in-memory across the pass and flush in one trailing write before the
+    /// reminder is reconciled. At <see cref="EdictOutboxOptions.OutboxMaxAttempts"/>
+    /// the failing entry is promoted to a dead-letter publish entry appended at
+    /// the tail; that promotion writes inline, coalescing any pending acks for
+    /// free. Reconciles the lazy Reminder: unregistered when the Outbox fully
+    /// drains, registered while anything remains.
     /// </summary>
     public async Task DrainAsync()
     {
+        // At-least-once delivery permits batching ack-durability across a pass:
+        // a mid-pass crash re-executes already-shipped entries, which the
+        // consumer dedup ring suppresses. The trailing write before the
+        // reminder reconcile is the load-bearing ordering — a reminder must
+        // never observe a "drained" state that has not yet been persisted, or
+        // a crash between the unregister and a missing write would lose the
+        // pending tail. Failure paths (FailWithBackoff / Promote) keep their
+        // inline writes for AttemptCount crash-monotonicity and naturally
+        // coalesce any pending acks accumulated up to that point.
+        var dirty = false;
         var index = 0;
         while (index < State.Outbox.Pending.Count)
         {
@@ -188,21 +199,28 @@ sealed class OutboxHost<TPayload>
                         bumped, exception, _grainKey, _grainTypeName, now);
                     State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
                     await _state.WriteStateAsync();
+                    dirty = false;
                     // The failing entry is gone — do not advance index;
                     // whatever followed has shifted into its slot.
                     continue;
                 }
 
                 await _state.WriteStateAsync();
+                dirty = false;
                 index++;
                 continue;
             }
 
             State.Outbox = State.Outbox.Ack(entry.EntryId);
+            dirty = true;
+            // The Ack shifted the next entry into our slot — do not advance
+            // index. while-condition naturally picks up tail-appended entries
+            // (e.g. a Promote's dead-letter entry from a later iteration).
+        }
+
+        if (dirty)
+        {
             await _state.WriteStateAsync();
-            // Restart from the head so a newly-enqueued entry surfaces
-            // immediately.
-            index = 0;
         }
 
         if (State.Outbox.Pending.Count == 0)
