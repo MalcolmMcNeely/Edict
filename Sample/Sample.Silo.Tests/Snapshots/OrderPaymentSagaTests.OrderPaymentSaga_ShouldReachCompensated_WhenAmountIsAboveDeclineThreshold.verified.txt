@@ -3,6 +3,7 @@
     Stage: Compensated
   },
   row: {
-    Status: Cancelled
+    Status: Cancelled,
+    SubmittedAt: DateTimeOffset_1
   }
 }

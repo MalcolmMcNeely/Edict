@@ -2,8 +2,10 @@ using Edict.Contracts.Events;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 
+using Sample.Contracts.Fulfillment.Events;
 using Sample.Contracts.Orders.Events;
 using Sample.Contracts.Orders.Projections;
+using Sample.Contracts.Payments.Events;
 
 namespace Sample.Silo.Orders.ProjectionBuilders;
 
@@ -20,6 +22,7 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
     {
         CurrentRow.Status = "Open";
         CurrentRow.ItemCount = 0;
+        CurrentRow.PlacedAt = evt.OccurredAt;
         return Task.CompletedTask;
     }
 
@@ -32,12 +35,32 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
     public Task Handle(OrderSubmittedEvent evt)
     {
         CurrentRow.Status = "Submitted";
+        CurrentRow.SubmittedAt = evt.OccurredAt;
         return Task.CompletedTask;
     }
 
     public Task Handle(OrderCancelledEvent evt)
     {
         CurrentRow.Status = "Cancelled";
+        return Task.CompletedTask;
+    }
+
+    public Task Handle(PaymentAuthorizedEvent evt)
+    {
+        CurrentRow.AuthorizedAt = evt.OccurredAt;
+        return Task.CompletedTask;
+    }
+
+    public Task Handle(OrderFullyFulfilledEvent evt)
+    {
+        CurrentRow.FulfilledAt = evt.OccurredAt;
+        return Task.CompletedTask;
+    }
+
+    public Task Handle(OrderShippedEvent evt)
+    {
+        CurrentRow.Status = "Shipped";
+        CurrentRow.ShippedAt = evt.OccurredAt;
         return Task.CompletedTask;
     }
 }

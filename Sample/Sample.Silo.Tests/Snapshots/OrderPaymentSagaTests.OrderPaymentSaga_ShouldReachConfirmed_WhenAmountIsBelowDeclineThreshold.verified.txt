@@ -3,6 +3,9 @@
     Stage: Confirmed
   },
   row: {
-    Status: Submitted
+    Status: Submitted,
+    PlacedAt: DateTimeOffset_1,
+    SubmittedAt: DateTimeOffset_1,
+    AuthorizedAt: DateTimeOffset_1
   }
 }
