@@ -8,21 +8,24 @@ using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Telemetry;
 
-using OpenTelemetry;
-using OpenTelemetry.Trace;
-
 using Orleans.Serialization;
 
 using Sample.Contracts.Fulfillment.Projections;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
+using Sample.ServiceDefaults;
 using Sample.Silo.Orders.CommandHandlers;
 using Sample.Web.Components;
 using Sample.Web.State;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseOrleansClient(client =>
+builder.AddServiceDefaults();
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddSource(EdictDiagnostics.SourceName));
+
+builder.UseOrleansClient(client =>
 {
     client.UseLocalhostClustering();
     client.Services.AddSerializer(ser =>
@@ -32,14 +35,6 @@ builder.Host.UseOrleansClient(client =>
         ser.AddEdictContractSerializer();
     });
 });
-
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(EdictDiagnostics.SourceName);
-        tracing.AddAspNetCoreInstrumentation();
-    })
-    .UseOtlpExporter();
 
 var tableConnectionString = builder.Configuration.GetConnectionString("tables")
                             ?? "UseDevelopmentStorage=true";
@@ -67,6 +62,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 app.UseStaticFiles();
 app.UseAntiforgery();

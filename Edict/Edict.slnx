@@ -22,6 +22,7 @@
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
+    <Project Path="../Sample/Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
     <Project Path="../Sample/Sample.Silo/Sample.Silo.csproj" />
     <Project Path="../Sample/Sample.Web/Sample.Web.csproj" />
     <Project Path="../Sample/Sample.Silo.Tests/Sample.Silo.Tests.csproj" />

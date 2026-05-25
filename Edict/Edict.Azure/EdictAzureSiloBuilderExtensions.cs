@@ -130,15 +130,15 @@ public static class EdictAzureSiloBuilderExtensions
         silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
             new AzureTableRepository<EdictDeadLetterEntry>(tableClient, deadLetterTable));
 
-        // Claim-check blob store. The receiver-side ClaimCheckUnwrap (registered
-        // by AddEdict) resolves IEdictClaimCheckStore as optional, so if a host
-        // wires persistence-only (no streams call, hence no policy) the store is
-        // still available for receive-path materialisation.
+        // Claim-check blob store. Build eagerly on the host thread — a factory-lambda
+        // registration that calls .GetAwaiter().GetResult() deadlocks on the grain
+        // task scheduler when the first activation resolves the store
+        // (the await continuation cannot resume while the activation is blocked).
         var claimCheckContainer = options.ClaimCheckBlobContainerName;
-        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(_ =>
-            AzureBlobClaimCheckStore
-                .CreateAsync(blobClient, claimCheckContainer)
-                .GetAwaiter().GetResult());
+        var claimCheckStore = AzureBlobClaimCheckStore
+            .CreateAsync(blobClient, claimCheckContainer)
+            .GetAwaiter().GetResult();
+        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(claimCheckStore);
 
         return silo;
     }
