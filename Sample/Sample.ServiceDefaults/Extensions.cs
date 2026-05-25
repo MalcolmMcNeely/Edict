@@ -36,6 +36,13 @@ public static class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // The sample's only telemetry consumer is the Edict ActivitySource. Anything
+        // else (Orleans queue polling, Blazor render pipeline, HttpClient hops) just
+        // drowns the Aspire dashboard. Each call site adds AddSource(EdictDiagnostics.SourceName).
+        builder.Logging.AddFilter("Orleans", LogLevel.Warning);
+        builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+        builder.Logging.AddFilter("Microsoft.Hosting", LogLevel.Warning);
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
@@ -45,15 +52,11 @@ public static class Extensions
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                metrics.AddRuntimeInstrumentation();
             })
-            .WithTracing(tracing =>
+            .WithTracing(_ =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation();
+                // Edict source is added by each project's own ConfigureServices call.
             });
 
         builder.AddOpenTelemetryExporters();

@@ -15,6 +15,13 @@ using Sample.Silo.Orders;
 using Sample.Silo.Orders.CommandHandlers;
 
 var host = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging(logging =>
+    {
+        // Silence Orleans stream/queue polling so the Aspire dashboard shows
+        // only Edict-relevant telemetry. Mirror of the filter in Sample.ServiceDefaults.
+        logging.AddFilter("Orleans", LogLevel.Warning);
+        logging.AddFilter("Microsoft.Hosting", LogLevel.Warning);
+    })
     .UseOrleans((context, silo) =>
     {
         silo.UseLocalhostClustering();
