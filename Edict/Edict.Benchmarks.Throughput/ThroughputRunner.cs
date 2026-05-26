@@ -199,9 +199,10 @@ public sealed class ThroughputRunner
                         }
                         else
                         {
-                            await sender.Send(new BenchPublishCommand(aggregateId, filler));
+                            var correlationId = Guid.NewGuid();
+                            await sender.Send(new BenchPublishCommand(aggregateId, correlationId, filler));
                             await WaitForEventRowAsync(
-                                eventRowRepository!, aggregateId, pollInterval, windowCts.Token);
+                                eventRowRepository!, aggregateId, correlationId.ToString("D"), pollInterval, windowCts.Token);
                         }
                     }
                     catch (OperationCanceledException)
@@ -232,6 +233,7 @@ public sealed class ThroughputRunner
     static async Task WaitForEventRowAsync(
         IEdictTableRepository<BenchEventRow> repository,
         Guid aggregateId,
+        string rowKey,
         TimeSpan pollInterval,
         CancellationToken ct)
     {
@@ -241,7 +243,7 @@ public sealed class ThroughputRunner
         var partitionKey = aggregateId.ToString();
         while (!ct.IsCancellationRequested)
         {
-            var row = await repository.GetAsync(partitionKey, BenchProjectionBuilder.FixedRowKey, ct);
+            var row = await repository.GetAsync(partitionKey, rowKey, ct);
             if (row is not null)
             {
                 return;

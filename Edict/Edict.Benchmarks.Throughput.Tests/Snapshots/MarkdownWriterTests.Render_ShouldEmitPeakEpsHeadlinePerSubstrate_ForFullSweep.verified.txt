@@ -1,9 +1,17 @@
-﻿# Edict throughput
+# Edict throughput
 
 Machine: Linux 5.15 / 16 cores
 .NET version: 10.0.8
 Run date: 2026-05-26
 Git SHA: 64fd1a7
+
+## Setup
+
+- Substrate: Azurite (Testcontainers, default config) — not real Azure Storage.
+- Single Orleans TestCluster silo (producer and consumers share one process).
+- Azure Queue stream provider with framework defaults; queue polling sets a hard floor on per-event latency.
+- Completion signal for the Events scenario is a 5 ms point-get poll against the projection table.
+- Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.
 
 **azure: 24000 commands/sec @ N=64**
 **kafka: 52000 commands/sec @ N=256**

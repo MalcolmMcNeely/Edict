@@ -24,6 +24,16 @@ public static class MarkdownWriter
         sb.AppendLine(CultureInfo.InvariantCulture, $"Run date: {runDate:yyyy-MM-dd}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"Git SHA: {metadata.GitSha}");
         sb.AppendLine();
+        // Substrate-specific framing is hardcoded for the single registered substrate (Azurite);
+        // when a second substrate lands, this block becomes a per-substrate seam.
+        sb.AppendLine("## Setup");
+        sb.AppendLine();
+        sb.AppendLine("- Substrate: Azurite (Testcontainers, default config) — not real Azure Storage.");
+        sb.AppendLine("- Single Orleans TestCluster silo (producer and consumers share one process).");
+        sb.AppendLine("- Azure Queue stream provider with framework defaults; queue polling sets a hard floor on per-event latency.");
+        sb.AppendLine("- Completion signal for the Events scenario is a 5 ms point-get poll against the projection table.");
+        sb.AppendLine("- Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.");
+        sb.AppendLine();
         foreach (var headline in PeakHeadlines(results))
         {
             sb.AppendLine(headline);
