@@ -54,6 +54,14 @@ public sealed class ThroughputRunner
         CancellationToken ct = default) =>
         RunSweepAsync(substrate, Scenario.Events, parallelisms, warmup, measurement, ct);
 
+    public Task<IReadOnlyList<ThroughputResults>> RunRaiseOnlySweepAsync(
+        ISubstrate substrate,
+        IReadOnlyList<int> parallelisms,
+        TimeSpan warmup,
+        TimeSpan measurement,
+        CancellationToken ct = default) =>
+        RunSweepAsync(substrate, Scenario.RaiseOnly, parallelisms, warmup, measurement, ct);
+
     async Task<IReadOnlyList<ThroughputResults>> RunSweepAsync(
         ISubstrate substrate,
         Scenario scenario,
@@ -197,6 +205,10 @@ public sealed class ThroughputRunner
                         {
                             await sender.Send(new BenchIncrementCommand(aggregateId, filler));
                         }
+                        else if (scenario == Scenario.RaiseOnly)
+                        {
+                            await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), filler));
+                        }
                         else
                         {
                             var correlationId = Guid.NewGuid();
@@ -310,6 +322,7 @@ public sealed class ThroughputRunner
     enum Scenario
     {
         Commands,
+        RaiseOnly,
         Events,
     }
 

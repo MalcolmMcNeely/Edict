@@ -50,6 +50,13 @@ foreach (var substrate in substrates)
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
+    Console.WriteLine($"Sweeping {substrate.Name} — RaiseOnly: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    var raiseOnlyResults = await runner.RunRaiseOnlySweepAsync(substrate, parallelisms, warmup, window);
+    foreach (var point in raiseOnlyResults)
+    {
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} sends in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
+    }
+
     Console.WriteLine($"Sweeping {substrate.Name} — Events: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var eventsResults = await runner.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in eventsResults)
@@ -57,8 +64,9 @@ foreach (var substrate in substrates)
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
-    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + eventsResults.Count);
+    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + raiseOnlyResults.Count + eventsResults.Count);
     perSubstrate.AddRange(commandsResults);
+    perSubstrate.AddRange(raiseOnlyResults);
     perSubstrate.AddRange(eventsResults);
     combined.AddRange(perSubstrate);
 

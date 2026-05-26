@@ -59,6 +59,39 @@ public sealed class MarkdownWriterTests
     }
 
     [Fact]
+    public Task Render_ShouldEmitPeakEpsHeadlinePerScenario_WhenSubstrateHasCommandsRaiseOnlyAndEvents()
+    {
+        // One substrate, three scenarios swept. The headline must split into
+        // three so a reader can diff RaiseOnly − Commands (producer Raise vs
+        // WriteStateAsync cost) and Events − RaiseOnly (everything downstream
+        // of Send) from one rendered table.
+        var results = new[]
+        {
+            // azure Commands — peak at N=64
+            SweepPoint("azure", "Commands", 1, 1_200, 8.0, 14.0, 20.0),
+            SweepPoint("azure", "Commands", 4, 4_500, 6.5, 11.0, 16.0),
+            SweepPoint("azure", "Commands", 16, 16_000, 5.0, 9.5, 13.0),
+            SweepPoint("azure", "Commands", 64, 24_000, 5.2, 10.0, 18.0),
+            SweepPoint("azure", "Commands", 256, 18_000, 8.0, 22.0, 45.0),
+            // azure RaiseOnly — peak at N=64; slightly lower than Commands
+            // because Raise costs are folded into the handler before Send returns.
+            SweepPoint("azure", "RaiseOnly", 1, 1_100, 9.0, 15.0, 22.0),
+            SweepPoint("azure", "RaiseOnly", 4, 4_200, 7.0, 12.0, 18.0),
+            SweepPoint("azure", "RaiseOnly", 16, 14_500, 5.5, 10.5, 14.5),
+            SweepPoint("azure", "RaiseOnly", 64, 21_500, 6.0, 12.0, 22.0),
+            SweepPoint("azure", "RaiseOnly", 256, 16_500, 9.0, 25.0, 50.0),
+            // azure Events — peak at N=16
+            SweepPoint("azure", "Events", 1, 400, 14.0, 22.0, 35.0),
+            SweepPoint("azure", "Events", 4, 1_600, 12.0, 20.0, 32.0),
+            SweepPoint("azure", "Events", 16, 4_200, 13.0, 24.0, 40.0),
+            SweepPoint("azure", "Events", 64, 3_800, 22.0, 45.0, 80.0),
+            SweepPoint("azure", "Events", 256, 2_900, 50.0, 110.0, 220.0),
+        };
+
+        return Verify(MarkdownWriter.Render(results, FixedRunDate, FixedMetadata));
+    }
+
+    [Fact]
     public Task Render_ShouldEmitPeakEpsHeadlinePerScenario_WhenSubstrateHasBothCommandsAndEvents()
     {
         // One substrate, both scenarios swept. The headline must split so a

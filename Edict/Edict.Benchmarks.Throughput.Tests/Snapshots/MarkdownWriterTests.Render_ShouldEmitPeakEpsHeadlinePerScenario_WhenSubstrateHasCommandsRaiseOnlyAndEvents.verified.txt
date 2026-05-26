@@ -15,6 +15,7 @@ Git SHA: 64fd1a7
 - Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.
 
 **azure: 24000 commands/sec @ N=64**
+**azure: 21500 raiseonly/sec @ N=64**
 **azure: 4200 events/sec @ N=16**
 
 | Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
@@ -24,6 +25,11 @@ Git SHA: 64fd1a7
 | azure | Commands | 16 | 16000 | 5.00 | 9.50 | 13.00 |
 | azure | Commands | 64 | 24000 | 5.20 | 10.00 | 18.00 |
 | azure | Commands | 256 | 18000 | 8.00 | 22.00 | 45.00 |
+| azure | RaiseOnly | 1 | 1100 | 9.00 | 15.00 | 22.00 |
+| azure | RaiseOnly | 4 | 4200 | 7.00 | 12.00 | 18.00 |
+| azure | RaiseOnly | 16 | 14500 | 5.50 | 10.50 | 14.50 |
+| azure | RaiseOnly | 64 | 21500 | 6.00 | 12.00 | 22.00 |
+| azure | RaiseOnly | 256 | 16500 | 9.00 | 25.00 | 50.00 |
 | azure | Events | 1 | 400 | 14.00 | 22.00 | 35.00 |
 | azure | Events | 4 | 1600 | 12.00 | 20.00 | 32.00 |
 | azure | Events | 16 | 4200 | 13.00 | 24.00 | 40.00 |

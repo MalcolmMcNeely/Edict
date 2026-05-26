@@ -32,6 +32,7 @@ public static class MarkdownWriter
         sb.AppendLine("- Single Orleans TestCluster silo (producer and consumers share one process).");
         sb.AppendLine("- Azure Queue stream provider with framework defaults; queue polling sets a hard floor on per-event latency.");
         sb.AppendLine("- Completion signal for the Events scenario is a 5 ms point-get poll against the projection table.");
+        sb.AppendLine("- RaiseOnly measures Send latency with Raise in the handler; does not wait for the projection.");
         sb.AppendLine("- Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.");
         sb.AppendLine();
         foreach (var headline in PeakHeadlines(results))

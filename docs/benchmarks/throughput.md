@@ -3,7 +3,7 @@
 Machine: Microsoft Windows 10.0.22631 / 20 cores
 .NET version: 10.0.8
 Run date: 2026-05-26
-Git SHA: 3d7bb81
+Git SHA: 8e94351
 
 ## Setup
 
@@ -11,20 +11,27 @@ Git SHA: 3d7bb81
 - Single Orleans TestCluster silo (producer and consumers share one process).
 - Azure Queue stream provider with framework defaults; queue polling sets a hard floor on per-event latency.
 - Completion signal for the Events scenario is a 5 ms point-get poll against the projection table.
+- RaiseOnly measures Send latency with Raise in the handler; does not wait for the projection.
 - Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.
 
-**azure: 660 commands/sec @ N=16**
-**azure: 53 events/sec @ N=256**
+**azure: 653 commands/sec @ N=16**
+**azure: 86 raiseonly/sec @ N=4**
+**azure: 50 events/sec @ N=256**
 
 | Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| azure | Commands | 1 | 277 | 3.04 | 6.85 | 7.59 |
-| azure | Commands | 4 | 553 | 7.30 | 10.16 | 11.89 |
-| azure | Commands | 16 | 660 | 23.75 | 31.81 | 36.02 |
-| azure | Commands | 64 | 568 | 112.42 | 127.96 | 136.40 |
-| azure | Commands | 256 | 546 | 464.97 | 496.34 | 510.51 |
-| azure | Events | 1 | 3 | 417.72 | 588.26 | 622.35 |
-| azure | Events | 4 | 10 | 430.38 | 586.32 | 603.73 |
-| azure | Events | 16 | 39 | 400.64 | 656.21 | 710.18 |
-| azure | Events | 64 | 51 | 1201.23 | 1635.48 | 1793.47 |
-| azure | Events | 256 | 53 | 4955.34 | 5520.62 | 7002.50 |
+| azure | Commands | 1 | 151 | 7.01 | 8.45 | 9.96 |
+| azure | Commands | 4 | 590 | 6.31 | 10.60 | 12.47 |
+| azure | Commands | 16 | 653 | 23.94 | 31.82 | 37.60 |
+| azure | Commands | 64 | 572 | 111.94 | 126.71 | 134.36 |
+| azure | Commands | 256 | 534 | 477.63 | 510.47 | 520.26 |
+| azure | RaiseOnly | 1 | 44 | 22.25 | 36.15 | 45.61 |
+| azure | RaiseOnly | 4 | 86 | 45.00 | 74.38 | 94.83 |
+| azure | RaiseOnly | 16 | 81 | 189.50 | 267.23 | 337.83 |
+| azure | RaiseOnly | 64 | 80 | 781.93 | 922.66 | 958.65 |
+| azure | RaiseOnly | 256 | 78 | 3213.66 | 3505.24 | 3609.37 |
+| azure | Events | 1 | 2 | 466.62 | 584.52 | 607.19 |
+| azure | Events | 4 | 10 | 434.83 | 578.45 | 589.57 |
+| azure | Events | 16 | 36 | 428.63 | 699.11 | 771.39 |
+| azure | Events | 64 | 46 | 1359.87 | 1780.64 | 1945.39 |
+| azure | Events | 256 | 50 | 5465.67 | 6167.31 | 8133.36 |
