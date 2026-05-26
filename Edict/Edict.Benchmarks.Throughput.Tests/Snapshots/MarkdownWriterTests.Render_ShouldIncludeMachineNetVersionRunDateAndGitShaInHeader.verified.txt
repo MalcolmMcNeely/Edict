@@ -26,6 +26,6 @@ Treat this table as **what the registered defaults give you on a laptop with the
 
 **azure: 656 commands/sec @ N=4**
 
-| Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
+| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | azure | Commands | 4 | 656 | 5.77 | 9.09 | 11.29 |

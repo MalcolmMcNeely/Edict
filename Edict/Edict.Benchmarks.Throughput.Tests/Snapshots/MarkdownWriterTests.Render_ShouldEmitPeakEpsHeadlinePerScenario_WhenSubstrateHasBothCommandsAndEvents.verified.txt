@@ -27,7 +27,7 @@ Treat this table as **what the registered defaults give you on a laptop with the
 **azure: 24000 commands/sec @ N=64**
 **azure: 4200 events/sec @ N=16**
 
-| Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
+| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | azure | Commands | 1 | 1200 | 8.00 | 14.00 | 20.00 |
 | azure | Commands | 4 | 4500 | 6.50 | 11.00 | 16.00 |

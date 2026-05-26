@@ -53,7 +53,7 @@ public static class MarkdownWriter
         {
             sb.AppendLine();
         }
-        sb.AppendLine("| Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |");
+        sb.AppendLine("| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |");
         sb.AppendLine("| --- | --- | --- | ---: | ---: | ---: | ---: |");
         foreach (var r in results)
         {

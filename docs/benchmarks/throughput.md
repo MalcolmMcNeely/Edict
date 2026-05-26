@@ -28,7 +28,7 @@ Treat this table as **what the registered defaults give you on a laptop with the
 **azure: 85 raiseonly/sec @ N=64**
 **azure: 64 events/sec @ N=64**
 
-| Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
+| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | azure | Commands | 1 | 304 | 2.99 | 4.87 | 6.09 |
 | azure | Commands | 4 | 515 | 7.70 | 11.51 | 14.88 |
