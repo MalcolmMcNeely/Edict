@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,8 @@ namespace Edict.Benchmarks.Throughput;
 /// </summary>
 public sealed class ThroughputRunner
 {
+    const int FillerSizeBytes = 256;
+
     /// <summary>
     /// Single-point convenience: starts the substrate, runs one Commands point,
     /// tears down. Used by ad-hoc explorations; the publishable sweep uses
@@ -35,12 +38,29 @@ public sealed class ThroughputRunner
         return results[0];
     }
 
-    public async Task<IReadOnlyList<ThroughputResults>> RunCommandsSweepAsync(
+    public Task<IReadOnlyList<ThroughputResults>> RunCommandsSweepAsync(
         ISubstrate substrate,
         IReadOnlyList<int> parallelisms,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        RunSweepAsync(substrate, Scenario.Commands, parallelisms, warmup, measurement, ct);
+
+    public Task<IReadOnlyList<ThroughputResults>> RunEventsSweepAsync(
+        ISubstrate substrate,
+        IReadOnlyList<int> parallelisms,
+        TimeSpan warmup,
+        TimeSpan measurement,
+        CancellationToken ct = default) =>
+        RunSweepAsync(substrate, Scenario.Events, parallelisms, warmup, measurement, ct);
+
+    async Task<IReadOnlyList<ThroughputResults>> RunSweepAsync(
+        ISubstrate substrate,
+        Scenario scenario,
+        IReadOnlyList<int> parallelisms,
+        TimeSpan warmup,
+        TimeSpan measurement,
+        CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentNullException.ThrowIfNull(parallelisms);
@@ -66,6 +86,9 @@ public sealed class ThroughputRunner
             try
             {
                 var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+                var eventRowRepository = scenario == Scenario.Events
+                    ? cluster.Client.ServiceProvider.GetRequiredService<IEdictTableRepository<BenchEventRow>>()
+                    : null;
                 var aggregatePool = Enumerable.Range(0, 1024)
                     .Select(_ => Guid.NewGuid())
                     .ToArray();
@@ -74,7 +97,8 @@ public sealed class ThroughputRunner
                 foreach (var parallelism in parallelisms)
                 {
                     results.Add(await RunSinglePointAsync(
-                        substrate.Name, sender, aggregatePool, parallelism, warmup, measurement, ct));
+                        substrate.Name, scenario, sender, eventRowRepository,
+                        aggregatePool, parallelism, warmup, measurement, ct));
                 }
                 return results;
             }
@@ -91,7 +115,9 @@ public sealed class ThroughputRunner
 
     static async Task<ThroughputResults> RunSinglePointAsync(
         string substrateName,
+        Scenario scenario,
         IEdictSender sender,
+        IEdictTableRepository<BenchEventRow>? eventRowRepository,
         Guid[] aggregatePool,
         int parallelism,
         TimeSpan warmup,
@@ -99,7 +125,8 @@ public sealed class ThroughputRunner
         CancellationToken ct)
     {
         // Warmup — discarded.
-        await RunIssuersAsync(sender, aggregatePool, parallelism, warmup, histograms: null, ct);
+        await RunIssuersAsync(
+            scenario, sender, eventRowRepository, aggregatePool, parallelism, warmup, histograms: null, ct);
 
         // Measurement.
         var histograms = new LatencyHistogram[parallelism];
@@ -109,14 +136,14 @@ public sealed class ThroughputRunner
             histograms[i] = new LatencyHistogram(capacityPerIssuer);
         }
         var (completed, elapsed) = await RunIssuersAsync(
-            sender, aggregatePool, parallelism, measurement, histograms, ct);
+            scenario, sender, eventRowRepository, aggregatePool, parallelism, measurement, histograms, ct);
 
         var latency = MergePercentiles(histograms);
         var samples = DownsampleSamples(histograms);
 
         return new ThroughputResults(
             Substrate: substrateName,
-            Scenario: "Commands",
+            Scenario: scenario.ToString(),
             Parallelism: parallelism,
             CompletedCount: completed,
             ElapsedMeasurement: elapsed,
@@ -135,7 +162,9 @@ public sealed class ThroughputRunner
     }
 
     static async Task<(long Completed, TimeSpan Elapsed)> RunIssuersAsync(
+        Scenario scenario,
         IEdictSender sender,
+        IEdictTableRepository<BenchEventRow>? eventRowRepository,
         Guid[] aggregatePool,
         int parallelism,
         TimeSpan window,
@@ -148,6 +177,7 @@ public sealed class ThroughputRunner
         var completed = new long[parallelism];
         var stopwatch = Stopwatch.StartNew();
         var tasks = new Task[parallelism];
+        var pollInterval = TimeSpan.FromMilliseconds(5);
 
         for (var i = 0; i < parallelism; i++)
         {
@@ -159,10 +189,20 @@ public sealed class ThroughputRunner
                 while (!windowCts.IsCancellationRequested)
                 {
                     var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
+                    var filler = new byte[FillerSizeBytes];
                     var sendStarted = Stopwatch.GetTimestamp();
                     try
                     {
-                        await sender.Send(new BenchIncrementCommand(aggregateId));
+                        if (scenario == Scenario.Commands)
+                        {
+                            await sender.Send(new BenchIncrementCommand(aggregateId, filler));
+                        }
+                        else
+                        {
+                            await sender.Send(new BenchPublishCommand(aggregateId, filler));
+                            await WaitForEventRowAsync(
+                                eventRowRepository!, aggregateId, pollInterval, windowCts.Token);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -187,6 +227,34 @@ public sealed class ThroughputRunner
         stopwatch.Stop();
 
         return (completed.Sum(), stopwatch.Elapsed);
+    }
+
+    static async Task WaitForEventRowAsync(
+        IEdictTableRepository<BenchEventRow> repository,
+        Guid aggregateId,
+        TimeSpan pollInterval,
+        CancellationToken ct)
+    {
+        // Substrate-neutral completion signal — point-get against the
+        // projection's pk/rk pair, polled at ~5ms. Cost scales with EPS
+        // (one completion = one wake), not against it.
+        var partitionKey = aggregateId.ToString();
+        while (!ct.IsCancellationRequested)
+        {
+            var row = await repository.GetAsync(partitionKey, BenchProjectionBuilder.FixedRowKey, ct);
+            if (row is not null)
+            {
+                return;
+            }
+            try
+            {
+                await Task.Delay(pollInterval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
     }
 
     static LatencyResults MergePercentiles(LatencyHistogram[] histograms)
@@ -235,6 +303,12 @@ public sealed class ThroughputRunner
             }
         }
         return output;
+    }
+
+    enum Scenario
+    {
+        Commands,
+        Events,
     }
 
     static class ActiveRuntime

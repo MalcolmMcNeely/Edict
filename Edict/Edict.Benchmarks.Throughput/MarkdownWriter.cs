@@ -44,26 +44,29 @@ public static class MarkdownWriter
 
     static IEnumerable<string> PeakHeadlines(IReadOnlyList<ThroughputResults> results)
     {
-        // Group preserving first-seen substrate order so the markdown is stable
-        // across runs regardless of how the sweep was scheduled.
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var order = new List<string>();
-        var byName = new Dictionary<string, List<ThroughputResults>>(StringComparer.Ordinal);
+        // Group by (substrate, scenario) preserving first-seen order so the
+        // markdown is stable across runs. Commands and Events scale differently
+        // and live on separate metrics — collapsing them under one headline
+        // would mislead a reader quoting the number.
+        var order = new List<(string Substrate, string Scenario)>();
+        var byKey = new Dictionary<(string, string), List<ThroughputResults>>();
         foreach (var r in results)
         {
-            if (seen.Add(r.Substrate))
+            var key = (r.Substrate, r.Scenario);
+            if (!byKey.TryGetValue(key, out var bucket))
             {
-                order.Add(r.Substrate);
-                byName[r.Substrate] = [];
+                bucket = [];
+                byKey[key] = bucket;
+                order.Add(key);
             }
-            byName[r.Substrate].Add(r);
+            bucket.Add(r);
         }
-        foreach (var name in order)
+        foreach (var key in order)
         {
-            var peak = byName[name].MaxBy(r => r.EventsPerSecond)!;
+            var peak = byKey[key].MaxBy(r => r.EventsPerSecond)!;
             yield return string.Create(
                 CultureInfo.InvariantCulture,
-                $"**{name}: {peak.EventsPerSecond:F0} {peak.Scenario.ToLowerInvariant()}/sec @ N={peak.Parallelism}**");
+                $"**{key.Substrate}: {peak.EventsPerSecond:F0} {peak.Scenario.ToLowerInvariant()}/sec @ N={peak.Parallelism}**");
         }
     }
 

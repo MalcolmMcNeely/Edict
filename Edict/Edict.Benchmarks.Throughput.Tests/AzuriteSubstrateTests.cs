@@ -1,6 +1,7 @@
 using Azure.Data.Tables;
 
 using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 
@@ -13,6 +14,52 @@ namespace Edict.Benchmarks.Throughput.Tests;
 
 public sealed class AzuriteSubstrateTests
 {
+    [Fact]
+    public async Task Runtime_ClientCallback_ResolvesBenchEventRowRepositoryThatReadsBackPreloadedRow()
+    {
+        // The Events scenario's issuer polls IEdictTableRepository<BenchEventRow>
+        // for completion. The substrate must register that repository against
+        // the same table the projection writes to, or the issuer never sees
+        // its event arrive. Same shape as the DeadLetter test below — proves
+        // the wire-up via a preloaded row.
+        var substrate = new AzuriteSubstrate();
+        await using var runtime = (AzuriteSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
+
+        var preloadTable = new TableServiceClient(runtime.ConnectionString)
+            .GetTableClient(AzuriteSubstrate.BenchEventTableName);
+        await preloadTable.CreateIfNotExistsAsync();
+        var partitionKey = Guid.NewGuid().ToString("N");
+        var rowKey = Guid.NewGuid().ToString("N");
+        await preloadTable.AddEntityAsync(new TableEntity(partitionKey, rowKey));
+
+        ActiveSubstrateRuntime.Current = runtime;
+        try
+        {
+            var builder = new TestClusterBuilder();
+            builder.AddSiloBuilderConfigurator<ActiveSubstrateRuntime.SiloConfigurator>();
+            builder.AddClientBuilderConfigurator<ActiveSubstrateRuntime.ClientConfigurator>();
+            var cluster = builder.Build();
+            await cluster.DeployAsync();
+            try
+            {
+                var repository = cluster.Client.ServiceProvider
+                    .GetRequiredService<IEdictTableRepository<BenchEventRow>>();
+
+                var row = await repository.GetAsync(partitionKey, rowKey);
+
+                Assert.NotNull(row);
+            }
+            finally
+            {
+                await cluster.DisposeAsync();
+            }
+        }
+        finally
+        {
+            ActiveSubstrateRuntime.Current = null;
+        }
+    }
+
     [Fact]
     public async Task Runtime_SiloCallback_ResolvesTableRepositoryThatReadsBackPreloadedRow()
     {

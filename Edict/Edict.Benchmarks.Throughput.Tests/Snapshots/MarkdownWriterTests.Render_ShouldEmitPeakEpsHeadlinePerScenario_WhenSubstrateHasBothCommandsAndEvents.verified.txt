@@ -1,0 +1,22 @@
+# Edict throughput
+
+Machine: Linux 5.15 / 16 cores
+.NET version: 10.0.8
+Run date: 2026-05-26
+Git SHA: 64fd1a7
+
+**azure: 24000 commands/sec @ N=64**
+**azure: 4200 events/sec @ N=16**
+
+| Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| azure | Commands | 1 | 1200 | 8.00 | 14.00 | 20.00 |
+| azure | Commands | 4 | 4500 | 6.50 | 11.00 | 16.00 |
+| azure | Commands | 16 | 16000 | 5.00 | 9.50 | 13.00 |
+| azure | Commands | 64 | 24000 | 5.20 | 10.00 | 18.00 |
+| azure | Commands | 256 | 18000 | 8.00 | 22.00 | 45.00 |
+| azure | Events | 1 | 400 | 14.00 | 22.00 | 35.00 |
+| azure | Events | 4 | 1600 | 12.00 | 20.00 | 32.00 |
+| azure | Events | 16 | 4200 | 13.00 | 24.00 | 40.00 |
+| azure | Events | 64 | 3800 | 22.00 | 45.00 | 80.00 |
+| azure | Events | 256 | 2900 | 50.00 | 110.00 | 220.00 |

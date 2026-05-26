@@ -4,6 +4,7 @@ using Azure.Storage.Queues;
 
 using Edict.Azure;
 using Edict.Azure.TableStorage;
+using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -30,6 +31,7 @@ public sealed class AzuriteSubstrate : ISubstrate
     public const string GrainStateContainerName = "edict-state";
     public const string ClaimCheckBlobContainerName = "edict-claim-check";
     public const string DeadLetterTableName = "edictdeadletter";
+    public const string BenchEventTableName = BenchProjectionBuilder.TableNameLiteral;
 
     public string Name => "azure";
 
@@ -108,6 +110,9 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
             client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
                 _ => new AzureTableRepository<EdictDeadLetterEntry>(
                     tableClient, AzuriteSubstrate.DeadLetterTableName));
+            client.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(
+                _ => new AzureTableRepository<BenchEventRow>(
+                    tableClient, AzuriteSubstrate.BenchEventTableName));
         };
     }
 

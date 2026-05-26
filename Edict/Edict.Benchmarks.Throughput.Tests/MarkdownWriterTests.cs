@@ -58,15 +58,46 @@ public sealed class MarkdownWriterTests
         return Verify(MarkdownWriter.Render(results, FixedRunDate, FixedMetadata));
     }
 
+    [Fact]
+    public Task Render_ShouldEmitPeakEpsHeadlinePerScenario_WhenSubstrateHasBothCommandsAndEvents()
+    {
+        // One substrate, both scenarios swept. The headline must split so a
+        // reader sees one quotable "peak EPS @ peak-N" per scenario — the
+        // commands write-path number and the full-pipeline number live on
+        // separate scales and should not be collapsed.
+        var results = new[]
+        {
+            // azure Commands — peak at N=64
+            SweepPoint("azure", "Commands", 1, 1_200, 8.0, 14.0, 20.0),
+            SweepPoint("azure", "Commands", 4, 4_500, 6.5, 11.0, 16.0),
+            SweepPoint("azure", "Commands", 16, 16_000, 5.0, 9.5, 13.0),
+            SweepPoint("azure", "Commands", 64, 24_000, 5.2, 10.0, 18.0),
+            SweepPoint("azure", "Commands", 256, 18_000, 8.0, 22.0, 45.0),
+            // azure Events — peak at N=16 (events scale differently from commands)
+            SweepPoint("azure", "Events", 1, 400, 14.0, 22.0, 35.0),
+            SweepPoint("azure", "Events", 4, 1_600, 12.0, 20.0, 32.0),
+            SweepPoint("azure", "Events", 16, 4_200, 13.0, 24.0, 40.0),
+            SweepPoint("azure", "Events", 64, 3_800, 22.0, 45.0, 80.0),
+            SweepPoint("azure", "Events", 256, 2_900, 50.0, 110.0, 220.0),
+        };
+
+        return Verify(MarkdownWriter.Render(results, FixedRunDate, FixedMetadata));
+    }
+
     static ThroughputResults SweepPoint(
         string substrate, int n, double eps,
+        double p50Ms, double p95Ms, double p99Ms) =>
+        SweepPoint(substrate, "Commands", n, eps, p50Ms, p95Ms, p99Ms);
+
+    static ThroughputResults SweepPoint(
+        string substrate, string scenario, int n, double eps,
         double p50Ms, double p95Ms, double p99Ms)
     {
         var window = TimeSpan.FromSeconds(30);
         var completed = (long)(eps * window.TotalSeconds);
         return new ThroughputResults(
             Substrate: substrate,
-            Scenario: "Commands",
+            Scenario: scenario,
             Parallelism: n,
             CompletedCount: completed,
             ElapsedMeasurement: window,

@@ -43,14 +43,24 @@ var runner = new ThroughputRunner();
 
 foreach (var substrate in substrates)
 {
-    Console.WriteLine($"Sweeping {substrate.Name}: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var perSubstrate = await runner.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
-    combined.AddRange(perSubstrate);
-
-    foreach (var point in perSubstrate)
+    Console.WriteLine($"Sweeping {substrate.Name} — Commands: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    var commandsResults = await runner.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
+    foreach (var point in commandsResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
+
+    Console.WriteLine($"Sweeping {substrate.Name} — Events: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    var eventsResults = await runner.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
+    foreach (var point in eventsResults)
+    {
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
+    }
+
+    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + eventsResults.Count);
+    perSubstrate.AddRange(commandsResults);
+    perSubstrate.AddRange(eventsResults);
+    combined.AddRange(perSubstrate);
 
     var csvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}.csv");
     await CsvWriter.WriteAsync(csvPath, perSubstrate);
