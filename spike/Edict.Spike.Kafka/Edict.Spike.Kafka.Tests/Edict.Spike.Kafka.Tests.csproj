@@ -13,13 +13,14 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
         <PackageReference Include="xunit" Version="2.9.2" />
         <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-        <PackageReference Include="Aspire.Hosting.Testing" Version="13.3.1" />
-        <PackageReference Include="Microsoft.Orleans.Client" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Server" Version="10.1.0" />
+        <PackageReference Include="Testcontainers.Kafka" Version="3.10.0" />
         <PackageReference Include="Confluent.Kafka" Version="2.13.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Edict.Spike.Kafka.AppHost\Edict.Spike.Kafka.AppHost.csproj" />
+        <ProjectReference Include="..\Edict.Spike.Kafka.Silo\Edict.Spike.Kafka.Silo.csproj" />
         <ProjectReference Include="..\Edict.Spike.Kafka.Adapter\Edict.Spike.Kafka.Adapter.csproj" />
         <ProjectReference Include="..\Edict.Spike.Kafka.Contracts\Edict.Spike.Kafka.Contracts.csproj" />
     </ItemGroup>

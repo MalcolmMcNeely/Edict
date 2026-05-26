@@ -27,15 +27,23 @@ The original spike scope ("validate `OrleansContrib/Orleans.Streams.Kafka`") was
 
 | Verdict | Observation | Evidence |
 | --- | --- | --- |
-| TBD | — | — |
+| **GO** | `MessagesDeliveredAsync` for offset 0 fired at ordinal 23 (stamp `16:49:51.991`) — strictly after `HandleAsyncExit` for the same event at ordinal 20 (stamp `16:49:51.957`), a ~34 ms gap. Orleans' pulling agent commits in its own loop *after* dispatching the cached batch to consumers and observing handler completion. The Kafka offset is committed only after `HandleAsyncExit` returns, so a silo crash mid-handler leaves the offset un-committed and Kafka redelivers on restart — exactly the at-least-once shape ADR-0002 requires. | `spike/Edict.Spike.Kafka/Edict.Spike.Kafka.Tests/PreCriterionTests.cs::MessagesDeliveredAsync_fires_after_HandleAsync_returns`; probe snapshot captured by `SpikePreCriterionLog` and read via `ISpikeProbeGrain.SnapshotAsync()` |
 
-How we'll measure it: `SpikePreCriterionLog` records `(timestamp, ordinal, kind)` triples for `MessagesDeliveredAsync`, `HandleAsyncEnter`, and `HandleAsyncExit` per event. A test reads the log via `ISpikeProbeGrain.SnapshotAsync()` and asserts ordering.
+How we measured it: `SpikePreCriterionLog` records `(timestamp, ordinal, kind)` triples for `MessagesDeliveredAsync`, `HandleAsyncEnter`, and `HandleAsyncExit` per event. The test publishes a single event via `IPublisherGrain` (silo-resident), waits for the recorder grain to observe it, reads the probe log, and asserts `MessagesDeliveredAsync.Ordinal > HandleAsyncExit.Ordinal` for the same event.
+
+Probe snapshot extract (matching the event id `0e72bf51-2e6b-4c57-a9d4-eed1131cf9a9`):
+
+```
+19  16:49:51.955  HandleAsyncEnter         key=42165ee2-216a-4a74-b127-832ecb934779  eid=0e72bf51-2e6b-4c57-a9d4-eed1131cf9a9
+20  16:49:51.957  HandleAsyncExit          key=42165ee2-216a-4a74-b127-832ecb934779  eid=0e72bf51-2e6b-4c57-a9d4-eed1131cf9a9
+23  16:49:51.991  MessagesDeliveredAsync   key=42165ee2216a4a74b127832ecb934779       part=3 off=0
+```
 
 ## Criterion 1 — round-trip a single event
 
 | Verdict | Observation | Evidence |
 | --- | --- | --- |
-| TBD | — | — |
+| **PASS** | A single `OrderPlaced` published through the spike provider was produced to Kafka by the custom `IQueueAdapter`, pulled by the partition-3 `IQueueAdapterReceiver`, dispatched to the implicit-subscription `OrderHandlerGrain`, and observed by the `RecorderGrain`. Round-trip wall-clock from `QueueMessageBatchEnter` to `HandleAsyncExit` ≈ tens of milliseconds. | Same test as the pre-criterion — the event making it from publish to recorder is the round-trip evidence. |
 
 ## Criterion 2 — implicit subscription resolves without `PubSubStore`
 

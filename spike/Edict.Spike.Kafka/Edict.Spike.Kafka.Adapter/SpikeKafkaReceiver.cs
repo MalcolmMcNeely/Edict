@@ -39,7 +39,7 @@ public sealed class SpikeKafkaReceiver : IQueueAdapterReceiver
             BootstrapServers = _options.BootstrapServers,
             GroupId = _options.ConsumerGroup,
             EnableAutoCommit = false,
-            AutoOffsetReset = AutoOffsetReset.Latest,
+            AutoOffsetReset = _options.AutoOffsetReset,
             EnablePartitionEof = false,
             ClientId = $"{_providerName}-r-p{_partition}",
             AllowAutoCreateTopics = false,
