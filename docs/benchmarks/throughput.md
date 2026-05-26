@@ -3,7 +3,7 @@
 Machine: Microsoft Windows 10.0.22631 / 20 cores
 .NET version: 10.0.8
 Run date: 2026-05-26
-Git SHA: 3f14fa8
+Git SHA: 0e754ff
 
 ## Setup
 
@@ -24,24 +24,24 @@ This is the framework on **Azurite** — a Node-based emulator running in a sing
 
 Treat this table as **what the registered defaults give you on a laptop with the emulator**, not **what Edict can do**. A real Azure Storage account, a tuned poll period, and a multi-silo deployment all move these numbers up independently of any framework change.
 
-**azure: 607 commands/sec @ N=16**
-**azure: 85 raiseonly/sec @ N=64**
-**azure: 64 events/sec @ N=64**
+**azure: 575 commands/sec @ N=64**
+**azure: 74 raiseonly/sec @ N=16**
+**azure: 60 events/sec @ N=256**
 
 | Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| azure | Commands | 1 | 304 | 2.99 | 4.87 | 6.09 |
-| azure | Commands | 4 | 515 | 7.70 | 11.51 | 14.88 |
-| azure | Commands | 16 | 607 | 25.21 | 36.40 | 52.13 |
-| azure | Commands | 64 | 539 | 116.34 | 148.94 | 161.31 |
-| azure | Commands | 256 | 516 | 493.42 | 530.33 | 541.55 |
-| azure | RaiseOnly | 1 | 39 | 24.53 | 35.07 | 43.95 |
-| azure | RaiseOnly | 4 | 79 | 48.04 | 78.90 | 105.71 |
-| azure | RaiseOnly | 16 | 83 | 186.33 | 248.20 | 280.95 |
-| azure | RaiseOnly | 64 | 85 | 741.87 | 818.11 | 850.80 |
-| azure | RaiseOnly | 256 | 84 | 2988.44 | 3362.96 | 3428.52 |
-| azure | Events | 1 | 8 | 123.66 | 186.32 | 201.54 |
-| azure | Events | 4 | 29 | 138.09 | 195.47 | 216.61 |
-| azure | Events | 16 | 59 | 266.90 | 360.79 | 402.96 |
-| azure | Events | 64 | 64 | 991.32 | 1137.64 | 1207.28 |
-| azure | Events | 256 | 62 | 4179.29 | 4496.81 | 6297.43 |
+| azure | Commands | 1 | 228 | 3.44 | 8.06 | 9.74 |
+| azure | Commands | 4 | 477 | 8.40 | 13.71 | 16.40 |
+| azure | Commands | 16 | 574 | 27.25 | 37.03 | 43.43 |
+| azure | Commands | 64 | 575 | 111.15 | 128.90 | 138.56 |
+| azure | Commands | 256 | 529 | 475.23 | 538.44 | 604.37 |
+| azure | RaiseOnly | 1 | 38 | 26.65 | 35.46 | 43.28 |
+| azure | RaiseOnly | 4 | 69 | 56.05 | 75.80 | 98.97 |
+| azure | RaiseOnly | 16 | 74 | 209.72 | 268.90 | 308.60 |
+| azure | RaiseOnly | 64 | 73 | 850.66 | 989.83 | 1041.47 |
+| azure | RaiseOnly | 256 | 70 | 3579.32 | 4213.73 | 5056.99 |
+| azure | Events | 1 | 10 | 94.07 | 110.98 | 120.98 |
+| azure | Events | 4 | 37 | 106.06 | 152.61 | 177.77 |
+| azure | Events | 16 | 57 | 274.37 | 368.80 | 433.56 |
+| azure | Events | 64 | 59 | 1075.49 | 1206.25 | 1272.98 |
+| azure | Events | 256 | 60 | 4340.23 | 4649.69 | 6544.74 |
