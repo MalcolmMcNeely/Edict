@@ -4,38 +4,36 @@ using Edict.Contracts.Persistence;
 using Edict.Core.Commands;
 using Edict.Core.Sagas;
 
-using MessagePack;
-
 using Orleans;
 using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Azure.Tests.Sagas;
+namespace Edict.Tests.Conformance.Sagas;
 
-[EdictStream("AzureSagaWorkflow")]
-public sealed partial record AzureSagaTriggerEvent(Guid WorkflowId) : EdictEvent
+[EdictStream("ConformanceSagaWorkflow")]
+public sealed partial record SagaTriggerEvent(Guid WorkflowId) : EdictEvent
 {
     [EdictRouteKey]
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
-public sealed partial record AzureSagaTrackerCommand(Guid WorkflowId) : EdictCommand
+public sealed partial record SagaTrackerCommand(Guid WorkflowId) : EdictCommand
 {
     [EdictRouteKey]
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Sagas.AzureWorkflowProgress")]
-public sealed class AzureWorkflowProgress : IEdictPersistedState
+[Alias("Edict.Tests.Conformance.Sagas.WorkflowProgress")]
+public sealed class WorkflowProgress : IEdictPersistedState
 {
     [Id(0)]
     public int Handled { get; set; }
 }
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Sagas.AzureTrackerState")]
-public sealed class AzureTrackerState : IEdictPersistedState
+[Alias("Edict.Tests.Conformance.Sagas.TrackerState")]
+public sealed class TrackerState : IEdictPersistedState
 {
     [Id(0)]
     public int Received { get; set; }
@@ -46,32 +44,32 @@ public sealed class AzureTrackerState : IEdictPersistedState
 
 // Hand-written probes (Orleans codegen sees these, unlike the Edict-generated
 // grain interface).
-public interface IAzureSagaProgressProbe : IGrainWithGuidKey
+public interface ISagaProgressProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledAsync();
 }
 
-public interface IAzureSagaTrackerProbe : IGrainWithGuidKey
+public interface ISagaTrackerProbe : IGrainWithGuidKey
 {
     Task<int> GetReceivedAsync();
     Task<Guid> GetLastWorkflowIdAsync();
 }
 
-public partial class AzureWorkflowSaga : EdictSaga<AzureWorkflowProgress>, IAzureSagaProgressProbe
+public partial class WorkflowSaga : EdictSaga<WorkflowProgress>, ISagaProgressProbe
 {
-    public Task Handle(AzureSagaTriggerEvent evt)
+    public Task Handle(SagaTriggerEvent evt)
     {
         Progress.Handled++;
-        Dispatch(new AzureSagaTrackerCommand(evt.WorkflowId));
+        Dispatch(new SagaTrackerCommand(evt.WorkflowId));
         return Task.CompletedTask;
     }
 
     public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
 }
 
-public partial class AzureSagaTrackerCommandHandler : EdictCommandHandler<AzureTrackerState>, IAzureSagaTrackerProbe
+public partial class SagaTrackerCommandHandler : EdictCommandHandler<TrackerState>, ISagaTrackerProbe
 {
-    public Task<EdictCommandResult> Handle(AzureSagaTrackerCommand command)
+    public Task<EdictCommandResult> Handle(SagaTrackerCommand command)
     {
         State.Received++;
         State.LastWorkflowId = command.WorkflowId;
@@ -85,25 +83,25 @@ public partial class AzureSagaTrackerCommandHandler : EdictCommandHandler<AzureT
 
 // Pushes an event directly onto the saga's stream so the test can inject
 // a SagaTriggerEvent with a known EventId without going through a command.
-public interface IAzureSagaEventPublisher : IGrainWithGuidKey
+public interface ISagaEventPublisher : IGrainWithGuidKey
 {
     Task PublishAsync(EdictEvent evt);
 }
 
-public sealed class AzureSagaEventPublisher : Grain, IAzureSagaEventPublisher
+public sealed class SagaEventPublisher : Grain, ISagaEventPublisher
 {
     public Task PublishAsync(EdictEvent evt)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureSagaWorkflow", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("ConformanceSagaWorkflow", this.GetPrimaryKey()));
         return stream.OnNextAsync(evt);
     }
 }
 
-static class AzureSagaWaiters
+static class SagaWaiters
 {
     public static async Task WaitForReceivedAsync(
-        IAzureSagaTrackerProbe tracker, int expectedCount = 1, int timeoutSeconds = 15)
+        ISagaTrackerProbe tracker, int expectedCount = 1, int timeoutSeconds = 15)
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTimeOffset.UtcNow < deadline)
