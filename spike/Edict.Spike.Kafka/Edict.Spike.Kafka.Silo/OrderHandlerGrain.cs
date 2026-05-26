@@ -33,6 +33,12 @@ public sealed class OrderHandlerGrain : Grain, IGrainWithGuidKey, IStreamSubscri
 
         try
         {
+            if (SpikeFaultInjection.ShouldHang(evt.EventId))
+            {
+                SpikeFaultInjection.SignalEntered(evt.EventId);
+                await SpikeFaultInjection.HangForever();
+            }
+
             var recorder = _grainFactory.GetGrain<IRecorderGrain>("orders");
             await recorder.RecordAsync(evt);
         }

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Providers;
+using Orleans.Streams;
 
 namespace Edict.Spike.Kafka.Adapter;
 
@@ -14,7 +15,8 @@ public static class SpikeKafkaSiloBuilderExtensions
     public static ISiloBuilder AddSpikeKafkaStreams(
         this ISiloBuilder silo,
         string providerName,
-        Action<SpikeKafkaStreamOptions> configure)
+        Action<SpikeKafkaStreamOptions> configure,
+        StreamPubSubType pubSubType = StreamPubSubType.ExplicitGrainBasedAndImplicit)
     {
         silo.Services.TryAddSingleton<SpikePreCriterionLog>();
         silo.Services.AddHostedService<SpikeKafkaTopicProvisioner>();
@@ -29,6 +31,7 @@ public static class SpikeKafkaSiloBuilderExtensions
                 o.GetQueueMsgsTimerPeriod = TimeSpan.FromMilliseconds(100);
             }));
             builder.Configure<SimpleQueueCacheOptions>(ob => ob.Configure(o => o.CacheSize = 1024));
+            builder.Configure<StreamPubSubOptions>(ob => ob.Configure(o => o.PubSubType = pubSubType));
         });
 
         return silo;

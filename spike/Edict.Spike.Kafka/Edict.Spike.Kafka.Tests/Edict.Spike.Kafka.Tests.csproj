@@ -20,6 +20,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Update="xunit.runner.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\Edict.Spike.Kafka.Silo\Edict.Spike.Kafka.Silo.csproj" />
         <ProjectReference Include="..\Edict.Spike.Kafka.Adapter\Edict.Spike.Kafka.Adapter.csproj" />
         <ProjectReference Include="..\Edict.Spike.Kafka.Contracts\Edict.Spike.Kafka.Contracts.csproj" />
