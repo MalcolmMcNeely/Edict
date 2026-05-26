@@ -10,26 +10,16 @@
     <ItemGroup>
         <PackageReference Include="FluentValidation" Version="11.11.0" />
         <PackageReference Include="MessagePack" Version="3.1.4" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
-        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
-        <PackageReference Include="Testcontainers.Azurite" Version="3.10.0" />
         <PackageReference Include="Verify.Xunit" Version="31.12.5" />
         <PackageReference Include="xunit" Version="2.9.3" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
-        <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>

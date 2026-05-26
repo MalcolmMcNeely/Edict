@@ -13,6 +13,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance;
 
 using FluentValidation;
 
@@ -23,7 +24,7 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests;
 
-public sealed class AzureClusterFixture : IAsyncLifetime
+public sealed class AzureClusterFixture : ConformanceFixture
 {
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
@@ -33,7 +34,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public IEdictSender Sender =>
+    public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
     public TableServiceClient TableServiceClient => _tableServiceClient;
@@ -52,7 +53,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
 
     public AzuriteResourceNames NewResourceNames() => AzuriteResourceNames.Generate("acf");
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
@@ -80,7 +81,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         if (Cluster is not null)
         {
@@ -92,6 +93,7 @@ public sealed class AzureClusterFixture : IAsyncLifetime
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(AzureOrderCommandHandler).Assembly)
+            .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
@@ -111,6 +113,8 @@ public sealed class AzureClusterFixture : IAsyncLifetime
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
             siloBuilder.Services.AddSingleton<IValidator<AzureValidateSkuCommand>, AzureSkuRequiredValidator>();
             siloBuilder.Services.AddSingleton<IValidator<AzureStateCheckCommand>, AzureGrainStateRequiredValidator>();
+            siloBuilder.Services.AddSingleton<IValidator<ValidateSkuCommand>, SkuRequiredValidator>();
+            siloBuilder.Services.AddSingleton<IValidator<StateCheckCommand>, GrainStateRequiredValidator>();
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));

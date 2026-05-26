@@ -7,6 +7,8 @@ using Edict.Telemetry;
 
 using Sample.Contracts.Orders.Commands;
 
+using ConformanceFixture = Edict.Tests.Conformance.ConformanceFixture;
+
 using Xunit;
 
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
@@ -22,6 +24,7 @@ public class BoundaryTests
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
             typeof(EdictDiagnostics).Assembly,
+            typeof(ConformanceFixture).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -93,6 +96,21 @@ public class BoundaryTests
             .WithoutRequiringPositiveResults();
 
         rule.Check(Architecture);
+    }
+
+    // Conformance owns substrate-agnostic scenarios; pulling any provider SDK
+    // (Azure.*, Confluent.Kafka, Npgsql) into it would couple the harness to
+    // one substrate and defeat the inheritance pattern.
+    [Fact]
+    public void EdictTestsConformance_ShouldNotDependOnAnyProviderSdkPackages()
+    {
+        var conformanceAssembly = typeof(ConformanceFixture).Assembly;
+        var referenced = conformanceAssembly.GetReferencedAssemblies();
+        Assert.DoesNotContain(referenced,
+            a => a.Name is not null
+                 && (a.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase)
+                     || a.Name.StartsWith("Confluent.Kafka", StringComparison.OrdinalIgnoreCase)
+                     || a.Name.StartsWith("Npgsql", StringComparison.OrdinalIgnoreCase)));
     }
 
     // Azure implementations live in Edict.Azure, not Edict.Core — so taking

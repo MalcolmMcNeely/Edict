@@ -18,6 +18,7 @@
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
     <Project Path="Edict.Telemetry.Tests/Edict.Telemetry.Tests.csproj" />
     <Project Path="Edict.Azure.Tests/Edict.Azure.Tests.csproj" />
+    <Project Path="Edict.Tests.Conformance/Edict.Tests.Conformance.csproj" />
     <Project Path="Edict.Generators.Tests/Edict.Generators.Tests.csproj" />
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
     <Project Path="Edict.Testing.Tests/Edict.Testing.Tests.csproj" />
