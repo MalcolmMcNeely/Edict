@@ -9,8 +9,8 @@ namespace Edict.Tests.Conformance.Outbox;
 
 /// <summary>
 /// End-to-end Outbox engine happy path against the bound substrate:
-/// a stateful command commits {State, Outbox} in one write, the inline FIFO
-/// drain publishes via the real <see cref="Core.Outbox.PublishEventExecutor"/>
+/// a stateful command commits {State, Outbox} in one write, the inline drain
+/// publishes via the real <see cref="Core.Outbox.PublishEventExecutor"/>
 /// over the substrate's stream provider, and steady state holds zero pending
 /// plus no Reminder.
 /// </summary>
@@ -40,17 +40,20 @@ public abstract class OutboxHappyPathScenarios<TFixture>
     }
 
     [Fact]
-    public async Task InlineDrain_ShouldPublishMultipleRaisedEventsInFifoOrder()
+    public async Task InlineDrain_ShouldPublishEveryRaisedEventInABatch()
     {
+        // Per-aggregate causal order is not preserved by the at-least-once
+        // stack — consumers must be reorder-tolerant — so the happy-path
+        // proves "no events are lost" via set-equality on NewCount, not
+        // list-equality.
         var counterId = Guid.NewGuid();
 
         await _fixture.Sender.Send(new BatchIncrementCounterCommand(counterId, Times: 5));
 
         var events = await CounterEventWaiters.WaitForEventsAsync(
             _fixture.GrainFactory, counterId, expectedCount: 5);
-        Assert.Equal(
-            [1, 2, 3, 4, 5],
-            events.OfType<CounterIncrementedEvent>().Select(e => e.NewCount));
+        var observedCounts = events.OfType<CounterIncrementedEvent>().Select(e => e.NewCount).ToHashSet();
+        Assert.Equal(new HashSet<int> { 1, 2, 3, 4, 5 }, observedCounts);
     }
 
     [Fact]
