@@ -1,34 +1,18 @@
+using Edict.Tests.Conformance.Idempotency;
+
 namespace Edict.Azure.Tests.Idempotency;
 
 /// <summary>
-/// <c>EdictIdempotencyBase.WindowSize</c> reads its silo-wide
-/// default from <c>EdictOptions.IdempotencyWindowSize</c>, while a per-grain
-/// override still wins — a high-throughput singleton consumer can pick its
-/// own window without changing the operator-picked default for everyone else.
+/// Azurite/Testcontainers binding for
+/// <see cref="IdempotencyWindowSizeScenarios{TFixture}"/>. Inherits the
+/// scenarios from <c>Edict.Tests.Conformance</c>; the two [Fact]s run unmodified
+/// against the per-test <see cref="IdempotencyWindowSizeClusterFixture"/>.
 /// </summary>
 [Collection(IdempotencyWindowSizeClusterCollection.Name)]
-public sealed class IdempotencyWindowSizeTests(IdempotencyWindowSizeClusterFixture fixture)
+public sealed class IdempotencyWindowSizeTests
+    : IdempotencyWindowSizeScenarios<IdempotencyWindowSizeClusterFixture>
 {
-    [Fact]
-    public async Task WindowSize_ShouldComeFromConfiguredOptions_WhenSubclassDoesNotOverride()
+    public IdempotencyWindowSizeTests(IdempotencyWindowSizeClusterFixture fixture) : base(fixture)
     {
-        var probe = fixture.Cluster.GrainFactory
-            .GetGrain<IIdempotencyWindowSizeDefaultProbe>(Guid.NewGuid());
-
-        var effectiveWindow = await probe.GetEffectiveWindowSizeAsync();
-
-        Assert.Equal(IdempotencyWindowSizeClusterFixture.ConfiguredWindowSize, effectiveWindow);
-    }
-
-    [Fact]
-    public async Task WindowSize_ShouldHonourPerGrainOverride_OverConfiguredOptions()
-    {
-        var probe = fixture.Cluster.GrainFactory
-            .GetGrain<IIdempotencyWindowSizeOverrideProbe>(Guid.NewGuid());
-
-        var effectiveWindow = await probe.GetEffectiveWindowSizeAsync();
-
-        Assert.NotEqual(IdempotencyWindowSizeClusterFixture.ConfiguredWindowSize, effectiveWindow);
-        Assert.Equal(7, effectiveWindow);
     }
 }

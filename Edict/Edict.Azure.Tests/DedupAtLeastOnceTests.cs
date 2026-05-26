@@ -1,3 +1,5 @@
+using Edict.Tests.Conformance.Idempotency;
+
 namespace Edict.Azure.Tests;
 
 [Collection(AzureClusterCollection.Name)]
@@ -7,10 +9,10 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     public async Task HandleAsync_ShouldDispatch_WhenEventDeliveredViaAzureQueue()
     {
         var grainId = Guid.NewGuid();
-        var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
+        var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
-        var evt = new AzureDedupTestEvent(grainId, 1) with
+        var evt = new DedupTestEvent(grainId, 1) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
@@ -26,16 +28,16 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     public async Task HandleAsync_ShouldSuppressDuplicate_WhenEventIdDuplicatedViaAzureQueue()
     {
         var grainId = Guid.NewGuid();
-        var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
+        var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var sharedEventId = Guid.NewGuid();
-        var first = new AzureDedupTestEvent(grainId, 1) with
+        var first = new DedupTestEvent(grainId, 1) with
         {
             EventId = sharedEventId,
             OccurredAt = DateTimeOffset.UtcNow,
         };
-        var duplicate = new AzureDedupTestEvent(grainId, 2) with
+        var duplicate = new DedupTestEvent(grainId, 2) with
         {
             EventId = sharedEventId,
             OccurredAt = DateTimeOffset.UtcNow,
@@ -54,11 +56,11 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     public async Task HandleAsync_ShouldCommitEventIdOnlyAfterDispatchSucceeds()
     {
         var grainId = Guid.NewGuid();
-        var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
+        var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
-        var evt = new AzureDedupTestEvent(grainId, 1) with
+        var evt = new DedupTestEvent(grainId, 1) with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
@@ -80,11 +82,11 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
     public async Task HandleAsync_ShouldHandleRedeliveryOnce_WhenQueueVisibilityTimeoutExpires()
     {
         var grainId = Guid.NewGuid();
-        var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupPublisherGrain>(grainId);
-        var grain = fixture.Cluster.GrainFactory.GetGrain<IAzureDedupTestConsumer>(grainId);
+        var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
+        var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
-        var evt = new AzureDedupTestEvent(grainId, 1) with
+        var evt = new DedupTestEvent(grainId, 1) with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
@@ -101,8 +103,8 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         Assert.Equal(eventId, handled[0]);
     }
 
-    private static async Task<IReadOnlyList<Guid>> WaitForHandledAsync(
-        IAzureDedupTestConsumer grain,
+    static async Task<IReadOnlyList<Guid>> WaitForHandledAsync(
+        IDedupTestConsumer grain,
         int expectedCount = 1,
         int timeoutSeconds = 15)
     {
@@ -111,7 +113,9 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         {
             var ids = await grain.GetHandledEventIdsAsync();
             if (ids.Count >= expectedCount)
+            {
                 return ids;
+            }
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
         return await grain.GetHandledEventIdsAsync();

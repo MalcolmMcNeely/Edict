@@ -3,7 +3,7 @@ using Edict.Core.Idempotency;
 
 using Orleans;
 
-namespace Edict.Azure.Tests.Idempotency;
+namespace Edict.Tests.Conformance.Idempotency;
 
 public interface IIdempotencyWindowSizeDefaultProbe : IGrainWithGuidKey
 {
