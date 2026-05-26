@@ -1,37 +1,18 @@
-using Edict.Contracts.Events;
+using Edict.Tests.Conformance.EventHandler;
 
 namespace Edict.Azure.Tests.EventHandler;
 
 /// <summary>
-/// Azurite/Testcontainers conformance for the <c>EdictEventHandler</c>
-/// stream-callback path. Publishing a handled event onto the real
-/// Azure Queue stream provider lands one invocation of the consumer's
-/// <c>Handle</c> — observably, via the handler probe — without any
-/// in-memory shortcut. Lifted from <c>EdictEventHandlerStreamCallbackTests</c>
-/// in Core.Tests so the proof exercises the substrate the sample silo wires
-/// in production.
+/// Azurite/Testcontainers binding for
+/// <see cref="EventHandlerHandlesPublishedEventScenarios{TFixture}"/>. Inherits
+/// the scenario from <c>Edict.Tests.Conformance</c>; the [Fact] runs
+/// unmodified against the shared <see cref="AzureClusterFixture"/>.
 /// </summary>
 [Collection(AzureClusterCollection.Name)]
-public sealed class EventHandlerHandlesPublishedEventTests(AzureClusterFixture fixture)
+public sealed class EventHandlerHandlesPublishedEventTests
+    : EventHandlerHandlesPublishedEventScenarios<AzureClusterFixture>
 {
-    [Fact]
-    public async Task EventHandler_ShouldRunHandleExactlyOnce_WhenAzureQueueDeliversHandledEvent()
+    public EventHandlerHandlesPublishedEventTests(AzureClusterFixture fixture) : base(fixture)
     {
-        var customerId = Guid.NewGuid();
-        var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureEmailEventPublisher>(customerId);
-        var handler = fixture.Cluster.GrainFactory.GetGrain<IAzureEmailHandlerProbe>(customerId);
-
-        var eventId = Guid.NewGuid();
-        var evt = new AzureCustomerNotifiedEvent(customerId, "welcome") with
-        {
-            EventId = eventId,
-            OccurredAt = DateTimeOffset.UtcNow,
-        };
-
-        await publisher.PublishAsync(evt);
-
-        var handled = await EventHandlerWaiters.WaitForHandledAsync(handler);
-        Assert.Single(handled);
-        Assert.Equal(eventId, handled[0]);
     }
 }

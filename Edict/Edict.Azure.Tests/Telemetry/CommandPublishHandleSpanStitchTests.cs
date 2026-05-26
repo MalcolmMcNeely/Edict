@@ -1,7 +1,9 @@
 using System.Diagnostics;
 
-using Edict.Azure.Tests.EventHandler;
 using Edict.Telemetry;
+using Edict.Tests.Conformance.EventHandler;
+
+using Orleans;
 
 namespace Edict.Azure.Tests.Telemetry;
 
@@ -21,10 +23,14 @@ public sealed class CommandPublishHandleSpanStitchTests(AzureClusterFixture fixt
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new AzureNotifyCustomerCommand(customerId, "welcome"));
+        await fixture.Sender.Send(new NotifyCustomerCommand(customerId, "welcome"));
 
-        var handler = fixture.Cluster.GrainFactory.GetGrain<IAzureEmailHandlerProbe>(customerId);
-        await EventHandlerWaiters.WaitForHandledAsync(handler);
+        var handler = fixture.Cluster.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
+        while (DateTimeOffset.UtcNow < deadline && await handler.GetHandledCountAsync() == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+        }
 
         // The probe's count increments inside Handle, but ActivityStopped
         // only fires after the executor's using-scope unwinds.
@@ -36,13 +42,13 @@ public sealed class CommandPublishHandleSpanStitchTests(AzureClusterFixture fixt
         lock (stopped)
         {
             commandSpan = stopped.First(a =>
-                a.OperationName == "edict.command AzureNotifyCustomerCommand"
+                a.OperationName == "edict.command NotifyCustomerCommand"
                 && customerId.Equals(a.GetTagItem("edict.command.route_key")));
             publishSpan = stopped.First(a =>
-                a.OperationName == "edict.event.publish AzureCustomerNotifiedEvent"
+                a.OperationName == "edict.event.publish CustomerNotifiedEvent"
                 && a.ParentSpanId == commandSpan.SpanId);
             handleSpan = stopped.First(a =>
-                a.OperationName == "edict.event.handle AzureCustomerNotifiedEvent"
+                a.OperationName == "edict.event.handle CustomerNotifiedEvent"
                 && a.ParentSpanId == publishSpan.SpanId);
         }
 
@@ -50,3 +56,4 @@ public sealed class CommandPublishHandleSpanStitchTests(AzureClusterFixture fixt
         Assert.Equal(commandSpan.TraceId, handleSpan.TraceId);
     }
 }
+

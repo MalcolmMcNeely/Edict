@@ -4,12 +4,13 @@ using Edict.Core.Commands;
 using Edict.Core.EventHandler;
 
 using Orleans;
+using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Azure.Tests.EventHandler;
+namespace Edict.Tests.Conformance.EventHandler;
 
-[EdictStream("AzureEmailEvents")]
-public sealed partial record AzureCustomerNotifiedEvent(Guid CustomerId, string Reason) : EdictEvent
+[EdictStream("ConformanceEmailEvents")]
+public sealed partial record CustomerNotifiedEvent(Guid CustomerId, string Reason) : EdictEvent
 {
     [EdictRouteKey]
     public Guid CustomerId { get; init; } = CustomerId;
@@ -20,8 +21,8 @@ public sealed partial record AzureCustomerNotifiedEvent(Guid CustomerId, string 
 // No Handle overload exists for this event — HandlesType returns false, so
 // the stream callback must be a pure no-op (no ring slot, no InvokeHandler
 // entry staged) when the implicit subscription delivers it.
-[EdictStream("AzureUnhandledEvents")]
-public sealed partial record AzureUnhandledEvent(Guid AggregateId, int Sequence) : EdictEvent
+[EdictStream("ConformanceUnhandledEvents")]
+public sealed partial record UnhandledEmailEvent(Guid AggregateId, int Sequence) : EdictEvent
 {
     [EdictRouteKey]
     public Guid AggregateId { get; init; } = AggregateId;
@@ -32,7 +33,7 @@ public sealed partial record AzureUnhandledEvent(Guid AggregateId, int Sequence)
 // Drives the framework publish path so the span-stitch test observes a real
 // edict.event.publish span — a bare stream.OnNextAsync from the publisher
 // grain bypasses the outbox executor and emits no publish span.
-public sealed partial record AzureNotifyCustomerCommand(Guid CustomerId, string Reason) : EdictCommand
+public sealed partial record NotifyCustomerCommand(Guid CustomerId, string Reason) : EdictCommand
 {
     [EdictRouteKey]
     public Guid CustomerId { get; init; } = CustomerId;
@@ -40,41 +41,41 @@ public sealed partial record AzureNotifyCustomerCommand(Guid CustomerId, string 
     public string Reason { get; init; } = Reason;
 }
 
-public partial class AzureCustomerNotificationCommandHandler : EdictCommandHandler
+public partial class CustomerNotificationCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> Handle(AzureNotifyCustomerCommand command)
+    public Task<EdictCommandResult> Handle(NotifyCustomerCommand command)
     {
-        Raise(new AzureCustomerNotifiedEvent(command.CustomerId, command.Reason));
+        Raise(new CustomerNotifiedEvent(command.CustomerId, command.Reason));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }
 
-public interface IAzureEmailEventPublisher : IGrainWithGuidKey
+public interface IEmailEventPublisher : IGrainWithGuidKey
 {
     Task PublishAsync(EdictEvent evt);
 }
 
-public sealed class AzureEmailEventPublisher : Grain, IAzureEmailEventPublisher
+public sealed class EmailEventPublisher : Grain, IEmailEventPublisher
 {
     public Task PublishAsync(EdictEvent evt)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureEmailEvents", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("ConformanceEmailEvents", this.GetPrimaryKey()));
         return stream.OnNextAsync(evt);
     }
 }
 
-public interface IAzureEmailHandlerProbe : IGrainWithGuidKey
+public interface IEmailHandlerProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledCountAsync();
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
 }
 
-public sealed partial class AzureEmailEventHandler : EdictEventHandler, IAzureEmailHandlerProbe
+public sealed partial class EmailEventHandler : EdictEventHandler, IEmailHandlerProbe
 {
     readonly List<Guid> _handled = [];
 
-    public Task Handle(AzureCustomerNotifiedEvent evt)
+    public Task Handle(CustomerNotifiedEvent evt)
     {
         _handled.Add(evt.EventId);
         return Task.CompletedTask;
@@ -84,4 +85,23 @@ public sealed partial class AzureEmailEventHandler : EdictEventHandler, IAzureEm
 
     public Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync() =>
         Task.FromResult<IReadOnlyList<Guid>>(_handled.AsReadOnly());
+}
+
+static class EmailHandlerWaiters
+{
+    public static async Task<IReadOnlyList<Guid>> WaitForHandledAsync(
+        IEmailHandlerProbe handler, int expectedCount = 1, int timeoutSeconds = 15)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var ids = await handler.GetHandledEventIdsAsync();
+            if (ids.Count >= expectedCount)
+            {
+                return ids;
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+        }
+        return await handler.GetHandledEventIdsAsync();
+    }
 }
