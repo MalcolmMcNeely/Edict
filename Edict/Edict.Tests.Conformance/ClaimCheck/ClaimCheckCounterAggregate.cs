@@ -5,23 +5,21 @@ using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.EventHandler;
 
-using MessagePack;
-
 using Orleans;
 using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Azure.Tests.ClaimCheck;
+namespace Edict.Tests.Conformance.ClaimCheck;
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.ClaimCheck.AzureClaimCheckCounterState")]
-public sealed class AzureClaimCheckCounterState : IEdictPersistedState
+[Alias("Edict.Tests.Conformance.ClaimCheck.ClaimCheckCounterState")]
+public sealed class ClaimCheckCounterState : IEdictPersistedState
 {
     [Id(0)]
     public int Count { get; set; }
 }
 
-public sealed partial record IncrementAzureClaimCheckCounterCommand(Guid CounterId, string Payload) : EdictCommand
+public sealed partial record IncrementClaimCheckCounterCommand(Guid CounterId, string Payload) : EdictCommand
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
@@ -29,8 +27,8 @@ public sealed partial record IncrementAzureClaimCheckCounterCommand(Guid Counter
     public string Payload { get; init; } = Payload;
 }
 
-[EdictStream("AzureClaimCheckCounters")]
-public sealed partial record AzureClaimCheckCounterIncrementedEvent(Guid CounterId, int NewCount, string Payload) : EdictEvent
+[EdictStream("ConformanceClaimCheckCounters")]
+public sealed partial record ClaimCheckCounterIncrementedEvent(Guid CounterId, int NewCount, string Payload) : EdictEvent
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
@@ -40,12 +38,12 @@ public sealed partial record AzureClaimCheckCounterIncrementedEvent(Guid Counter
     public string Payload { get; init; } = Payload;
 }
 
-public partial class AzureClaimCheckCounterAggregate : EdictCommandHandler<AzureClaimCheckCounterState>
+public partial class ClaimCheckCounterAggregate : EdictCommandHandler<ClaimCheckCounterState>
 {
-    public Task<EdictCommandResult> Handle(IncrementAzureClaimCheckCounterCommand command)
+    public Task<EdictCommandResult> Handle(IncrementClaimCheckCounterCommand command)
     {
         State.Count++;
-        Raise(new AzureClaimCheckCounterIncrementedEvent(command.CounterId, State.Count, command.Payload));
+        Raise(new ClaimCheckCounterIncrementedEvent(command.CounterId, State.Count, command.Payload));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }
@@ -53,20 +51,20 @@ public partial class AzureClaimCheckCounterAggregate : EdictCommandHandler<Azure
 // Raw-Grain capture: subscribes directly, bypassing the Edict consumer base,
 // so it observes the on-the-wire shape (an EdictEventEnvelope on the pointer
 // branch) rather than the unwrapped inner event an EdictEventHandler sees.
-public interface IAzureClaimCheckEventCaptureGrain : IGrainWithGuidKey
+public interface IClaimCheckEventCaptureGrain : IGrainWithGuidKey
 {
     Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync();
 }
 
-[ImplicitStreamSubscription("AzureClaimCheckCounters")]
-public sealed class AzureClaimCheckEventCaptureGrain : Grain, IAzureClaimCheckEventCaptureGrain
+[ImplicitStreamSubscription("ConformanceClaimCheckCounters")]
+public sealed class ClaimCheckEventCaptureGrain : Grain, IClaimCheckEventCaptureGrain
 {
     readonly List<EdictEvent> _events = [];
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureClaimCheckCounters", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("ConformanceClaimCheckCounters", this.GetPrimaryKey()));
         await stream.SubscribeAsync(
             (item, _) => { _events.Add(item); return Task.CompletedTask; },
             _ => Task.CompletedTask);
@@ -77,23 +75,23 @@ public sealed class AzureClaimCheckEventCaptureGrain : Grain, IAzureClaimCheckEv
         Task.FromResult<IReadOnlyList<EdictEvent>>(_events.AsReadOnly());
 }
 
-public interface IAzureClaimCheckEventHandlerProbe : IGrainWithGuidKey
+public interface IClaimCheckEventHandlerProbe : IGrainWithGuidKey
 {
-    Task<IReadOnlyList<AzureClaimCheckCounterIncrementedEvent>> GetHandledEventsAsync();
+    Task<IReadOnlyList<ClaimCheckCounterIncrementedEvent>> GetHandledEventsAsync();
 }
 
 // Handle sees the inner event: EdictEventHandler routes through the
 // framework's stream observer, which runs ClaimCheckUnwrap before dispatch.
-public sealed partial class AzureClaimCheckCounterEventHandler : EdictEventHandler, IAzureClaimCheckEventHandlerProbe
+public sealed partial class ClaimCheckCounterEventHandler : EdictEventHandler, IClaimCheckEventHandlerProbe
 {
-    readonly List<AzureClaimCheckCounterIncrementedEvent> _handled = [];
+    readonly List<ClaimCheckCounterIncrementedEvent> _handled = [];
 
-    public Task Handle(AzureClaimCheckCounterIncrementedEvent evt)
+    public Task Handle(ClaimCheckCounterIncrementedEvent evt)
     {
         _handled.Add(evt);
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<AzureClaimCheckCounterIncrementedEvent>> GetHandledEventsAsync() =>
-        Task.FromResult<IReadOnlyList<AzureClaimCheckCounterIncrementedEvent>>(_handled.AsReadOnly());
+    public Task<IReadOnlyList<ClaimCheckCounterIncrementedEvent>> GetHandledEventsAsync() =>
+        Task.FromResult<IReadOnlyList<ClaimCheckCounterIncrementedEvent>>(_handled.AsReadOnly());
 }

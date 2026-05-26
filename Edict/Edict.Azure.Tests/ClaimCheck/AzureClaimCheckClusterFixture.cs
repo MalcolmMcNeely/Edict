@@ -15,15 +15,18 @@ using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.ClaimCheck;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
+public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
 {
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
@@ -33,8 +36,24 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public IEdictSender Sender =>
+    public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public override IGrainFactory GrainFactory => Cluster.GrainFactory;
+
+    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
+        new AzureTableRepository<T>(_tableServiceClient, tableName);
+
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
+
+    public override async Task<bool> ClaimCheckBlobExistsAsync(string key)
+    {
+        var container = _blobServiceClient.GetBlobContainerClient(ClaimCheckContainerName);
+        var blob = container.GetBlobClient(key);
+        var response = await blob.ExistsAsync();
+        return response.Value;
+    }
 
     public BlobServiceClient BlobServiceClient => _blobServiceClient;
 
@@ -44,7 +63,7 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
 
     public string DeadLetterTableName { get; private set; } = "";
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
@@ -81,7 +100,7 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         if (Cluster is not null)
         {
@@ -92,7 +111,7 @@ public sealed class AzureClaimCheckClusterFixture : IAsyncLifetime
 
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
-            .AddAssembly(typeof(AzureClaimCheckCounterAggregate).Assembly)
+            .AddAssembly(typeof(ClaimCheckCounterAggregate).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
