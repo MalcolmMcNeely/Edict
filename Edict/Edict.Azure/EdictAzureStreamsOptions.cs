@@ -22,8 +22,16 @@ public sealed class EdictAzureStreamsOptions
     /// </summary>
     public int ClaimCheckThresholdBytes { get; set; } = 30_720;
 
-    /// <summary>Azure Queue pulling-agent poll period. Faster is more responsive but more chatty.</summary>
-    public TimeSpan QueuePollingPeriod { get; set; } = TimeSpan.FromMilliseconds(500);
+    /// <summary>
+    /// Azure Queue pulling-agent poll period. This is a hard floor on
+    /// per-event latency — the consumer cannot observe an event until the next
+    /// poll tick after the publisher's queue PUT. The Orleans default is
+    /// 100 ms; Edict matches it. Lower is more responsive but more chatty
+    /// (each tick costs a queue GET per consumer queue, billed and
+    /// rate-limited under real Azure Storage). Raise it for cost-sensitive
+    /// workloads where end-to-end latency tolerates seconds.
+    /// </summary>
+    public TimeSpan QueuePollingPeriod { get; set; } = TimeSpan.FromMilliseconds(100);
 
     /// <summary>
     /// Optional <see cref="QueueServiceClient"/>; a DI-registered singleton

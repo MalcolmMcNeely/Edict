@@ -16,7 +16,8 @@ sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwra
         OutboxEntry entry,
         IStreamProvider streamProvider,
         Func<EdictEvent, Task>? deferredDispatch,
-        Type? consumerType)
+        Type? consumerType,
+        EdictEvent? liveWireEvent)
     {
         if (deferredDispatch is null)
         {

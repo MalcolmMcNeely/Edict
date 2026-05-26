@@ -42,7 +42,7 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null));
         await executor.ExecuteAsync(
-            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object));
+            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
 
         await Verify(dispatched).DontScrubGuids();
     }
@@ -71,7 +71,7 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store));
         await executor.ExecuteAsync(
-            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object));
+            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
 
         await Verify(dispatched).DontScrubGuids();
     }
@@ -91,7 +91,7 @@ public sealed class InvokeHandlerExecutorTests
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(new InMemoryClaimCheckStore()));
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object)));
+            executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null));
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null));
 
-        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object));
+        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null);
 
         // Filter by operation name — parallel tests sharing the process-wide
         // ActivityListener mechanism may surface unrelated edict.* spans here.
@@ -158,7 +158,7 @@ public sealed class InvokeHandlerExecutorTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             executor.ExecuteAsync(entry, NullStreamProvider.Instance,
-                _ => throw new InvalidOperationException("simulated dispatch failure"), consumerType: typeof(object)));
+                _ => throw new InvalidOperationException("simulated dispatch failure"), consumerType: typeof(object), liveWireEvent: null));
     }
 
     static Serializer BuildSerializer()

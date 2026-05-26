@@ -15,9 +15,13 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
         OutboxEntry entry,
         IStreamProvider streamProvider,
         Func<EdictEvent, Task>? deferredDispatch,
-        Type? consumerType)
+        Type? consumerType,
+        EdictEvent? liveWireEvent)
     {
-        var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
+        // Inline drain after Raise hands us the live reference — skip the
+        // deserialise. Reminder / activation drains have no live ref and pay
+        // the deserialise to rehydrate from the durable payload.
+        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
         var (streamName, routeKey) = ResolveStreamAddress(evt);
         var stream = streamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 

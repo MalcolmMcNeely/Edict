@@ -125,7 +125,7 @@ public sealed class OutboxHostTests
     sealed class SuccessfulExecutor : IOutboxEffectExecutor
     {
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType) =>
+        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
             Task.CompletedTask;
     }
 
@@ -135,7 +135,7 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
         public IReadOnlyList<OutboxEntry> Invocations => _invocations;
 
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
+        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
         {
             _invocations.Add(entry);
             return Task.CompletedTask;

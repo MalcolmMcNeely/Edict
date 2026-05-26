@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
@@ -27,6 +29,11 @@ sealed class OutboxHost<TPayload>
     readonly Type? _consumerType;
 
     bool _drainReminderRegistered;
+
+    // Set by EnqueueAndDrainAsync for the inline drain that immediately
+    // follows; cleared inside DrainAsync. Activation / reminder drains leave
+    // it null so the executor falls back to deserialising the durable payload.
+    Dictionary<Guid, EdictEvent>? _inlineLiveRefs;
 
     public OutboxHost(
         IPersistentState<GrainEnvelope<TPayload>> state,
@@ -102,9 +109,11 @@ sealed class OutboxHost<TPayload>
     /// <see cref="Task.WhenAll(IEnumerable{Task})"/>, so a Handle that raises
     /// N oversized events pays one I/O round trip rather than N. Each policy
     /// invocation returns the bytes to persist as the
-    /// <see cref="OutboxEntry.Payload"/>; small events ride the entry as the
-    /// serialised inner event itself, oversized events as a serialised pointer
-    /// envelope. The staged entries then commit and drain through the engine.
+    /// <see cref="OutboxEntry.Payload"/> paired with the live wire-event the
+    /// inline drain publishes without re-deserialising. Small events ride the
+    /// entry as the serialised inner event; oversized events as a serialised
+    /// pointer envelope. The staged entries then commit and drain through the
+    /// engine.
     /// </summary>
     public async Task EnqueueRaisedEventsAndDrainAsync(
         IReadOnlyList<EdictEvent> events,
@@ -124,34 +133,43 @@ sealed class OutboxHost<TPayload>
         }
 
         var policy = _claimCheckPolicy;
-        var payloads = await Task.WhenAll(events.Select(evt => policy.ApplyAsync(evt, ct)));
+        var results = await Task.WhenAll(events.Select(evt => policy.ApplyAsync(evt, ct)));
 
         var entries = new OutboxEntry[events.Count];
+        var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);
         for (var i = 0; i < events.Count; i++)
         {
+            var entryId = Guid.NewGuid();
             entries[i] = new OutboxEntry
             {
-                EntryId = Guid.NewGuid(),
+                EntryId = entryId,
                 Kind = OutboxEffectKind.PublishEvent,
-                Payload = payloads[i],
+                Payload = results[i].Payload,
                 TraceParent = traceParent,
                 TraceState = traceState,
             };
+            liveRefs[entryId] = results[i].WireEvent;
         }
 
+        _inlineLiveRefs = liveRefs;
         await EnqueueAndDrainAsync(entries);
     }
 
     /// <summary>
-    /// Drains pending effects with per-entry independent retry:
-    /// walks <see cref="OutboxSlice.Pending"/> in insertion order, skipping
-    /// backoff-gated entries and continuing past failures. Acks accumulate
-    /// in-memory across the pass and flush in one trailing write before the
-    /// reminder is reconciled. At <see cref="EdictOutboxOptions.OutboxMaxAttempts"/>
-    /// the failing entry is promoted to a dead-letter publish entry appended at
-    /// the tail; that promotion writes inline, coalescing any pending acks for
-    /// free. Reconciles the lazy Reminder: unregistered when the Outbox fully
-    /// drains, registered while anything remains.
+    /// Drains pending effects with per-entry independent retry. Each pass
+    /// snapshots every entry whose <see cref="OutboxEntry.NextAttemptUtc"/>
+    /// is now-or-past and fires their executors concurrently via
+    /// <see cref="Task.WhenAll(IEnumerable{Task})"/>; outcomes (Ack / Fail /
+    /// Promote) are applied to the slice serially on the grain task scheduler
+    /// after the batch completes, so the slice stays a pure data structure
+    /// with no cross-task contention. Successful Acks coalesce into one
+    /// trailing write per pass. Failure paths (FailWithBackoff / Promote)
+    /// keep their inline writes for <c>AttemptCount</c> crash-monotonicity.
+    /// At <see cref="EdictOptions.OutboxMaxAttempts"/> the failing entry is
+    /// promoted to a dead-letter publish entry appended at the tail; the
+    /// outer loop picks that tail entry up in the next pass. Reconciles the
+    /// lazy Reminder: unregistered when the Outbox fully drains, registered
+    /// while anything remains.
     /// </summary>
     public async Task DrainAsync()
     {
@@ -161,35 +179,61 @@ sealed class OutboxHost<TPayload>
         // reminder reconcile is the load-bearing ordering — a reminder must
         // never observe a "drained" state that has not yet been persisted, or
         // a crash between the unregister and a missing write would lose the
-        // pending tail. Failure paths (FailWithBackoff / Promote) keep their
-        // inline writes for AttemptCount crash-monotonicity and naturally
-        // coalesce any pending acks accumulated up to that point.
+        // pending tail.
+        //
+        // Parallel drain is sound under ADR-0015 because executors are
+        // independent and consumers are already reorder-tolerant (the dedup
+        // ring is keyed by EventId, not delivery order). The original v1
+        // rationale assumed WriteStateAsync dominated; the throughput bench
+        // showed the queue PUT inside the executor dominates for RaiseOnly,
+        // so the lever sits here.
+        var liveRefs = _inlineLiveRefs;
+        _inlineLiveRefs = null;
+
         var dirty = false;
-        var index = 0;
-        while (index < State.Outbox.Pending.Count)
+
+        while (true)
         {
-            var entry = State.Outbox.Pending[index];
             var now = _timeProvider.GetUtcNow();
+            var ready = State.Outbox.Pending
+                .Where(p => p.NextAttemptUtc <= now)
+                .ToArray();
 
-            if (entry.NextAttemptUtc > now)
+            if (ready.Length == 0)
             {
-                index++;
-                continue;
+                break;
             }
 
-            try
+            var tasks = new Task<Exception?>[ready.Length];
+            for (var i = 0; i < ready.Length; i++)
             {
-                await _executors[entry.Kind].ExecuteAsync(entry, _streamProvider, _deferredDispatch, _consumerType);
+                var entry = ready[i];
+                EdictEvent? live = null;
+                liveRefs?.TryGetValue(entry.EntryId, out live);
+                tasks[i] = ExecuteCapturingAsync(entry, live);
             }
-            catch (Exception exception)
+
+            var outcomes = await Task.WhenAll(tasks);
+
+            var anyTailAppend = false;
+            for (var i = 0; i < ready.Length; i++)
             {
-                // Post-commit failure: do not roll back, do not surface. Bump
-                // backoff; if attempts are now exhausted, promote the failing
-                // entry in the SAME one commit — the failing entry is removed
-                // and an EdictDeadLetterRaised PublishEvent entry is appended
-                // at the tail (atomic by construction). Then CONTINUE
-                // past this entry: no head privilege,
-                // later entries get a fair shot.
+                var entry = ready[i];
+                var exception = outcomes[i];
+
+                if (exception is null)
+                {
+                    State.Outbox = State.Outbox.Ack(entry.EntryId);
+                    dirty = true;
+                    continue;
+                }
+
+                // Post-commit failure: do not roll back, do not surface.
+                // Bump backoff; if attempts are now exhausted, Promote: the
+                // failing entry is removed and an EdictDeadLetterRaised
+                // PublishEvent entry is appended at the tail (atomic by
+                // construction). The outer loop picks up the tail entry in
+                // the next pass.
                 State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
 
                 var bumped = State.Outbox.Pending.FirstOrDefault(p => p.EntryId == entry.EntryId);
@@ -200,22 +244,21 @@ sealed class OutboxHost<TPayload>
                     State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
                     await _state.WriteStateAsync();
                     dirty = false;
-                    // The failing entry is gone — do not advance index;
-                    // whatever followed has shifted into its slot.
+                    anyTailAppend = true;
                     continue;
                 }
 
                 await _state.WriteStateAsync();
                 dirty = false;
-                index++;
-                continue;
             }
 
-            State.Outbox = State.Outbox.Ack(entry.EntryId);
-            dirty = true;
-            // The Ack shifted the next entry into our slot — do not advance
-            // index. while-condition naturally picks up tail-appended entries
-            // (e.g. a Promote's dead-letter entry from a later iteration).
+            // Loop only if a Promote appended a tail entry that's ready now.
+            // Otherwise we're done — any backoff-gated entries wait for the
+            // reminder.
+            if (!anyTailAppend)
+            {
+                break;
+            }
         }
 
         if (dirty)
@@ -230,6 +273,20 @@ sealed class OutboxHost<TPayload>
         else
         {
             await RegisterDrainReminderAsync();
+        }
+    }
+
+    async Task<Exception?> ExecuteCapturingAsync(OutboxEntry entry, EdictEvent? liveWireEvent)
+    {
+        try
+        {
+            await _executors[entry.Kind].ExecuteAsync(
+                entry, _streamProvider, _deferredDispatch, _consumerType, liveWireEvent);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
         }
     }
 

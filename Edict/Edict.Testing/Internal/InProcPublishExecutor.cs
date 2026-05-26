@@ -38,9 +38,9 @@ sealed class InProcPublishExecutor(
     readonly Lock _heldLock = new();
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
-        var evt = serializer.Deserialize<EdictEvent>(entry.Payload);
+        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
 
         using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(

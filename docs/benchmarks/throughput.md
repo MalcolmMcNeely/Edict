@@ -3,7 +3,7 @@
 Machine: Microsoft Windows 10.0.22631 / 20 cores
 .NET version: 10.0.8
 Run date: 2026-05-26
-Git SHA: 8e94351
+Git SHA: 3f14fa8
 
 ## Setup
 
@@ -14,24 +14,34 @@ Git SHA: 8e94351
 - RaiseOnly measures Send latency with Raise in the handler; does not wait for the projection.
 - Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.
 
-**azure: 653 commands/sec @ N=16**
-**azure: 86 raiseonly/sec @ N=4**
-**azure: 50 events/sec @ N=256**
+## What you're looking at
+
+This is the framework on **Azurite** — a Node-based emulator running in a single container on dev hardware — with **one Orleans silo** hosting both producer and consumers. Three substrate ceilings are baked in before any Edict code runs:
+
+1. Azurite's latency floor for blob and queue ops is materially higher than real Azure Storage.
+2. The Azure Queue stream provider polls on a timer (`EdictAzureStreamsOptions.QueuePollingPeriod`). At high parallelism the Events row sits right on top of that floor — it is the substrate, not the silo.
+3. A single silo serialises every producer and consumer onto one process; Orleans is designed to scale horizontally and these numbers do not exercise that.
+
+Treat this table as **what the registered defaults give you on a laptop with the emulator**, not **what Edict can do**. A real Azure Storage account, a tuned poll period, and a multi-silo deployment all move these numbers up independently of any framework change.
+
+**azure: 607 commands/sec @ N=16**
+**azure: 85 raiseonly/sec @ N=64**
+**azure: 64 events/sec @ N=64**
 
 | Substrate | Scenario | Parallelism | EPS | p50 (ms) | p95 (ms) | p99 (ms) |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| azure | Commands | 1 | 151 | 7.01 | 8.45 | 9.96 |
-| azure | Commands | 4 | 590 | 6.31 | 10.60 | 12.47 |
-| azure | Commands | 16 | 653 | 23.94 | 31.82 | 37.60 |
-| azure | Commands | 64 | 572 | 111.94 | 126.71 | 134.36 |
-| azure | Commands | 256 | 534 | 477.63 | 510.47 | 520.26 |
-| azure | RaiseOnly | 1 | 44 | 22.25 | 36.15 | 45.61 |
-| azure | RaiseOnly | 4 | 86 | 45.00 | 74.38 | 94.83 |
-| azure | RaiseOnly | 16 | 81 | 189.50 | 267.23 | 337.83 |
-| azure | RaiseOnly | 64 | 80 | 781.93 | 922.66 | 958.65 |
-| azure | RaiseOnly | 256 | 78 | 3213.66 | 3505.24 | 3609.37 |
-| azure | Events | 1 | 2 | 466.62 | 584.52 | 607.19 |
-| azure | Events | 4 | 10 | 434.83 | 578.45 | 589.57 |
-| azure | Events | 16 | 36 | 428.63 | 699.11 | 771.39 |
-| azure | Events | 64 | 46 | 1359.87 | 1780.64 | 1945.39 |
-| azure | Events | 256 | 50 | 5465.67 | 6167.31 | 8133.36 |
+| azure | Commands | 1 | 304 | 2.99 | 4.87 | 6.09 |
+| azure | Commands | 4 | 515 | 7.70 | 11.51 | 14.88 |
+| azure | Commands | 16 | 607 | 25.21 | 36.40 | 52.13 |
+| azure | Commands | 64 | 539 | 116.34 | 148.94 | 161.31 |
+| azure | Commands | 256 | 516 | 493.42 | 530.33 | 541.55 |
+| azure | RaiseOnly | 1 | 39 | 24.53 | 35.07 | 43.95 |
+| azure | RaiseOnly | 4 | 79 | 48.04 | 78.90 | 105.71 |
+| azure | RaiseOnly | 16 | 83 | 186.33 | 248.20 | 280.95 |
+| azure | RaiseOnly | 64 | 85 | 741.87 | 818.11 | 850.80 |
+| azure | RaiseOnly | 256 | 84 | 2988.44 | 3362.96 | 3428.52 |
+| azure | Events | 1 | 8 | 123.66 | 186.32 | 201.54 |
+| azure | Events | 4 | 29 | 138.09 | 195.47 | 216.61 |
+| azure | Events | 16 | 59 | 266.90 | 360.79 | 402.96 |
+| azure | Events | 64 | 64 | 991.32 | 1137.64 | 1207.28 |
+| azure | Events | 256 | 62 | 4179.29 | 4496.81 | 6297.43 |

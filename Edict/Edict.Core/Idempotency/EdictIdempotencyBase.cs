@@ -65,16 +65,19 @@ public abstract class EdictIdempotencyBase<TPayload>
 {
     OutboxHost<TPayload>? _host;
     ClaimCheckUnwrap? _unwrap;
+    int? _cachedWindowSize;
 
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered
     /// in the dedup window. The silo-wide default comes from
     /// <see cref="EdictOptions.IdempotencyWindowSize"/>; override in a specific
     /// subclass (e.g. a high-throughput singleton consumer) to use a different
-    /// window for that grain type.
+    /// window for that grain type. Resolved once per activation and cached —
+    /// the dedup ring runs on the per-event hot path, so a DI lookup per
+    /// event is wasted work.
     /// </summary>
     protected virtual int WindowSize =>
-        ServiceProvider.GetService<IOptions<EdictOptions>>()?.Value.IdempotencyWindowSize
+        _cachedWindowSize ??= ServiceProvider.GetService<IOptions<EdictOptions>>()?.Value.IdempotencyWindowSize
             ?? new EdictOptions().IdempotencyWindowSize;
 
     IdempotencyState Idempotency => base.State.Idempotency;

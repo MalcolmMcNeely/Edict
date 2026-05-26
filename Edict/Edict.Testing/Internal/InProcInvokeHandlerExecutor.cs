@@ -30,7 +30,7 @@ sealed class InProcInvokeHandlerExecutor(
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
     public async Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         if (deferredDispatch is null)
         {

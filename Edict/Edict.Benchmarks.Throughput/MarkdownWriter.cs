@@ -35,6 +35,16 @@ public static class MarkdownWriter
         sb.AppendLine("- RaiseOnly measures Send latency with Raise in the handler; does not wait for the projection.");
         sb.AppendLine("- Single run on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered substrate, not a framework ceiling.");
         sb.AppendLine();
+        sb.AppendLine("## What you're looking at");
+        sb.AppendLine();
+        sb.AppendLine("This is the framework on **Azurite** — a Node-based emulator running in a single container on dev hardware — with **one Orleans silo** hosting both producer and consumers. Three substrate ceilings are baked in before any Edict code runs:");
+        sb.AppendLine();
+        sb.AppendLine("1. Azurite's latency floor for blob and queue ops is materially higher than real Azure Storage.");
+        sb.AppendLine("2. The Azure Queue stream provider polls on a timer (`EdictAzureStreamsOptions.QueuePollingPeriod`). At high parallelism the Events row sits right on top of that floor — it is the substrate, not the silo.");
+        sb.AppendLine("3. A single silo serialises every producer and consumer onto one process; Orleans is designed to scale horizontally and these numbers do not exercise that.");
+        sb.AppendLine();
+        sb.AppendLine("Treat this table as **what the registered defaults give you on a laptop with the emulator**, not **what Edict can do**. A real Azure Storage account, a tuned poll period, and a multi-silo deployment all move these numbers up independently of any framework change.");
+        sb.AppendLine();
         foreach (var headline in PeakHeadlines(results))
         {
             sb.AppendLine(headline);

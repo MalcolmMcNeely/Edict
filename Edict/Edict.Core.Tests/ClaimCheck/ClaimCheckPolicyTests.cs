@@ -24,9 +24,10 @@ public sealed class ClaimCheckPolicyTests
         var expected = Serializer.SerializeToArray<EdictEvent>(evt);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store);
 
-        var bytes = await policy.ApplyAsync(evt, CancellationToken.None);
+        var result = await policy.ApplyAsync(evt, CancellationToken.None);
 
-        Assert.Equal(expected, bytes);
+        Assert.Equal(expected, result.Payload);
+        Assert.Same(evt, result.WireEvent);
         Assert.Empty(store.Puts);
     }
 
@@ -40,14 +41,16 @@ public sealed class ClaimCheckPolicyTests
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(evt);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store);
 
-        var bytes = await policy.ApplyAsync(evt, CancellationToken.None);
+        var result = await policy.ApplyAsync(evt, CancellationToken.None);
 
         Assert.Single(store.Puts);
         Assert.Equal(innerBytes, store.Puts[0].Payload.ToArray());
-        var envelope = Serializer.Deserialize<EdictEvent>(bytes);
+        var envelope = Serializer.Deserialize<EdictEvent>(result.Payload);
         var pointer = Assert.IsType<EdictEventEnvelope>(envelope);
         Assert.Null(pointer.InlinePayload);
         Assert.Equal(store.Puts[0].ReturnedKey, pointer.ClaimCheckKey);
+        var wirePointer = Assert.IsType<EdictEventEnvelope>(result.WireEvent);
+        Assert.Equal(store.Puts[0].ReturnedKey, wirePointer.ClaimCheckKey);
     }
 
     [Fact]

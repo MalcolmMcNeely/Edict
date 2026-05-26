@@ -137,9 +137,9 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
         public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
         {
-            var raised = serializer.Deserialize<EdictEvent>(entry.Payload);
+            var raised = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
             Published.Add(Assert.IsType<EdictDeadLetterRaised>(raised));
             return Task.CompletedTask;
         }

@@ -44,17 +44,20 @@ public sealed class ClaimCheckPolicy
 
     /// <summary>
     /// Returns the bytes to persist as the <see cref="OutboxEntry.Payload"/>
-    /// for the supplied event. Under threshold returns the serialised inner
-    /// event verbatim; over threshold uploads the body and returns the
-    /// serialised pointer envelope. Throws <see cref="EdictEnvelopeOverflowException"/>
+    /// for the supplied event, paired with the live <see cref="EdictEvent"/>
+    /// those bytes round-trip to (the original event under threshold, or the
+    /// constructed pointer envelope over threshold). The inline-drain path uses
+    /// <see cref="ClaimCheckApplyResult.WireEvent"/> to skip a redundant
+    /// deserialise; crash-recovery drains have no live ref and deserialise the
+    /// stored payload as before. Throws <see cref="EdictEnvelopeOverflowException"/>
     /// when the wrapped envelope still exceeds <see cref="MaxEnvelopeBytes"/>.
     /// </summary>
-    public async Task<byte[]> ApplyAsync(EdictEvent evt, CancellationToken ct)
+    public async Task<ClaimCheckApplyResult> ApplyAsync(EdictEvent evt, CancellationToken ct)
     {
         var innerBytes = _serializer.SerializeToArray<EdictEvent>(evt);
         if (innerBytes.Length <= _thresholdBytes)
         {
-            return innerBytes;
+            return new ClaimCheckApplyResult(innerBytes, evt);
         }
 
         if (_store is null)
@@ -83,8 +86,16 @@ public sealed class ClaimCheckPolicy
 
         Activity.Current?.SetTag("edict.event.claimChecked", true);
 
-        return envelopeBytes;
+        return new ClaimCheckApplyResult(envelopeBytes, envelope);
     }
+
+    /// <summary>
+    /// Outcome of <see cref="ApplyAsync"/>: the bytes to persist on the outbox
+    /// entry plus the live <see cref="EdictEvent"/> the bytes deserialise to.
+    /// The inline drain consumes <see cref="WireEvent"/> directly so the
+    /// happy path avoids a serialise→deserialise round trip per raise.
+    /// </summary>
+    public readonly record struct ClaimCheckApplyResult(byte[] Payload, EdictEvent WireEvent);
 
     async Task<string> PutAsync(EdictEvent evt, byte[] innerBytes, CancellationToken ct)
     {

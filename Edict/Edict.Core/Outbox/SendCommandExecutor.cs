@@ -18,7 +18,8 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
         OutboxEntry entry,
         IStreamProvider streamProvider,
         Func<EdictEvent, Task>? deferredDispatch,
-        Type? consumerType)
+        Type? consumerType,
+        EdictEvent? liveWireEvent)
     {
         var command = serializer.Deserialize<EdictCommand>(entry.Payload);
 

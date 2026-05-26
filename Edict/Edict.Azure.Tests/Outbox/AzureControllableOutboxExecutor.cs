@@ -25,7 +25,7 @@ sealed class AzureControllableOutboxExecutor(Serializer serializer) : IOutboxEff
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
     public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType)
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         if (ShouldFail)
         {
@@ -33,7 +33,7 @@ sealed class AzureControllableOutboxExecutor(Serializer serializer) : IOutboxEff
             throw new InvalidOperationException("controllable publish failure (azure outbox test)");
         }
 
-        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType);
+        return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType, liveWireEvent);
     }
 
     public static void Reset()
