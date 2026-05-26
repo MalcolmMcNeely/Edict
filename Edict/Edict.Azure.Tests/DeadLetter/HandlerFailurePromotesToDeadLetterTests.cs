@@ -2,6 +2,7 @@ using Edict.Azure.TableStorage;
 using Edict.Azure.Tests.Outbox;
 using Edict.Contracts.DeadLetter;
 using Edict.Core.DeadLetter;
+using Edict.Tests.Conformance.Outbox;
 
 namespace Edict.Azure.Tests.DeadLetter;
 
@@ -12,12 +13,12 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
     public async Task Promotes_ShouldLandRowWithRcaFields()
     {
         var counterId = Guid.NewGuid();
-        AzureControllableOutboxExecutor.Reset();
-        AzureControllableOutboxExecutor.ShouldFail = true;
+        ControllableOutboxExecutor.Reset();
+        ControllableOutboxExecutor.ShouldFail = true;
 
-        await fixture.Sender.Send(new AzureIncrementCounterCommand(counterId));
+        await fixture.Sender.Send(new IncrementCounterCommand(counterId));
 
-        var probe = fixture.Cluster.GrainFactory.GetGrain<IAzureCounterProbe>(counterId);
+        var probe = fixture.Cluster.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
         // Drive reminder ticks until the entry hits MaxAttempts=2. Each drain
         // bumps backoff by OutboxBaseDelay (200ms), so the loop waits past
@@ -26,13 +27,13 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
         {
             await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
-            return AzureControllableOutboxExecutor.FailedAttempts >= 2;
+            return ControllableOutboxExecutor.FailedAttempts >= 2;
         });
 
         // Heal the controllable so the promoted EdictDeadLetterRaised entry
         // can publish — otherwise it would loop on the same fail/promote
         // cycle and never land the row.
-        AzureControllableOutboxExecutor.ShouldFail = false;
+        ControllableOutboxExecutor.ShouldFail = false;
 
         await WaitUntilAsync(async () =>
         {
@@ -61,10 +62,10 @@ public sealed class HandlerFailurePromotesToDeadLetterTests(AzureOutboxDeadLette
 
         Assert.Equal("PublishEvent", entry.Kind);
         Assert.Equal(counterId.ToString(), entry.SourceGrainKey);
-        Assert.Contains("AzureCounterAggregate", entry.SourceGrainType);
-        Assert.Equal("AzureCounters/AzureCounterIncrementedEvent", entry.EffectTarget);
+        Assert.Contains("CounterAggregate", entry.SourceGrainType);
+        Assert.Equal("ConformanceCounters/CounterIncrementedEvent", entry.EffectTarget);
         Assert.Equal("System.InvalidOperationException", entry.ExceptionType);
-        Assert.Equal("controllable publish failure (azure outbox test)", entry.Reason);
+        Assert.Equal("controllable publish failure (outbox conformance test)", entry.Reason);
         Assert.NotNull(entry.PayloadJson);
 
         await Verify(entry).DontScrubGuids().DontScrubDateTimes()

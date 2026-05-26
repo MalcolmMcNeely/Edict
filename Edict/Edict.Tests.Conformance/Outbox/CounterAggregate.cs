@@ -5,29 +5,27 @@ using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 
-using MessagePack;
-
 using Orleans;
 using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Azure.Tests.Outbox;
+namespace Edict.Tests.Conformance.Outbox;
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Outbox.AzureCounterState")]
-public sealed class AzureCounterState : IEdictPersistedState
+[Alias("Edict.Tests.Conformance.Outbox.CounterState")]
+public sealed class CounterState : IEdictPersistedState
 {
     [Id(0)]
     public int Count { get; set; }
 }
 
-public sealed partial record AzureIncrementCounterCommand(Guid CounterId) : EdictCommand
+public sealed partial record IncrementCounterCommand(Guid CounterId) : EdictCommand
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
 }
 
-public sealed partial record AzureBatchIncrementCounterCommand(Guid CounterId, int Times) : EdictCommand
+public sealed partial record BatchIncrementCounterCommand(Guid CounterId, int Times) : EdictCommand
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
@@ -35,8 +33,8 @@ public sealed partial record AzureBatchIncrementCounterCommand(Guid CounterId, i
     public int Times { get; init; } = Times;
 }
 
-[EdictStream("AzureCounters")]
-public sealed partial record AzureCounterIncrementedEvent(Guid CounterId, int NewCount) : EdictEvent
+[EdictStream("ConformanceCounters")]
+public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCount) : EdictEvent
 {
     [EdictRouteKey]
     public Guid CounterId { get; init; } = CounterId;
@@ -47,7 +45,7 @@ public sealed partial record AzureCounterIncrementedEvent(Guid CounterId, int Ne
 // Hand-written probe (Orleans codegen can't see the Edict-generated grain
 // interface) so tests can read framework-owned State and drive the Reminder
 // recovery path deterministically.
-public interface IAzureCounterProbe : IGrainWithGuidKey
+public interface ICounterProbe : IGrainWithGuidKey
 {
     Task<int> GetCountAsync();
     Task DeactivateAsync();
@@ -56,21 +54,21 @@ public interface IAzureCounterProbe : IGrainWithGuidKey
     Task<bool> HasDrainReminderAsync();
 }
 
-public partial class AzureCounterAggregate : EdictCommandHandler<AzureCounterState>, IAzureCounterProbe
+public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
 {
-    public Task<EdictCommandResult> Handle(AzureIncrementCounterCommand command)
+    public Task<EdictCommandResult> Handle(IncrementCounterCommand command)
     {
         State.Count++;
-        Raise(new AzureCounterIncrementedEvent(command.CounterId, State.Count));
+        Raise(new CounterIncrementedEvent(command.CounterId, State.Count));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(AzureBatchIncrementCounterCommand command)
+    public Task<EdictCommandResult> Handle(BatchIncrementCounterCommand command)
     {
         for (var i = 0; i < command.Times; i++)
         {
             State.Count++;
-            Raise(new AzureCounterIncrementedEvent(command.CounterId, State.Count));
+            Raise(new CounterIncrementedEvent(command.CounterId, State.Count));
         }
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
@@ -93,20 +91,20 @@ public partial class AzureCounterAggregate : EdictCommandHandler<AzureCounterSta
         await this.GetReminder("edict-outbox-drain") is not null;
 }
 
-public interface IAzureCounterEventCaptureGrain : IGrainWithGuidKey
+public interface ICounterEventCaptureGrain : IGrainWithGuidKey
 {
     Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync();
 }
 
-[ImplicitStreamSubscription("AzureCounters")]
-public sealed class AzureCounterEventCaptureGrain : Grain, IAzureCounterEventCaptureGrain
+[ImplicitStreamSubscription("ConformanceCounters")]
+public sealed class CounterEventCaptureGrain : Grain, ICounterEventCaptureGrain
 {
     readonly List<EdictEvent> _events = [];
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureCounters", this.GetPrimaryKey()));
+            .GetStream<EdictEvent>(StreamId.Create("ConformanceCounters", this.GetPrimaryKey()));
         await stream.SubscribeAsync(
             (item, _) => { _events.Add(item); return Task.CompletedTask; },
             _ => Task.CompletedTask);

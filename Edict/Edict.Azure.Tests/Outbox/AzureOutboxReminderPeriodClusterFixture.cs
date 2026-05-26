@@ -13,15 +13,18 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Outbox;
 
-public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
+public sealed class AzureOutboxReminderPeriodClusterFixture : ConformanceFixture
 {
     public static readonly TimeSpan ConfiguredPeriod = TimeSpan.FromMinutes(2);
 
@@ -33,10 +36,12 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public IEdictSender Sender =>
+    public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
-    public async Task InitializeAsync()
+    public override IGrainFactory GrainFactory => Cluster.GrainFactory;
+
+    public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
@@ -64,7 +69,7 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         if (Cluster is not null)
         {
@@ -76,6 +81,7 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(AzureOrderCommandHandler).Assembly)
+            .AddAssembly(typeof(CounterAggregate).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
@@ -110,7 +116,7 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(PublishEventExecutor));
             siloBuilder.Services.Remove(publish);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableOutboxExecutor>();
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>
@@ -143,4 +149,3 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : IAsyncLifetime
         }
     }
 }
-

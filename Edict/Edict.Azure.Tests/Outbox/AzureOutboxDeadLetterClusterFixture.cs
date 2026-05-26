@@ -13,6 +13,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -80,6 +81,7 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(AzureOrderCommandHandler).Assembly)
+            .AddAssembly(typeof(CounterAggregate).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
@@ -114,7 +116,7 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(PublishEventExecutor));
             siloBuilder.Services.Remove(publish);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AzureControllableOutboxExecutor>();
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddAzureBlobGrainStorage("edict-state", options =>

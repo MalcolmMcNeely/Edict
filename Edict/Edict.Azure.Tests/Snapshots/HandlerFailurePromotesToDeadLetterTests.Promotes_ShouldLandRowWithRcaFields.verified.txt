@@ -4,11 +4,11 @@
   AttemptCount: 2,
   DeadLetteredAt: {Scrubbed},
   SourceGrainKey: {Scrubbed},
-  SourceGrainType: Edict.Azure.Tests.Outbox.AzureCounterAggregate,
-  EffectTarget: AzureCounters/AzureCounterIncrementedEvent,
+  SourceGrainType: Edict.Tests.Conformance.Outbox.CounterAggregate,
+  EffectTarget: ConformanceCounters/CounterIncrementedEvent,
   TraceParent: {Scrubbed},
   ExceptionType: System.InvalidOperationException,
-  Reason: controllable publish failure (azure outbox test),
+  Reason: controllable publish failure (outbox conformance test),
   PayloadJson: {Scrubbed},
   SourceEventId: {Scrubbed}
 }
