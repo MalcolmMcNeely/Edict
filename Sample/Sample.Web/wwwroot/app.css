@@ -131,9 +131,15 @@ main {
 }
 
 .hub-message {
+    text-align: left;
     color: #4b5563;
     font-size: 0.85rem;
-    margin-left: auto;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #2563eb;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .hub-empty {
@@ -161,6 +167,34 @@ main {
     font-size: 1rem;
     margin: 0.25rem 0 0.5rem;
     color: #374151;
+}
+
+.hub-orders-meta {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-weight: 400;
+    margin-left: 0.5rem;
+}
+
+.hub-orders-box {
+    height: 340px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.hub-orders-box .hub-orders {
+    margin-bottom: 0;
+    border: 0;
+    border-radius: 0;
+}
+
+.hub-orders-box .hub-orders thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .hub-orders,

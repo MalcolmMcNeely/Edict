@@ -5,6 +5,7 @@ using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
 using Edict.Telemetry;
 
@@ -48,12 +49,14 @@ builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
 builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(
     _ => new AzureTableRepository<LineItemFulfillmentRow>(tableServiceClient, "lineitemfulfillment"));
 
-// Forensic dead-letter projection lives on the same table the silo writes via
-// AddEdictAzurePersistence; the Home page reads it through IEdictDeadLetterRepository
-// which AddEdict() wires from this table repository.
+// The framework projection writes to the literal table named by
+// EdictDeadLetterProjectionBuilder.DeadLetterPartition; AddEdictAzurePersistence's
+// DeadLetterTableName option configures the operator-facing repository facade but
+// not the projection itself, so the consumer-side read must target the literal
+// table to see what the projection actually wrote.
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
     _ => new AzureTableRepository<EdictDeadLetterEntry>(
-        tableServiceClient, "edict-dead-letter"));
+        tableServiceClient, EdictDeadLetterProjectionBuilder.DeadLetterPartition));
 
 builder.Services.AddEdict();
 

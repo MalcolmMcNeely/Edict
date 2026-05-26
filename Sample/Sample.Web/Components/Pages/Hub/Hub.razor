@@ -31,14 +31,15 @@
         }
         <button @onclick="OnFireOne">Fire one order</button>
         <span class="hub-controls-sep"></span>
-        <button @onclick="OnInjectPoison">Inject poison</button>
+        <button @onclick="OnInjectPoison">Inject Dead Letter</button>
         <button @onclick="OnInject5Mb">Inject 5MB</button>
         <button @onclick="OnInjectSagaReject">Inject saga reject</button>
-        @if (!string.IsNullOrEmpty(_message))
-        {
-            <span class="hub-message">@_message</span>
-        }
     </section>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="hub-message">@_message</div>
+    }
 
     @if (_orderRows.Count == 0)
     {
@@ -48,31 +49,33 @@
     {
         <div class="hub-grid">
             <div class="hub-left">
-                <h2>Orders</h2>
-                <table class="hub-orders">
-                    <thead>
-                        <tr>
-                            <th>OrderId</th>
-                            <th>Status</th>
-                            <th>Items</th>
-                            <th>Placed</th>
-                            <th>Shipped</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var entry in _orderRows)
-                        {
-                            <tr class="@(entry.OrderId == _spotlightedOrderId ? "row-spotlight" : "")"
-                                @onclick="() => OnSpotlight(entry.OrderId)">
-                                <td><code>@FormatShort(entry.OrderId)</code></td>
-                                <td>@entry.Row.Status</td>
-                                <td>@entry.Row.ItemCount</td>
-                                <td>@FormatTime(entry.Row.PlacedAt)</td>
-                                <td>@FormatTime(entry.Row.ShippedAt)</td>
+                <h2>Orders <span class="hub-orders-meta">most recent 10 of @_totalOrderCount</span></h2>
+                <div class="hub-orders-box">
+                    <table class="hub-orders">
+                        <thead>
+                            <tr>
+                                <th>OrderId</th>
+                                <th>Status</th>
+                                <th>Items</th>
+                                <th>Placed</th>
+                                <th>Shipped</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in _orderRows.Take(10))
+                            {
+                                <tr class="@(entry.OrderId == _spotlightedOrderId ? "row-spotlight" : "")"
+                                    @onclick="() => OnSpotlight(entry.OrderId)">
+                                    <td><code>@FormatShort(entry.OrderId)</code></td>
+                                    <td>@entry.Row.Status</td>
+                                    <td>@entry.Row.ItemCount</td>
+                                    <td>@FormatTime(entry.Row.PlacedAt)</td>
+                                    <td>@FormatTime(entry.Row.ShippedAt)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
 
                 <h2>Fulfillment</h2>
                 @if (_spotlightedOrderId is null)
@@ -122,6 +125,7 @@
 
 @code {
     IReadOnlyList<OrderEntry> _orderRows = Array.Empty<OrderEntry>();
+    int _totalOrderCount;
     OrderStatusRow? _spotlightedStatus;
     IReadOnlyList<LineItemFulfillmentRow> _fulfillmentLines = Array.Empty<LineItemFulfillmentRow>();
     Guid? _spotlightedOrderId;
@@ -170,6 +174,7 @@
             _orderRows = entries
                 .OrderByDescending(e => e.Row.PlacedAt ?? DateTimeOffset.MinValue)
                 .ToArray();
+            _totalOrderCount = entries.Count;
 
             _spotlightedOrderId = OrderTracker.Current;
             if (_spotlightedOrderId is { } id)
@@ -223,7 +228,7 @@
         KnownOrders.Register(orderId);
         var cancel = await Sender.Send(new CancelOrderCommand(orderId, "POISON: handler-throw demo"));
         _message = cancel is EdictCommandResult.Accepted
-            ? "Injected poison — a dead-letter row should appear within ~5s."
+            ? "Injected dead letter — a row should appear within ~5s."
             : Describe("Cancel", cancel);
     }
 
