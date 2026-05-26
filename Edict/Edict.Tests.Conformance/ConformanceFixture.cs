@@ -1,5 +1,7 @@
 using Edict.Contracts.Sending;
 
+using Orleans;
+
 using Xunit;
 
 namespace Edict.Tests.Conformance;
@@ -14,6 +16,8 @@ namespace Edict.Tests.Conformance;
 public abstract class ConformanceFixture : IAsyncLifetime
 {
     public abstract IEdictSender Sender { get; }
+
+    public abstract IGrainFactory GrainFactory { get; }
 
     public abstract Task InitializeAsync();
 

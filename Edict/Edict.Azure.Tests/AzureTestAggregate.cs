@@ -220,30 +220,6 @@ public sealed partial class AzureOrderProjectionBuilder : EdictProjectionBuilder
     }
 }
 
-public interface IAzureOrderEventCaptureGrain : IGrainWithGuidKey
-{
-    Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync();
-}
-
-[ImplicitStreamSubscription("AzureOrders")]
-public sealed class AzureOrderEventCaptureGrain : Grain, IAzureOrderEventCaptureGrain
-{
-    readonly List<EdictEvent> _events = [];
-
-    public override async Task OnActivateAsync(CancellationToken cancellationToken)
-    {
-        var stream = this.GetStreamProvider("edict")
-            .GetStream<EdictEvent>(StreamId.Create("AzureOrders", this.GetPrimaryKey()));
-        await stream.SubscribeAsync(
-            (item, _) => { _events.Add(item); return Task.CompletedTask; },
-            _ => Task.CompletedTask);
-        await base.OnActivateAsync(cancellationToken);
-    }
-
-    public Task<IReadOnlyList<EdictEvent>> GetCapturedEventsAsync() =>
-        Task.FromResult<IReadOnlyList<EdictEvent>>(_events.AsReadOnly());
-}
-
 [EdictStream("AzureOrders")]
 public sealed partial record AzureUnknownOrderEvent(Guid AggregateId) : EdictEvent
 {

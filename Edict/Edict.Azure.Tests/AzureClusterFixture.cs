@@ -19,6 +19,7 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
@@ -36,6 +37,8 @@ public sealed class AzureClusterFixture : ConformanceFixture
 
     public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
     public TableServiceClient TableServiceClient => _tableServiceClient;
 
