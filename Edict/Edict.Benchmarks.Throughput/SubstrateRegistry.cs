@@ -1,3 +1,6 @@
+using Edict.Substrate;
+using Edict.Substrate.Azurite;
+
 namespace Edict.Benchmarks.Throughput;
 
 /// <summary>

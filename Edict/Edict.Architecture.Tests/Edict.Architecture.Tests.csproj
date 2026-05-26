@@ -18,6 +18,8 @@
         <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <ProjectReference Include="..\Edict.Substrate\Edict.Substrate.csproj" />
+        <ProjectReference Include="..\Edict.Substrate.Azurite\Edict.Substrate.Azurite.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />
     </ItemGroup>

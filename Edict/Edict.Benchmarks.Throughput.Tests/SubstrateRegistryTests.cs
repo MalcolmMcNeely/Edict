@@ -1,4 +1,5 @@
 using Edict.Benchmarks.Throughput;
+using Edict.Substrate.Azurite;
 
 namespace Edict.Benchmarks.Throughput.Tests;
 

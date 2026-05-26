@@ -10,6 +10,8 @@
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Testing/Edict.Testing.csproj" />
     <Project Path="Edict.Azure/Edict.Azure.csproj" />
+    <Project Path="Edict.Substrate/Edict.Substrate.csproj" />
+    <Project Path="Edict.Substrate.Azurite/Edict.Substrate.Azurite.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
     <Project Path="Edict.Analyzers/Edict.Analyzers.csproj" />
     <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />

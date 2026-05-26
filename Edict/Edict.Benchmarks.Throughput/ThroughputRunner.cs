@@ -1,8 +1,13 @@
 using System.Diagnostics;
 
+using Azure.Data.Tables;
+
+using Edict.Azure.TableStorage;
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
+using Edict.Substrate;
+using Edict.Substrate.Azurite;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -350,6 +355,13 @@ public sealed class ThroughputRunner
                 var runtime = Current ?? throw new InvalidOperationException(
                     "ActiveRuntime.Current was null when the client configurator ran.");
                 runtime.ConfigureClient(clientBuilder);
+                // Workload-specific repository — the substrate library stays
+                // workload-free, so the harness registers its own row type
+                // here against the TableServiceClient the substrate published.
+                clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
+                    new AzureTableRepository<BenchEventRow>(
+                        sp.GetRequiredService<TableServiceClient>(),
+                        BenchProjectionBuilder.TableNameLiteral));
             }
         }
     }

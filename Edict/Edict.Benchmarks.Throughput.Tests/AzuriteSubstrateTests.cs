@@ -1,9 +1,11 @@
 using Azure.Data.Tables;
 
-using Edict.Benchmarks.Throughput;
+using Edict.Azure.TableStorage;
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
+using Edict.Substrate;
+using Edict.Substrate.Azurite;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,18 +17,18 @@ namespace Edict.Benchmarks.Throughput.Tests;
 public sealed class AzuriteSubstrateTests
 {
     [Fact]
-    public async Task Runtime_ClientCallback_ResolvesBenchEventRowRepositoryThatReadsBackPreloadedRow()
+    public async Task HarnessWiredOverRuntime_ResolvesBenchEventRowRepositoryThatReadsBackPreloadedRow()
     {
         // The Events scenario's issuer polls IEdictTableRepository<BenchEventRow>
-        // for completion. The substrate must register that repository against
-        // the same table the projection writes to, or the issuer never sees
-        // its event arrive. Same shape as the DeadLetter test below — proves
-        // the wire-up via a preloaded row.
+        // for completion. The substrate library no longer owns this workload-
+        // specific repo (ADR-0030); the harness layers it on top of the
+        // substrate's ConfigureClient. Same end-to-end wiring, expressed at
+        // the layer that actually owns the workload.
         var substrate = new AzuriteSubstrate();
         await using var runtime = (AzuriteSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
 
         var preloadTable = new TableServiceClient(runtime.ConnectionString)
-            .GetTableClient(AzuriteSubstrate.BenchEventTableName);
+            .GetTableClient(BenchProjectionBuilder.TableNameLiteral);
         await preloadTable.CreateIfNotExistsAsync();
         var partitionKey = Guid.NewGuid().ToString("N");
         var rowKey = Guid.NewGuid().ToString("N");
@@ -137,6 +139,12 @@ public sealed class AzuriteSubstrateTests
             {
                 var runtime = Current ?? throw new InvalidOperationException("Substrate runtime not set");
                 runtime.ConfigureClient(clientBuilder);
+                // Mirrors the production ActiveRuntime.ClientConfigurator —
+                // workload row repo lives in the harness, not the substrate.
+                clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
+                    new AzureTableRepository<BenchEventRow>(
+                        sp.GetRequiredService<TableServiceClient>(),
+                        BenchProjectionBuilder.TableNameLiteral));
             }
         }
     }

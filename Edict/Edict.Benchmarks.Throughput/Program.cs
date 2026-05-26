@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Edict.Benchmarks.Throughput;
+using Edict.Substrate;
 
 if (args.Length == 0)
 {

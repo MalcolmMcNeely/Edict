@@ -4,7 +4,6 @@ using Azure.Storage.Queues;
 
 using Edict.Azure;
 using Edict.Azure.TableStorage;
-using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -17,21 +16,21 @@ using Orleans.Serialization;
 
 using Testcontainers.Azurite;
 
-namespace Edict.Benchmarks.Throughput;
+namespace Edict.Substrate.Azurite;
 
 /// <summary>
 /// Brings up an Azurite container and hands back ConfigureSilo/ConfigureClient
 /// callbacks wiring <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzureStreams"/>
 /// and <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzurePersistence"/> at
-/// the container endpoints. This is the only substrate today; a future
-/// <c>KafkaPostgresSubstrate</c> implements the same seam.
+/// the container endpoints. Workload-specific repositories (a harness's own
+/// projection row types) stay in the harness — this substrate only registers
+/// framework-level surfaces (ADR-0030).
 /// </summary>
 public sealed class AzuriteSubstrate : ISubstrate
 {
     public const string GrainStateContainerName = "edict-state";
     public const string ClaimCheckBlobContainerName = "edict-claim-check";
     public const string DeadLetterTableName = "edictdeadletter";
-    public const string BenchEventTableName = BenchProjectionBuilder.TableNameLiteral;
 
     public string Name => "azure";
 
@@ -74,6 +73,9 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
     {
         _container = container;
         ConnectionString = connectionString;
+        TableClient = tableClient;
+        BlobClient = blobClient;
+        QueueClient = queueClient;
 
         ConfigureSilo = silo =>
         {
@@ -105,18 +107,22 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
                 .AddEdictContractSerializer());
             client.Services.AddSingleton(tableClient);
             client.Services.AddEdict();
-            // The runner's completion poll resolves IEdictTableRepository<T>
-            // from the client SP, mirroring what a real consumer would do.
+            // Framework-level dead-letter repo lives in the substrate — every
+            // Edict consumer needs to read the dead-letter table. Workload-
+            // specific row repositories belong in the harness, not here.
             client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
                 _ => new AzureTableRepository<EdictDeadLetterEntry>(
                     tableClient, AzuriteSubstrate.DeadLetterTableName));
-            client.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(
-                _ => new AzureTableRepository<BenchEventRow>(
-                    tableClient, AzuriteSubstrate.BenchEventTableName));
         };
     }
 
     public string ConnectionString { get; }
+
+    public TableServiceClient TableClient { get; }
+
+    public BlobServiceClient BlobClient { get; }
+
+    public QueueServiceClient QueueClient { get; }
 
     public Action<ISiloBuilder> ConfigureSilo { get; }
 

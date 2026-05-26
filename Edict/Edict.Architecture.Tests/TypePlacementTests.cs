@@ -7,6 +7,8 @@ using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Idempotency;
 using Edict.Core.Projections;
+using Edict.Substrate;
+using Edict.Substrate.Azurite;
 
 using Sample.Contracts.Orders.Commands;
 
@@ -25,6 +27,8 @@ public class TypePlacementTests
             typeof(AzureTableWriteStoreFactory).Assembly,
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
+            typeof(ISubstrate).Assembly,
+            typeof(AzuriteSubstrate).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -369,6 +373,33 @@ public class TypePlacementTests
     {
         var rule = Classes().That().HaveNameMatching("^AzureTableWriteStoreFactory$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void ISubstrate_ShouldResideInEdictSubstrate()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^ISubstrate$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Substrate$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void ISubstrateRuntime_ShouldResideInEdictSubstrate()
+    {
+        var rule = Interfaces().That().HaveNameMatching("^ISubstrateRuntime$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Substrate$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void AzuriteSubstrate_ShouldResideInEdictSubstrateAzurite()
+    {
+        var rule = Classes().That().HaveNameMatching("^AzuriteSubstrate$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Substrate\.Azurite$");
 
         rule.Check(Architecture);
     }
