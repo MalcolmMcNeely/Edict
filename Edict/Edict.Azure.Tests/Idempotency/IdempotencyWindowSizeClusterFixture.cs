@@ -46,6 +46,9 @@ public sealed class IdempotencyWindowSizeClusterFixture : IdempotencyWindowSizeF
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new AzureTableRepository<T>(_tableServiceClient, tableName);
 
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
+
     public string GrainStateContainerName { get; private set; } = "";
 
     public string DeadLetterTableName { get; private set; } = "";

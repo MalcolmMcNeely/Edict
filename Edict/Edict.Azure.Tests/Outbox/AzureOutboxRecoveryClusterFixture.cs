@@ -42,6 +42,9 @@ public sealed class AzureOutboxRecoveryClusterFixture : ConformanceFixture
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new AzureTableRepository<T>(_tableServiceClient, tableName);
 
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
+
     public TableServiceClient TableServiceClient => _tableServiceClient;
 
     public BlobServiceClient BlobServiceClient => _blobServiceClient;

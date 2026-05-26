@@ -44,6 +44,9 @@ public sealed class AzureOutboxReminderPeriodClusterFixture : ConformanceFixture
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new AzureTableRepository<T>(_tableServiceClient, tableName);
 
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
+
     public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();

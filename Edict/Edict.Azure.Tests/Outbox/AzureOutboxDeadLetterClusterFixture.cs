@@ -13,16 +13,18 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.Outbox;
 
-public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
+public sealed class AzureOutboxDeadLetterClusterFixture : ConformanceFixture
 {
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
@@ -32,8 +34,16 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public IEdictSender Sender =>
+    public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public override IGrainFactory GrainFactory => Cluster.GrainFactory;
+
+    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
+        new AzureTableRepository<T>(_tableServiceClient, tableName);
+
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
 
     public TableServiceClient TableServiceClient => _tableServiceClient;
 
@@ -41,7 +51,7 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
 
     public string DeadLetterTableName { get; private set; } = "";
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
@@ -69,7 +79,7 @@ public sealed class AzureOutboxDeadLetterClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         if (Cluster is not null)
         {
