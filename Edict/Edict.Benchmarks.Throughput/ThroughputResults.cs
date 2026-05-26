@@ -12,4 +12,12 @@ public sealed record ThroughputResults(
         ElapsedMeasurement.TotalSeconds > 0
             ? CompletedCount / ElapsedMeasurement.TotalSeconds
             : 0;
+
+    /// <summary>
+    /// Raw per-request latency samples from the measurement window. Surfaced
+    /// so the CSV writer can emit long-format rows a reader can re-plot
+    /// (issue #126). Empty by default — the runner attaches samples for the
+    /// publishable sweep path; ad-hoc constructors don't have to.
+    /// </summary>
+    public IReadOnlyList<TimeSpan> LatencySamples { get; init; } = [];
 }

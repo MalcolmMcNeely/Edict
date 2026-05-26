@@ -12,13 +12,18 @@ using Orleans.TestingHost;
 namespace Edict.Benchmarks.Throughput;
 
 /// <summary>
-/// Orchestrates one (substrate, scenario, parallelism) measurement point.
-/// TestCluster up → warmup → measure → teardown → return <see cref="ThroughputResults"/>.
-/// Substrate-agnostic: every substrate-specific wiring decision flows through
-/// the <see cref="ISubstrateRuntime"/> callbacks.
+/// Orchestrates measurement: per-substrate it brings up Azurite + a TestCluster
+/// once, then sweeps the parallelism axis (issue #126), returning one
+/// <see cref="ThroughputResults"/> per (substrate, scenario, parallelism) point
+/// with raw latency samples attached for the CSV writer.
 /// </summary>
 public sealed class ThroughputRunner
 {
+    /// <summary>
+    /// Single-point convenience: starts the substrate, runs one Commands point,
+    /// tears down. Used by ad-hoc explorations; the publishable sweep uses
+    /// <see cref="RunCommandsSweepAsync"/> so the substrate stays up across N.
+    /// </summary>
     public async Task<ThroughputResults> RunCommandsAsync(
         ISubstrate substrate,
         int parallelism,
@@ -26,8 +31,27 @@ public sealed class ThroughputRunner
         TimeSpan measurement,
         CancellationToken ct = default)
     {
+        var results = await RunCommandsSweepAsync(substrate, [parallelism], warmup, measurement, ct);
+        return results[0];
+    }
+
+    public async Task<IReadOnlyList<ThroughputResults>> RunCommandsSweepAsync(
+        ISubstrate substrate,
+        IReadOnlyList<int> parallelisms,
+        TimeSpan warmup,
+        TimeSpan measurement,
+        CancellationToken ct = default)
+    {
         ArgumentNullException.ThrowIfNull(substrate);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
+        ArgumentNullException.ThrowIfNull(parallelisms);
+        if (parallelisms.Count == 0)
+        {
+            throw new ArgumentException("At least one parallelism point required.", nameof(parallelisms));
+        }
+        foreach (var n in parallelisms)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(n);
+        }
 
         await using var runtime = await substrate.StartAsync(ct);
 
@@ -46,28 +70,13 @@ public sealed class ThroughputRunner
                     .Select(_ => Guid.NewGuid())
                     .ToArray();
 
-                // Warmup — discarded.
-                await RunIssuersAsync(sender, aggregatePool, parallelism, warmup, histograms: null, ct);
-
-                // Measurement.
-                var histograms = new LatencyHistogram[parallelism];
-                var capacityPerIssuer = EstimateCapacity(measurement, parallelism);
-                for (var i = 0; i < parallelism; i++)
+                var results = new List<ThroughputResults>(parallelisms.Count);
+                foreach (var parallelism in parallelisms)
                 {
-                    histograms[i] = new LatencyHistogram(capacityPerIssuer);
+                    results.Add(await RunSinglePointAsync(
+                        substrate.Name, sender, aggregatePool, parallelism, warmup, measurement, ct));
                 }
-                var (completed, elapsed) = await RunIssuersAsync(
-                    sender, aggregatePool, parallelism, measurement, histograms, ct);
-
-                var latency = MergePercentiles(histograms);
-
-                return new ThroughputResults(
-                    Substrate: substrate.Name,
-                    Scenario: "Commands",
-                    Parallelism: parallelism,
-                    CompletedCount: completed,
-                    ElapsedMeasurement: elapsed,
-                    Latency: latency);
+                return results;
             }
             finally
             {
@@ -78,6 +87,43 @@ public sealed class ThroughputRunner
         {
             ActiveRuntime.Current = null;
         }
+    }
+
+    static async Task<ThroughputResults> RunSinglePointAsync(
+        string substrateName,
+        IEdictSender sender,
+        Guid[] aggregatePool,
+        int parallelism,
+        TimeSpan warmup,
+        TimeSpan measurement,
+        CancellationToken ct)
+    {
+        // Warmup — discarded.
+        await RunIssuersAsync(sender, aggregatePool, parallelism, warmup, histograms: null, ct);
+
+        // Measurement.
+        var histograms = new LatencyHistogram[parallelism];
+        var capacityPerIssuer = EstimateCapacity(measurement, parallelism);
+        for (var i = 0; i < parallelism; i++)
+        {
+            histograms[i] = new LatencyHistogram(capacityPerIssuer);
+        }
+        var (completed, elapsed) = await RunIssuersAsync(
+            sender, aggregatePool, parallelism, measurement, histograms, ct);
+
+        var latency = MergePercentiles(histograms);
+        var samples = DownsampleSamples(histograms);
+
+        return new ThroughputResults(
+            Substrate: substrateName,
+            Scenario: "Commands",
+            Parallelism: parallelism,
+            CompletedCount: completed,
+            ElapsedMeasurement: elapsed,
+            Latency: latency)
+        {
+            LatencySamples = samples,
+        };
     }
 
     static int EstimateCapacity(TimeSpan window, int parallelism)
@@ -159,6 +205,36 @@ public sealed class ThroughputRunner
             }
         }
         return merged.Compute();
+    }
+
+    const int MaxCsvSamplesPerPoint = 10_000;
+
+    static IReadOnlyList<TimeSpan> DownsampleSamples(LatencyHistogram[] histograms)
+    {
+        var total = histograms.Sum(h => h.Count);
+        if (total == 0)
+        {
+            return [];
+        }
+        // Stride-pick across the concatenated raw samples so the CSV stays
+        // bounded (~10k rows per point) but is dense enough to re-derive
+        // percentiles or plot the curve.
+        var stride = Math.Max(1, total / MaxCsvSamplesPerPoint);
+        var output = new List<TimeSpan>(Math.Min(total, MaxCsvSamplesPerPoint));
+        var index = 0;
+        foreach (var histogram in histograms)
+        {
+            var span = histogram.AsReadOnlySpan();
+            for (var i = 0; i < span.Length; i++)
+            {
+                if (index % stride == 0)
+                {
+                    output.Add(TimeSpan.FromSeconds((double)span[i] / Stopwatch.Frequency));
+                }
+                index++;
+            }
+        }
+        return output;
     }
 
     static class ActiveRuntime

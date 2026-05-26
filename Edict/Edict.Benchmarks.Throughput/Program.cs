@@ -1,56 +1,107 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+
 using Edict.Benchmarks.Throughput;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("usage: dotnet run -- <substrate>   (substrate: azure)");
+    Console.Error.WriteLine("usage: dotnet run -- <substrate>");
+    Console.Error.WriteLine($"  substrate: all | {string.Join(" | ", SubstrateRegistry.All().Select(s => s.Name))}");
     return 2;
 }
 
-var substrate = args[0].ToLowerInvariant() switch
+var selector = args[0].ToLowerInvariant();
+ISubstrate[] substrates;
+if (selector == "all")
 {
-    "azure" => (ISubstrate)new AzuriteSubstrate(),
-    _ => null,
-};
-if (substrate is null)
+    substrates = [.. SubstrateRegistry.All()];
+}
+else
 {
-    Console.Error.WriteLine($"unknown substrate '{args[0]}'. Known: azure");
-    return 2;
+    var resolved = SubstrateRegistry.Resolve(selector);
+    if (resolved is null)
+    {
+        Console.Error.WriteLine($"unknown substrate '{args[0]}'. Known: all, {string.Join(", ", SubstrateRegistry.All().Select(s => s.Name))}");
+        return 2;
+    }
+    substrates = [resolved];
 }
 
-// Tracer-bullet point: single (substrate, Commands, N=4) sample.
-// The PRD sweep (N=1,4,16,64,256 × 10s warmup + 30s window) lands in a
-// follow-up slice; this run is sized so `dotnet run -- azure` returns
-// promptly while still exercising every load-bearing piece.
-const int parallelism = 4;
-var warmup = TimeSpan.FromSeconds(3);
-var window = TimeSpan.FromSeconds(10);
+int[] parallelisms = [1, 4, 16, 64, 256];
+var warmup = TimeSpan.FromSeconds(10);
+var window = TimeSpan.FromSeconds(30);
 
-Console.WriteLine($"Running {substrate.Name} substrate, Commands scenario, N={parallelism} (warmup {warmup}, window {window})...");
+var metadata = new RunMetadata(
+    MachineClass: $"{RuntimeInformation.OSDescription} / {Environment.ProcessorCount} cores",
+    DotnetVersion: Environment.Version.ToString(),
+    GitSha: ResolveGitSha());
 
+var runDate = DateTimeOffset.UtcNow;
+var docsRoot = ResolveDocsRoot();
+var combined = new List<ThroughputResults>();
 var runner = new ThroughputRunner();
-var result = await runner.RunCommandsAsync(substrate, parallelism, warmup, window);
 
-var outputPath = ResolveDocsPath();
-await MarkdownWriter.WriteAsync(outputPath, [result], DateTimeOffset.UtcNow);
+foreach (var substrate in substrates)
+{
+    Console.WriteLine($"Sweeping {substrate.Name}: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    var perSubstrate = await runner.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
+    combined.AddRange(perSubstrate);
 
-Console.WriteLine($"Completed {result.CompletedCount} commands in {result.ElapsedMeasurement.TotalSeconds:F1}s — {result.EventsPerSecond:F0} EPS");
-Console.WriteLine($"Wrote {outputPath}");
+    foreach (var point in perSubstrate)
+    {
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
+    }
+
+    var csvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}.csv");
+    await CsvWriter.WriteAsync(csvPath, perSubstrate);
+    Console.WriteLine($"  Wrote {csvPath}");
+}
+
+var markdownPath = Path.Combine(docsRoot, "throughput.md");
+await MarkdownWriter.WriteAsync(markdownPath, combined, runDate, metadata);
+Console.WriteLine($"Wrote {markdownPath}");
 return 0;
 
-static string ResolveDocsPath()
+static string ResolveDocsRoot()
 {
-    // Walk up from the binary directory until we hit a folder containing the
-    // docs tree, so `dotnet run` from any working directory targets the
-    // committed file.
+    // Walk up from the binary directory until we hit the docs/benchmarks tree
+    // so `dotnet run` from any working directory targets the committed files.
     var directory = AppContext.BaseDirectory;
     while (!string.IsNullOrEmpty(directory))
     {
         var candidate = Path.Combine(directory, "docs", "benchmarks");
         if (Directory.Exists(candidate) || Directory.Exists(Path.Combine(directory, "docs")))
         {
-            return Path.Combine(candidate, "throughput.md");
+            return candidate;
         }
         directory = Path.GetDirectoryName(directory);
     }
     throw new InvalidOperationException("Could not locate repo's docs/ directory from " + AppContext.BaseDirectory);
+}
+
+static string ResolveGitSha()
+{
+    try
+    {
+        var info = new ProcessStartInfo("git", "rev-parse --short HEAD")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = AppContext.BaseDirectory,
+        };
+        using var process = Process.Start(info);
+        if (process is null)
+        {
+            return "(unknown)";
+        }
+        var output = process.StandardOutput.ReadToEnd().Trim();
+        process.WaitForExit(5_000);
+        return process.ExitCode == 0 && output.Length > 0 ? output : "(unknown)";
+    }
+    catch
+    {
+        return "(unknown)";
+    }
 }

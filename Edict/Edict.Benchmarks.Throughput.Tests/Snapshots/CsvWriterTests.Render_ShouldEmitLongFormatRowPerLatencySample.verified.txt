@@ -1,0 +1,6 @@
+﻿substrate,scenario,parallelism,latency_ms
+azure,Commands,1,5.100
+azure,Commands,1,6.200
+azure,Commands,1,7.400
+azure,Commands,4,4.800
+azure,Commands,4,5.500
