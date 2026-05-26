@@ -22,6 +22,8 @@
   </Folder>
   <Folder Name="/Benchmarks/">
     <Project Path="Edict.Benchmarks/Edict.Benchmarks.csproj" />
+    <Project Path="Edict.Benchmarks.Throughput/Edict.Benchmarks.Throughput.csproj" />
+    <Project Path="Edict.Benchmarks.Throughput.Tests/Edict.Benchmarks.Throughput.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
