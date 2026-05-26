@@ -47,11 +47,33 @@ Three commands flow through a command handler, a saga, and a projection builder 
 
 Chaos is on by default: the in-memory executor models at-least-once delivery — duplicate redelivery and bounded reorder, seeded for determinism — so every test exercises the dedup ring and reorder-tolerance guarantees the production substrate requires. The framework itself is tested against real Azurite via Testcontainers, so the in-memory seam stays honest.
 
-## Why I built this
+## Why Orleans?
 
-Distributed systems force a tax on every application that adopts them: idempotency, concurrency, atomicity across stores, trace continuity. Edict pays that tax once, in the base classes, so domain code stays about the domain.
+Two pods. Same order. Two writes at once. The conventional answer is a distributed lock — and then a cache-invalidation channel, and then session affinity at the load balancer, and then giving up on in-memory state.
 
-Orleans is the foundation — the actor model, single-threaded grain activations, and in-memory cache fit distributed state naturally, without locks or two-phase commits.
+Orleans's answer is one rule: each entity has a single in-memory home — one node, one activation, one thread at a time.
+
+From that one rule:
+
+- **The distributed lock disappears.** Concurrent calls to the same entity queue on the activation; no second writer exists.
+- **Cache invalidation disappears.** The activation is the cache. There is no second copy to invalidate.
+- **Session affinity disappears.** The runtime routes by entity identity, not by load-balancer configuration.
+- **In-memory state stops being a code smell.** Local fields outlive a request because the activation does.
+
+Orleans dissolves the infrastructure tax. It does not dissolve the application-layer tax — idempotency for duplicate deliveries, atomicity between state and events, trace continuity across async hops, forensics for poison messages. That's where Edict comes in.
+
+## Why Edict?
+
+A webhook fires twice. A handler crashes after writing state but before publishing the event. A trace from `Send` ends at the first queue hop. A poison message blocks the aggregate. Conventional .NET answers each one with a different library and a fresh row in a fresh table.
+
+Edict's answer is one rule: every consumer inherits a base class that wraps your `Handle` in an envelope carrying a dedup key, the trace context, and the outbox commit.
+
+From that one wrapping:
+
+- **Idempotency is automatic.** The base class deduplicates by `EventId` before invoking `Handle`. Nothing to opt into.
+- **State and events commit together.** A single grain write covers aggregate state and outbox entries; no two-phase commit.
+- **One trace per business flow.** The envelope carries trace context across every async stream hop, so `Send` through to the terminal handler is one OpenTelemetry trace.
+- **Poison messages land in a queryable dead-letter projection.** The aggregate keeps accepting commands; the failure has a forensic home.
 
 The consumer-facing surface is six concepts: **Command Handler**, **Event Handler**, **Saga**, **Projection Builder**, **Sender**, **Stream**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
 
@@ -71,12 +93,12 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 ## Highlights
 
 - **Event-driven, not event-sourced.** No event store, no replay. Events are transient; grain state is snapshot-persisted by Orleans.
-- **Atomic state + events.** Aggregate state changes and raised events commit together in a single grain write — no distributed transaction needed.
-- **Effectively-once handling.** Per-consumer deduplication is built into the base classes; nothing to opt into, nothing to forget.
+- **Atomic state + events.** State and raised events commit in one grain write.
+- **Effectively-once handling.** Per-consumer dedup baked into the base classes.
 - **Retries that don't block.** Failing outbox entries back off independently — one slow or broken downstream doesn't stall the rest.
 - **Oversized events handled transparently.** Large payloads spill to blob storage at the commit boundary; the wire format never carries more than a pointer.
-- **One trace per business flow.** Trace context is propagated across async stream hops, so `Send` through to the terminal handler is a single OpenTelemetry trace.
-- **Dead-letter as observability, not back-pressure.** Permanently failing effects land in a queryable projection; the aggregate keeps accepting commands.
+- **One trace per business flow.** Trace context propagated across every async stream hop.
+- **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
 - **Configurable with sensible defaults.** Every framework knob is an options property with a default and startup validation — change what you need, leave the rest.
 - **In-memory test framework.** Snapshot-test commands, events, and projection/saga state without containers; the framework itself is tested against real Azurite via Testcontainers.
 
