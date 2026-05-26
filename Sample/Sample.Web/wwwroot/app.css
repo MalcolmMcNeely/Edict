@@ -58,37 +58,6 @@ main {
     max-width: 960px;
 }
 
-.counter-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin: 1.5rem 0;
-}
-
-.counter-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 1rem;
-}
-
-.counter-card .label {
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-.counter-card .value {
-    font-size: 2rem;
-    font-weight: 600;
-    margin-top: 0.25rem;
-}
-
-.counter-card .note {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    margin-top: 0.25rem;
-}
-
 .tagline {
     color: #4b5563;
     margin-bottom: 1.25rem;

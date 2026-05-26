@@ -21,7 +21,6 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
     public Task Handle(OrderPlacedEvent evt)
     {
         CurrentRow.Status = "Open";
-        CurrentRow.ItemCount = 0;
         CurrentRow.PlacedAt = evt.OccurredAt;
         return Task.CompletedTask;
     }

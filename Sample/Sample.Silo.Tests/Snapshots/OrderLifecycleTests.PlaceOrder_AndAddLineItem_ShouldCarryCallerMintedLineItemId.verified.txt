@@ -1,0 +1,12 @@
+[
+  {
+    Kind: Event,
+    Type: LineItemAddedEvent,
+    Data: {
+      LineItemId: Guid_1,
+      OrderId: Guid_2,
+      Quantity: 1,
+      Sku: SKU-1
+    }
+  }
+]

@@ -1,11 +1,3 @@
-﻿{
-  progress: {
-    Stage: Confirmed
-  },
-  row: {
-    Status: Submitted,
-    PlacedAt: DateTimeOffset_1,
-    SubmittedAt: DateTimeOffset_1,
-    AuthorizedAt: DateTimeOffset_1
-  }
+{
+  Stage: Confirmed
 }

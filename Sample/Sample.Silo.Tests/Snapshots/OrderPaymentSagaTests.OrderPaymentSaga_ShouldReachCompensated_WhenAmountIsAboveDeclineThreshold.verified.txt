@@ -1,9 +1,3 @@
-﻿{
-  progress: {
-    Stage: Compensated
-  },
-  row: {
-    Status: Cancelled,
-    SubmittedAt: DateTimeOffset_1
-  }
+{
+  Stage: Compensated
 }

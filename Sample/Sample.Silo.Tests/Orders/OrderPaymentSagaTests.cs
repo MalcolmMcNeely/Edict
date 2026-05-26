@@ -1,7 +1,6 @@
 using Edict.Testing;
 
 using Sample.Contracts.Orders.Commands;
-using Sample.Contracts.Orders.Projections;
 using Sample.Silo.Orders.CommandHandlers;
 using Sample.Silo.Payments.Sagas;
 
@@ -9,6 +8,11 @@ using Xunit;
 
 namespace Sample.Silo.Tests.Orders;
 
+// Saga tests assert saga progression only. The OrdersByStatus projection row
+// is sensitive to chaos reordering (different runs land events in different
+// orders, perturbing transient column visibility) and is independently pinned
+// by OrdersByStatusProjectionBuilderTests — capturing it here just imports the
+// chaos noise into the saga snapshot.
 public sealed class OrderPaymentSagaTests
 {
     [Fact]
@@ -26,12 +30,8 @@ public sealed class OrderPaymentSagaTests
         await app.Drain();
 
         var progress = await app.GetSagaProgress<OrderPaymentSaga, OrderPaymentProgress>(orderId);
-        var row = await app.GetProjectionRow<OrderStatusRow>(
-            tableName: "ordersbystatus",
-            partitionKey: orderId.ToString(),
-            rowKey: "status");
 
-        await Verify(new { progress, row });
+        await Verify(progress);
     }
 
     [Fact]
@@ -50,11 +50,7 @@ public sealed class OrderPaymentSagaTests
         await app.Drain();
 
         var progress = await app.GetSagaProgress<OrderPaymentSaga, OrderPaymentProgress>(orderId);
-        var row = await app.GetProjectionRow<OrderStatusRow>(
-            tableName: "ordersbystatus",
-            partitionKey: orderId.ToString(),
-            rowKey: "status");
 
-        await Verify(new { progress, row });
+        await Verify(progress);
     }
 }

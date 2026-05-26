@@ -1,3 +1,4 @@
+using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Testing.Internal;
 
@@ -7,11 +8,26 @@ namespace Edict.Testing.Tests;
 
 public sealed class HeldQueueTests
 {
-    sealed record E1 : EdictEvent;
+    [EdictStream("HeldQueueProbe")]
+    sealed partial record E1 : EdictEvent
+    {
+        [EdictRouteKey]
+        public Guid Id { get; init; } = Guid.Empty;
+    }
 
-    sealed record E2 : EdictEvent;
+    [EdictStream("HeldQueueProbe")]
+    sealed partial record E2 : EdictEvent
+    {
+        [EdictRouteKey]
+        public Guid Id { get; init; } = Guid.Empty;
+    }
 
-    sealed record E3 : EdictEvent;
+    [EdictStream("HeldQueueProbe")]
+    sealed partial record E3 : EdictEvent
+    {
+        [EdictRouteKey]
+        public Guid Id { get; init; } = Guid.Empty;
+    }
 
     [Fact]
     public void OnArrival_ReturnsJustTheArrival_WhenHoldCountIsZero()

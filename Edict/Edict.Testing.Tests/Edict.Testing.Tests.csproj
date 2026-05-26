@@ -15,6 +15,11 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Edict.Testing\Edict.Testing.csproj" />
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+        <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <!-- Generators run over this assembly's throwaway in-test consumer (ReorderChaosHarnessTests). -->
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
 </Project>
