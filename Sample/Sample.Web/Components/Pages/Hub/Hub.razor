@@ -1,0 +1,275 @@
+@page "/"
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Diagnostics.Commands
+@using Sample.Contracts.Fulfillment.Projections
+@using Sample.Contracts.Orders.Commands
+@using Sample.Contracts.Orders.Projections
+@using Sample.Web.Simulator
+@using Sample.Web.State
+@inject IEdictSender Sender
+@inject IEdictTableRepository<OrderStatusRow> OrdersByStatus
+@inject IEdictTableRepository<LineItemFulfillmentRow> FulfillmentRows
+@inject IEdictDeadLetterRepository DeadLetterRepository
+@inject IDeterministicOrderPlacer FireOne
+@inject OrderSimulatorService Simulator
+@inject KnownOrdersRegistry KnownOrders
+@inject CurrentOrderTracker OrderTracker
+@implements IDisposable
+
+<PageTitle>Edict — Demo</PageTitle>
+
+<div class="hub">
+    <section class="hub-controls">
+        @if (Simulator.IsRunning)
+        {
+            <button @onclick="OnStop">⏸ Pause traffic</button>
+        }
+        else
+        {
+            <button @onclick="OnStart">▶ Start traffic</button>
+        }
+        <button @onclick="OnFireOne">Fire one order</button>
+        <span class="hub-controls-sep"></span>
+        <button @onclick="OnInjectPoison">Inject poison</button>
+        <button @onclick="OnInject5Mb">Inject 5MB</button>
+        <button @onclick="OnInjectSagaReject">Inject saga reject</button>
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <span class="hub-message">@_message</span>
+        }
+    </section>
+
+    @if (_orderRows.Count == 0)
+    {
+        <p class="hub-empty">No orders have been placed yet. Press ▶ Start traffic for a live system, or Fire one order for a single trace you can follow in Aspire.</p>
+    }
+    else
+    {
+        <div class="hub-grid">
+            <div class="hub-left">
+                <h2>Orders</h2>
+                <table class="hub-orders">
+                    <thead>
+                        <tr>
+                            <th>OrderId</th>
+                            <th>Status</th>
+                            <th>Items</th>
+                            <th>Placed</th>
+                            <th>Shipped</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in _orderRows)
+                        {
+                            <tr class="@(entry.OrderId == _spotlightedOrderId ? "row-spotlight" : "")"
+                                @onclick="() => OnSpotlight(entry.OrderId)">
+                                <td><code>@FormatShort(entry.OrderId)</code></td>
+                                <td>@entry.Row.Status</td>
+                                <td>@entry.Row.ItemCount</td>
+                                <td>@FormatTime(entry.Row.PlacedAt)</td>
+                                <td>@FormatTime(entry.Row.ShippedAt)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <h2>Fulfillment</h2>
+                @if (_spotlightedOrderId is null)
+                {
+                    <p class="hub-empty-small">Click an order above to see its line items.</p>
+                }
+                else if (_fulfillmentLines.Count == 0)
+                {
+                    <p class="hub-empty-small">No line items yet for the spotlighted order.</p>
+                }
+                else
+                {
+                    <table class="hub-fulfillment">
+                        <thead>
+                            <tr>
+                                <th>LineItemId</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in _fulfillmentLines)
+                            {
+                                <tr>
+                                    <td><code>@FormatShort(line.LineItemId)</code></td>
+                                    <td>@line.Status</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            <div class="hub-right">
+                <SpotlightPanel OrderId="_spotlightedOrderId"
+                                Status="_spotlightedStatus"
+                                FulfillmentLines="_fulfillmentLines" />
+                <div class="hub-counter">
+                    <a href="dead-letter">
+                        <div class="hub-counter-label">Dead-letter</div>
+                        <div class="hub-counter-value">@_deadLetterCount</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    IReadOnlyList<OrderEntry> _orderRows = Array.Empty<OrderEntry>();
+    OrderStatusRow? _spotlightedStatus;
+    IReadOnlyList<LineItemFulfillmentRow> _fulfillmentLines = Array.Empty<LineItemFulfillmentRow>();
+    Guid? _spotlightedOrderId;
+    int _deadLetterCount;
+    string _message = "";
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cts.Token);
+    }
+
+    async Task PollAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        try
+        {
+            var knownIds = KnownOrders.Snapshot();
+            var entries = new List<OrderEntry>(knownIds.Count);
+            foreach (var orderId in knownIds)
+            {
+                var row = await OrdersByStatus.GetAsync(orderId.ToString(), "status");
+                if (row is not null)
+                {
+                    entries.Add(new OrderEntry(orderId, row));
+                }
+            }
+
+            _orderRows = entries
+                .OrderByDescending(e => e.Row.PlacedAt ?? DateTimeOffset.MinValue)
+                .ToArray();
+
+            _spotlightedOrderId = OrderTracker.Current;
+            if (_spotlightedOrderId is { } id)
+            {
+                _spotlightedStatus = _orderRows.FirstOrDefault(e => e.OrderId == id)?.Row
+                                     ?? await OrdersByStatus.GetAsync(id.ToString(), "status");
+                _fulfillmentLines = await FulfillmentRows.QueryPartitionAsync(id.ToString());
+            }
+            else
+            {
+                _spotlightedStatus = null;
+                _fulfillmentLines = Array.Empty<LineItemFulfillmentRow>();
+            }
+
+            _deadLetterCount = (await DeadLetterRepository.ListAllAsync()).Count;
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface
+            // as a Blazor error boundary in the demo.
+        }
+    }
+
+    void OnStart() => Simulator.Start();
+
+    void OnStop() => Simulator.Stop();
+
+    async Task OnFireOne()
+    {
+        var orderId = await FireOne.FireOneAsync();
+        OrderTracker.Set(orderId);
+        _message = $"Fired one deterministic order — spotlighting {FormatShort(orderId)}.";
+    }
+
+    void OnSpotlight(Guid orderId)
+    {
+        OrderTracker.Set(orderId);
+        _spotlightedOrderId = orderId;
+    }
+
+    async Task OnInjectPoison()
+    {
+        var orderId = Guid.NewGuid();
+        var place = await Sender.Send(new PlaceOrderCommand(orderId, "POISON-DEMO"));
+        if (place is not EdictCommandResult.Accepted)
+        {
+            _message = Describe("Place", place);
+            return;
+        }
+
+        KnownOrders.Register(orderId);
+        var cancel = await Sender.Send(new CancelOrderCommand(orderId, "POISON: handler-throw demo"));
+        _message = cancel is EdictCommandResult.Accepted
+            ? "Injected poison — a dead-letter row should appear within ~5s."
+            : Describe("Cancel", cancel);
+    }
+
+    async Task OnInject5Mb()
+    {
+        var orderId = Guid.NewGuid();
+        var place = await Sender.Send(new PlaceOrderCommand(orderId, "CLAIM-CHECK-DEMO"));
+        if (place is not EdictCommandResult.Accepted)
+        {
+            _message = Describe("Place", place);
+            return;
+        }
+
+        KnownOrders.Register(orderId);
+        var paddedSku = "SKU-" + new string('X', 5000);
+        var add = await Sender.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), paddedSku, 1));
+        _message = add is EdictCommandResult.Accepted
+            ? "Fired oversize order — open the Aspire dashboard and look for envelope.shape=ClaimCheck on the publish span."
+            : Describe("AddLineItem", add);
+    }
+
+    async Task OnInjectSagaReject()
+    {
+        var simulationId = Guid.NewGuid();
+        var result = await Sender.Send(new TriggerSagaFailureCommand(simulationId));
+        _message = result is EdictCommandResult.Accepted
+            ? "Injected saga reject — a dead-letter row should appear within ~5s."
+            : Describe("TriggerSagaFailure", result);
+    }
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string FormatTime(DateTimeOffset? when) =>
+        when?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
+
+    static string Describe(string label, EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected r
+            ? $"{label} rejected: {string.Join(", ", r.Reasons.Select(x => x.Code))}."
+            : $"{label} accepted.";
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+    }
+
+    sealed record OrderEntry(Guid OrderId, OrderStatusRow Row);
+}

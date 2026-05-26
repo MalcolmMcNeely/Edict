@@ -1,9 +1,4 @@
 @page "/dead-letter"
-@using Edict.Contracts.Commands
-@using Edict.Contracts.Sending
-@using Sample.Contracts.Diagnostics.Commands
-@using Sample.Contracts.Orders.Commands
-@inject IEdictSender Sender
 @inject IEdictDeadLetterRepository DeadLetterRepository
 @implements IDisposable
 
@@ -11,67 +6,7 @@
 
 <h1>Dead Letter</h1>
 
-<p>
-    Dead Letter is the forensic surface for Outbox effects that exhaust
-    <code>OutboxMaxAttempts</code>. Rejection is <em>not</em> dead letter —
-    the third button demonstrates the distinction by triggering a Command
-    Validator rejection that surfaces inline and produces no row.
-</p>
-
-<section>
-    <h2>Trigger handler-throw</h2>
-    <p>
-        Places a throw-away order and cancels it with a <code>POISON:</code>
-        reason. The <code>PoisonAuditEventHandler</code> throws on the resulting
-        <code>OrderCancelledEvent</code>; the <code>InvokeHandler</code> outbox
-        effect retries until exhausted, then promotes to Dead Letter.
-    </p>
-    <button @onclick="OnTriggerHandlerThrow">Trigger handler-throw</button>
-    @if (!string.IsNullOrEmpty(_lastHandlerThrowMessage))
-    {
-        <p><em>@_lastHandlerThrowMessage</em></p>
-    }
-</section>
-
-<section>
-    <h2>Trigger saga-command-rejection</h2>
-    <p>
-        Sends a <code>TriggerSagaFailureCommand</code>. The
-        <code>BadCommandSaga</code> reacts to the raised event by dispatching a
-        <code>RejectingCommand</code> that the target handler always rejects.
-        The <code>SendCommand</code> outbox effect retries until exhausted,
-        then promotes to Dead Letter.
-    </p>
-    <button @onclick="OnTriggerSagaCommandRejection">Trigger saga-command-rejection</button>
-    @if (!string.IsNullOrEmpty(_lastSagaRejectionMessage))
-    {
-        <p><em>@_lastSagaRejectionMessage</em></p>
-    }
-</section>
-
-<section>
-    <h2>Trigger validator rejection</h2>
-    <p>
-        Sends a <code>PlaceOrderCommand</code> with an empty
-        <code>CustomerReference</code>. The validator returns a
-        <code>Rejected</code> envelope inline — the call never reaches the
-        handler and <strong>no dead-letter row appears</strong>. This button
-        exists to teach the distinction between rejection and dead lettering.
-    </p>
-    <button @onclick="OnTriggerValidatorRejection">Trigger validator rejection</button>
-    @if (!string.IsNullOrEmpty(_lastValidatorMessage))
-    {
-        <p><em>@_lastValidatorMessage</em></p>
-    }
-</section>
-
-<h2>Dead-letter rows</h2>
-
-<p>
-    Live read of <code>IEdictDeadLetterRepository.ListAllAsync()</code>,
-    refreshed every second over Blazor's existing SignalR circuit. Promotion
-    lands within ~5 seconds with the demo-tuned outbox budget.
-</p>
+<p class="tagline">Effects that exhausted the outbox retry budget. Failure here is forensic, not blocking — the system kept running.</p>
 
 @if (_entries.Count == 0)
 {
@@ -109,10 +44,6 @@ else
 }
 
 @code {
-    string _lastHandlerThrowMessage = "";
-    string _lastSagaRejectionMessage = "";
-    string _lastValidatorMessage = "";
-
     IReadOnlyList<EdictDeadLetterEntry> _entries = [];
 
     PeriodicTimer? _timer;
@@ -150,44 +81,6 @@ else
             _entries = [];
         }
     }
-
-    async Task OnTriggerHandlerThrow()
-    {
-        var orderId = Guid.NewGuid();
-        var place = await Sender.Send(new PlaceOrderCommand(orderId, "DEAD-LETTER-DEMO"));
-        if (place is not EdictCommandResult.Accepted)
-        {
-            _lastHandlerThrowMessage = $"Place was unexpectedly {Describe(place)}.";
-            return;
-        }
-
-        var cancel = await Sender.Send(new CancelOrderCommand(orderId, "POISON: handler-throw demo"));
-        _lastHandlerThrowMessage = cancel is EdictCommandResult.Accepted
-            ? $"Cancelled {orderId} with POISON reason. Dead-letter row should appear within ~5s."
-            : $"Cancel rejected unexpectedly: {Describe(cancel)}.";
-    }
-
-    async Task OnTriggerSagaCommandRejection()
-    {
-        var simulationId = Guid.NewGuid();
-        var result = await Sender.Send(new TriggerSagaFailureCommand(simulationId));
-        _lastSagaRejectionMessage = result is EdictCommandResult.Accepted
-            ? $"Triggered saga failure {simulationId}. Dead-letter row should appear within ~5s."
-            : $"Trigger rejected unexpectedly: {Describe(result)}.";
-    }
-
-    async Task OnTriggerValidatorRejection()
-    {
-        var result = await Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), ""));
-        _lastValidatorMessage = result is EdictCommandResult.Rejected r
-            ? $"Rejected inline (no dead-letter row): {string.Join(", ", r.Reasons.Select(x => x.Code))}."
-            : "Unexpectedly Accepted — the validator should have rejected an empty CustomerReference.";
-    }
-
-    static string Describe(EdictCommandResult result) =>
-        result is EdictCommandResult.Rejected r
-            ? $"Rejected: {string.Join(", ", r.Reasons.Select(x => x.Code))}"
-            : "Accepted";
 
     public void Dispose()
     {

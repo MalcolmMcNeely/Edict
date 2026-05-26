@@ -16,6 +16,7 @@ using Sample.Contracts.Payments.Projections;
 using Sample.ServiceDefaults;
 using Sample.Silo.Orders.CommandHandlers;
 using Sample.Web.Components;
+using Sample.Web.Simulator;
 using Sample.Web.State;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,6 +58,10 @@ builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
 builder.Services.AddEdict();
 
 builder.Services.AddSingleton<CurrentOrderTracker>();
+builder.Services.AddSingleton<KnownOrdersRegistry>();
+builder.Services.AddSingleton<IDeterministicOrderPlacer, FireOneOrderHelper>();
+builder.Services.AddSingleton<OrderSimulatorService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSimulatorService>());
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

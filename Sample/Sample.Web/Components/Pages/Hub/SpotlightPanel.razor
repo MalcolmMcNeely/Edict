@@ -1,0 +1,81 @@
+@using Sample.Contracts.Fulfillment.Domain
+@using Sample.Contracts.Fulfillment.Projections
+@using Sample.Contracts.Orders.Projections
+
+@if (OrderId is null)
+{
+    <div class="spotlight spotlight-empty">
+        <div class="spotlight-title">Spotlight</div>
+        <div class="spotlight-hint">Click any row, or press <strong>Fire one order</strong>, to follow one lifecycle.</div>
+    </div>
+}
+else
+{
+    <div class="spotlight">
+        <div class="spotlight-title">Spotlight</div>
+        <div class="spotlight-order"><code>@OrderId</code></div>
+        <table class="spotlight-table">
+            <tbody>
+                @foreach (var row in Rows())
+                {
+                    <tr>
+                        <td class="spotlight-icon">@row.Icon</td>
+                        <td class="spotlight-state">@row.State</td>
+                        <td class="spotlight-time">@row.Timestamp</td>
+                        <td class="spotlight-span"><code>@row.Span</code></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? OrderId { get; set; }
+    [Parameter] public OrderStatusRow? Status { get; set; }
+    [Parameter] public IReadOnlyList<LineItemFulfillmentRow> FulfillmentLines { get; set; } = Array.Empty<LineItemFulfillmentRow>();
+
+    const string Complete = "●";
+    const string InProgress = "◐";
+    const string NotYet = "○";
+
+    IEnumerable<TimelineRow> Rows()
+    {
+        yield return Build("Placed", Status?.PlacedAt, "edict.event.publish OrderPlacedEvent",
+            isComplete: Status?.PlacedAt is not null,
+            isInProgress: false);
+
+        yield return Build("Submitted", Status?.SubmittedAt, "edict.event.publish OrderSubmittedEvent",
+            isComplete: Status?.SubmittedAt is not null,
+            isInProgress: false);
+
+        yield return Build("Authorised", Status?.AuthorizedAt, "edict.event.publish PaymentAuthorizedEvent",
+            isComplete: Status?.AuthorizedAt is not null,
+            isInProgress: Status?.SubmittedAt is not null && Status?.AuthorizedAt is null);
+
+        var fulfillingComplete = Status?.FulfilledAt is not null;
+        var fulfillingInProgress = !fulfillingComplete && Status?.AuthorizedAt is not null;
+        var fulfillingState = fulfillingInProgress
+            ? $"Fulfilling ({CountFulfilled()} of {FulfillmentLines.Count})"
+            : "Fulfilling";
+        yield return Build(fulfillingState, Status?.FulfilledAt, "edict.event.publish OrderFullyFulfilledEvent",
+            isComplete: fulfillingComplete,
+            isInProgress: fulfillingInProgress);
+
+        yield return Build("Shipped", Status?.ShippedAt, "edict.event.publish OrderShippedEvent",
+            isComplete: Status?.ShippedAt is not null,
+            isInProgress: Status?.FulfilledAt is not null && Status?.ShippedAt is null);
+    }
+
+    int CountFulfilled() =>
+        FulfillmentLines.Count(line => line.Status == LineItemFulfillmentStatus.Fulfilled);
+
+    TimelineRow Build(string state, DateTimeOffset? at, string span, bool isComplete, bool isInProgress)
+    {
+        var icon = isComplete ? Complete : isInProgress ? InProgress : NotYet;
+        var timestamp = at?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
+        return new TimelineRow(icon, state, timestamp, span);
+    }
+
+    readonly record struct TimelineRow(string Icon, string State, string Timestamp, string Span);
+}
