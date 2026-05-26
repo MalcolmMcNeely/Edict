@@ -1,4 +1,5 @@
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 
 using Orleans;
 
@@ -22,4 +23,13 @@ public abstract class ConformanceFixture : IAsyncLifetime
     public abstract Task InitializeAsync();
 
     public abstract Task DisposeAsync();
+
+    /// <summary>
+    /// Provider-bound read seam used by table-projection conformance scenarios
+    /// to verify a row landed in the substrate's durable store after a
+    /// projection write. Each substrate fixture returns its own
+    /// <see cref="IEdictTableRepository{T}"/> implementation (e.g. Azure Table,
+    /// Postgres) — the scenario stays substrate-neutral.
+    /// </summary>
+    public abstract IEdictTableRepository<T> GetTableRepository<T>(string tableName) where T : class, new();
 }

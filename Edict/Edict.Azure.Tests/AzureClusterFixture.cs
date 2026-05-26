@@ -40,6 +40,9 @@ public sealed class AzureClusterFixture : ConformanceFixture
 
     public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
+    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
+        new AzureTableRepository<T>(_tableServiceClient, tableName);
+
     public TableServiceClient TableServiceClient => _tableServiceClient;
 
     public BlobServiceClient BlobServiceClient => _blobServiceClient;
