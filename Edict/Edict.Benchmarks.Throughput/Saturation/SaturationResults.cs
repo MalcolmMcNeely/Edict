@@ -1,4 +1,4 @@
-namespace Edict.Benchmarks.Throughput;
+namespace Edict.Benchmarks.Throughput.Saturation;
 
 /// <summary>
 /// Single-row outcome of a saturation pass — the count-at-window-end of

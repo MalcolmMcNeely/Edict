@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 
-namespace Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.Saturation;
+
+namespace Edict.Benchmarks.Throughput.Output;
 
 /// <summary>
 /// Writes one row per <see cref="SaturationResults"/> to

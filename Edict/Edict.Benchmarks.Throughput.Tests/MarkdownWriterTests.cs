@@ -1,4 +1,7 @@
-using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.ClosedLoop;
+using Edict.Benchmarks.Throughput.Measurement;
+using Edict.Benchmarks.Throughput.Output;
+using Edict.Benchmarks.Throughput.Saturation;
 
 namespace Edict.Benchmarks.Throughput.Tests;
 

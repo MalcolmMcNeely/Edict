@@ -1,4 +1,6 @@
-using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.ClosedLoop;
+using Edict.Benchmarks.Throughput.Measurement;
+using Edict.Benchmarks.Throughput.Output;
 
 using static VerifyXunit.Verifier;
 

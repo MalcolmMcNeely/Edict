@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 
-namespace Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.ClosedLoop;
+
+namespace Edict.Benchmarks.Throughput.Output;
 
 /// <summary>
 /// Writes a long-format raw-sample CSV per substrate to

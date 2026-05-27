@@ -2,7 +2,7 @@ using Edict.Substrate;
 using Edict.Substrate.Azurite;
 using Edict.Substrate.KafkaPostgres;
 
-namespace Edict.Benchmarks.Throughput;
+namespace Edict.Benchmarks.Throughput.Cluster;
 
 /// <summary>
 /// Single place that lists every <see cref="ISubstrate"/> the harness can run.

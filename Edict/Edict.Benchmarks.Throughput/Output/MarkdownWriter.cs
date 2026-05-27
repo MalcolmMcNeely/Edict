@@ -2,7 +2,10 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.ClosedLoop;
+using Edict.Benchmarks.Throughput.Saturation;
+
+namespace Edict.Benchmarks.Throughput.Output;
 
 /// <summary>
 /// Pure-function token replacer over <c>docs/benchmarks/throughput.template.md</c>.

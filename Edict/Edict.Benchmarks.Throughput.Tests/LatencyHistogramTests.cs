@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.Measurement;
 
 namespace Edict.Benchmarks.Throughput.Tests;
 

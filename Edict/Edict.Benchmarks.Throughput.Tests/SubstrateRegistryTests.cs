@@ -1,4 +1,4 @@
-using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.Cluster;
 using Edict.Substrate.Azurite;
 using Edict.Substrate.KafkaPostgres;
 

@@ -2,7 +2,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
-using Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.ClosedLoop;
+using Edict.Benchmarks.Throughput.Cluster;
+using Edict.Benchmarks.Throughput.Output;
+using Edict.Benchmarks.Throughput.Saturation;
 using Edict.Substrate;
 
 if (args.Length == 0)
@@ -45,28 +48,29 @@ var runDate = DateTimeOffset.UtcNow;
 var docsRoot = ResolveDocsRoot();
 var combined = new List<ThroughputResults>();
 var saturationCombined = new List<SaturationResults>();
-var runner = new ThroughputRunner();
+var closedLoop = new ClosedLoopRunner();
+var saturation = new SaturationRunner();
 var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 
 foreach (var substrate in substrates)
 {
     perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
     Console.WriteLine($"Sweeping {substrate.Name} — Commands: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var commandsResults = await runner.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
+    var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in commandsResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
     Console.WriteLine($"Sweeping {substrate.Name} — RaiseOnly: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var raiseOnlyResults = await runner.RunRaiseOnlySweepAsync(substrate, parallelisms, warmup, window);
+    var raiseOnlyResults = await closedLoop.RunRaiseOnlySweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in raiseOnlyResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} sends in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
     Console.WriteLine($"Sweeping {substrate.Name} — Events: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var eventsResults = await runner.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
+    var eventsResults = await closedLoop.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in eventsResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
@@ -86,7 +90,7 @@ foreach (var substrate in substrates)
     // single sum-of-counters read at window-end. The closed-loop cluster was
     // torn down inside RunSweepAsync; the saturation runner brings up its own.
     Console.WriteLine($"Saturating {substrate.Name} — Events: N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
-    var saturationResult = await runner.RunSaturationAsync(
+    var saturationResult = await saturation.RunAsync(
         substrate, saturationParallelism, saturationWarmup, saturationWindow);
     Console.WriteLine($"  {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount})");
     saturationCombined.Add(saturationResult);

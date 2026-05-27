@@ -1,4 +1,4 @@
-namespace Edict.Benchmarks.Throughput;
+namespace Edict.Benchmarks.Throughput.Output;
 
 /// <summary>
 /// Per-run context surfaced in the published markdown header so a reader can

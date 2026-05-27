@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Edict.Benchmarks.Throughput;
+namespace Edict.Benchmarks.Throughput.Measurement;
 
 /// <summary>
 /// Fixed-capacity recorder for stopwatch-tick latency samples; computes
@@ -72,5 +72,3 @@ public sealed class LatencyHistogram
     static TimeSpan TicksToTimeSpan(long stopwatchTicks) =>
         TimeSpan.FromSeconds((double)stopwatchTicks / Stopwatch.Frequency);
 }
-
-public readonly record struct LatencyResults(TimeSpan P50, TimeSpan P95, TimeSpan P99);

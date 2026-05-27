@@ -1,4 +1,6 @@
-namespace Edict.Benchmarks.Throughput;
+using Edict.Benchmarks.Throughput.Measurement;
+
+namespace Edict.Benchmarks.Throughput.ClosedLoop;
 
 public sealed record ThroughputResults(
     string Substrate,
