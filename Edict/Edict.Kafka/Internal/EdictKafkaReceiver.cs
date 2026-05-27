@@ -26,6 +26,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
     readonly string _consumerGroup;
     readonly Serializer _serializer;
     readonly ILogger _logger;
+    readonly Func<IConsumer<string, byte[]>> _consumerFactory;
 
     IConsumer<string, byte[]>? _consumer;
     Task? _shutdownInFlight;
@@ -37,7 +38,8 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
         string bootstrapServers,
         string consumerGroup,
         Serializer serializer,
-        ILogger logger)
+        ILogger logger,
+        Func<IConsumer<string, byte[]>>? consumerFactory = null)
     {
         _providerName = providerName;
         _partition = partition;
@@ -46,9 +48,20 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
         _consumerGroup = consumerGroup;
         _serializer = serializer;
         _logger = logger;
+        _consumerFactory = consumerFactory ?? BuildDefaultConsumer;
     }
 
     public Task Initialize(TimeSpan timeout)
+    {
+        _consumer = _consumerFactory();
+        _consumer.Assign(new TopicPartition(_topic, new Partition(_partition)));
+        _logger.LogInformation(
+            "Edict.Kafka receiver initialised for partition {Partition} on topic {Topic} group {Group}",
+            _partition, _topic, _consumerGroup);
+        return Task.CompletedTask;
+    }
+
+    IConsumer<string, byte[]> BuildDefaultConsumer()
     {
         var config = new ConsumerConfig
         {
@@ -60,12 +73,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
             ClientId = $"{_providerName}-r-p{_partition}",
             AllowAutoCreateTopics = false,
         };
-        _consumer = new ConsumerBuilder<string, byte[]>(config).Build();
-        _consumer.Assign(new TopicPartition(_topic, new Partition(_partition)));
-        _logger.LogInformation(
-            "Edict.Kafka receiver initialised for partition {Partition} on topic {Topic} group {Group}",
-            _partition, _topic, _consumerGroup);
-        return Task.CompletedTask;
+        return new ConsumerBuilder<string, byte[]>(config).Build();
     }
 
     public Task<IList<IBatchContainer>> GetQueueMessagesAsync(int maxCount)
