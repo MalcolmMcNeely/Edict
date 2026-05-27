@@ -38,16 +38,30 @@ public static partial class MarkdownWriter
         return output;
     }
 
+    // Closed-loop's bounded await rate-paces the producer, so EPS would invite
+    // a misread as a throughput claim. The curated doc shows only latency at a
+    // narrow N sweep — broader rows are preserved in CSV and dropped here.
+    static readonly HashSet<int> ClosedLoopParallelisms = [2, 16, 64];
+    static readonly HashSet<string> ClosedLoopScenarios = new(StringComparer.Ordinal)
+    {
+        "Command acceptance",
+        "Command → Event delivery",
+    };
+
     static string RenderClosedLoopTable(IReadOnlyList<ThroughputResults> results)
     {
         var sb = new StringBuilder();
-        sb.Append("| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |\n");
-        sb.Append("| --- | --- | --- | ---: | ---: | ---: | ---: |");
+        sb.Append("| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) |\n");
+        sb.Append("| --- | --- | --- | ---: | ---: | ---: |");
         foreach (var r in results)
         {
+            if (!ClosedLoopScenarios.Contains(r.Scenario) || !ClosedLoopParallelisms.Contains(r.Parallelism))
+            {
+                continue;
+            }
             sb.Append('\n');
             sb.Append(CultureInfo.InvariantCulture,
-                $"| {r.Substrate} | {r.Scenario} | {r.Parallelism} | {r.EventsPerSecond:F0} | {r.Latency.P50.TotalMilliseconds:F2} | {r.Latency.P95.TotalMilliseconds:F2} | {r.Latency.P99.TotalMilliseconds:F2} |");
+                $"| {r.Substrate} | {r.Scenario} | {r.Parallelism} | {r.Latency.P50.TotalMilliseconds:F2} | {r.Latency.P95.TotalMilliseconds:F2} | {r.Latency.P99.TotalMilliseconds:F2} |");
         }
         return sb.ToString();
     }
@@ -55,7 +69,7 @@ public static partial class MarkdownWriter
     static string RenderSaturationTable(IReadOnlyList<SaturationResults> results)
     {
         var sb = new StringBuilder();
-        sb.Append("| Substrate | Events per second |\n");
+        sb.Append("| Substrate | Events / sec (end-to-end) |\n");
         sb.Append("| --- | ---: |");
         foreach (var r in results)
         {

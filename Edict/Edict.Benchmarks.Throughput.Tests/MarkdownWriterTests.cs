@@ -3,6 +3,8 @@ using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Output;
 using Edict.Benchmarks.Throughput.Saturation;
 
+using static VerifyXunit.Verifier;
+
 namespace Edict.Benchmarks.Throughput.Tests;
 
 public sealed class MarkdownWriterTests
@@ -94,20 +96,74 @@ public sealed class MarkdownWriterTests
     }
 
     [Fact]
-    public void Render_ShouldEmitClosedLoopTableWithHeaderAndRow_ForPopulatedResults()
+    public Task Render_ShouldEmitClosedLoopTable()
     {
+        // Mix of rows that must be kept (Command acceptance / Command → Event delivery
+        // at N ∈ {2,16,64}) and rows that must be filtered out (RaiseOnly is dropped
+        // entirely; the surviving scenarios at N ∉ {2,16,64} are also dropped). The
+        // closed-loop section's curated invariant is enforced by the writer.
         var results = new[]
         {
             new ThroughputResults(
                 Substrate: "azure",
-                Scenario: "Commands",
-                Parallelism: 4,
-                CompletedCount: 6_560,
+                Scenario: "Command acceptance",
+                Parallelism: 1,
+                CompletedCount: 100,
                 ElapsedMeasurement: TimeSpan.FromSeconds(10),
                 Latency: new LatencyResults(
-                    P50: TimeSpan.FromMilliseconds(5.77),
-                    P95: TimeSpan.FromMilliseconds(9.09),
-                    P99: TimeSpan.FromMilliseconds(11.29))),
+                    P50: TimeSpan.FromMilliseconds(1),
+                    P95: TimeSpan.FromMilliseconds(2),
+                    P99: TimeSpan.FromMilliseconds(3))),
+            new ThroughputResults(
+                Substrate: "azure",
+                Scenario: "Command acceptance",
+                Parallelism: 2,
+                CompletedCount: 200,
+                ElapsedMeasurement: TimeSpan.FromSeconds(10),
+                Latency: new LatencyResults(
+                    P50: TimeSpan.FromMilliseconds(4.10),
+                    P95: TimeSpan.FromMilliseconds(5.20),
+                    P99: TimeSpan.FromMilliseconds(6.30))),
+            new ThroughputResults(
+                Substrate: "azure",
+                Scenario: "RaiseOnly",
+                Parallelism: 16,
+                CompletedCount: 300,
+                ElapsedMeasurement: TimeSpan.FromSeconds(10),
+                Latency: new LatencyResults(
+                    P50: TimeSpan.FromMilliseconds(7),
+                    P95: TimeSpan.FromMilliseconds(8),
+                    P99: TimeSpan.FromMilliseconds(9))),
+            new ThroughputResults(
+                Substrate: "azure",
+                Scenario: "Command → Event delivery",
+                Parallelism: 16,
+                CompletedCount: 400,
+                ElapsedMeasurement: TimeSpan.FromSeconds(10),
+                Latency: new LatencyResults(
+                    P50: TimeSpan.FromMilliseconds(10.40),
+                    P95: TimeSpan.FromMilliseconds(15.55),
+                    P99: TimeSpan.FromMilliseconds(20.66))),
+            new ThroughputResults(
+                Substrate: "azure",
+                Scenario: "Command → Event delivery",
+                Parallelism: 64,
+                CompletedCount: 500,
+                ElapsedMeasurement: TimeSpan.FromSeconds(10),
+                Latency: new LatencyResults(
+                    P50: TimeSpan.FromMilliseconds(12.34),
+                    P95: TimeSpan.FromMilliseconds(18.99),
+                    P99: TimeSpan.FromMilliseconds(25.01))),
+            new ThroughputResults(
+                Substrate: "azure",
+                Scenario: "Command → Event delivery",
+                Parallelism: 256,
+                CompletedCount: 600,
+                ElapsedMeasurement: TimeSpan.FromSeconds(10),
+                Latency: new LatencyResults(
+                    P50: TimeSpan.FromMilliseconds(99),
+                    P95: TimeSpan.FromMilliseconds(99),
+                    P99: TimeSpan.FromMilliseconds(99))),
         };
 
         var output = MarkdownWriter.Render(
@@ -115,31 +171,22 @@ public sealed class MarkdownWriterTests
             tokens: new Dictionary<string, string>(),
             results: results);
 
-        var expected =
-            "| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |\n" +
-            "| --- | --- | --- | ---: | ---: | ---: | ---: |\n" +
-            "| azure | Commands | 4 | 656 | 5.77 | 9.09 | 11.29 |";
-
-        Assert.Equal(expected, output);
+        return Verify(output);
     }
 
     [Fact]
-    public void Render_ShouldEmitClosedLoopTableHeaderOnly_ForEmptyResults()
+    public Task Render_ShouldEmitEmptyClosedLoopTable()
     {
         var output = MarkdownWriter.Render(
             template: "{{table:closed_loop}}",
             tokens: new Dictionary<string, string>(),
             results: []);
 
-        var expected =
-            "| Substrate | Scenario | Parallelism | Events per second (EPS) | p50 (ms) | p95 (ms) | p99 (ms) |\n" +
-            "| --- | --- | --- | ---: | ---: | ---: | ---: |";
-
-        Assert.Equal(expected, output);
+        return Verify(output);
     }
 
     [Fact]
-    public void Render_ShouldEmitSaturationTableWithHeaderAndRow_ForPopulatedSaturationResults()
+    public Task Render_ShouldEmitSaturationTable()
     {
         var saturation = new[]
         {
@@ -163,17 +210,11 @@ public sealed class MarkdownWriterTests
             results: [],
             saturation: saturation);
 
-        var expected =
-            "| Substrate | Events per second |\n" +
-            "| --- | ---: |\n" +
-            "| azure | 73 |\n" +
-            "| kafkapostgres | 413 |";
-
-        Assert.Equal(expected, output);
+        return Verify(output);
     }
 
     [Fact]
-    public void Render_ShouldEmitSaturationTableHeaderOnly_ForEmptySaturationResults()
+    public Task Render_ShouldEmitEmptySaturationTable()
     {
         var output = MarkdownWriter.Render(
             template: "{{table:saturation}}",
@@ -181,10 +222,6 @@ public sealed class MarkdownWriterTests
             results: [],
             saturation: []);
 
-        var expected =
-            "| Substrate | Events per second |\n" +
-            "| --- | ---: |";
-
-        Assert.Equal(expected, output);
+        return Verify(output);
     }
 }

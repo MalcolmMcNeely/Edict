@@ -1,0 +1,5 @@
+| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) |
+| --- | --- | --- | ---: | ---: | ---: |
+| azure | Command acceptance | 2 | 4.10 | 5.20 | 6.30 |
+| azure | Command → Event delivery | 16 | 10.40 | 15.55 | 20.66 |
+| azure | Command → Event delivery | 64 | 12.34 | 18.99 | 25.01 |

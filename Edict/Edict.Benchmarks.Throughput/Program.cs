@@ -32,7 +32,7 @@ else
     substrates = [resolved];
 }
 
-int[] parallelisms = [1, 4, 16, 64, 256];
+int[] parallelisms = [2, 16, 64];
 var warmup = TimeSpan.FromSeconds(10);
 var window = TimeSpan.FromSeconds(30);
 var saturationParallelism = 256;
@@ -55,30 +55,22 @@ var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 foreach (var substrate in substrates)
 {
     perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
-    Console.WriteLine($"Sweeping {substrate.Name} — Commands: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in commandsResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
-    Console.WriteLine($"Sweeping {substrate.Name} — RaiseOnly: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var raiseOnlyResults = await closedLoop.RunRaiseOnlySweepAsync(substrate, parallelisms, warmup, window);
-    foreach (var point in raiseOnlyResults)
-    {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} sends in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
-    }
-
-    Console.WriteLine($"Sweeping {substrate.Name} — Events: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    Console.WriteLine($"Sweeping {substrate.Name} — Command → Event delivery: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var eventsResults = await closedLoop.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in eventsResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
     }
 
-    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + raiseOnlyResults.Count + eventsResults.Count);
+    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + eventsResults.Count);
     perSubstrate.AddRange(commandsResults);
-    perSubstrate.AddRange(raiseOnlyResults);
     perSubstrate.AddRange(eventsResults);
     combined.AddRange(perSubstrate);
 

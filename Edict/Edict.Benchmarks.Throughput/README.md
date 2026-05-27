@@ -26,11 +26,10 @@ Argument is required. Pass `all` or a substrate name from `SubstrateRegistry` (`
 
 For each substrate, **two methodologies coexist** (see [ADR-0031](../../docs/adr/0031-throughput-two-methodologies.md)):
 
-**Closed-loop sweep** — three scenarios swept across N ∈ {1, 4, 16, 64, 256} issuer tasks:
+**Closed-loop sweep** — two scenarios swept across N ∈ {2, 16, 64} issuer tasks:
 
-- **Commands** — `IEdictSender.Send(...)` round-trip latency for `BenchIncrementCommand`.
-- **RaiseOnly** — `Send` latency with `Raise` inside the handler; does not wait for the projection.
-- **Events** — `Send` + 5 ms point-get poll on the projection row.
+- **Command acceptance** — `IEdictSender.Send(...)` round-trip latency for `BenchIncrementCommand`.
+- **Command → Event delivery** — `Send` + 5 ms point-get poll on the projection row.
 
 Per scenario: 10 s warmup + 30 s measurement window. Produces p50/p95/p99 latency per (substrate, scenario, N).
 

@@ -1,0 +1,2 @@
+| Substrate | Events / sec (end-to-end) |
+| --- | ---: |

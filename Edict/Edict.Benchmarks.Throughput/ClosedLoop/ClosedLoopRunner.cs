@@ -57,17 +57,6 @@ public sealed class ClosedLoopRunner
             sp => new CommandsScenario(sp.GetRequiredService<IEdictSender>()),
             parallelisms, warmup, measurement, ct);
 
-    public Task<IReadOnlyList<ThroughputResults>> RunRaiseOnlySweepAsync(
-        ISubstrate substrate,
-        IReadOnlyList<int> parallelisms,
-        TimeSpan warmup,
-        TimeSpan measurement,
-        CancellationToken ct = default) =>
-        RunSweepAsync(
-            substrate,
-            sp => new RaiseOnlyScenario(sp.GetRequiredService<IEdictSender>()),
-            parallelisms, warmup, measurement, ct);
-
     public Task<IReadOnlyList<ThroughputResults>> RunEventsSweepAsync(
         ISubstrate substrate,
         IReadOnlyList<int> parallelisms,

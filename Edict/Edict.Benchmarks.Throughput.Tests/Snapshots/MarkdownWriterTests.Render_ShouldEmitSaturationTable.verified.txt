@@ -1,0 +1,4 @@
+| Substrate | Events / sec (end-to-end) |
+| --- | ---: |
+| azure | 73 |
+| kafkapostgres | 413 |

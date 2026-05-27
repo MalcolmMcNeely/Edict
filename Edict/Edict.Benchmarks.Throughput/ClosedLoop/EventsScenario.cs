@@ -26,7 +26,7 @@ public sealed class EventsScenario : IClosedLoopScenario
         _rowRepository = rowRepository;
     }
 
-    public string Name => "Events";
+    public string Name => "Command → Event delivery";
 
     public async Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken ct)
     {

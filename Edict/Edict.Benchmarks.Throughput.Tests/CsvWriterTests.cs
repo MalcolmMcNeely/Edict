@@ -12,14 +12,16 @@ public sealed class CsvWriterTests
     public Task Render_ShouldEmitLongFormatRowPerLatencySample()
     {
         // Two sweep points carrying their own latency samples. Long-format
-        // CSV: one row per sample, substrate + scenario + parallelism repeated.
+        // CSV: one row per sample, substrate + scenario + parallelism + the
+        // group's EPS repeated so a reader pivoting on (substrate, scenario,
+        // parallelism) gets one EPS per group while raw samples remain readable.
         var results = new[]
         {
             new ThroughputResults(
                 Substrate: "azure",
-                Scenario: "Commands",
-                Parallelism: 1,
-                CompletedCount: 3,
+                Scenario: "Command acceptance",
+                Parallelism: 2,
+                CompletedCount: 300,
                 ElapsedMeasurement: TimeSpan.FromSeconds(30),
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(6.2),
@@ -35,9 +37,9 @@ public sealed class CsvWriterTests
             },
             new ThroughputResults(
                 Substrate: "azure",
-                Scenario: "Commands",
-                Parallelism: 4,
-                CompletedCount: 2,
+                Scenario: "Command → Event delivery",
+                Parallelism: 16,
+                CompletedCount: 600,
                 ElapsedMeasurement: TimeSpan.FromSeconds(30),
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(5.0),

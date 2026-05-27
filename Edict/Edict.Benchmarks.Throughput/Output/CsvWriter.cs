@@ -16,13 +16,13 @@ public static class CsvWriter
     public static string Render(IReadOnlyList<ThroughputResults> results)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("substrate,scenario,parallelism,latency_ms");
+        sb.AppendLine("substrate,scenario,parallelism,events_per_second,latency_ms");
         foreach (var r in results)
         {
             foreach (var sample in r.LatencySamples)
             {
                 sb.AppendLine(CultureInfo.InvariantCulture,
-                    $"{r.Substrate},{r.Scenario},{r.Parallelism},{sample.TotalMilliseconds:F3}");
+                    $"{r.Substrate},{r.Scenario},{r.Parallelism},{r.EventsPerSecond:F2},{sample.TotalMilliseconds:F3}");
             }
         }
         return sb.ToString();

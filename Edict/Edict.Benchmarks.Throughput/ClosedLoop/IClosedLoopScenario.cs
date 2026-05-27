@@ -12,9 +12,10 @@ namespace Edict.Benchmarks.Throughput.ClosedLoop;
 public interface IClosedLoopScenario
 {
     /// <summary>
-    /// Stable, CSV-bound name (mirrors the historical <c>Scenario.ToString()</c>
-    /// values: <c>Commands</c>, <c>RaiseOnly</c>, <c>Events</c>). Persisted
-    /// into <see cref="ThroughputResults.Scenario"/> and the long-format CSV.
+    /// Stable, CSV-bound name (e.g. <c>Command acceptance</c>,
+    /// <c>Command → Event delivery</c>). Persisted into
+    /// <see cref="ThroughputResults.Scenario"/> and the long-format CSV; the
+    /// curated markdown's closed-loop section filters on these values.
     /// </summary>
     string Name { get; }
 
