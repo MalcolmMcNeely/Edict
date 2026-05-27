@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "_comment_purpose": "Parallel model for Edict.Postgres.Tests. Mirrors Edict.Azure.Tests: assembly-shared Postgres + Azurite testcontainers; per-fixture Guid-suffixed resource names keep collections from racing on shared substrate.",
+  "parallelizeAssembly": true,
+  "parallelizeTestCollections": true,
+  "methodDisplay": "method"
+}

@@ -12,12 +12,15 @@
     <Project Path="Edict.Azure/Edict.Azure.csproj" />
     <Project Path="Edict.Substrate/Edict.Substrate.csproj" />
     <Project Path="Edict.Substrate.Azurite/Edict.Substrate.Azurite.csproj" />
+    <Project Path="Edict.Postgres/Edict.Postgres.csproj" />
+    <Project Path="Edict.Substrate.KafkaPostgres/Edict.Substrate.KafkaPostgres.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
     <Project Path="Edict.Analyzers/Edict.Analyzers.csproj" />
     <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
     <Project Path="Edict.Telemetry.Tests/Edict.Telemetry.Tests.csproj" />
     <Project Path="Edict.Azure.Tests/Edict.Azure.Tests.csproj" />
+    <Project Path="Edict.Postgres.Tests/Edict.Postgres.Tests.csproj" />
     <Project Path="Edict.Tests.Conformance/Edict.Tests.Conformance.csproj" />
     <Project Path="Edict.Generators.Tests/Edict.Generators.Tests.csproj" />
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
