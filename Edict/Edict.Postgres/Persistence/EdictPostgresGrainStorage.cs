@@ -12,11 +12,17 @@ using Orleans.Storage;
 namespace Edict.Postgres.Persistence;
 
 /// <summary>
-/// Postgres implementation of <see cref="IGrainStorage"/> that distinguishes
-/// rows by grain type (not just state name), sidestepping the Orleans 10
-/// AdoNetGrainStorage regression where the provider uses the literal
-/// <c>"state"</c> as the row-key discriminator and collapses every Grain&lt;T&gt;
-/// with the same grain id into one row.
+/// Postgres-native <see cref="IGrainStorage"/> for the <c>edict-state</c>
+/// provider. Replaces Orleans 10's shipped <c>AdoNetGrainStorage</c> because
+/// the shipped provider has a regression that hard-codes the literal
+/// <c>"state"</c> as the row-key discriminator instead of the grain type:
+/// every <c>Grain&lt;T&gt;</c> sharing a grain id collapses into the same row
+/// and the writers race on ETag, which on the Edict normative pattern
+/// (a command handler + one or more per-aggregate projection grains, all
+/// keyed by the same <c>[EdictRouteKey]</c> Guid) silently strands every
+/// projection write. See <see href="https://github.com/dotnet/orleans/issues/9737"/>.
+/// This replacement keys on <c>(grain_type, grain_id, state_name, service_id)</c>
+/// so concept-level grains stay distinct.
 /// <para>
 /// Schema (created by <c>PostgresDdlBootstrap</c>):
 /// <c>edict_grain_state(grain_type TEXT, grain_id TEXT, state_name TEXT,

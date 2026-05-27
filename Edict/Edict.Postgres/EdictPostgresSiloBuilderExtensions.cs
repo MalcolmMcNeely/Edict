@@ -65,12 +65,15 @@ public static class EdictPostgresSiloBuilderExtensions
         }
 
         // Edict.Postgres ships its own grain-storage provider rather than
-        // chaining Orleans 10's AdoNetGrainStorage because the latter
-        // collapses every Grain<T>-derived grain that shares an id (the
-        // command handler and any per-aggregate projection grain) into one
-        // row — dotnet/orleans issue #9737. EdictPostgresGrainStorage keys on
-        // (grain_type, grain_id, state_name, service_id) so concept-level
-        // grains stay distinct.
+        // chaining Orleans 10's AdoNetGrainStorage. The shipped provider
+        // hard-codes the literal "state" as the row-key discriminator
+        // (https://github.com/dotnet/orleans/issues/9737), so every Grain<T>
+        // sharing a grain id — the command handler and any per-aggregate
+        // projection grain on the same RouteKey — collapses into one row
+        // and races on ETag. EdictPostgresGrainStorage keys on
+        // (grain_type, grain_id, state_name, service_id) instead so
+        // concept-level grains stay distinct. Do not swap this for
+        // AddAdoNetGrainStorage until the upstream issue is resolved.
         var grainStorageProviderName = options.GrainStorageProviderName;
         silo.Services.AddKeyedSingleton<IGrainStorage>(grainStorageProviderName, (sp, _) =>
         {
@@ -82,9 +85,10 @@ public static class EdictPostgresSiloBuilderExtensions
                 sp,
                 sp.GetRequiredService<ILogger<EdictPostgresGrainStorage>>());
         });
-        // PubSubStore stays on Orleans' AdoNet provider — its grain type is
-        // Orleans-internal (PubSubRendezvousGrain), no other grain type
-        // shares its key shape, so the issue #9737 collision does not bite.
+        // PubSubStore stays on Orleans' shipped AdoNet provider — its grain
+        // type is Orleans-internal (PubSubRendezvousGrain) and no other
+        // grain type shares its key shape, so the dotnet/orleans#9737 row
+        // collision does not bite here.
         silo.AddAdoNetGrainStorage("PubSubStore", opt =>
         {
             opt.Invariant = options.Invariant;

@@ -4,12 +4,13 @@
 
 -- Edict-owned grain-state table. Edict.Postgres ships its own grain-storage
 -- provider (EdictPostgresGrainStorage) instead of Orleans 10's
--- AdoNetGrainStorage because the latter uses the literal "state" string as
--- the row discriminator instead of the grain type, collapsing every
--- Grain<T>-derived grain that shares an id into one row (dotnet/orleans
--- issue #9737). Including grain_type in the composite PK is what
--- distinguishes per-aggregate projections, singleton projections, and
--- command handlers that all key on the same RouteKey Guid.
+-- AdoNetGrainStorage because the latter hard-codes the literal "state" as
+-- the row-key discriminator instead of the grain type, collapsing every
+-- Grain<T> that shares a grain id into one row that races on ETag
+-- (https://github.com/dotnet/orleans/issues/9737). Including grain_type in
+-- the composite PK is what keeps per-aggregate projections, singleton
+-- projections, and command handlers distinct when they all key on the same
+-- RouteKey Guid.
 CREATE TABLE IF NOT EXISTS edict_grain_state
 (
     grain_type   TEXT        NOT NULL,
