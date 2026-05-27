@@ -11,15 +11,27 @@ namespace Edict.Kafka.Internal;
 /// </summary>
 static class EdictKafkaProducerConfigFactory
 {
-    internal static ProducerConfig Build(EdictKafkaStreamsOptions options, string clientId) =>
-        new()
+    internal static ProducerConfig Build(EdictKafkaStreamsOptions options, string clientId)
+    {
+        var config = new ProducerConfig
         {
             BootstrapServers = options.BootstrapServers,
-            Acks = Acks.All,
-            EnableIdempotence = true,
             CompressionType = options.Compression,
             LingerMs = 5,
             MessageSendMaxRetries = int.MaxValue,
             ClientId = clientId,
         };
+
+        foreach (var entry in options.ProducerConfigOverrides)
+        {
+            config.Set(entry.Key, entry.Value);
+        }
+
+        // Floors stamped LAST so an override cannot weaken the broker contract
+        // even if the wiring-time validator misses something.
+        config.Acks = Acks.All;
+        config.EnableIdempotence = true;
+
+        return config;
+    }
 }

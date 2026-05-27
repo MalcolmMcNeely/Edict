@@ -39,6 +39,9 @@ public static class EdictKafkaSiloBuilderExtensions
                 "AddEdictKafkaStreams requires EdictKafkaStreamsOptions.BootstrapServers.");
         }
 
+        EdictKafkaContractFloors.ValidateProducerOverrides(options.ProducerConfigOverrides);
+        EdictKafkaContractFloors.ValidateConsumerOverrides(options.ConsumerConfigOverrides);
+
         silo.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
         silo.Services.AddSingleton(options);
         silo.Services.AddHostedService<EdictKafkaTopicProvisioner>();

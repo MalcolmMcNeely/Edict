@@ -12,15 +12,27 @@ namespace Edict.Kafka.Internal;
 /// </summary>
 static class EdictKafkaConsumerConfigFactory
 {
-    internal static ConsumerConfig Build(EdictKafkaStreamsOptions options, string clientId) =>
-        new()
+    internal static ConsumerConfig Build(EdictKafkaStreamsOptions options, string clientId)
+    {
+        var config = new ConsumerConfig
         {
             BootstrapServers = options.BootstrapServers,
             GroupId = options.ConsumerGroupId,
-            EnableAutoCommit = false,
             AutoOffsetReset = options.AutoOffsetReset,
             EnablePartitionEof = false,
             ClientId = clientId,
             AllowAutoCreateTopics = false,
         };
+
+        foreach (var entry in options.ConsumerConfigOverrides)
+        {
+            config.Set(entry.Key, entry.Value);
+        }
+
+        // Floor stamped LAST so an override cannot re-enable auto-commit even
+        // if the wiring-time validator misses something.
+        config.EnableAutoCommit = false;
+
+        return config;
+    }
 }

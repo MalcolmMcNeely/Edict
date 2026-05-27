@@ -8,8 +8,10 @@ namespace Edict.Kafka;
 /// (<c>enable.auto.commit=false</c>, manual commit after <c>HandleAsync</c>
 /// returns) are non-negotiable contract floors that <c>AddEdictKafkaStreams</c>
 /// rejects weaker values for — they are not exposed here. Knobs below carry
-/// defensible defaults; raw <c>Confluent.Kafka</c> passthrough for everything
-/// else lands in a later slice.
+/// defensible defaults; the raw <c>Confluent.Kafka</c> passthrough hatches
+/// (<see cref="ProducerConfigOverrides"/>, <see cref="ConsumerConfigOverrides"/>)
+/// cover everything else, with wiring-time refusal of any key that downgrades
+/// a floor.
 /// </summary>
 public sealed class EdictKafkaStreamsOptions
 {
@@ -96,20 +98,27 @@ public sealed class EdictKafkaStreamsOptions
 
     /// <summary>
     /// Raw <c>Confluent.Kafka</c> producer config keys merged into the
-    /// producer the adapter builds — an escape hatch for tuning a knob Edict
-    /// has not yet surfaced. <c>AddEdictKafkaStreams</c> validates the result
-    /// against the contract floors and throws if a passthrough downgrades
-    /// <c>acks</c> or <c>enable.idempotence</c>.
+    /// <see cref="ProducerConfig"/> the adapter builds — escape hatch for
+    /// tuning a knob Edict has not yet surfaced. <c>AddEdictKafkaStreams</c>
+    /// validates these at wiring time and throws
+    /// <see cref="InvalidOperationException"/> if an entry would downgrade
+    /// <c>acks</c> (must remain <c>all</c>) or <c>enable.idempotence</c>
+    /// (must remain <c>true</c>). The factory also re-stamps these two floors
+    /// after merging, so a missed validation cannot weaken the broker
+    /// contract at runtime.
     /// </summary>
     public IDictionary<string, string> ProducerConfigOverrides { get; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
     /// Raw <c>Confluent.Kafka</c> consumer config keys merged into the
-    /// consumer the receiver builds — escape hatch for tuning a knob Edict
-    /// has not yet surfaced. <c>AddEdictKafkaStreams</c> validates the result
-    /// against the contract floor and throws if a passthrough flips
-    /// <c>enable.auto.commit</c> back on.
+    /// <see cref="ConsumerConfig"/> the receiver builds — escape hatch for
+    /// tuning a knob Edict has not yet surfaced. <c>AddEdictKafkaStreams</c>
+    /// validates these at wiring time and throws
+    /// <see cref="InvalidOperationException"/> if an entry would flip
+    /// <c>enable.auto.commit</c> back on. The factory also re-stamps
+    /// <c>enable.auto.commit=false</c> after merging, so a missed validation
+    /// cannot silently advance offsets ahead of <c>HandleAsync</c>.
     /// </summary>
     public IDictionary<string, string> ConsumerConfigOverrides { get; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
