@@ -19,6 +19,7 @@ static class EdictKafkaProducerConfigFactory
             CompressionType = options.Compression,
             LingerMs = 5,
             MessageSendMaxRetries = int.MaxValue,
+            MessageTimeoutMs = (int)options.MessageTimeout.TotalMilliseconds,
             ClientId = clientId,
         };
 

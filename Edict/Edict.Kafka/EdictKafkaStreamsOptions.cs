@@ -107,6 +107,20 @@ public sealed class EdictKafkaStreamsOptions
     public CompressionType Compression { get; set; } = CompressionType.Lz4;
 
     /// <summary>
+    /// Upper bound on the total time a produced message may sit in the producer
+    /// queue across retries. Maps to librdkafka's <c>message.timeout.ms</c>;
+    /// after this elapses without a successful broker ack, <c>ProduceAsync</c>
+    /// faults and the outbox retries via its own loop. librdkafka's default is
+    /// 5 minutes — far past Orleans' grain-call timeout (~30 s), which lets a
+    /// sustained broker outage queue grain-call timeouts behind producer
+    /// retries. Edict's default 30 s matches Orleans' shape so a faulted
+    /// publish surfaces in the same envelope the outbox retry path is already
+    /// wired to handle. Overridable via <see cref="ProducerConfigOverrides"/>
+    /// (<c>message.timeout.ms</c>) for operators who want a wider window.
+    /// </summary>
+    public TimeSpan MessageTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// Where a new consumer-group member starts when no committed offset
     /// exists for its assigned partition. Default
     /// <see cref="AutoOffsetReset.Latest"/> — Edict is event-driven, not

@@ -73,7 +73,13 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
 
         var batch = new List<IBatchContainer>();
         var cap = maxCount > 0 ? maxCount : 32;
-        var pollTimeout = TimeSpan.FromMilliseconds(200);
+        // Bound the per-call work so the Orleans pulling agent's task is not
+        // parked on an empty partition for longer than necessary. Consume()
+        // returns as soon as a record is available (it does not always block
+        // the full timeout), so under load the loop fills the batch quickly
+        // and breaks on the first null. The 20 ms ceiling matters only when
+        // the partition is idle — idle delivery-latency floor.
+        var pollTimeout = TimeSpan.FromMilliseconds(20);
         var deadline = DateTime.UtcNow + pollTimeout;
 
         while (batch.Count < cap && DateTime.UtcNow < deadline)

@@ -16,14 +16,9 @@ namespace Edict.Kafka.Internal;
 /// </summary>
 sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
 {
-    readonly string _name;
-    readonly EdictKafkaStreamsOptions _options;
     readonly EdictKafkaPartitionMapper _mapper;
-    readonly Serializer _serializer;
-    readonly ILoggerFactory _loggerFactory;
     readonly IQueueAdapterCache _cache;
-
-    EdictKafkaAdapter? _adapter;
+    readonly Lazy<EdictKafkaAdapter> _adapter;
 
     public EdictKafkaAdapterFactory(
         string name,
@@ -33,19 +28,17 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
         ILoggerFactory loggerFactory,
         EdictKafkaStreamRegistry streamRegistry)
     {
-        _name = name;
-        _options = options;
-        _serializer = serializer;
-        _loggerFactory = loggerFactory;
         _mapper = new EdictKafkaPartitionMapper(options, streamRegistry);
         _cache = new SimpleQueueAdapterCache(cacheOptions, name, loggerFactory);
+        // Lazy with the default ExecutionAndPublication mode — a concurrent
+        // CreateAdapter race would otherwise construct two EdictKafkaAdapter
+        // instances and leak the losing one's IProducer (librdkafka background
+        // threads + TCP connections).
+        _adapter = new Lazy<EdictKafkaAdapter>(() =>
+            new EdictKafkaAdapter(name, options, _mapper, serializer, loggerFactory));
     }
 
-    public Task<IQueueAdapter> CreateAdapter()
-    {
-        _adapter ??= new EdictKafkaAdapter(_name, _options, _mapper, _serializer, _loggerFactory);
-        return Task.FromResult<IQueueAdapter>(_adapter);
-    }
+    public Task<IQueueAdapter> CreateAdapter() => Task.FromResult<IQueueAdapter>(_adapter.Value);
 
     public IQueueAdapterCache GetQueueAdapterCache() => _cache;
 

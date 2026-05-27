@@ -45,4 +45,43 @@ public sealed class EdictKafkaProducerConfigFactoryTests
         Assert.Equal(Acks.All, config.Acks);
         Assert.True(config.EnableIdempotence);
     }
+
+    [Fact]
+    public void Build_ShouldApplyDefaultMessageTimeoutOfThirtySeconds()
+    {
+        var options = new EdictKafkaStreamsOptions { BootstrapServers = "localhost:9092" };
+
+        var config = EdictKafkaProducerConfigFactory.Build(options, clientId: "test-client");
+
+        Assert.Equal(30_000, config.MessageTimeoutMs);
+    }
+
+    [Fact]
+    public void Build_ShouldApplyMessageTimeoutFromOptions()
+    {
+        var options = new EdictKafkaStreamsOptions
+        {
+            BootstrapServers = "localhost:9092",
+            MessageTimeout = TimeSpan.FromSeconds(45),
+        };
+
+        var config = EdictKafkaProducerConfigFactory.Build(options, clientId: "test-client");
+
+        Assert.Equal(45_000, config.MessageTimeoutMs);
+    }
+
+    [Fact]
+    public void Build_ShouldLetProducerConfigOverrideWinOverMessageTimeout()
+    {
+        var options = new EdictKafkaStreamsOptions
+        {
+            BootstrapServers = "localhost:9092",
+            MessageTimeout = TimeSpan.FromSeconds(45),
+        };
+        options.ProducerConfigOverrides["message.timeout.ms"] = "5000";
+
+        var config = EdictKafkaProducerConfigFactory.Build(options, clientId: "test-client");
+
+        Assert.Equal(5_000, config.MessageTimeoutMs);
+    }
 }
