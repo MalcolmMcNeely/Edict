@@ -83,32 +83,27 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 
 ## Tech stack
 
-- C# / .NET 10
-- Microsoft Orleans (grains, implicit stream subscriptions)
-- OpenTelemetry
-- Roslyn source generators and analyzers
-- Aspire AppHost (sample apps)
-- xUnit, Verify, Testcontainers
+C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analyzers, .NET Aspire, xUnit + Verify + Testcontainers.
 
-Two reference substrate pairings ship. Same domain code, same conformance battery against both:
+**Technology plugins** — same domain code, one conformance battery:
 
-| Pairing            | Stream provider      | Grain state + projections | Local emulator         |
-| ------------------ | -------------------- | ------------------------- | ---------------------- |
-| Azure Storage      | Azure Queue Storage  | Azure Table + Blob        | Azurite (Testcontainers) |
-| Kafka + Postgres   | Apache Kafka         | PostgreSQL                | Confluent + Postgres (Aspire) |
+| Pairing          | Streaming    | State + projections |
+| ---------------- | ------------ | ------------------- |
+| Azure Storage    | Azure Queue  | Azure Table + Blob  |
+| Kafka + Postgres | Apache Kafka | PostgreSQL          |
 
 ## Highlights
 
-- **Substrate-pluggability demonstrated.** Two reference pairings ship — Azure Storage and Kafka + Postgres — both passing the same conformance battery. Was a claim; now proven.
-- **Event-driven, not event-sourced.** No event store, no replay. Events are transient; grain state is snapshot-persisted by Orleans.
-- **Atomic state + events.** State and raised events commit in one grain write.
-- **Effectively-once handling.** Per-consumer dedup baked into the base classes.
-- **Retries that don't block.** Failing outbox entries back off independently — one slow or broken downstream doesn't stall the rest.
-- **Oversized events handled transparently.** Large payloads spill to blob storage at the commit boundary; the wire format never carries more than a pointer.
+- **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
+- **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
+- **Atomic state + events.** One grain write covers both.
+- **Effectively-once.** Per-consumer dedup in the base class.
+- **Retries that don't block.** Failing outbox entries back off independently.
+- **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
 - **One trace per business flow.** Trace context propagated across every async stream hop.
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
-- **Configurable with sensible defaults.** Every framework knob is an options property with a default and startup validation — change what you need, leave the rest.
-- **In-memory test framework.** Snapshot-test commands, events, and projection/saga state without containers; the framework itself is tested against real Azurite via Testcontainers.
+- **Configurable.** Every knob is an options property with a default and startup validation.
+- **In-memory tests.** Send → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
 ## What's next
 
