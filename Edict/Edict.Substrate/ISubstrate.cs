@@ -14,7 +14,20 @@ public interface ISubstrate
 {
     string Name { get; }
 
-    Task<ISubstrateRuntime> StartAsync(CancellationToken ct);
+    Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop);
+}
+
+/// <summary>
+/// Selects how a substrate brings up its runtime. Closed-loop is the existing
+/// per-send latency sweep; saturation is the fire-and-forget count-at-window-end
+/// pass introduced for the headline EPS table. Substrates without a meaningful
+/// distinction (Azurite — Azure Queue streams have no offset-reset analogue) treat
+/// the value as a hint and may no-op.
+/// </summary>
+public enum SubstrateStartMode
+{
+    ClosedLoop,
+    Saturation,
 }
 
 public interface ISubstrateRuntime : IAsyncDisposable

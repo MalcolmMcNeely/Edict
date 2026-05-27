@@ -32,6 +32,9 @@ else
 int[] parallelisms = [1, 4, 16, 64, 256];
 var warmup = TimeSpan.FromSeconds(10);
 var window = TimeSpan.FromSeconds(30);
+var saturationParallelism = 256;
+var saturationWarmup = TimeSpan.FromSeconds(20);
+var saturationWindow = TimeSpan.FromSeconds(30);
 
 var metadata = new RunMetadata(
     MachineClass: $"{RuntimeInformation.OSDescription} / {Environment.ProcessorCount} cores",
@@ -41,6 +44,7 @@ var metadata = new RunMetadata(
 var runDate = DateTimeOffset.UtcNow;
 var docsRoot = ResolveDocsRoot();
 var combined = new List<ThroughputResults>();
+var saturationCombined = new List<SaturationResults>();
 var runner = new ThroughputRunner();
 var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 
@@ -74,9 +78,22 @@ foreach (var substrate in substrates)
     perSubstrate.AddRange(eventsResults);
     combined.AddRange(perSubstrate);
 
-    var csvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}.csv");
-    await CsvWriter.WriteAsync(csvPath, perSubstrate);
-    Console.WriteLine($"  Wrote {csvPath}");
+    var closedLoopCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-closedloop.csv");
+    await CsvWriter.WriteAsync(closedLoopCsvPath, perSubstrate);
+    Console.WriteLine($"  Wrote {closedLoopCsvPath}");
+
+    // Saturation pass — fresh cluster, sat-mode signal, N=256 fire-and-forget,
+    // single sum-of-counters read at window-end. The closed-loop cluster was
+    // torn down inside RunSweepAsync; the saturation runner brings up its own.
+    Console.WriteLine($"Saturating {substrate.Name} — Events: N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
+    var saturationResult = await runner.RunSaturationAsync(
+        substrate, saturationParallelism, saturationWarmup, saturationWindow);
+    Console.WriteLine($"  {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount})");
+    saturationCombined.Add(saturationResult);
+
+    var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
+    await SaturationCsvWriter.WriteAsync(saturationCsvPath, [saturationResult]);
+    Console.WriteLine($"  Wrote {saturationCsvPath}");
 }
 
 var templatePath = Path.Combine(docsRoot, "throughput.template.md");
@@ -93,7 +110,7 @@ foreach (var (substrateName, substrateRunDate) in perSubstrateRunDate)
 }
 
 var markdownPath = Path.Combine(docsRoot, "throughput.md");
-await MarkdownWriter.WriteAsync(markdownPath, template, tokens, combined);
+await MarkdownWriter.WriteAsync(markdownPath, template, tokens, combined, saturationCombined);
 Console.WriteLine($"Wrote {markdownPath}");
 return 0;
 

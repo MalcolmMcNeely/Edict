@@ -17,9 +17,11 @@ public static partial class MarkdownWriter
         string template,
         IReadOnlyDictionary<string, string> tokens,
         IReadOnlyList<ThroughputResults> results,
+        IReadOnlyList<SaturationResults>? saturation = null,
         TextWriter? warningSink = null)
     {
         var output = template.Replace("{{table:closed_loop}}", RenderClosedLoopTable(results));
+        output = output.Replace("{{table:saturation}}", RenderSaturationTable(saturation ?? []));
         foreach (var pair in tokens)
         {
             output = output.Replace("{{" + pair.Key + "}}", pair.Value);
@@ -47,18 +49,32 @@ public static partial class MarkdownWriter
         return sb.ToString();
     }
 
+    static string RenderSaturationTable(IReadOnlyList<SaturationResults> results)
+    {
+        var sb = new StringBuilder();
+        sb.Append("| Substrate | Events per second |\n");
+        sb.Append("| --- | ---: |");
+        foreach (var r in results)
+        {
+            sb.Append('\n');
+            sb.Append(CultureInfo.InvariantCulture, $"| {r.Substrate} | {r.EventsPerSecond:F0} |");
+        }
+        return sb.ToString();
+    }
+
     public static async Task WriteAsync(
         string path,
         string template,
         IReadOnlyDictionary<string, string> tokens,
-        IReadOnlyList<ThroughputResults> results)
+        IReadOnlyList<ThroughputResults> results,
+        IReadOnlyList<SaturationResults>? saturation = null)
     {
         var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory))
         {
             Directory.CreateDirectory(directory);
         }
-        await File.WriteAllTextAsync(path, Render(template, tokens, results));
+        await File.WriteAllTextAsync(path, Render(template, tokens, results, saturation));
     }
 
     [GeneratedRegex(@"\{\{[^{}]+\}\}")]

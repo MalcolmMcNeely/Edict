@@ -129,6 +129,31 @@ public sealed class KafkaPostgresSubstrateTests
         }
     }
 
+    [Fact]
+    public async Task ClosedLoopMode_AppliesEarliestAutoOffsetReset()
+    {
+        // Default mode keeps the existing fresh-group replay behaviour the
+        // closed-loop sweep relies on so warmup-window backlog is replayed
+        // into the measurement consumer rather than silently dropped.
+        var substrate = new KafkaPostgresSubstrate();
+        await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
+
+        Assert.Equal(AutoOffsetReset.Earliest, runtime.KafkaAutoOffsetReset);
+    }
+
+    [Fact]
+    public async Task SaturationMode_AppliesLatestAutoOffsetReset()
+    {
+        // Saturation pass measures count-at-window-end on a fresh consumer
+        // group; replaying history would inflate EPS by counting events the
+        // producer issued during warmup. Latest is the substrate-level guard.
+        var substrate = new KafkaPostgresSubstrate();
+        await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(
+            CancellationToken.None, SubstrateStartMode.Saturation);
+
+        Assert.Equal(AutoOffsetReset.Latest, runtime.KafkaAutoOffsetReset);
+    }
+
     static class ActiveSubstrateRuntime
     {
         public static ISubstrateRuntime? Current { get; set; }

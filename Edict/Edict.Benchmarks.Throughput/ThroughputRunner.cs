@@ -63,6 +63,142 @@ public sealed class ThroughputRunner
         CancellationToken ct = default) =>
         RunSweepAsync(substrate, Scenario.RaiseOnly, parallelisms, warmup, measurement, ct);
 
+    /// <summary>
+    /// Saturation pass — Events only, single parallelism point, fire-and-forget
+    /// producers, single sum-of-counters read at <c>t = window-end</c>. The
+    /// substrate is brought up in <see cref="SubstrateStartMode.Saturation"/>
+    /// so Kafka consumers attach <c>AutoOffsetReset = Latest</c>; Azurite is a
+    /// no-op for the signal. EPS is the steady-state consumer ceiling
+    /// <c>min(producer_rate, consumer_rate)</c>; warmup contribution is
+    /// subtracted via a snapshot at warmup-end so the result is window-only.
+    /// </summary>
+    public async Task<SaturationResults> RunSaturationAsync(
+        ISubstrate substrate,
+        int parallelism,
+        TimeSpan warmup,
+        TimeSpan window,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(substrate);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
+
+        await using var runtime = await substrate.StartAsync(ct, SubstrateStartMode.Saturation);
+
+        ActiveRuntime.Current = runtime;
+        try
+        {
+            var clusterBuilder = new TestClusterBuilder();
+            clusterBuilder.AddSiloBuilderConfigurator<ActiveRuntime.SiloConfigurator>();
+            clusterBuilder.AddClientBuilderConfigurator<ActiveRuntime.ClientConfigurator>();
+            var cluster = clusterBuilder.Build();
+            await cluster.DeployAsync();
+            try
+            {
+                var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+                var counterRepository = cluster.Client.ServiceProvider
+                    .GetRequiredService<IEdictTableRepository<BenchCounterRow>>();
+                var aggregatePool = Enumerable.Range(0, 1024)
+                    .Select(_ => Guid.NewGuid())
+                    .ToArray();
+
+                // Warmup phase — producers fire at full rate so the consumer
+                // reaches steady-state before the measurement window opens.
+                await FireAndForgetAsync(sender, aggregatePool, parallelism, warmup, ct);
+
+                // Subtracting the warmup-end snapshot from the window-end
+                // snapshot leaves only window contributions in the count — the
+                // honest steady-state delta the saturation EPS formula needs.
+                var preWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
+
+                await FireAndForgetAsync(sender, aggregatePool, parallelism, window, ct);
+
+                var postWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
+                var windowEvents = postWindow - preWindow;
+                var eps = window.TotalSeconds > 0
+                    ? windowEvents / window.TotalSeconds
+                    : 0;
+
+                return new SaturationResults(
+                    Substrate: substrate.Name,
+                    EventsPerSecond: eps,
+                    WindowSeconds: window.TotalSeconds,
+                    ProducerConcurrency: parallelism,
+                    AggregateCount: aggregatePool.Length);
+            }
+            finally
+            {
+                await cluster.DisposeAsync();
+            }
+        }
+        finally
+        {
+            ActiveRuntime.Current = null;
+        }
+    }
+
+    static async Task FireAndForgetAsync(
+        IEdictSender sender,
+        Guid[] aggregatePool,
+        int parallelism,
+        TimeSpan duration,
+        CancellationToken outerCt)
+    {
+        using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
+        windowCts.CancelAfter(duration);
+
+        var tasks = new Task[parallelism];
+        for (var i = 0; i < parallelism; i++)
+        {
+            var issuerIndex = i;
+            tasks[i] = Task.Run(async () =>
+            {
+                var index = issuerIndex;
+                while (!windowCts.IsCancellationRequested)
+                {
+                    var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
+                    var filler = new byte[FillerSizeBytes];
+                    try
+                    {
+                        await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), filler));
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    index += parallelism;
+                }
+            });
+        }
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    static async Task<long> SumCountersAsync(
+        IEdictTableRepository<BenchCounterRow> repository,
+        Guid[] aggregatePool,
+        CancellationToken ct)
+    {
+        var total = 0L;
+        foreach (var aggregateId in aggregatePool)
+        {
+            var row = await repository.GetAsync(
+                aggregateId.ToString(),
+                BenchCounterProjectionBuilder.FixedRowKey,
+                ct);
+            if (row is not null)
+            {
+                total += row.Count;
+            }
+        }
+        return total;
+    }
+
     async Task<IReadOnlyList<ThroughputResults>> RunSweepAsync(
         ISubstrate substrate,
         Scenario scenario,
@@ -359,6 +495,8 @@ public sealed class ThroughputRunner
                 // harness branching on substrate kind.
                 clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
                     runtime.CreateRowRepository<BenchEventRow>(sp, BenchProjectionBuilder.TableNameLiteral));
+                clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchCounterRow>>(sp =>
+                    runtime.CreateRowRepository<BenchCounterRow>(sp, BenchCounterProjectionBuilder.TableNameLiteral));
             }
         }
     }

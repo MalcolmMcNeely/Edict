@@ -34,8 +34,11 @@ public sealed class AzuriteSubstrate : ISubstrate
 
     public string Name => "azure";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct)
+    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
+        // Azure Queue streams poll on a timer; there is no Earliest/Latest
+        // analogue. Saturation mode is accepted for harness uniformity.
+        _ = mode;
         var container = new AzuriteBuilder()
             .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
             .WithCreateParameterModifier(p =>

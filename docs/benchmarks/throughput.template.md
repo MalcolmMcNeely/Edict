@@ -6,6 +6,12 @@ Azure run date: {{run_date:azure}}
 Kafka × Postgres run date: {{run_date:kafkapostgres}}
 Git SHA: {{git_sha}}
 
+## Sustained throughput
+
+Fire-and-forget Events workload at N=256 producers, 20 s warmup + 30 s measurement window, single sum-of-counters read at window-end. EPS is the steady-state consumer ceiling for each substrate.
+
+{{table:saturation}}
+
 ## Setup
 
 - Both substrates measured on the same machine and the same .NET runtime, one day apart, both registered through `Edict.Benchmarks.Throughput` via `SubstrateRegistry`.

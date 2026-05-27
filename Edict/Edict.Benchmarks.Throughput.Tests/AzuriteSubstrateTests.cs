@@ -149,6 +149,20 @@ public sealed class AzuriteSubstrateTests
         }
     }
 
+    [Fact]
+    public async Task SaturationMode_IsAcceptedWithoutFailure()
+    {
+        // Azurite has no Earliest/Latest analogue on the Azure Queue stream
+        // provider — the signal is a no-op here. The substrate must accept the
+        // mode argument without throwing so the harness can drive it uniformly
+        // across providers.
+        var substrate = new AzuriteSubstrate();
+        await using var runtime = await substrate.StartAsync(
+            CancellationToken.None, SubstrateStartMode.Saturation);
+
+        Assert.NotNull(runtime);
+    }
+
     static class ActiveSubstrateRuntime
     {
         public static ISubstrateRuntime? Current { get; set; }

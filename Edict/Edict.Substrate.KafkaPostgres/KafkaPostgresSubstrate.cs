@@ -39,7 +39,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
     public string Name => "kafkapostgres";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct)
+    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:16-alpine")
@@ -55,13 +55,21 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             ? bootstrapAddress["PLAINTEXT://".Length..]
             : bootstrapAddress;
         var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
+        // Saturation pass measures count-at-window-end on a fresh consumer
+        // group; Latest avoids replaying warmup-window backlog into the
+        // measurement, which would inflate EPS. Closed-loop keeps Earliest so
+        // fresh-group consumers replay deterministically from offset 0.
+        var autoOffsetReset = mode == SubstrateStartMode.Saturation
+            ? AutoOffsetReset.Latest
+            : AutoOffsetReset.Earliest;
 
         return new KafkaPostgresSubstrateRuntime(
             postgresContainer,
             kafkaContainer,
             postgresConnectionString,
             bootstrapServers,
-            consumerGroupId);
+            consumerGroupId,
+            autoOffsetReset);
     }
 }
 
@@ -75,13 +83,15 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
         KafkaContainer kafkaContainer,
         string postgresConnectionString,
         string bootstrapServers,
-        string consumerGroupId)
+        string consumerGroupId,
+        AutoOffsetReset kafkaAutoOffsetReset = AutoOffsetReset.Earliest)
     {
         _postgresContainer = postgresContainer;
         _kafkaContainer = kafkaContainer;
         PostgresConnectionString = postgresConnectionString;
         BootstrapServers = bootstrapServers;
         ConsumerGroupId = consumerGroupId;
+        KafkaAutoOffsetReset = kafkaAutoOffsetReset;
 
         ConfigureSilo = silo =>
         {
@@ -94,12 +104,7 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
                 o.BootstrapServers = bootstrapServers;
                 o.ConsumerGroupId = consumerGroupId;
                 o.PartitionCount = 4;
-                // Substrate consumers are short-lived per-test fixtures so the
-                // fresh-group race against the producer would drop the first
-                // batch under Latest (the production default). Earliest gives
-                // the test cluster deterministic replay from the start of the
-                // topic.
-                o.AutoOffsetReset = AutoOffsetReset.Earliest;
+                o.AutoOffsetReset = kafkaAutoOffsetReset;
             });
             silo.AddEdictPostgresPersistence(o =>
             {
@@ -127,6 +132,15 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
     public string BootstrapServers { get; }
 
     public string ConsumerGroupId { get; }
+
+    /// <summary>
+    /// Resolved <see cref="AutoOffsetReset"/> the runtime hands to
+    /// <c>AddEdictKafkaStreams</c>. Surfaced so the harness (and tests) can
+    /// confirm <see cref="SubstrateStartMode.Saturation"/> mapped to
+    /// <see cref="AutoOffsetReset.Latest"/> without reaching into the silo's
+    /// service provider.
+    /// </summary>
+    public AutoOffsetReset KafkaAutoOffsetReset { get; }
 
     public Action<ISiloBuilder> ConfigureSilo { get; }
 

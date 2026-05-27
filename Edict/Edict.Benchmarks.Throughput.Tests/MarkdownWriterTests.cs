@@ -134,4 +134,54 @@ public sealed class MarkdownWriterTests
 
         Assert.Equal(expected, output);
     }
+
+    [Fact]
+    public void Render_ShouldEmitSaturationTableWithHeaderAndRow_ForPopulatedSaturationResults()
+    {
+        var saturation = new[]
+        {
+            new SaturationResults(
+                Substrate: "azure",
+                EventsPerSecond: 73.4,
+                WindowSeconds: 30,
+                ProducerConcurrency: 256,
+                AggregateCount: 1024),
+            new SaturationResults(
+                Substrate: "kafkapostgres",
+                EventsPerSecond: 412.6,
+                WindowSeconds: 30,
+                ProducerConcurrency: 256,
+                AggregateCount: 1024),
+        };
+
+        var output = MarkdownWriter.Render(
+            template: "{{table:saturation}}",
+            tokens: new Dictionary<string, string>(),
+            results: [],
+            saturation: saturation);
+
+        var expected =
+            "| Substrate | Events per second |\n" +
+            "| --- | ---: |\n" +
+            "| azure | 73 |\n" +
+            "| kafkapostgres | 413 |";
+
+        Assert.Equal(expected, output);
+    }
+
+    [Fact]
+    public void Render_ShouldEmitSaturationTableHeaderOnly_ForEmptySaturationResults()
+    {
+        var output = MarkdownWriter.Render(
+            template: "{{table:saturation}}",
+            tokens: new Dictionary<string, string>(),
+            results: [],
+            saturation: []);
+
+        var expected =
+            "| Substrate | Events per second |\n" +
+            "| --- | ---: |";
+
+        Assert.Equal(expected, output);
+    }
 }
