@@ -33,6 +33,12 @@ public sealed class EdictKafkaReceiverContractTests
     const string TestBootstrap = "localhost:9092";
     const string TestGroup = "edict-kafka-tests-fake";
 
+    static readonly EdictKafkaStreamsOptions Options = new()
+    {
+        BootstrapServers = TestBootstrap,
+        ConsumerGroupId = TestGroup,
+    };
+
     static readonly Serializer Serializer = BuildSerializer();
 
     static Serializer BuildSerializer()
@@ -51,8 +57,7 @@ public sealed class EdictKafkaReceiverContractTests
             TestProvider,
             partition,
             TestTopic,
-            TestBootstrap,
-            TestGroup,
+            Options,
             Serializer,
             NullLogger<EdictKafkaReceiver>.Instance,
             () => consumer);

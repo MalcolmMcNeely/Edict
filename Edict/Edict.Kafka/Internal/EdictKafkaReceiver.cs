@@ -22,8 +22,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
     readonly string _providerName;
     readonly int _partition;
     readonly string _topic;
-    readonly string _bootstrapServers;
-    readonly string _consumerGroup;
+    readonly EdictKafkaStreamsOptions _options;
     readonly Serializer _serializer;
     readonly ILogger _logger;
     readonly Func<IConsumer<string, byte[]>> _consumerFactory;
@@ -35,8 +34,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
         string providerName,
         int partition,
         string topic,
-        string bootstrapServers,
-        string consumerGroup,
+        EdictKafkaStreamsOptions options,
         Serializer serializer,
         ILogger logger,
         Func<IConsumer<string, byte[]>>? consumerFactory = null)
@@ -44,8 +42,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
         _providerName = providerName;
         _partition = partition;
         _topic = topic;
-        _bootstrapServers = bootstrapServers;
-        _consumerGroup = consumerGroup;
+        _options = options;
         _serializer = serializer;
         _logger = logger;
         _consumerFactory = consumerFactory ?? BuildDefaultConsumer;
@@ -57,22 +54,13 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
         _consumer.Assign(new TopicPartition(_topic, new Partition(_partition)));
         _logger.LogInformation(
             "Edict.Kafka receiver initialised for partition {Partition} on topic {Topic} group {Group}",
-            _partition, _topic, _consumerGroup);
+            _partition, _topic, _options.ConsumerGroupId);
         return Task.CompletedTask;
     }
 
     IConsumer<string, byte[]> BuildDefaultConsumer()
     {
-        var config = new ConsumerConfig
-        {
-            BootstrapServers = _bootstrapServers,
-            GroupId = _consumerGroup,
-            EnableAutoCommit = false,
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnablePartitionEof = false,
-            ClientId = $"{_providerName}-r-p{_partition}",
-            AllowAutoCreateTopics = false,
-        };
+        var config = EdictKafkaConsumerConfigFactory.Build(_options, clientId: $"{_providerName}-r-p{_partition}");
         return new ConsumerBuilder<string, byte[]>(config).Build();
     }
 

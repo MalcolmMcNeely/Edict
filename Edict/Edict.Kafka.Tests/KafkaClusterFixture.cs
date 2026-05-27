@@ -1,3 +1,5 @@
+using Confluent.Kafka;
+
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -142,6 +144,12 @@ public sealed class KafkaClusterFixture : ConformanceFixture
                 // keeps topic creation fast and the stream-key → partition
                 // mapping deterministic across fixture runs.
                 o.PartitionCount = 4;
+                // Tests pin Earliest so the receiver replays anything the
+                // producer wrote before the consumer-group member finished
+                // joining — the production default is Latest (event-driven
+                // semantics) and the fresh-group race would otherwise drop
+                // events under load.
+                o.AutoOffsetReset = AutoOffsetReset.Earliest;
             });
             siloBuilder.AddEdictPostgresPersistence(o =>
             {

@@ -1,0 +1,9 @@
+﻿{
+  StreamProviderName: edict,
+  BootstrapServers: ,
+  ConsumerGroupId: edict-silo,
+  PartitionCount: 32,
+  ReplicationFactor: 3,
+  MinInSyncReplicas: 2,
+  Compression: Lz4
+}

@@ -43,16 +43,7 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<EdictKafkaAdapter>();
 
-        var producerConfig = new ProducerConfig
-        {
-            BootstrapServers = options.BootstrapServers,
-            Acks = Acks.All,
-            EnableIdempotence = true,
-            CompressionType = CompressionType.Lz4,
-            LingerMs = 5,
-            MessageSendMaxRetries = int.MaxValue,
-            ClientId = $"{name}-producer",
-        };
+        var producerConfig = EdictKafkaProducerConfigFactory.Build(options, clientId: $"{name}-producer");
         _producer = new ProducerBuilder<string, byte[]>(producerConfig).Build();
     }
 
@@ -69,8 +60,7 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
             Name,
             partition,
             TopicName,
-            _options.BootstrapServers,
-            _options.ConsumerGroupId,
+            _options,
             _serializer,
             _loggerFactory.CreateLogger<EdictKafkaReceiver>());
     }

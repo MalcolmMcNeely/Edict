@@ -1,3 +1,5 @@
+using Confluent.Kafka;
+
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -92,6 +94,12 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
                 o.BootstrapServers = bootstrapServers;
                 o.ConsumerGroupId = consumerGroupId;
                 o.PartitionCount = 4;
+                // Substrate consumers are short-lived per-test fixtures so the
+                // fresh-group race against the producer would drop the first
+                // batch under Latest (the production default). Earliest gives
+                // the test cluster deterministic replay from the start of the
+                // topic.
+                o.AutoOffsetReset = AutoOffsetReset.Earliest;
             });
             silo.AddEdictPostgresPersistence(o =>
             {
