@@ -2,8 +2,6 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Docker.DotNet;
-
 using Edict.Azure.TableStorage;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
@@ -32,7 +30,6 @@ namespace Edict.Azure.Tests.Resilience;
 public sealed class ResilienceClusterFixture : IAsyncLifetime
 {
     AzuriteContainer _azurite = null!;
-    DockerClient _dockerClient = null!;
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
@@ -60,7 +57,6 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
             .Build();
         await _azurite.StartAsync();
         _connectionString = _azurite.GetConnectionString();
-        _dockerClient = new DockerClientConfiguration().CreateClient();
 
         RebuildClients();
 
@@ -92,20 +88,17 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
             await Cluster.DisposeAsync();
         }
         AzureClusterContextRegistry.Unregister(_contextKey);
-        _dockerClient?.Dispose();
         if (_azurite is not null)
         {
             await _azurite.DisposeAsync();
         }
     }
 
-    // Pause preserves the host port binding; Testcontainers 3.10 has no
-    // PauseAsync on IContainer, so the calls go through Docker.DotNet.
-    public async Task PauseAzuriteAsync() =>
-        await _dockerClient.Containers.PauseContainerAsync(_azurite.Id);
+    // Pause preserves the host port binding so the framework's reconnect path
+    // is what's exercised, not a host-port rebind on the next test.
+    public async Task PauseAzuriteAsync() => await _azurite.PauseAsync();
 
-    public async Task UnpauseAzuriteAsync() =>
-        await _dockerClient.Containers.UnpauseContainerAsync(_azurite.Id);
+    public async Task UnpauseAzuriteAsync() => await _azurite.UnpauseAsync();
 
     // Stop+start re-binds the host port — already-active grains keep a stale
     // client, so each test must use a fresh grain key.
@@ -120,20 +113,16 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
     // baseline even if a previous test panicked mid pause/restart.
     public async Task EnsureRunningAsync()
     {
+        if (_azurite.State == DotNet.Testcontainers.Containers.TestcontainersStates.Paused)
+        {
+            await _azurite.UnpauseAsync();
+            return;
+        }
+
         if (_azurite.State != DotNet.Testcontainers.Containers.TestcontainersStates.Running)
         {
             await _azurite.StartAsync();
             RefreshConnectionState();
-            return;
-        }
-
-        try
-        {
-            await _dockerClient.Containers.UnpauseContainerAsync(_azurite.Id);
-        }
-        catch (DockerApiException)
-        {
-            // Container was not paused — nothing to do.
         }
     }
 

@@ -1,7 +1,5 @@
 using Confluent.Kafka;
 
-using Docker.DotNet;
-
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -36,7 +34,6 @@ namespace Edict.Kafka.Tests.Resilience;
 public sealed class KafkaResilienceClusterFixture : IAsyncLifetime
 {
     KafkaContainer _kafka = null!;
-    DockerClient _dockerClient = null!;
     string _adminConnectionString = "";
     string _databaseConnectionString = "";
     string _bootstrapServers = "";
@@ -56,7 +53,6 @@ public sealed class KafkaResilienceClusterFixture : IAsyncLifetime
     {
         _kafka = new KafkaBuilder().Build();
         await _kafka.StartAsync();
-        _dockerClient = new DockerClientConfiguration().CreateClient();
 
         var address = _kafka.GetBootstrapAddress();
         _bootstrapServers = address.StartsWith("PLAINTEXT://", StringComparison.Ordinal)
@@ -94,35 +90,26 @@ public sealed class KafkaResilienceClusterFixture : IAsyncLifetime
             await Cluster.DisposeAsync();
         }
         KafkaClusterContextRegistry.Unregister(_contextKey);
-        _dockerClient?.Dispose();
         if (_kafka is not null)
         {
             await _kafka.DisposeAsync();
         }
     }
 
-    // Pause preserves the host port binding; Testcontainers 3.10 has no
-    // PauseAsync on IContainer, so the calls go through Docker.DotNet.
-    // Mirrors the Azurite resilience suite's reasoning: stop+start re-binds
-    // the host port, which masks the framework's reconnect behaviour behind a
-    // host-wiring artefact.
-    public async Task PauseKafkaAsync() =>
-        await _dockerClient.Containers.PauseContainerAsync(_kafka.Id);
+    // Pause preserves the host port binding. Mirrors the Azurite resilience
+    // suite's reasoning: stop+start re-binds the host port, which masks the
+    // framework's reconnect behaviour behind a host-wiring artefact.
+    public async Task PauseKafkaAsync() => await _kafka.PauseAsync();
 
-    public async Task UnpauseKafkaAsync() =>
-        await _dockerClient.Containers.UnpauseContainerAsync(_kafka.Id);
+    public async Task UnpauseKafkaAsync() => await _kafka.UnpauseAsync();
 
     // Tests call this on entry so the fixture starts from a known-good
     // baseline even if a previous test panicked mid pause.
     public async Task EnsureRunningAsync()
     {
-        try
+        if (_kafka.State == DotNet.Testcontainers.Containers.TestcontainersStates.Paused)
         {
-            await _dockerClient.Containers.UnpauseContainerAsync(_kafka.Id);
-        }
-        catch (DockerApiException)
-        {
-            // Container was not paused — nothing to do.
+            await _kafka.UnpauseAsync();
         }
     }
 

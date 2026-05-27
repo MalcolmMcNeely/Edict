@@ -41,7 +41,7 @@ static class PostgresAssemblyHost
     static async Task<PostgreSqlContainer> StartAsync()
     {
         var container = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+            .WithImage("postgres:17-alpine")
             .Build();
         await container.StartAsync();
         return container;

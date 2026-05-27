@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BenchmarkDotNet" Version="0.15.4" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
         <!-- Hoist to the same Roslyn major Orleans 10 needs so BDN's older
              Microsoft.CodeAnalysis.CSharp doesn't pin Common back to 4.x. -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />

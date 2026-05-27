@@ -37,7 +37,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
         var postgresContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+            .WithImage("postgres:17-alpine")
             .Build();
         var kafkaContainer = new KafkaBuilder().Build();
         await Task.WhenAll(postgresContainer.StartAsync(ct), kafkaContainer.StartAsync(ct));

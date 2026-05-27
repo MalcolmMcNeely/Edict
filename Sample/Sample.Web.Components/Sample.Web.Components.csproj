@@ -12,10 +12,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
         <!-- Hub.razor injects IEdictSender; the Aspire AppHost's silo binds it.
              The RCL just needs the contract types to compile. -->
-        <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.8" />
     </ItemGroup>
 
     <ItemGroup>
