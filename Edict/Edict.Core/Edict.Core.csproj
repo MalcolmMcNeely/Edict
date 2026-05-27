@@ -27,6 +27,10 @@
              place of the internal PublishEventExecutor — same shape as the
              Azure-side conformance binding. -->
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />
+        <!-- Edict.Kafka.Tests inherits the dead-letter conformance binding via
+             the same Replace-not-Append swap of PublishEventExecutor for
+             ControllableOutboxExecutor. -->
+        <InternalsVisibleTo Include="Edict.Kafka.Tests" />
         <!-- The conformance harness reuses the internal PublishEventExecutor
              via ControllableOutboxExecutor so every provider's outbox
              conformance binding drives the real publish executor under test. -->
