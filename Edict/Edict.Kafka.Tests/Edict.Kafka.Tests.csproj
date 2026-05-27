@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+        <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
+        <PackageReference Include="Testcontainers.Kafka" Version="3.10.0" />
+        <PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
+        <PackageReference Include="xunit" Version="2.9.3" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+        <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <ProjectReference Include="..\Edict.Kafka\Edict.Kafka.csproj" />
+        <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
+        <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>
