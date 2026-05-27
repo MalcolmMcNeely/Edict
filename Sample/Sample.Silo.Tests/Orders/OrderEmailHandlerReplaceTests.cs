@@ -1,9 +1,9 @@
 using Edict.Testing;
 
 using Sample.Contracts.Orders.Commands;
-using Sample.Silo.Orders;
-using Sample.Silo.Orders.CommandHandlers;
-using Sample.Silo.Orders.EventHandlers;
+using Sample.Domain.Orders;
+using Sample.Domain.Orders.CommandHandlers;
+using Sample.Domain.Orders.EventHandlers;
 
 using Xunit;
 

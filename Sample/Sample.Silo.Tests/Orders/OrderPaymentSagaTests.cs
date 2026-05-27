@@ -1,8 +1,8 @@
 using Edict.Testing;
 
 using Sample.Contracts.Orders.Commands;
-using Sample.Silo.Orders.CommandHandlers;
-using Sample.Silo.Payments.Sagas;
+using Sample.Domain.Orders.CommandHandlers;
+using Sample.Domain.Payments.Sagas;
 
 using Xunit;
 

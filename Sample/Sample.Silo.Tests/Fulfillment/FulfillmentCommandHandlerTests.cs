@@ -2,7 +2,7 @@ using Edict.Testing;
 
 using Sample.Contracts.Fulfillment.Commands;
 using Sample.Contracts.Fulfillment.Events;
-using Sample.Silo.Orders.CommandHandlers;
+using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 

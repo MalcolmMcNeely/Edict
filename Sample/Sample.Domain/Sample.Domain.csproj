@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Sample.Domain</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
+        <!--
+          Generator runs over this assembly — emits IOrderGrain, Dispatch, the
+          EdictRouteRegistrar, and [assembly: EdictRoutes(...)] (ADR 0021).
+          The handlers live here now; the substrate-specific Sample.Silo host
+          picks the routes up via reference and AppDomain scan.
+          ReferenceOutputAssembly=false: we only need the generator to run, not to link it.
+        -->
+        <ProjectReference Include="../../Edict/Edict.Generators/Edict.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+        <ProjectReference Include="../../Edict/Edict.Analyzers/Edict.Analyzers.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

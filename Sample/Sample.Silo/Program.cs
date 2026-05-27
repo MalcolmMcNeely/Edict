@@ -11,8 +11,8 @@ using OpenTelemetry;
 
 using Orleans.Serialization;
 
-using Sample.Silo.Orders;
-using Sample.Silo.Orders.CommandHandlers;
+using Sample.Domain.Orders;
+using Sample.Domain.Orders.CommandHandlers;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging =>

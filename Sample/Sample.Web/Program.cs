@@ -15,7 +15,7 @@ using Sample.Contracts.Fulfillment.Projections;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
 using Sample.ServiceDefaults;
-using Sample.Silo.Orders.CommandHandlers;
+using Sample.Domain.Orders.CommandHandlers;
 using Sample.Web.Components;
 using Sample.Web.Simulator;
 using Sample.Web.State;

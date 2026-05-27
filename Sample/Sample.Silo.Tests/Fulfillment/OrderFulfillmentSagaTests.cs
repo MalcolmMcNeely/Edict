@@ -2,8 +2,8 @@ using Edict.Testing;
 
 using Sample.Contracts.Fulfillment.Commands;
 using Sample.Contracts.Orders.Commands;
-using Sample.Silo.Fulfillment.Sagas;
-using Sample.Silo.Orders.CommandHandlers;
+using Sample.Domain.Fulfillment.Sagas;
+using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
