@@ -22,6 +22,11 @@
              the Azure provider conformance suite reuses the publish executor -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <!-- Edict.Postgres.Tests inherits the Outbox conformance scenarios that
+             register the conformance harness's ControllableOutboxExecutor in
+             place of the internal PublishEventExecutor — same shape as the
+             Azure-side conformance binding. -->
+        <InternalsVisibleTo Include="Edict.Postgres.Tests" />
         <!-- The conformance harness reuses the internal PublishEventExecutor
              via ControllableOutboxExecutor so every provider's outbox
              conformance binding drives the real publish executor under test. -->
