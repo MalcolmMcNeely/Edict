@@ -67,8 +67,27 @@ public sealed class EdictKafkaStreamsOptions
     /// The provisioner auto-clamps to the available broker count when this
     /// option is left at its default; setting it explicitly disables the clamp
     /// and the provisioner throws if the cluster cannot satisfy the request.
+    /// Any assignment (including assigning the default value) opts into strict
+    /// mode — see <see cref="IsReplicationFactorExplicit"/>.
     /// </summary>
-    public short ReplicationFactor { get; set; } = 3;
+    public short ReplicationFactor
+    {
+        get => _replicationFactor;
+        set
+        {
+            _replicationFactor = value;
+            IsReplicationFactorExplicit = true;
+        }
+    }
+    short _replicationFactor = 3;
+
+    /// <summary>
+    /// True once <see cref="ReplicationFactor"/> has been assigned at least
+    /// once (even back to its default value). The topic provisioner reads this
+    /// to decide between auto-clamping to the available broker count (flag
+    /// false) and throwing on a broker-count mismatch (flag true).
+    /// </summary>
+    internal bool IsReplicationFactorExplicit { get; private set; }
 
     /// <summary>
     /// <c>min.insync.replicas</c> applied to every Edict-owned Kafka topic.

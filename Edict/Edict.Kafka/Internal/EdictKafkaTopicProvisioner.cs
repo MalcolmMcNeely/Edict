@@ -31,31 +31,80 @@ sealed class EdictKafkaTopicProvisioner : IHostedService
     {
         var adminConfig = new AdminClientConfig { BootstrapServers = _options.BootstrapServers };
         using var admin = new AdminClientBuilder(adminConfig).Build();
+        await EnsureTopicAsync(
+            admin,
+            EdictKafkaAdapter.TopicName,
+            _options.PartitionCount,
+            _options.ReplicationFactor,
+            _options.IsReplicationFactorExplicit,
+            _logger,
+            cancellationToken);
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// Ensures the topic exists with the requested partition count and a
+    /// replication factor satisfying the rf rule: when
+    /// <paramref name="replicationFactorIsExplicit"/> is false the rf is
+    /// clamped down to the broker count if the cluster cannot satisfy the
+    /// request, when true the call throws on a mismatch instead. Idempotent —
+    /// re-running against an existing topic is a no-op (no metadata change is
+    /// applied to an already-created topic).
+    /// </summary>
+    internal static async Task EnsureTopicAsync(
+        IAdminClient admin,
+        string topicName,
+        int partitionCount,
+        short requestedReplicationFactor,
+        bool replicationFactorIsExplicit,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var brokerCount = admin.GetMetadata(TimeSpan.FromSeconds(10)).Brokers.Count;
+        var effectiveReplicationFactor = ResolveReplicationFactor(
+            requestedReplicationFactor,
+            replicationFactorIsExplicit,
+            brokerCount,
+            topicName);
+
         var spec = new TopicSpecification
         {
-            Name = EdictKafkaAdapter.TopicName,
-            NumPartitions = _options.PartitionCount,
-            ReplicationFactor = 1,
+            Name = topicName,
+            NumPartitions = partitionCount,
+            ReplicationFactor = effectiveReplicationFactor,
         };
+
         try
         {
             await admin.CreateTopicsAsync(
                 [spec],
                 new CreateTopicsOptions { OperationTimeout = TimeSpan.FromSeconds(30) });
-            _logger.LogInformation(
-                "Edict.Kafka provisioned topic {Topic} with {Partitions} partitions",
-                spec.Name, spec.NumPartitions);
+            logger.LogInformation(
+                "Edict.Kafka provisioned topic {Topic} with {Partitions} partitions, rf={Rf}",
+                spec.Name, spec.NumPartitions, effectiveReplicationFactor);
         }
         catch (CreateTopicsException ex) when (ex.Results.All(r => r.Error.Code == KafkaErrorCode.TopicAlreadyExists))
         {
-            _logger.LogInformation("Edict.Kafka topic {Topic} already exists", spec.Name);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Edict.Kafka topic provisioning failed for {Topic}", spec.Name);
-            throw;
+            logger.LogInformation("Edict.Kafka topic {Topic} already exists", spec.Name);
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    static short ResolveReplicationFactor(
+        short requested,
+        bool isExplicit,
+        int brokerCount,
+        string topicName)
+    {
+        if (requested <= brokerCount)
+        {
+            return requested;
+        }
+        if (isExplicit)
+        {
+            throw new InvalidOperationException(
+                $"Edict.Kafka cannot provision topic '{topicName}' with the explicitly requested replication factor {requested}: only {brokerCount} broker(s) are available. Either provision more brokers or omit EdictKafkaStreamsOptions.ReplicationFactor to let the provisioner auto-clamp.");
+        }
+        return (short)brokerCount;
+    }
 }

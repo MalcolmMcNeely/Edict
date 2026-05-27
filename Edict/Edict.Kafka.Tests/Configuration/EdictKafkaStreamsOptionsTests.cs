@@ -32,6 +32,26 @@ public sealed class EdictKafkaStreamsOptionsTests
     }
 
     [Fact]
+    public void IsReplicationFactorExplicit_ShouldBeFalse_OnFreshOptions()
+    {
+        var options = new EdictKafkaStreamsOptions();
+
+        Assert.False(options.IsReplicationFactorExplicit);
+    }
+
+    [Fact]
+    public void IsReplicationFactorExplicit_ShouldBeTrue_AfterAssignment_EvenToDefaultValue()
+    {
+        // Reassigning the same default value still counts as an explicit
+        // opt-in to strict mode — the provisioner uses this flag to choose
+        // between auto-clamping rf to the broker count and throwing on a
+        // broker-count mismatch.
+        var options = new EdictKafkaStreamsOptions { ReplicationFactor = 3 };
+
+        Assert.True(options.IsReplicationFactorExplicit);
+    }
+
+    [Fact]
     public void PartitionCountFor_ShouldReturnGlobalDefault_WhenStreamHasNoOverride()
     {
         var options = new EdictKafkaStreamsOptions { PartitionCount = 32 };
