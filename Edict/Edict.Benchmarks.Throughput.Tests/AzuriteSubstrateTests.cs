@@ -17,6 +17,37 @@ namespace Edict.Benchmarks.Throughput.Tests;
 public sealed class AzuriteSubstrateTests
 {
     [Fact]
+    public async Task Runtime_CreateRowRepository_ReadsBackPreloadedBenchEventRow()
+    {
+        // The harness now drives its workload-specific row registration through
+        // the substrate runtime's generic CreateRowRepository<T> seam (ADR-0030
+        // refinement). The substrate library still owns no workload types; the
+        // factory picks the substrate-correct repo (AzureTableRepository on
+        // Azurite, PostgresTableRepository on Kafka+Postgres) from one call site
+        // in the harness.
+        var substrate = new AzuriteSubstrate();
+        await using var runtime = (AzuriteSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
+
+        var preloadTable = runtime.TableClient.GetTableClient(BenchProjectionBuilder.TableNameLiteral);
+        await preloadTable.CreateIfNotExistsAsync();
+        var partitionKey = Guid.NewGuid().ToString("N");
+        var rowKey = Guid.NewGuid().ToString("N");
+        await preloadTable.AddEntityAsync(new TableEntity(partitionKey, rowKey));
+
+        var services = new ServiceCollection();
+        services.AddSingleton(runtime.TableClient);
+        await using var sp = services.BuildServiceProvider();
+
+        var repository = runtime.CreateRowRepository<BenchEventRow>(
+            sp, BenchProjectionBuilder.TableNameLiteral);
+
+        var row = await repository.GetAsync(partitionKey, rowKey);
+
+        Assert.NotNull(row);
+        Assert.IsType<AzureTableRepository<BenchEventRow>>(repository);
+    }
+
+    [Fact]
     public async Task HarnessWiredOverRuntime_ResolvesBenchEventRowRepositoryThatReadsBackPreloadedRow()
     {
         // The Events scenario's issuer polls IEdictTableRepository<BenchEventRow>
@@ -140,11 +171,10 @@ public sealed class AzuriteSubstrateTests
                 var runtime = Current ?? throw new InvalidOperationException("Substrate runtime not set");
                 runtime.ConfigureClient(clientBuilder);
                 // Mirrors the production ActiveRuntime.ClientConfigurator —
-                // workload row repo lives in the harness, not the substrate.
+                // workload row repo lives in the harness, picked through the
+                // runtime's CreateRowRepository<T> seam.
                 clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
-                    new AzureTableRepository<BenchEventRow>(
-                        sp.GetRequiredService<TableServiceClient>(),
-                        BenchProjectionBuilder.TableNameLiteral));
+                    runtime.CreateRowRepository<BenchEventRow>(sp, BenchProjectionBuilder.TableNameLiteral));
             }
         }
     }

@@ -1,5 +1,6 @@
 using Edict.Substrate;
 using Edict.Substrate.Azurite;
+using Edict.Substrate.KafkaPostgres;
 
 namespace Edict.Benchmarks.Throughput;
 
@@ -13,6 +14,7 @@ public static class SubstrateRegistry
     static readonly ISubstrate[] Registered =
     [
         new AzuriteSubstrate(),
+        new KafkaPostgresSubstrate(),
     ];
 
     public static IReadOnlyList<ISubstrate> All() => Registered;

@@ -132,6 +132,17 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
+    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+        where TRow : class, new()
+    {
+        ArgumentNullException.ThrowIfNull(sp);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        return new PostgresTableRepository<TRow>(
+            PostgresConnectionString,
+            tableName,
+            sp.GetRequiredService<Serializer>());
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _postgresContainer.DisposeAsync();

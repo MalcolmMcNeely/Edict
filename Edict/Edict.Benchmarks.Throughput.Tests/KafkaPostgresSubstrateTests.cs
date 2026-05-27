@@ -1,7 +1,9 @@
 using Confluent.Kafka;
 
+using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
+using Edict.Core.Serialization;
 using Edict.Postgres.TableStorage;
 using Edict.Substrate;
 using Edict.Substrate.KafkaPostgres;
@@ -16,6 +18,42 @@ namespace Edict.Benchmarks.Throughput.Tests;
 
 public sealed class KafkaPostgresSubstrateTests
 {
+    [Fact]
+    public async Task Runtime_CreateRowRepository_ReadsBackPreloadedBenchEventRow()
+    {
+        // Postgres mirror of the Azurite seam test — proves the harness's
+        // generic factory call returns a PostgresTableRepository on Kafka +
+        // Postgres and reads back a BenchEventRow seeded directly through the
+        // write-store. The Events scenario's completion poll rides this exact
+        // path during a Kafka × Postgres throughput sweep.
+        var substrate = new KafkaPostgresSubstrate();
+        await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
+
+        // Minimal IServiceProvider with the harness assembly's [GenerateSerializer]
+        // codegen — no TestCluster needed for a pure write+read round-trip on
+        // BenchEventRow.
+        var services = new ServiceCollection();
+        services.AddSerializer(s => s
+            .AddAssembly(typeof(BenchEventRow).Assembly)
+            .AddEdictContractSerializer());
+        await using var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<Serializer>();
+
+        var factory = new PostgresTableWriteStoreFactory(runtime.PostgresConnectionString, serializer);
+        var store = await factory.CreateAsync<BenchEventRow>(BenchProjectionBuilder.TableNameLiteral);
+        var partitionKey = Guid.NewGuid().ToString("N");
+        var rowKey = Guid.NewGuid().ToString("N");
+        await store.UpsertAsync(partitionKey, rowKey, new BenchEventRow());
+
+        var repository = runtime.CreateRowRepository<BenchEventRow>(
+            sp, BenchProjectionBuilder.TableNameLiteral);
+
+        var row = await repository.GetAsync(partitionKey, rowKey);
+
+        Assert.NotNull(row);
+        Assert.IsType<PostgresTableRepository<BenchEventRow>>(repository);
+    }
+
     [Fact]
     public async Task Runtime_SiloCallback_WiresKafkaStreamsAtRuntimeBootstrap_AndPostgresDeadLetterRepoReadsBackSeededRow()
     {

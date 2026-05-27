@@ -128,6 +128,14 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
+    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+        where TRow : class, new()
+    {
+        ArgumentNullException.ThrowIfNull(sp);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        return new AzureTableRepository<TRow>(sp.GetRequiredService<TableServiceClient>(), tableName);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _container.DisposeAsync();

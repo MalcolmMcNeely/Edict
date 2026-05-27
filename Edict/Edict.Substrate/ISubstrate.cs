@@ -1,3 +1,5 @@
+using Edict.Contracts.TableStorage;
+
 using Orleans.Hosting;
 
 namespace Edict.Substrate;
@@ -20,4 +22,15 @@ public interface ISubstrateRuntime : IAsyncDisposable
     Action<ISiloBuilder> ConfigureSilo { get; }
 
     Action<IClientBuilder> ConfigureClient { get; }
+
+    /// <summary>
+    /// Builds a substrate-correct <see cref="IEdictTableRepository{T}"/> for a
+    /// workload-specific row type. The substrate stays workload-free — it does
+    /// not know <typeparamref name="TRow"/> — but it owns the choice of which
+    /// concrete repo to instantiate against the table name the caller provides.
+    /// Lets the throughput harness register one row repository per workload
+    /// without branching on the active substrate.
+    /// </summary>
+    IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+        where TRow : class, new();
 }

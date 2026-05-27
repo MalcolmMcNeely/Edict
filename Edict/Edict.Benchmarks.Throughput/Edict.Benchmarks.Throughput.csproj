@@ -23,6 +23,7 @@
         <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
         <ProjectReference Include="..\Edict.Substrate\Edict.Substrate.csproj" />
         <ProjectReference Include="..\Edict.Substrate.Azurite\Edict.Substrate.Azurite.csproj" />
+        <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>

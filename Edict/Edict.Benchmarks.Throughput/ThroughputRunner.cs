@@ -1,16 +1,12 @@
 using System.Diagnostics;
 
-using Azure.Data.Tables;
-
-using Edict.Azure.TableStorage;
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Substrate;
-using Edict.Substrate.Azurite;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Hosting;
 using Orleans.TestingHost;
@@ -357,11 +353,12 @@ public sealed class ThroughputRunner
                 runtime.ConfigureClient(clientBuilder);
                 // Workload-specific repository — the substrate library stays
                 // workload-free, so the harness registers its own row type
-                // here against the TableServiceClient the substrate published.
+                // here. The runtime's CreateRowRepository<T> seam picks the
+                // substrate-correct repo (AzureTableRepository on Azurite,
+                // PostgresTableRepository on Kafka+Postgres) without the
+                // harness branching on substrate kind.
                 clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
-                    new AzureTableRepository<BenchEventRow>(
-                        sp.GetRequiredService<TableServiceClient>(),
-                        BenchProjectionBuilder.TableNameLiteral));
+                    runtime.CreateRowRepository<BenchEventRow>(sp, BenchProjectionBuilder.TableNameLiteral));
             }
         }
     }
