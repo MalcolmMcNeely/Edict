@@ -10,11 +10,8 @@
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Testing/Edict.Testing.csproj" />
     <Project Path="Edict.Azure/Edict.Azure.csproj" />
-    <Project Path="Edict.Substrate/Edict.Substrate.csproj" />
-    <Project Path="Edict.Substrate.Azurite/Edict.Substrate.Azurite.csproj" />
     <Project Path="Edict.Postgres/Edict.Postgres.csproj" />
     <Project Path="Edict.Kafka/Edict.Kafka.csproj" />
-    <Project Path="Edict.Substrate.KafkaPostgres/Edict.Substrate.KafkaPostgres.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />
     <Project Path="Edict.Analyzers/Edict.Analyzers.csproj" />
     <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />
@@ -32,6 +29,9 @@
     <Project Path="Edict.Benchmarks/Edict.Benchmarks.csproj" />
     <Project Path="Edict.Benchmarks.Throughput/Edict.Benchmarks.Throughput.csproj" />
     <Project Path="Edict.Benchmarks.Throughput.Tests/Edict.Benchmarks.Throughput.Tests.csproj" />
+    <Project Path="Edict.Substrate/Edict.Substrate.csproj" />
+    <Project Path="Edict.Substrate.Azurite/Edict.Substrate.Azurite.csproj" />
+    <Project Path="Edict.Substrate.KafkaPostgres/Edict.Substrate.KafkaPostgres.csproj" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
