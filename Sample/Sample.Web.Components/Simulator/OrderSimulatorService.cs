@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using Sample.Contracts.Orders.Commands;
 
-namespace Sample.Web.Simulator;
+namespace Sample.Web.Components.Simulator;
 
 /// <summary>
 /// Demo prop, not a framework primitive. A web-tier hosted-service singleton

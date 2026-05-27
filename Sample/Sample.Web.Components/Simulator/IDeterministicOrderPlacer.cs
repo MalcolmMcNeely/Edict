@@ -1,4 +1,4 @@
-namespace Sample.Web.Simulator;
+namespace Sample.Web.Components.Simulator;
 
 /// <summary>
 /// Demo-prop seam for placing a single fixed-shape order — three lines, fixed

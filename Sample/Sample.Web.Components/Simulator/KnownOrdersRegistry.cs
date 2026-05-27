@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Sample.Web.Simulator;
+namespace Sample.Web.Components.Simulator;
 
 /// <summary>
 /// Demo-prop registry of order ids placed in this web process — written by the

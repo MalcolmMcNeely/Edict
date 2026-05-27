@@ -1,4 +1,4 @@
-namespace Sample.Web.State;
+namespace Sample.Web.Components.State;
 
 /// <summary>
 /// Demo-scope shared state for the hub's spotlighted <c>OrderId</c>. Written by

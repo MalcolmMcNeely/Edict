@@ -2,7 +2,7 @@ using Edict.Contracts.Sending;
 
 using Sample.Contracts.Orders.Commands;
 
-namespace Sample.Web.Simulator;
+namespace Sample.Web.Components.Simulator;
 
 /// <summary>
 /// Default <see cref="IDeterministicOrderPlacer"/>. Three fixed line items at a

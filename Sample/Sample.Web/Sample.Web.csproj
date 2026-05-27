@@ -14,12 +14,12 @@
     <ItemGroup>
         <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
         <!--
-          Reference Sample.Domain for the generated grain interfaces (IOrderGrain
-          et al.) and the [assembly: EdictRoutes] annotation that AddEdict() in
-          Edict.Core picks up at startup. The substrate-specific Sample.Silo
-          host is irrelevant to the web tier; the contracts + domain pair is
-          what the Blazor app actually binds to.
+          The Blazor surface (pages, layouts, simulator, hub state) lives in
+          Sample.Web.Components — a substrate-agnostic Razor class library that
+          a future Kafka/Postgres sample can mount the same way. Sample.Web is
+          now only the Azure-client host; its sole file is Program.cs.
         -->
+        <ProjectReference Include="../Sample.Web.Components/Sample.Web.Components.csproj" />
         <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />

@@ -24,6 +24,7 @@
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Domain\Sample.Domain.csproj" />
+        <ProjectReference Include="..\..\Sample\Sample.Web.Components\Sample.Web.Components.csproj" />
     </ItemGroup>
 
 </Project>

@@ -17,8 +17,8 @@ using Sample.Contracts.Payments.Projections;
 using Sample.ServiceDefaults;
 using Sample.Domain.Orders.CommandHandlers;
 using Sample.Web.Components;
-using Sample.Web.Simulator;
-using Sample.Web.State;
+using Sample.Web.Components.Simulator;
+using Sample.Web.Components.State;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,8 +79,3 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
-
-namespace Sample.Web
-{
-    public partial class Program { }
-}
