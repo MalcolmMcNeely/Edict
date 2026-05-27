@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 using VerifyTests;
 
-namespace Sample.Silo.Tests;
+namespace Sample.Azure.Silo.Tests;
 
 static class VerifyModuleInit
 {

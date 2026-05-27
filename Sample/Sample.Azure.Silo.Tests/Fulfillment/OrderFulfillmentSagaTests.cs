@@ -7,7 +7,7 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Fulfillment;
+namespace Sample.Azure.Silo.Tests.Fulfillment;
 
 /// <summary>
 /// The OrderFulfillment saga is the workflow-handoff Saga shape (complementing

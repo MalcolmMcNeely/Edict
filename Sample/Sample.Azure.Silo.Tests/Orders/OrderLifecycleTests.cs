@@ -6,7 +6,7 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
 /// Tracer bullet for the shipped Test Framework: a single command sent through

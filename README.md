@@ -122,12 +122,12 @@ You'll need .NET 10 and Docker.
 ```bash
 git clone https://github.com/MalcolmMcNeely/Edict.git
 cd Edict
-dotnet run --project Sample/Sample.AppHost
+dotnet run --project Sample/Sample.Azure.AppHost
 ```
 
 The Aspire dashboard prints a URL on startup. From there, follow two links:
 
-- **Sample.Web** — the demo at `/`. A paused dashboard of a live order-processing system. Press ▶ to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire. Click any row in the orders table to spotlight it; the right-hand timeline shows that order's state transitions with the span name beside each row, so you can navigate the Aspire trace by reading down the spotlight. Three injection buttons demonstrate the failure modes — poison, oversize-payload (claim check), and saga-rejected commands.
+- **Sample.Azure.Web** — the demo at `/`. A paused dashboard of a live order-processing system. Press ▶ to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire. Click any row in the orders table to spotlight it; the right-hand timeline shows that order's state transitions with the span name beside each row, so you can navigate the Aspire trace by reading down the spotlight. Three injection buttons demonstrate the failure modes — poison, oversize-payload (claim check), and saga-rejected commands.
 - **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
 
 A single forensic spoke at `/dead-letter` lists outbox effects that exhausted their retry budget.

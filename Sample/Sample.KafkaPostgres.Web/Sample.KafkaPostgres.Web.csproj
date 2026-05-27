@@ -14,7 +14,7 @@
     <ItemGroup>
         <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
         <!--
-          Same substrate-agnostic Razor class library as Sample.Web. This host
+          Same substrate-agnostic Razor class library as Sample.Azure.Web. This host
           differs only in Program.cs — projection-row repositories are bound
           to PostgresTableRepository against the AppHost-injected appdb
           connection string instead of AzureTableRepository against Tables.

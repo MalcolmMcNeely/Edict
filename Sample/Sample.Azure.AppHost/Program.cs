@@ -12,11 +12,11 @@ var tables = storage.AddTables("tables");
 //                         by AzureBlobClaimCheckStore.CreateAsync.
 var blobs = storage.AddBlobs("blobs");
 
-builder.AddProject<Projects.Sample_Silo>("silo")
+builder.AddProject<Projects.Sample_Azure_Silo>("silo")
     .WithReference(queues)
     .WithReference(tables)
     .WithReference(blobs);
-builder.AddProject<Projects.Sample_Web>("web")
+builder.AddProject<Projects.Sample_Azure_Web>("web")
     .WithReference(tables)
     .WithReference(blobs);
 

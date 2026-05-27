@@ -5,16 +5,17 @@ using Xunit;
 
 namespace Edict.Architecture.Tests;
 
-// The Sample restructure (issue #137) extracts substrate-agnostic Sample.Silo
-// code into a Sample.Domain class library and substrate-agnostic Sample.Web
-// code into a Sample.Web.Components Razor class library, so future Kafka/Postgres
-// samples can reuse both. The assertions here lock in that extraction:
+// The Sample restructure (issue #137) extracts substrate-agnostic silo
+// code into a Sample.Domain class library and substrate-agnostic web
+// code into a Sample.Web.Components Razor class library, so the Kafka/Postgres
+// sample can reuse both. The assertions here lock in that extraction:
 // handlers/sagas/projection builders/state must ship from Sample.Domain;
 // pages/layouts/simulator/state must ship from Sample.Web.Components. The
-// Sample.* host projects (Sample.Silo, Sample.Web, Sample.KafkaPostgres.Silo,
-// Sample.KafkaPostgres.Web) keep only their substrate-specific Program.cs
-// (issue #140 — the Kafka+Postgres sibling sample reuses Sample.Domain +
-// Sample.Web.Components against Edict.Kafka + Edict.Postgres).
+// Sample.* host projects (Sample.Azure.Silo, Sample.Azure.Web,
+// Sample.KafkaPostgres.Silo, Sample.KafkaPostgres.Web) keep only their
+// substrate-specific Program.cs (issue #140 — the Kafka+Postgres sibling
+// sample reuses Sample.Domain + Sample.Web.Components against
+// Edict.Kafka + Edict.Postgres).
 public class SampleRestructureTests
 {
     [Fact]
@@ -30,8 +31,8 @@ public class SampleRestructureTests
     }
 
     [Theory]
-    [InlineData("Sample.Silo")]
-    [InlineData("Sample.Web")]
+    [InlineData("Sample.Azure.Silo")]
+    [InlineData("Sample.Azure.Web")]
     [InlineData("Sample.KafkaPostgres.Silo")]
     [InlineData("Sample.KafkaPostgres.Web")]
     public void SampleHostProject_ShouldContainOnlyProgramCs(string projectName)
@@ -77,8 +78,9 @@ public class SampleRestructureTests
     public void SampleKafkaPostgresAppHost_ShouldReferenceBothHosts()
     {
         // Aspire AppHost orchestrates Silo + Web for the Kafka+Postgres pairing.
-        // The Azure AppHost has the same shape against Sample.Silo + Sample.Web;
-        // pinning both references here keeps the two sibling AppHosts symmetric.
+        // The Azure AppHost has the same shape against Sample.Azure.Silo +
+        // Sample.Azure.Web; pinning both references here keeps the two sibling
+        // AppHosts symmetric.
         var csprojPath = Path.Combine(SolutionRoot, "Sample", "Sample.KafkaPostgres.AppHost",
             "Sample.KafkaPostgres.AppHost.csproj");
         Assert.True(File.Exists(csprojPath), "Sample.KafkaPostgres.AppHost.csproj missing");

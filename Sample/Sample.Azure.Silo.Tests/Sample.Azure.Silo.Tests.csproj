@@ -16,7 +16,7 @@
 
     <ItemGroup>
         <!-- The consumer assembly under test: its grains + generated [assembly: EdictRoutes].
-             Lives in Sample.Domain since #137; Sample.Silo is now only the Azure host. -->
+             Lives in Sample.Domain since #137; Sample.Azure.Silo is the Azure host. -->
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <!-- The shipped in-memory Test Framework. -->
         <ProjectReference Include="../../Edict/Edict.Testing/Edict.Testing.csproj" />

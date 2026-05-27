@@ -6,7 +6,7 @@ using Sample.Domain.Payments.Sagas;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 // Saga tests assert saga progression only. The OrdersByStatus projection row
 // is sensitive to chaos reordering (different runs land events in different

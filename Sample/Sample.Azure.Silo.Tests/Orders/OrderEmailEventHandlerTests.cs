@@ -6,7 +6,7 @@ using Sample.Domain.Orders.EventHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
 /// End-to-end through the shipped Test Framework: a single

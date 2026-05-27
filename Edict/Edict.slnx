@@ -38,10 +38,10 @@
     <Project Path="../Sample/Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
     <Project Path="../Sample/Sample.Domain/Sample.Domain.csproj" />
     <Project Path="../Sample/Sample.Web.Components/Sample.Web.Components.csproj" />
-    <Project Path="../Sample/Sample.Silo/Sample.Silo.csproj" />
-    <Project Path="../Sample/Sample.Web/Sample.Web.csproj" />
-    <Project Path="../Sample/Sample.Silo.Tests/Sample.Silo.Tests.csproj" />
-    <Project Path="../Sample/Sample.AppHost/Sample.AppHost.csproj" />
+    <Project Path="../Sample/Sample.Azure.Silo/Sample.Azure.Silo.csproj" />
+    <Project Path="../Sample/Sample.Azure.Web/Sample.Azure.Web.csproj" />
+    <Project Path="../Sample/Sample.Azure.Silo.Tests/Sample.Azure.Silo.Tests.csproj" />
+    <Project Path="../Sample/Sample.Azure.AppHost/Sample.Azure.AppHost.csproj" />
     <Project Path="../Sample/Sample.KafkaPostgres.Silo/Sample.KafkaPostgres.Silo.csproj" />
     <Project Path="../Sample/Sample.KafkaPostgres.Web/Sample.KafkaPostgres.Web.csproj" />
     <Project Path="../Sample/Sample.KafkaPostgres.AppHost/Sample.KafkaPostgres.AppHost.csproj" />

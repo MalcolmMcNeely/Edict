@@ -5,7 +5,7 @@ namespace Edict.Contracts.Configuration;
 /// Every constructor default is the literal previously embedded in mechanism
 /// code — moving those literals here is the principle the ADR pins down:
 /// every framework knob is a property on an options class with a default, a
-/// <c>ValidateOnStart</c> rule, and a line in <c>Sample.Silo/Program.cs</c>,
+/// <c>ValidateOnStart</c> rule, and a line in <c>Sample.Azure.Silo/Program.cs</c>,
 /// never a literal in mechanism code. Brand-prefixed because the consumer
 /// types it.
 /// </summary>

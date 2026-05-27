@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Sample.Web</RootNamespace>
+        <RootNamespace>Sample.Azure.Web</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,8 +16,8 @@
         <!--
           The Blazor surface (pages, layouts, simulator, hub state) lives in
           Sample.Web.Components — a substrate-agnostic Razor class library that
-          a future Kafka/Postgres sample can mount the same way. Sample.Web is
-          now only the Azure-client host; its sole file is Program.cs.
+          the Kafka/Postgres sample mounts the same way. Sample.Azure.Web is
+          the Azure-client host; its sole file is Program.cs.
         -->
         <ProjectReference Include="../Sample.Web.Components/Sample.Web.Components.csproj" />
         <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />

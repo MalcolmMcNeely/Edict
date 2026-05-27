@@ -6,7 +6,7 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
 /// Per-state-transition tests for the five timestamp columns added to

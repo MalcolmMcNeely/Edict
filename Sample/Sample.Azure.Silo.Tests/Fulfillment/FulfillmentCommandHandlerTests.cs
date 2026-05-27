@@ -6,7 +6,7 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Fulfillment;
+namespace Sample.Azure.Silo.Tests.Fulfillment;
 
 /// <summary>
 /// Drives the grain-timer-backed fulfillment handler under a virtual

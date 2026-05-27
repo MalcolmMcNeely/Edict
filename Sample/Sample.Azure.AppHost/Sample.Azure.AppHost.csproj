@@ -17,8 +17,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../Sample.Silo/Sample.Silo.csproj" />
-        <ProjectReference Include="../Sample.Web/Sample.Web.csproj" />
+        <ProjectReference Include="../Sample.Azure.Silo/Sample.Azure.Silo.csproj" />
+        <ProjectReference Include="../Sample.Azure.Web/Sample.Azure.Web.csproj" />
     </ItemGroup>
 
 </Project>

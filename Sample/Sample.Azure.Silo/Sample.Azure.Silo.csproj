@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Sample.Silo</RootNamespace>
+        <RootNamespace>Sample.Azure.Silo</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,8 +18,8 @@
 
     <ItemGroup>
         <!--
-          The handlers/sagas/projections live in Sample.Domain. Sample.Silo is
-          now only the Azure-substrate host; its Program.cs is the only file in
+          The handlers/sagas/projections live in Sample.Domain. Sample.Azure.Silo
+          is the Azure-substrate host; its Program.cs is the only file in
           this project (issue #137). Sample.Domain transitively brings in
           Sample.Contracts, Edict.Core, and the Edict.Generators-emitted
           [assembly: EdictRoutes] that AddEdict() picks up on startup.

@@ -13,8 +13,9 @@
         <!--
           Generator runs over this assembly — emits IOrderGrain, Dispatch, the
           EdictRouteRegistrar, and [assembly: EdictRoutes(...)] (ADR 0021).
-          The handlers live here now; the substrate-specific Sample.Silo host
-          picks the routes up via reference and AppDomain scan.
+          The handlers live here now; the substrate-specific Sample.Azure.Silo
+          and Sample.KafkaPostgres.Silo hosts pick the routes up via reference
+          and AppDomain scan.
           ReferenceOutputAssembly=false: we only need the generator to run, not to link it.
         -->
         <ProjectReference Include="../../Edict/Edict.Generators/Edict.Generators.csproj"

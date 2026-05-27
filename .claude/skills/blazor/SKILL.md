@@ -1,11 +1,11 @@
 ---
 name: blazor
-description: Use this skill when editing, creating, or reviewing any Blazor component (.razor) in this repo. Covers render mode, folder layout, live read-model refresh, and SignalR/state rules for Sample.Web (the Edict sample app's Blazor Server tier).
+description: Use this skill when editing, creating, or reviewing any Blazor component (.razor) in this repo. Covers render mode, folder layout, live read-model refresh, and SignalR/state rules for Sample.Web.Components (the substrate-agnostic Razor class library that Sample.Azure.Web and Sample.KafkaPostgres.Web both mount).
 ---
 
 # Blazor Component Conventions
 
-`Sample.Web` is the canonical Edict consumer reference. It is **plain Blazor Server** — no UI component library, no design system, no JS interop beyond what the framework ships. The point of the sample is to show off Edict primitives, not Blazor flourishes.
+`Sample.Web.Components` is the canonical Edict consumer reference — a substrate-agnostic Razor class library mounted by `Sample.Azure.Web` and `Sample.KafkaPostgres.Web`. It is **plain Blazor Server** — no UI component library, no design system, no JS interop beyond what the framework ships. The point of the sample is to show off Edict primitives, not Blazor flourishes.
 
 ## No UI component library
 
@@ -27,7 +27,7 @@ This establishes a single persistent SignalR circuit for the entire app. All pag
 
 ## Folder layout
 
-Pages and layout under `Sample.Web/Components/`:
+Pages and layout under `Sample.Web.Components/`:
 
 ```
 Components/

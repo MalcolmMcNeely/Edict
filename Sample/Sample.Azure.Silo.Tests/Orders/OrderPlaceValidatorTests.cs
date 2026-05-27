@@ -6,7 +6,7 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 public sealed class OrderPlaceValidatorTests
 {

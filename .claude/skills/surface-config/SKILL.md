@@ -28,7 +28,7 @@ When a new knob surfaces, all five steps land in the same PR:
 
 3. **Validation rule.** Add a rule to `EdictOptionsValidator` (or the equivalent Azure validator). Validation throws at startup via the host's `EdictWiringValidator`. Never silently clamp — an out-of-range value the consumer typed is a typo, and the loud feedback path catches it before traffic flows.
 
-4. **Sample line.** Add a line to `Sample.Silo/Program.cs` under the appropriate `silo.AddEdict*` lambda showing the literal default. The sample doubles as the config catalogue; a consumer who wants to learn what's tunable reads this file first.
+4. **Sample line.** Add a line to `Sample.Azure.Silo/Program.cs` under the appropriate `silo.AddEdict*` lambda showing the literal default. The sample doubles as the config catalogue; a consumer who wants to learn what's tunable reads this file first.
 
 5. **Provider marker (if applicable).** If the new knob lives on a brand-new provider extension (e.g. a Postgres persistence provider), register an `IEdictWiringMarker` implementation in `Edict.Contracts.Configuration` so the startup validator can detect the missing-provider call.
 

@@ -7,7 +7,7 @@ using Sample.Domain.Orders.EventHandlers;
 
 using Xunit;
 
-namespace Sample.Silo.Tests.Orders;
+namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
 /// Exercises <c>EdictTestAppBuilder.Replace&lt;TService&gt;</c>: a fake
