@@ -33,15 +33,15 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
     public async Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default)
     {
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
-        command.Parameters.AddWithValue("pk", partitionKey);
-        command.Parameters.AddWithValue("rk", rowKey);
         try
         {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
+            command.Parameters.AddWithValue("pk", partitionKey);
+            command.Parameters.AddWithValue("rk", rowKey);
             var result = await command.ExecuteScalarAsync(cancellationToken);
             if (result is null || result is DBNull)
             {
@@ -54,20 +54,25 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
             // Table does not exist yet — projection hasn't run, return null.
             return null;
         }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"GetAsync failed for {_tableName} ({partitionKey}/{rowKey})");
+        }
     }
 
     public async Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default)
     {
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
         var results = new List<T>();
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";
-        command.Parameters.AddWithValue("pk", partitionKey);
         try
         {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";
+            command.Parameters.AddWithValue("pk", partitionKey);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -78,6 +83,11 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
         catch (PostgresException ex) when (ex.SqlState == "42P01")
         {
             // Table does not exist yet — return empty.
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"QueryPartitionAsync failed for {_tableName} ({partitionKey})");
         }
         return results;
     }

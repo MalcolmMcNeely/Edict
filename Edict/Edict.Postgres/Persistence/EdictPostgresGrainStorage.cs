@@ -59,40 +59,48 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
         var grainType = grainId.Type.ToString() ?? "";
         var grainIdText = grainId.Key.ToString() ?? "";
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT payload, version FROM edict_grain_state " +
-            "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
-            "AND state_name = @state_name AND service_id = @service_id;";
-        command.Parameters.AddWithValue("grain_type", grainType);
-        command.Parameters.AddWithValue("grain_id", grainIdText);
-        command.Parameters.AddWithValue("state_name", stateName);
-        command.Parameters.AddWithValue("service_id", _serviceId);
-
-        await using var reader = await command.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
+        try
         {
-            grainState.State = Activator.CreateInstance<T>()!;
-            grainState.ETag = null;
-            grainState.RecordExists = false;
-            return;
-        }
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT payload, version FROM edict_grain_state " +
+                "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
+                "AND state_name = @state_name AND service_id = @service_id;";
+            command.Parameters.AddWithValue("grain_type", grainType);
+            command.Parameters.AddWithValue("grain_id", grainIdText);
+            command.Parameters.AddWithValue("state_name", stateName);
+            command.Parameters.AddWithValue("service_id", _serviceId);
 
-        var payload = reader.IsDBNull(0) ? null : (byte[])reader["payload"];
-        var version = reader.GetInt32(1);
+            await using var reader = await command.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                grainState.State = Activator.CreateInstance<T>()!;
+                grainState.ETag = null;
+                grainState.RecordExists = false;
+                return;
+            }
 
-        if (payload is null || payload.Length == 0)
-        {
-            grainState.State = Activator.CreateInstance<T>()!;
+            var payload = reader.IsDBNull(0) ? null : (byte[])reader["payload"];
+            var version = reader.GetInt32(1);
+
+            if (payload is null || payload.Length == 0)
+            {
+                grainState.State = Activator.CreateInstance<T>()!;
+            }
+            else
+            {
+                grainState.State = _serializer.Deserialize<T>(payload);
+            }
+            grainState.ETag = version.ToString();
+            grainState.RecordExists = true;
         }
-        else
+        catch (NpgsqlException ex)
         {
-            grainState.State = _serializer.Deserialize<T>(payload);
+            throw EdictPostgresStorageException.From(ex,
+                $"ReadStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
         }
-        grainState.ETag = version.ToString();
-        grainState.RecordExists = true;
     }
 
     public async Task WriteStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
@@ -101,54 +109,62 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
         var grainIdText = grainId.Key.ToString() ?? "";
         var payload = _serializer.SerializeToArray(grainState.State);
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
-
-        if (grainState.ETag is null)
+        try
         {
-            // First write — INSERT (only if no row already exists for this
-            // grain). A row inserted concurrently by another activation makes
-            // this INSERT a no-op via the WHERE NOT EXISTS clause; in that
-            // case the version stays unchanged and we raise an
-            // InconsistentStateException so Orleans deactivates and re-reads.
-            await using var insert = connection.CreateCommand();
-            insert.CommandText =
-                "INSERT INTO edict_grain_state " +
-                "(grain_type, grain_id, state_name, service_id, payload, version, modified_on) " +
-                "VALUES (@grain_type, @grain_id, @state_name, @service_id, @payload, 1, now()) " +
-                "ON CONFLICT (grain_type, grain_id, state_name, service_id) DO NOTHING " +
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            if (grainState.ETag is null)
+            {
+                // First write — INSERT (only if no row already exists for this
+                // grain). A row inserted concurrently by another activation makes
+                // this INSERT a no-op via the WHERE NOT EXISTS clause; in that
+                // case the version stays unchanged and we raise an
+                // InconsistentStateException so Orleans deactivates and re-reads.
+                await using var insert = connection.CreateCommand();
+                insert.CommandText =
+                    "INSERT INTO edict_grain_state " +
+                    "(grain_type, grain_id, state_name, service_id, payload, version, modified_on) " +
+                    "VALUES (@grain_type, @grain_id, @state_name, @service_id, @payload, 1, now()) " +
+                    "ON CONFLICT (grain_type, grain_id, state_name, service_id) DO NOTHING " +
+                    "RETURNING version;";
+                AddParameters(insert, grainType, grainIdText, stateName, _serviceId, payload);
+                var inserted = await insert.ExecuteScalarAsync();
+                if (inserted is null || inserted is DBNull)
+                {
+                    throw new InconsistentStateException(
+                        $"Concurrent insert detected for grain {grainType}/{grainIdText} state '{stateName}'.");
+                }
+                grainState.ETag = ((int)inserted).ToString();
+                grainState.RecordExists = true;
+                return;
+            }
+
+            var expectedVersion = int.Parse(grainState.ETag);
+            await using var update = connection.CreateCommand();
+            update.CommandText =
+                "UPDATE edict_grain_state SET payload = @payload, version = version + 1, modified_on = now() " +
+                "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
+                "AND state_name = @state_name AND service_id = @service_id " +
+                "AND version = @expected_version " +
                 "RETURNING version;";
-            AddParameters(insert, grainType, grainIdText, stateName, _serviceId, payload);
-            var inserted = await insert.ExecuteScalarAsync();
-            if (inserted is null || inserted is DBNull)
+            AddParameters(update, grainType, grainIdText, stateName, _serviceId, payload);
+            update.Parameters.AddWithValue("expected_version", expectedVersion);
+            var result = await update.ExecuteScalarAsync();
+            if (result is null || result is DBNull)
             {
                 throw new InconsistentStateException(
-                    $"Concurrent insert detected for grain {grainType}/{grainIdText} state '{stateName}'.");
+                    $"Version conflict writing grain {grainType}/{grainIdText} state '{stateName}': " +
+                    $"expected version {expectedVersion}.");
             }
-            grainState.ETag = ((int)inserted).ToString();
+            grainState.ETag = ((int)result).ToString();
             grainState.RecordExists = true;
-            return;
         }
-
-        var expectedVersion = int.Parse(grainState.ETag);
-        await using var update = connection.CreateCommand();
-        update.CommandText =
-            "UPDATE edict_grain_state SET payload = @payload, version = version + 1, modified_on = now() " +
-            "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
-            "AND state_name = @state_name AND service_id = @service_id " +
-            "AND version = @expected_version " +
-            "RETURNING version;";
-        AddParameters(update, grainType, grainIdText, stateName, _serviceId, payload);
-        update.Parameters.AddWithValue("expected_version", expectedVersion);
-        var result = await update.ExecuteScalarAsync();
-        if (result is null || result is DBNull)
+        catch (NpgsqlException ex)
         {
-            throw new InconsistentStateException(
-                $"Version conflict writing grain {grainType}/{grainIdText} state '{stateName}': " +
-                $"expected version {expectedVersion}.");
+            throw EdictPostgresStorageException.From(ex,
+                $"WriteStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
         }
-        grainState.ETag = ((int)result).ToString();
-        grainState.RecordExists = true;
     }
 
     public async Task ClearStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
@@ -156,22 +172,30 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
         var grainType = grainId.Type.ToString() ?? "";
         var grainIdText = grainId.Key.ToString() ?? "";
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "DELETE FROM edict_grain_state " +
-            "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
-            "AND state_name = @state_name AND service_id = @service_id;";
-        command.Parameters.AddWithValue("grain_type", grainType);
-        command.Parameters.AddWithValue("grain_id", grainIdText);
-        command.Parameters.AddWithValue("state_name", stateName);
-        command.Parameters.AddWithValue("service_id", _serviceId);
-        await command.ExecuteNonQueryAsync();
+        try
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "DELETE FROM edict_grain_state " +
+                "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
+                "AND state_name = @state_name AND service_id = @service_id;";
+            command.Parameters.AddWithValue("grain_type", grainType);
+            command.Parameters.AddWithValue("grain_id", grainIdText);
+            command.Parameters.AddWithValue("state_name", stateName);
+            command.Parameters.AddWithValue("service_id", _serviceId);
+            await command.ExecuteNonQueryAsync();
 
-        grainState.State = Activator.CreateInstance<T>()!;
-        grainState.ETag = null;
-        grainState.RecordExists = false;
+            grainState.State = Activator.CreateInstance<T>()!;
+            grainState.ETag = null;
+            grainState.RecordExists = false;
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"ClearStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
+        }
     }
 
     public void Participate(ISiloLifecycle observer)

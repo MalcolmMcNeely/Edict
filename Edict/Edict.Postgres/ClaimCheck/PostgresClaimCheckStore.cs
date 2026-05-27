@@ -29,18 +29,26 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
     public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
     {
         var id = Guid.NewGuid();
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"INSERT INTO {_tableName} (id, payload, created_at) VALUES (@id, @payload, now());";
-        command.Parameters.AddWithValue("id", id);
-        command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea)
+        try
         {
-            Value = payload.ToArray(),
-        });
-        await command.ExecuteNonQueryAsync(ct);
-        return id.ToString("N");
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(ct);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"INSERT INTO {_tableName} (id, payload, created_at) VALUES (@id, @payload, now());";
+            command.Parameters.AddWithValue("id", id);
+            command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea)
+            {
+                Value = payload.ToArray(),
+            });
+            await command.ExecuteNonQueryAsync(ct);
+            return id.ToString("N");
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"PutAsync failed for claim-check table {_tableName}");
+        }
     }
 
     public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
@@ -51,17 +59,25 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
                 $"Claim-check key '{key}' is not in the expected GUID-N format.");
         }
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT payload FROM {_tableName} WHERE id = @id;";
-        command.Parameters.AddWithValue("id", id);
-        var result = await command.ExecuteScalarAsync(ct);
-        if (result is null || result is DBNull)
+        try
         {
-            throw new InvalidOperationException(
-                $"Claim-check payload not found for key '{key}'.");
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(ct);
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT payload FROM {_tableName} WHERE id = @id;";
+            command.Parameters.AddWithValue("id", id);
+            var result = await command.ExecuteScalarAsync(ct);
+            if (result is null || result is DBNull)
+            {
+                throw new InvalidOperationException(
+                    $"Claim-check payload not found for key '{key}'.");
+            }
+            return (byte[])result;
         }
-        return (byte[])result;
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"GetAsync failed for claim-check table {_tableName} (key {key})");
+        }
     }
 }

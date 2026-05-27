@@ -16,18 +16,26 @@ internal static class PostgresTableSchema
         string tableName,
         CancellationToken ct)
     {
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync(ct);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(tableName)} (" +
-            "partition_key TEXT NOT NULL, " +
-            "row_key TEXT NOT NULL, " +
-            "payload BYTEA NOT NULL, " +
-            "etag TEXT NOT NULL, " +
-            "PRIMARY KEY (partition_key, row_key)" +
-            ");";
-        await command.ExecuteNonQueryAsync(ct);
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(ct);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(tableName)} (" +
+                "partition_key TEXT NOT NULL, " +
+                "row_key TEXT NOT NULL, " +
+                "payload BYTEA NOT NULL, " +
+                "etag TEXT NOT NULL, " +
+                "PRIMARY KEY (partition_key, row_key)" +
+                ");";
+            await command.ExecuteNonQueryAsync(ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"EnsureProjectionTableAsync failed for {tableName}");
+        }
     }
 
     /// <summary>

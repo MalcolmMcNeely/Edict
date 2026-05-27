@@ -59,19 +59,27 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
         var bytes = SerializeRow(row);
         var etag = Guid.NewGuid().ToString("N");
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +
-            "VALUES (@pk, @rk, @payload, @etag) " +
-            "ON CONFLICT (partition_key, row_key) DO UPDATE SET " +
-            "payload = EXCLUDED.payload, etag = EXCLUDED.etag;";
-        command.Parameters.AddWithValue("pk", partitionKey);
-        command.Parameters.AddWithValue("rk", rowKey);
-        command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea) { Value = bytes });
-        command.Parameters.AddWithValue("etag", etag);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        try
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +
+                "VALUES (@pk, @rk, @payload, @etag) " +
+                "ON CONFLICT (partition_key, row_key) DO UPDATE SET " +
+                "payload = EXCLUDED.payload, etag = EXCLUDED.etag;";
+            command.Parameters.AddWithValue("pk", partitionKey);
+            command.Parameters.AddWithValue("rk", rowKey);
+            command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea) { Value = bytes });
+            command.Parameters.AddWithValue("etag", etag);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"UpsertRowAsync failed for {tableName} ({partitionKey}/{rowKey})");
+        }
     }
 
     byte[] SerializeRow(object row)

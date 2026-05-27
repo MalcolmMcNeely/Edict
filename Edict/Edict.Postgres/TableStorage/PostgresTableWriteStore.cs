@@ -33,19 +33,27 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
     public async Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default)
     {
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
-        command.Parameters.AddWithValue("pk", partitionKey);
-        command.Parameters.AddWithValue("rk", rowKey);
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        if (result is null || result is DBNull)
+        try
         {
-            return null;
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
+            command.Parameters.AddWithValue("pk", partitionKey);
+            command.Parameters.AddWithValue("rk", rowKey);
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            if (result is null || result is DBNull)
+            {
+                return null;
+            }
+            return _serializer.Deserialize<T>((byte[])result);
         }
-        return _serializer.Deserialize<T>((byte[])result);
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"GetAsync failed for {_tableName} ({partitionKey}/{rowKey})");
+        }
     }
 
     public async Task UpsertAsync(string partitionKey, string rowKey, T row, CancellationToken cancellationToken = default)
@@ -54,18 +62,26 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
         var bytes = _serializer.SerializeToArray(row);
         var etag = Guid.NewGuid().ToString("N");
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +
-            "VALUES (@pk, @rk, @payload, @etag) " +
-            "ON CONFLICT (partition_key, row_key) DO UPDATE SET " +
-            "payload = EXCLUDED.payload, etag = EXCLUDED.etag;";
-        command.Parameters.AddWithValue("pk", partitionKey);
-        command.Parameters.AddWithValue("rk", rowKey);
-        command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea) { Value = bytes });
-        command.Parameters.AddWithValue("etag", etag);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        try
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +
+                "VALUES (@pk, @rk, @payload, @etag) " +
+                "ON CONFLICT (partition_key, row_key) DO UPDATE SET " +
+                "payload = EXCLUDED.payload, etag = EXCLUDED.etag;";
+            command.Parameters.AddWithValue("pk", partitionKey);
+            command.Parameters.AddWithValue("rk", rowKey);
+            command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea) { Value = bytes });
+            command.Parameters.AddWithValue("etag", etag);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (NpgsqlException ex)
+        {
+            throw EdictPostgresStorageException.From(ex,
+                $"UpsertAsync failed for {_tableName} ({partitionKey}/{rowKey})");
+        }
     }
 }
