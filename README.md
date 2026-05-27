@@ -25,6 +25,8 @@ public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHa
 
 That's both sides of an event-driven flow. No Orleans interfaces, no stream wiring, no idempotency code, no serialization attributes, no DI registration. The framework wires `Handle` into the stream by method signature; at-least-once redeliveries are deduplicated by `EventId` in the base class.
 
+The same handler code runs on either of two reference substrate pairings — Azure Storage, or Kafka + Postgres — both passing the same conformance battery. Substrate-pluggability is demonstrated, not claimed.
+
 ## Testing and chaos
 
 Edict ships with an in-memory test framework so command, event, saga, and projection handlers can be exercised without spinning up Orleans, Azurite, or any container. Tests `Send` a command, `Drain` the cascade, and inspect saga progress or projection rows directly.
@@ -83,15 +85,21 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 
 - C# / .NET 10
 - Microsoft Orleans (grains, implicit stream subscriptions)
-- Azure Queue Storage stream provider (Azurite locally)
-- Azure Table Storage + Blob Storage for grain state and projections
 - OpenTelemetry
 - Roslyn source generators and analyzers
-- Aspire AppHost (sample app)
+- Aspire AppHost (sample apps)
 - xUnit, Verify, Testcontainers
+
+Two reference substrate pairings ship. Same domain code, same conformance battery against both:
+
+| Pairing            | Stream provider      | Grain state + projections | Local emulator         |
+| ------------------ | -------------------- | ------------------------- | ---------------------- |
+| Azure Storage      | Azure Queue Storage  | Azure Table + Blob        | Azurite (Testcontainers) |
+| Kafka + Postgres   | Apache Kafka         | PostgreSQL                | Confluent + Postgres (Aspire) |
 
 ## Highlights
 
+- **Substrate-pluggability demonstrated.** Two reference pairings ship — Azure Storage and Kafka + Postgres — both passing the same conformance battery. Was a claim; now proven.
 - **Event-driven, not event-sourced.** No event store, no replay. Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** State and raised events commit in one grain write.
 - **Effectively-once handling.** Per-consumer dedup baked into the base classes.
@@ -110,11 +118,11 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 - **Sharded dead-letter projection.** Today it's a single grain — under a poison-event storm the *thing recording the storm* becomes the bottleneck.
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
 - **Rate-limiter and monotonic-sequence primitives.** Token bucket as a grain base; per-aggregate gap-free `Seq` on events for audit consumers.
-- **Provider packages beyond Azure.** `Edict.Postgres` drops p99 latency by an order of magnitude and gives SQL queryability on projections; `Edict.Kafka` adds a partitioned bus with native long retention. Most of the latency and throughput ceilings on Edict today are Azure-provider limits, not framework-design limits.
+- **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider — no framework changes needed.
 
 ## Running locally
 
-You'll need .NET 10 and Docker (for the Azurite emulator that Aspire spins up).
+You'll need .NET 10 and Docker.
 
 ```bash
 git clone https://github.com/MalcolmMcNeely/Edict.git
@@ -130,6 +138,20 @@ The Aspire dashboard prints a URL on startup. From there, follow two links:
 A single forensic spoke at `/dead-letter` lists outbox effects that exhausted their retry budget.
 
 Run the test suites with `dotnet test Edict/Edict.slnx`. On Windows, enable long paths first: `git config core.longpaths true`.
+
+### Running on Kafka + Postgres
+
+The same sample domain runs on Kafka and PostgreSQL — same handlers, same conformance scenarios, different substrate.
+
+```bash
+dotnet run --project Sample/Sample.KafkaPostgres.AppHost
+```
+
+Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdmin sidecars are wired in for topic and table inspection.
+
+## Benchmarks
+
+`Edict.Benchmarks.Throughput` sweeps issuer parallelism against any registered substrate (`azure`, `kafkapostgres`, or `all`) and writes results to `docs/benchmarks/`.
 
 ## How this was built
 
