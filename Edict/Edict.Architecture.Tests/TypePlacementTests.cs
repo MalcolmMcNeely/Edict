@@ -7,8 +7,11 @@ using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Idempotency;
 using Edict.Core.Projections;
+using Edict.Postgres;
+using Edict.Postgres.TableStorage;
 using Edict.Substrate;
 using Edict.Substrate.Azurite;
+using Edict.Substrate.KafkaPostgres;
 
 using Sample.Contracts.Orders.Commands;
 
@@ -29,6 +32,8 @@ public class TypePlacementTests
             typeof(EdictIdempotencyBase).Assembly,
             typeof(ISubstrate).Assembly,
             typeof(AzuriteSubstrate).Assembly,
+            typeof(KafkaPostgresSubstrate).Assembly,
+            typeof(EdictPostgresPersistenceOptions).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -400,6 +405,51 @@ public class TypePlacementTests
     {
         var rule = Classes().That().HaveNameMatching("^AzuriteSubstrate$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Substrate\.Azurite$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void KafkaPostgresSubstrate_ShouldResideInEdictSubstrateKafkaPostgres()
+    {
+        var rule = Classes().That().HaveNameMatching("^KafkaPostgresSubstrate$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Substrate\.KafkaPostgres$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictPostgresPersistenceOptions_ShouldResideInEdictPostgres()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictPostgresPersistenceOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Postgres$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void PostgresTableRepository_ShouldResideInEdictPostgres()
+    {
+        var rule = Classes().That().HaveNameStartingWith("PostgresTableRepository")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Postgres\.TableStorage$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void PostgresTableWriteStoreFactory_ShouldResideInEdictPostgres()
+    {
+        var rule = Classes().That().HaveNameMatching("^PostgresTableWriteStoreFactory$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Postgres\.TableStorage$");
+
+        rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void PostgresClaimCheckStore_ShouldResideInEdictPostgresClaimCheck()
+    {
+        var rule = Classes().That().HaveNameMatching("^PostgresClaimCheckStore$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Postgres\.ClaimCheck$");
 
         rule.Check(Architecture);
     }

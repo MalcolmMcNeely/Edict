@@ -20,6 +20,8 @@
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Substrate\Edict.Substrate.csproj" />
         <ProjectReference Include="..\Edict.Substrate.Azurite\Edict.Substrate.Azurite.csproj" />
+        <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
+        <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />

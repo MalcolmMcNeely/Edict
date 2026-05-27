@@ -17,6 +17,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The targeted Postgres unit tests reach the internal DDL bootstrap
+             so the idempotency drift guard is one assertion away. -->
+        <InternalsVisibleTo Include="Edict.Postgres.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <EmbeddedResource Include="Sql\*.sql" />
     </ItemGroup>
 
