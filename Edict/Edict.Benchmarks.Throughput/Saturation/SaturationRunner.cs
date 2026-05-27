@@ -22,6 +22,11 @@ public sealed class SaturationRunner
 {
     const int FillerSizeBytes = 256;
 
+    // Reused across every send and every issuer. Safe because Send(...) is
+    // MessagePack-synchronous — the command is serialised before the call
+    // returns and the buffer reference never escapes into asynchronous use.
+    static readonly byte[] FillerBuffer = new byte[FillerSizeBytes];
+
     public Task<SaturationResults> RunAsync(
         ISubstrate substrate,
         int parallelism,
@@ -87,10 +92,9 @@ public sealed class SaturationRunner
                 while (!windowCts.IsCancellationRequested)
                 {
                     var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
-                    var filler = new byte[FillerSizeBytes];
                     try
                     {
-                        await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), filler));
+                        await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), FillerBuffer));
                     }
                     catch (OperationCanceledException)
                     {

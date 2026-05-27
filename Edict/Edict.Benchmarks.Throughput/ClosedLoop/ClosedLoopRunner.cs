@@ -24,6 +24,12 @@ public sealed class ClosedLoopRunner
 {
     const int FillerSizeBytes = 256;
 
+    // Reused across every issue and every issuer. Safe because the scenarios
+    // hand the buffer to MessagePack-backed Send(...), which serialises the
+    // command synchronously before returning — the reference never escapes
+    // into asynchronous use, and the bench never mutates the buffer.
+    static readonly byte[] FillerBuffer = new byte[FillerSizeBytes];
+
     /// <summary>
     /// Single-point convenience: starts the substrate, runs one Commands point,
     /// tears down. Used by ad-hoc explorations; the publishable sweep uses
@@ -164,11 +170,10 @@ public sealed class ClosedLoopRunner
                 while (!windowCts.IsCancellationRequested)
                 {
                     var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
-                    var filler = new byte[FillerSizeBytes];
                     var sendStarted = Stopwatch.GetTimestamp();
                     try
                     {
-                        await scenario.IssueOnceAsync(aggregateId, filler, windowCts.Token);
+                        await scenario.IssueOnceAsync(aggregateId, FillerBuffer, windowCts.Token);
                     }
                     catch (OperationCanceledException)
                     {

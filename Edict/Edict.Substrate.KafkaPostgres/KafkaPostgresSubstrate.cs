@@ -32,11 +32,6 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 {
     public const string DeadLetterTableName = "edict_dead_letter";
 
-    // Tracer-bullet partition count matches the conformance fixture
-    // (KafkaClusterFixture) so substrate-driven runs see the same partition
-    // → stream-key mapping the slice-1/2 conformance battery proves.
-    const int PartitionCount = 4;
-
     public string Name => "kafkapostgres";
 
     public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
@@ -103,7 +98,6 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
             {
                 o.BootstrapServers = bootstrapServers;
                 o.ConsumerGroupId = consumerGroupId;
-                o.PartitionCount = 4;
                 o.AutoOffsetReset = kafkaAutoOffsetReset;
             });
             silo.AddEdictPostgresPersistence(o =>
