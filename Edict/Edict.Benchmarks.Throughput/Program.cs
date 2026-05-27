@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 using Edict.Benchmarks.Throughput;
@@ -41,9 +42,11 @@ var runDate = DateTimeOffset.UtcNow;
 var docsRoot = ResolveDocsRoot();
 var combined = new List<ThroughputResults>();
 var runner = new ThroughputRunner();
+var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 
 foreach (var substrate in substrates)
 {
+    perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
     Console.WriteLine($"Sweeping {substrate.Name} — Commands: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var commandsResults = await runner.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in commandsResults)
@@ -76,8 +79,21 @@ foreach (var substrate in substrates)
     Console.WriteLine($"  Wrote {csvPath}");
 }
 
+var templatePath = Path.Combine(docsRoot, "throughput.template.md");
+var template = await File.ReadAllTextAsync(templatePath);
+var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
+{
+    ["machine_class"] = metadata.MachineClass,
+    ["dotnet_version"] = metadata.DotnetVersion,
+    ["git_sha"] = metadata.GitSha,
+};
+foreach (var (substrateName, substrateRunDate) in perSubstrateRunDate)
+{
+    tokens["run_date:" + substrateName] = substrateRunDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+}
+
 var markdownPath = Path.Combine(docsRoot, "throughput.md");
-await MarkdownWriter.WriteAsync(markdownPath, combined, runDate, metadata);
+await MarkdownWriter.WriteAsync(markdownPath, template, tokens, combined);
 Console.WriteLine($"Wrote {markdownPath}");
 return 0;
 
