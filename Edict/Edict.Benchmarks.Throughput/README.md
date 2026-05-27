@@ -1,42 +1,49 @@
 # Edict.Benchmarks.Throughput
 
-End-to-end throughput harness for the Edict pipeline. Sweeps issuer parallelism against a pluggable `ISubstrate` and writes results to `docs/benchmarks/`.
+End-to-end throughput harness for the Edict pipeline. Per substrate, runs a closed-loop parallelism sweep + an open-loop saturation pass, then regenerates `docs/benchmarks/throughput.md` from a hand-curated template.
 
 ## Prerequisites
 
 - .NET 10 SDK
-- Docker (Testcontainers spins up Azurite for the `azure` substrate)
+- Docker Desktop (Testcontainers spins up Azurite for `azure`, Kafka + Postgres for `kafkapostgres`)
 
 ## Run
 
 From the repo root:
 
 ```powershell
-# Single substrate
-dotnet run --project Edict/Edict.Benchmarks.Throughput -c Release -- azure
-
 # Every registered substrate
 dotnet run --project Edict/Edict.Benchmarks.Throughput -c Release -- all
+
+# Single substrate
+dotnet run --project Edict/Edict.Benchmarks.Throughput -c Release -- azure
+dotnet run --project Edict/Edict.Benchmarks.Throughput -c Release -- kafkapostgres
 ```
 
-Argument is required. Pass `all` or a substrate name from `SubstrateRegistry`. Today the only registered substrate is `azure` (Azurite via Testcontainers).
+Argument is required. Pass `all` or a substrate name from `SubstrateRegistry` (`azure`, `kafkapostgres`). Plan for ~14 min per substrate end-to-end (~30 min for `all`).
 
 ## What it measures
 
-For each substrate, two scenarios are swept across parallelism N ∈ {1, 4, 16, 64, 256}:
+For each substrate, **two methodologies coexist** (see [ADR-0031](../../docs/adr/0031-throughput-two-methodologies.md)):
 
-- **Commands** — `IEdictSender.Send` round-trip latency for `BenchIncrementCommand`.
-- **Events** — command → projection row visible via `IEdictTableRepository` point-get (~5 ms poll).
+**Closed-loop sweep** — three scenarios swept across N ∈ {1, 4, 16, 64, 256} issuer tasks:
 
-Each point runs a 10 s warmup (discarded) followed by a 30 s measurement window. The substrate + TestCluster come up once per substrate and stay up across the sweep. Plan for ~7 minutes per substrate end-to-end.
+- **Commands** — `IEdictSender.Send(...)` round-trip latency for `BenchIncrementCommand`.
+- **RaiseOnly** — `Send` latency with `Raise` inside the handler; does not wait for the projection.
+- **Events** — `Send` + 5 ms point-get poll on the projection row.
+
+Per scenario: 10 s warmup + 30 s measurement window. Produces p50/p95/p99 latency per (substrate, scenario, N).
+
+**Saturation pass** — Events only, fixed N=256 producers fire-and-forget for 30 s after a 20 s warmup. Single sum-of-per-aggregate-counters read at window-end. One EPS row per substrate; no latency surface. The cluster is a fresh `TestCluster` separate from the closed-loop one — single-projection-per-cluster keeps the two measurements from contaminating each other.
 
 ## Output
 
-- `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>.csv` — per-point raw + downsampled latency samples (≤10k rows / point).
-- `docs/benchmarks/throughput.md` — aggregate table (EPS, p50/p95/p99), rewritten on every run.
+- `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>-closedloop.csv` — per-point raw + downsampled latency samples (≤10k rows / point).
+- `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>-saturation.csv` — one row: `(substrate, events_per_second, window_seconds, producer_concurrency, aggregate_count)`.
+- `docs/benchmarks/throughput.md` — aggregate document, rewritten on every run from `docs/benchmarks/throughput.template.md` via a `{{token}}` replacer. The template is the only hand-curated surface; prose edits go there, never in the regenerated file.
 
-Both paths are resolved by walking up from the binary directory until `docs/` is found, so `dotnet run` works from any cwd.
+Paths are resolved by walking up from the binary directory until `docs/` is found, so `dotnet run` works from any cwd.
 
 ## Adding a substrate
 
-Implement `ISubstrate` + `ISubstrateRuntime`, then add one line to `SubstrateRegistry.Registered`. No runner / writer changes (issue #126).
+Implement `ISubstrate` + `ISubstrateRuntime` (in a sibling `Edict.Substrate.<Name>` library — see `Edict.Substrate.Azurite` and `Edict.Substrate.KafkaPostgres`), then add one line to `SubstrateRegistry.Registered`. A substrate that distinguishes saturation mode (e.g. `AutoOffsetReset = Latest` for Kafka) honours `SubstrateStartMode.Saturation` in its `StartAsync(...)`; substrates without a meaningful distinction (Azurite — Azure Queue streams have no offset-reset analogue) ignore the flag. No runner / writer changes.
