@@ -1,12 +1,8 @@
-using Azure.Data.Tables;
-using Azure.Storage.Blobs;
-using Azure.Storage.Queues;
-
-using Edict.Azure;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Serialization;
+using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Postgres.TableStorage;
 
@@ -15,23 +11,30 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans.Hosting;
 using Orleans.Serialization;
 
-using Testcontainers.Azurite;
+using Testcontainers.Kafka;
 using Testcontainers.PostgreSql;
 
 namespace Edict.Substrate.KafkaPostgres;
 
 /// <summary>
-/// Brings up a Postgres + Azurite pair and hands back ConfigureSilo /
+/// Brings up a Postgres + Kafka pair and hands back ConfigureSilo /
 /// ConfigureClient callbacks wiring
-/// <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzureStreams"/> against
-/// Azurite and
+/// <see cref="EdictKafkaSiloBuilderExtensions.AddEdictKafkaStreams"/> against
+/// the Kafka broker and
 /// <see cref="EdictPostgresSiloBuilderExtensions.AddEdictPostgresPersistence"/>
-/// against Postgres. Until the Kafka provider slice lands, this substrate runs
-/// the Postgres half against AQS streams — the conformance battery still
-/// proves Edict's pluggability on a second persistence backend.
+/// against the Postgres instance. Each runtime mints its own consumer group so
+/// concurrent <see cref="StartAsync"/> calls (parallel test fixtures) do not
+/// collide on offsets.
 /// </summary>
 public sealed class KafkaPostgresSubstrate : ISubstrate
 {
+    public const string DeadLetterTableName = "edict_dead_letter";
+
+    // Tracer-bullet partition count matches the conformance fixture
+    // (KafkaClusterFixture) so substrate-driven runs see the same partition
+    // → stream-key mapping the slice-1/2 conformance battery proves.
+    const int PartitionCount = 4;
+
     public string Name => "kafkapostgres";
 
     public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct)
@@ -39,71 +42,61 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:16-alpine")
             .Build();
-        var azuriteContainer = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
-            .WithCreateParameterModifier(p =>
-            {
-                p.Cmd ??= [];
-                p.Cmd.Add("--skipApiVersionCheck");
-            })
-            .Build();
-        await Task.WhenAll(postgresContainer.StartAsync(ct), azuriteContainer.StartAsync(ct));
+        var kafkaContainer = new KafkaBuilder().Build();
+        await Task.WhenAll(postgresContainer.StartAsync(ct), kafkaContainer.StartAsync(ct));
 
         var postgresConnectionString = postgresContainer.GetConnectionString();
-        var azuriteConnectionString = azuriteContainer.GetConnectionString();
-        var tableClient = new TableServiceClient(azuriteConnectionString);
-        var blobClient = new BlobServiceClient(azuriteConnectionString);
-        var queueClient = new QueueServiceClient(azuriteConnectionString);
+        var bootstrapAddress = kafkaContainer.GetBootstrapAddress();
+        // Confluent.Kafka clients reject the "PLAINTEXT://" scheme prefix —
+        // matches the strip in Edict.Kafka.Tests/KafkaAssemblyHost.
+        var bootstrapServers = bootstrapAddress.StartsWith("PLAINTEXT://", StringComparison.Ordinal)
+            ? bootstrapAddress["PLAINTEXT://".Length..]
+            : bootstrapAddress;
+        var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
 
         return new KafkaPostgresSubstrateRuntime(
             postgresContainer,
-            azuriteContainer,
+            kafkaContainer,
             postgresConnectionString,
-            azuriteConnectionString,
-            tableClient,
-            blobClient,
-            queueClient);
+            bootstrapServers,
+            consumerGroupId);
     }
 }
 
 public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
 {
     readonly PostgreSqlContainer _postgresContainer;
-    readonly AzuriteContainer _azuriteContainer;
+    readonly KafkaContainer _kafkaContainer;
 
     internal KafkaPostgresSubstrateRuntime(
         PostgreSqlContainer postgresContainer,
-        AzuriteContainer azuriteContainer,
+        KafkaContainer kafkaContainer,
         string postgresConnectionString,
-        string azuriteConnectionString,
-        TableServiceClient tableClient,
-        BlobServiceClient blobClient,
-        QueueServiceClient queueClient)
+        string bootstrapServers,
+        string consumerGroupId)
     {
         _postgresContainer = postgresContainer;
-        _azuriteContainer = azuriteContainer;
+        _kafkaContainer = kafkaContainer;
         PostgresConnectionString = postgresConnectionString;
-        AzuriteConnectionString = azuriteConnectionString;
-        TableClient = tableClient;
-        BlobClient = blobClient;
-        QueueClient = queueClient;
+        BootstrapServers = bootstrapServers;
+        ConsumerGroupId = consumerGroupId;
 
         ConfigureSilo = silo =>
         {
             silo.Services.AddSerializer(s => s
                 .AddAssembly(typeof(KafkaPostgresSubstrate).Assembly)
                 .AddEdictContractSerializer());
-            silo.Services.AddSingleton(tableClient);
-            silo.Services.AddSingleton(blobClient);
-            silo.Services.AddSingleton(queueClient);
             silo.AddEdict();
-            silo.AddEdictAzureStreams(o =>
+            silo.AddEdictKafkaStreams(o =>
             {
-                o.QueueServiceClient = queueClient;
+                o.BootstrapServers = bootstrapServers;
+                o.ConsumerGroupId = consumerGroupId;
+                o.PartitionCount = 4;
             });
             silo.AddEdictPostgresPersistence(o =>
             {
                 o.ConnectionString = postgresConnectionString;
+                o.DeadLetterTableName = KafkaPostgresSubstrate.DeadLetterTableName;
             });
         };
 
@@ -116,20 +109,16 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
             client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
                     postgresConnectionString,
-                    "edict_dead_letter",
+                    KafkaPostgresSubstrate.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         };
     }
 
     public string PostgresConnectionString { get; }
 
-    public string AzuriteConnectionString { get; }
+    public string BootstrapServers { get; }
 
-    public TableServiceClient TableClient { get; }
-
-    public BlobServiceClient BlobClient { get; }
-
-    public QueueServiceClient QueueClient { get; }
+    public string ConsumerGroupId { get; }
 
     public Action<ISiloBuilder> ConfigureSilo { get; }
 
@@ -138,6 +127,6 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
     public async ValueTask DisposeAsync()
     {
         await _postgresContainer.DisposeAsync();
-        await _azuriteContainer.DisposeAsync();
+        await _kafkaContainer.DisposeAsync();
     }
 }

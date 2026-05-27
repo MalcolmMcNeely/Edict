@@ -21,8 +21,11 @@
         <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <ProjectReference Include="..\Edict.Kafka\Edict.Kafka.csproj" />
+        <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
         <ProjectReference Include="..\Edict.Substrate\Edict.Substrate.csproj" />
         <ProjectReference Include="..\Edict.Substrate.Azurite\Edict.Substrate.Azurite.csproj" />
+        <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
     </ItemGroup>
 
 </Project>
