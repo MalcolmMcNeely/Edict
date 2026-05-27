@@ -1,14 +1,17 @@
 using Testcontainers.Azurite;
 
-namespace Edict.Postgres.Tests;
+namespace Edict.Tests.Conformance;
 
 /// <summary>
-/// Assembly-scoped Azurite testcontainer for the AQS streams half of the
-/// Postgres-persistence × AQS-streams conformance pairing. Mirrors
-/// Edict.Azure.Tests' AzuriteAssemblyHost — same shared-Azurite +
-/// per-fixture-namespacing model.
+/// Assembly-scoped Azurite testcontainer shared by every provider test
+/// project (Azure, Postgres, Kafka). Each xUnit assembly process gets one
+/// Azurite container — fixtures namespace their own table/blob/queue names
+/// inside that shared container so parallel collections do not collide.
+/// Teardown is on <see cref="AppDomain.ProcessExit"/> because xUnit
+/// collections may overlap and a fixture-scoped dispose would strand the
+/// next collection.
 /// </summary>
-static class AzuriteAssemblyHost
+public static class AzuriteAssemblyHost
 {
     static readonly Lazy<Task<AzuriteContainer>> _container =
         new(StartAsync, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -26,7 +29,7 @@ static class AzuriteAssemblyHost
                 }
                 catch
                 {
-                    // Best-effort teardown.
+                    // Best-effort teardown — the process is exiting anyway.
                 }
             }
         };

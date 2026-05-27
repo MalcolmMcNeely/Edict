@@ -15,6 +15,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
 

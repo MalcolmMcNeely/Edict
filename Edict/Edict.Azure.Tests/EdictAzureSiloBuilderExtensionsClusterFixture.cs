@@ -6,6 +6,7 @@ using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
+using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
 

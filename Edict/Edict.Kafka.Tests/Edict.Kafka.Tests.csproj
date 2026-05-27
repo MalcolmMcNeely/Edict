@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="10.1.0" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
         <PackageReference Include="Testcontainers.Kafka" Version="3.10.0" />
         <PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
@@ -17,6 +18,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Kafka\Edict.Kafka.csproj" />

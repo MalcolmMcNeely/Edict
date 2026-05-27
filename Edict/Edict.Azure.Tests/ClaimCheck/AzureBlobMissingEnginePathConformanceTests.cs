@@ -10,6 +10,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
 

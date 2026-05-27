@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "_comment_purpose": "Parallel model for Edict.Kafka.Tests. Mirrors Edict.Azure.Tests / Edict.Postgres.Tests: assembly-shared Kafka + Azurite + Postgres testcontainers, per-fixture per-collection cluster isolation. Cluster fixtures run serially within the assembly because the Kafka × Postgres / Kafka × Azure mix-and-match doubles the cluster-fixture count and Orleans' silo-gateway initialisation races under that pressure on a single host.",
+  "parallelizeAssembly": true,
+  "parallelizeTestCollections": false,
+  "methodDisplay": "method"
+}

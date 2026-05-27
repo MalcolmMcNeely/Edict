@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 
 using Edict.Azure.ClaimCheck;
 using Edict.Contracts.ClaimCheck;
+using Edict.Tests.Conformance;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
