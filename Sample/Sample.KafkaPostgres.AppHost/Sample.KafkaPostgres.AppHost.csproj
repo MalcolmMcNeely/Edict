@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsAspireHost>true</IsAspireHost>
+        <UserSecretsId>sample-apphost-kafkapostgres-edict</UserSecretsId>
+    </PropertyGroup>
+
+    <Sdk Name="Aspire.AppHost.Sdk" Version="13.3.1" />
+
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.AppHost" Version="13.3.1" />
+        <PackageReference Include="Aspire.Hosting.Kafka" Version="13.3.1" />
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Sample.KafkaPostgres.Silo/Sample.KafkaPostgres.Silo.csproj" />
+        <ProjectReference Include="../Sample.KafkaPostgres.Web/Sample.KafkaPostgres.Web.csproj" />
+    </ItemGroup>
+
+</Project>
