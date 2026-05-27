@@ -165,6 +165,12 @@ public sealed class ThroughputRunner
                     {
                         break;
                     }
+                    catch (TimeoutException)
+                    {
+                        // Saturation backpressure: skip slow sends rather than crash
+                        // the run. The sum-of-counters read at window-end measures
+                        // what the consumer actually drained, not issuer attempts.
+                    }
                     index += parallelism;
                 }
             });
@@ -357,6 +363,14 @@ public sealed class ThroughputRunner
                     catch (OperationCanceledException)
                     {
                         break;
+                    }
+                    catch (TimeoutException)
+                    {
+                        // Saturation backpressure: the silo did not respond within
+                        // Orleans' default 30s grain-call timeout. Skip this send so
+                        // one slow grain call doesn't crash the whole sweep.
+                        index += parallelism;
+                        continue;
                     }
                     var delta = Stopwatch.GetTimestamp() - sendStarted;
                     histograms?[issuerIndex].Record(delta);
