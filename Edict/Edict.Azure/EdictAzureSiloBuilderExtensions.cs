@@ -14,7 +14,9 @@ using Edict.Core.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
+using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Serialization;
 
@@ -56,10 +58,20 @@ public static class EdictAzureSiloBuilderExtensions
 
         silo.AddAzureQueueStreams(options.StreamProviderName, providerConfigure =>
         {
-            providerConfigure.ConfigureAzureQueue(opt => opt.Configure(cfg =>
+            providerConfigure.ConfigureAzureQueue(opt =>
             {
-                cfg.QueueServiceClient = queueClient;
-            }));
+                opt.Configure(cfg => cfg.QueueServiceClient = queueClient);
+                // QueueNames is the surface Orleans actually consumes; the count
+                // of the list IS the fan-out. Composed with ClusterOptions so
+                // the generated names match Orleans' default per-cluster scoping
+                // ({providerName}-{serviceId}-{i}).
+                opt.Configure<IOptions<ClusterOptions>>((cfg, clusterOpts) =>
+                {
+                    cfg.QueueNames = Enumerable.Range(0, options.NumQueues)
+                        .Select(i => $"{options.StreamProviderName.ToLowerInvariant()}-{clusterOpts.Value.ServiceId}-{i}")
+                        .ToList();
+                });
+            });
             providerConfigure.ConfigurePullingAgent(opt => opt.Configure(o =>
             {
                 o.GetQueueMsgsTimerPeriod = options.QueuePollingPeriod;

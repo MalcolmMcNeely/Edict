@@ -35,6 +35,19 @@ public sealed class EdictAzureStreamsOptions
     public TimeSpan QueuePollingPeriod { get; set; } = TimeSpan.FromMilliseconds(10);
 
     /// <summary>
+    /// Number of Azure queues the stream provider fans out across. Orleans'
+    /// default is 8; Edict ships 16 so consumer parallelism is not capped by an
+    /// Orleans-conservative default. Each queue is polled independently at
+    /// <see cref="QueuePollingPeriod"/>, so the choice is a direct cost /
+    /// parallelism trade-off on real Azure Storage: at the 10 ms default poll
+    /// period the per-queue GET cost runs roughly $3–6/day per silo per 8
+    /// queues. Raise it (32, 64) for higher consumer throughput on workloads
+    /// that pay back the storage bill; drop it (4, 8) for cost-sensitive
+    /// workloads where the throughput floor is fine.
+    /// </summary>
+    public int NumQueues { get; set; } = 16;
+
+    /// <summary>
     /// Optional <see cref="QueueServiceClient"/>; a DI-registered singleton
     /// takes precedence so an <c>AddAzureClients()</c>-style power-user setup
     /// works without double-registration.
