@@ -56,7 +56,15 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
 
     public static EdictKafkaAdapterFactory Create(IServiceProvider services, string name)
     {
-        var options = services.GetRequiredService<IOptionsMonitor<EdictKafkaStreamsOptions>>().Get(name);
+        // Resolve the singleton EdictKafkaStreamsOptions registered by
+        // AddEdictKafkaStreams (the same instance the topic provisioner
+        // injects), not the Orleans-named options instance — the named
+        // path only carries the subset of fields the AddPersistentStreams
+        // sub-builder copies, so PartitionCountByStream, AutoOffsetReset,
+        // Compression, ReplicationFactor, and the raw passthrough dicts are
+        // all lost on that path. Provisioner-vs-mapper agreement on partition
+        // counts depends on resolving the same instance here.
+        var options = services.GetRequiredService<EdictKafkaStreamsOptions>();
         var cacheOptions = services.GetRequiredService<IOptionsMonitor<SimpleQueueCacheOptions>>().Get(name);
         var serializer = services.GetRequiredService<Serializer>();
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();

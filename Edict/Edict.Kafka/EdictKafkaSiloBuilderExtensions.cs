@@ -49,13 +49,11 @@ public static class EdictKafkaSiloBuilderExtensions
 
         silo.AddPersistentStreams(options.StreamProviderName, EdictKafkaAdapterFactory.Create, builder =>
         {
-            builder.Configure<EdictKafkaStreamsOptions>(ob => ob.Configure(o =>
-            {
-                o.StreamProviderName = options.StreamProviderName;
-                o.BootstrapServers = options.BootstrapServers;
-                o.ConsumerGroupId = options.ConsumerGroupId;
-                o.PartitionCount = options.PartitionCount;
-            }));
+            // The factory resolves the singleton EdictKafkaStreamsOptions
+            // directly so PartitionCountByStream, AutoOffsetReset, Compression,
+            // ReplicationFactor, and the raw Confluent.Kafka passthrough
+            // dicts all reach the mapper and the receivers — no named-options
+            // copy step that silently drops fields.
             builder.UseConsistentRingQueueBalancer();
             builder.Configure<StreamPullingAgentOptions>(ob => ob.Configure(o =>
             {
