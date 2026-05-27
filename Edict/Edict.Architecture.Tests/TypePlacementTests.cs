@@ -7,6 +7,7 @@ using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Idempotency;
 using Edict.Core.Projections;
+using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Postgres.TableStorage;
 using Edict.Substrate;
@@ -34,6 +35,7 @@ public class TypePlacementTests
             typeof(AzuriteSubstrate).Assembly,
             typeof(KafkaPostgresSubstrate).Assembly,
             typeof(EdictPostgresPersistenceOptions).Assembly,
+            typeof(EdictKafkaStreamsOptions).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -353,6 +355,33 @@ public class TypePlacementTests
             .Should().ResideInNamespaceMatching(@"^Edict\.Azure$");
 
         rule.Check(Architecture);
+    }
+
+    [Fact]
+    public void EdictKafkaStreamsOptions_ShouldResideInEdictKafka()
+    {
+        var rule = Classes().That().HaveNameMatching("^EdictKafkaStreamsOptions$")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Kafka$");
+
+        rule.Check(Architecture);
+    }
+
+    // The Kafka consumer surface is AddEdictKafkaStreams + EdictKafkaStreamsOptions
+    // (+ EdictKafkaWireEnvelope, which Orleans' [GenerateSerializer] requires to be
+    // public). Everything else under Edict.Kafka.Internal is mechanism and must
+    // not leak: a consumer reaching into the adapter, receiver, or topic
+    // provisioner would couple to internals the framework is free to reshape.
+    [Fact]
+    public void EdictKafkaInternals_ShouldNotBePublic()
+    {
+        var kafkaAssembly = typeof(EdictKafkaStreamsOptions).Assembly;
+        var leakingTypes = kafkaAssembly.GetExportedTypes()
+            .Where(t => t.Namespace is not null
+                && t.Namespace.StartsWith("Edict.Kafka.Internal", StringComparison.Ordinal))
+            .Select(t => t.FullName!)
+            .ToList();
+
+        Assert.Empty(leakingTypes);
     }
 
     [Fact]

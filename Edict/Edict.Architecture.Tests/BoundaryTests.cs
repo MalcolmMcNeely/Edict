@@ -83,6 +83,18 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
+    // The contracts boundary stays SDK-free: pulling Confluent.Kafka here would
+    // force every consumer of EdictCommand/EdictEvent to ship the Kafka client.
+    [Fact]
+    public void EdictContracts_ShouldNotDependOnConfluentKafka()
+    {
+        var contractsAssembly = typeof(EdictCommand).Assembly;
+        var referenced = contractsAssembly.GetReferencedAssemblies();
+        Assert.DoesNotContain(referenced,
+            a => a.Name is not null
+                 && a.Name.StartsWith("Confluent.Kafka", StringComparison.OrdinalIgnoreCase));
+    }
+
     // EdictTableProjectionBuilder is provider-neutral; Azure stays in the
     // write-store implementation, not in the grain base.
     [Fact]
@@ -123,6 +135,18 @@ public class BoundaryTests
         Assert.DoesNotContain(referenced,
             a => a.Name is not null
                  && a.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Kafka implementations live in Edict.Kafka, not Edict.Core — taking Core
+    // must not drag Confluent.Kafka into a non-Kafka deployment.
+    [Fact]
+    public void EdictCore_ShouldNotDependOnConfluentKafka()
+    {
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
+        var referenced = coreAssembly.GetReferencedAssemblies();
+        Assert.DoesNotContain(referenced,
+            a => a.Name is not null
+                 && a.Name.StartsWith("Confluent.Kafka", StringComparison.OrdinalIgnoreCase));
     }
 
     // every public, non-nested type in Edict.Contracts is Edict-prefixed.
