@@ -44,6 +44,7 @@ public static class EdictKafkaSiloBuilderExtensions
 
         silo.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
         silo.Services.AddSingleton(options);
+        silo.Services.AddSingleton(_ => EdictKafkaStreamRegistry.FromAppDomain());
         silo.Services.AddHostedService<EdictKafkaTopicProvisioner>();
 
         silo.AddPersistentStreams(options.StreamProviderName, EdictKafkaAdapterFactory.Create, builder =>

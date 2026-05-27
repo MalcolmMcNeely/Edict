@@ -17,28 +17,42 @@ namespace Edict.Kafka.Internal;
 sealed class EdictKafkaTopicProvisioner : IHostedService
 {
     readonly EdictKafkaStreamsOptions _options;
+    readonly EdictKafkaStreamRegistry _streamRegistry;
     readonly ILogger<EdictKafkaTopicProvisioner> _logger;
 
     public EdictKafkaTopicProvisioner(
         EdictKafkaStreamsOptions options,
+        EdictKafkaStreamRegistry streamRegistry,
         ILogger<EdictKafkaTopicProvisioner> logger)
     {
         _options = options;
+        _streamRegistry = streamRegistry;
         _logger = logger;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        if (_streamRegistry.StreamNames.Count == 0)
+        {
+            _logger.LogWarning(
+                "Edict.Kafka topic provisioner found no [EdictStream] events in the loaded assemblies. " +
+                "No topics will be provisioned — handlers will throw on first publish until events are referenced.");
+            return;
+        }
+
         var adminConfig = new AdminClientConfig { BootstrapServers = _options.BootstrapServers };
         using var admin = new AdminClientBuilder(adminConfig).Build();
-        await EnsureTopicAsync(
-            admin,
-            EdictKafkaAdapter.TopicName,
-            _options.PartitionCount,
-            _options.ReplicationFactor,
-            _options.IsReplicationFactorExplicit,
-            _logger,
-            cancellationToken);
+        foreach (var streamName in _streamRegistry.StreamNames)
+        {
+            await EnsureTopicAsync(
+                admin,
+                streamName,
+                _options.PartitionCountFor(streamName),
+                _options.ReplicationFactor,
+                _options.IsReplicationFactorExplicit,
+                _logger,
+                cancellationToken);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

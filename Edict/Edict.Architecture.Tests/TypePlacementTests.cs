@@ -384,6 +384,47 @@ public class TypePlacementTests
         Assert.Empty(leakingTypes);
     }
 
+    // ADR-0028 §2 topology: one Kafka topic per [EdictStream]. The
+    // EdictKafkaPartitionMapper carries the topology through the opaque Orleans
+    // QueueId via two static decode helpers — TopicFor and PartitionFor. A
+    // regression to a single-topic hardcode would either drop TopicFor entirely
+    // (no topic to decode if there is only one) or hide the topic in a field
+    // not surfaced as a static helper. Either way, this fact would fail.
+    [Fact]
+    public void EdictKafkaPartitionMapper_ShouldExposeTopicAndPartitionDecodeHelpers()
+    {
+        var kafkaAssembly = typeof(EdictKafkaStreamsOptions).Assembly;
+        var mapper = kafkaAssembly.GetType("Edict.Kafka.Internal.EdictKafkaPartitionMapper")
+            ?? throw new InvalidOperationException("EdictKafkaPartitionMapper not found in Edict.Kafka.");
+
+        var topicFor = mapper.GetMethod(
+            "TopicFor",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        var partitionFor = mapper.GetMethod(
+            "PartitionFor",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+
+        Assert.NotNull(topicFor);
+        Assert.NotNull(partitionFor);
+        Assert.Equal(typeof(string), topicFor!.ReturnType);
+        Assert.Equal(typeof(int), partitionFor!.ReturnType);
+    }
+
+    // The stream registry is the discovery seam for the per-stream topology;
+    // without it the provisioner cannot ensure topics at startup and the
+    // mapper cannot enumerate queues. Pinning its placement here means a
+    // refactor that moves the seam under Edict.Kafka (a public namespace) or
+    // back into Edict.Core would have to update this fact deliberately.
+    [Fact]
+    public void EdictKafkaStreamRegistry_ShouldResideInEdictKafkaInternal()
+    {
+        var kafkaAssembly = typeof(EdictKafkaStreamsOptions).Assembly;
+        var registry = kafkaAssembly.GetType("Edict.Kafka.Internal.EdictKafkaStreamRegistry");
+
+        Assert.NotNull(registry);
+        Assert.False(registry!.IsPublic, "EdictKafkaStreamRegistry must remain internal.");
+    }
+
     [Fact]
     public void EdictAzurePersistenceOptions_ShouldResideInEdictAzure()
     {

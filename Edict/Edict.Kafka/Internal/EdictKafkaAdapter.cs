@@ -12,29 +12,34 @@ namespace Edict.Kafka.Internal;
 
 /// <summary>
 /// Custom Orleans <see cref="IQueueAdapter"/> over <c>Confluent.Kafka</c>.
-/// One producer instance per silo; one topic for now (slice-1 tracer bullet);
-/// partition selected by the partition mapper so the same aggregate routes to
-/// the same partition every time. Producer floors are hardcoded: <c>acks=all</c>,
-/// idempotent producer on, lz4 compression — these are the contract floors
-/// ADR-0028 records, not consumer-tunable.
+/// One producer instance per silo. Every event is produced to the topic named
+/// after the <see cref="Contracts.Events.EdictStreamAttribute"/> domain stream
+/// it belongs to (ADR-0028 §2) — the producer reads the stream namespace off
+/// the Orleans <see cref="StreamId"/> the publish pipeline stamps, with no
+/// shared central topic. Partition selection inside that topic is the
+/// <see cref="EdictKafkaPartitionMapper"/>'s job so per-aggregate ordering is
+/// preserved. Producer floors are hardcoded: <c>acks=all</c>, idempotent
+/// producer on, lz4 compression — contract floors ADR-0028 records, not
+/// consumer-tunable.
 /// </summary>
 sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
 {
-    internal const string TopicName = "edict-events";
-
     readonly EdictKafkaStreamsOptions _options;
     readonly EdictKafkaPartitionMapper _mapper;
     readonly Serializer _serializer;
     readonly IProducer<string, byte[]> _producer;
     readonly ILogger<EdictKafkaAdapter> _logger;
     readonly ILoggerFactory _loggerFactory;
+    readonly Func<EdictKafkaStreamsOptions, string, int, IConsumer<string, byte[]>>? _consumerFactory;
 
     public EdictKafkaAdapter(
         string name,
         EdictKafkaStreamsOptions options,
         EdictKafkaPartitionMapper mapper,
         Serializer serializer,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        Func<EdictKafkaStreamsOptions, IProducer<string, byte[]>>? producerFactory = null,
+        Func<EdictKafkaStreamsOptions, string, int, IConsumer<string, byte[]>>? consumerFactory = null)
     {
         Name = name;
         _options = options;
@@ -42,9 +47,15 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
         _serializer = serializer;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<EdictKafkaAdapter>();
+        _consumerFactory = consumerFactory;
 
-        var producerConfig = EdictKafkaProducerConfigFactory.Build(options, clientId: $"{name}-producer");
-        _producer = new ProducerBuilder<string, byte[]>(producerConfig).Build();
+        _producer = (producerFactory ?? BuildDefaultProducer)(options);
+
+        IProducer<string, byte[]> BuildDefaultProducer(EdictKafkaStreamsOptions o)
+        {
+            var producerConfig = EdictKafkaProducerConfigFactory.Build(o, clientId: $"{name}-producer");
+            return new ProducerBuilder<string, byte[]>(producerConfig).Build();
+        }
     }
 
     public string Name { get; }
@@ -55,14 +66,19 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
 
     public IQueueAdapterReceiver CreateReceiver(QueueId queueId)
     {
+        var topic = EdictKafkaPartitionMapper.TopicFor(queueId);
         var partition = EdictKafkaPartitionMapper.PartitionFor(queueId);
+        var consumerFactory = _consumerFactory is null
+            ? (Func<IConsumer<string, byte[]>>?)null
+            : () => _consumerFactory(_options, topic, partition);
         return new EdictKafkaReceiver(
             Name,
             partition,
-            TopicName,
+            topic,
             _options,
             _serializer,
-            _loggerFactory.CreateLogger<EdictKafkaReceiver>());
+            _loggerFactory.CreateLogger<EdictKafkaReceiver>(),
+            consumerFactory);
     }
 
     public async Task QueueMessageBatchAsync<T>(
@@ -86,7 +102,7 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
         var body = _serializer.SerializeToArray(envelope);
 
         var message = new Message<string, byte[]> { Key = keyString, Value = body };
-        var topicPartition = new TopicPartition(TopicName, new Partition(partition));
+        var topicPartition = new TopicPartition(ns, new Partition(partition));
         var report = await _producer.ProduceAsync(topicPartition, message);
         _logger.LogDebug(
             "Edict.Kafka produced offset {Offset} to {Topic}-{Partition} key={Key} (n={Count})",

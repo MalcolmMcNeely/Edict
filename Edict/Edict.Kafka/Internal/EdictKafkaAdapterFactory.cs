@@ -30,13 +30,14 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
         EdictKafkaStreamsOptions options,
         SimpleQueueCacheOptions cacheOptions,
         Serializer serializer,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        EdictKafkaStreamRegistry streamRegistry)
     {
         _name = name;
         _options = options;
         _serializer = serializer;
         _loggerFactory = loggerFactory;
-        _mapper = new EdictKafkaPartitionMapper(options.PartitionCount);
+        _mapper = new EdictKafkaPartitionMapper(options, streamRegistry);
         _cache = new SimpleQueueAdapterCache(cacheOptions, name, loggerFactory);
     }
 
@@ -59,6 +60,7 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
         var cacheOptions = services.GetRequiredService<IOptionsMonitor<SimpleQueueCacheOptions>>().Get(name);
         var serializer = services.GetRequiredService<Serializer>();
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-        return new EdictKafkaAdapterFactory(name, options, cacheOptions, serializer, loggerFactory);
+        var streamRegistry = services.GetRequiredService<EdictKafkaStreamRegistry>();
+        return new EdictKafkaAdapterFactory(name, options, cacheOptions, serializer, loggerFactory, streamRegistry);
     }
 }

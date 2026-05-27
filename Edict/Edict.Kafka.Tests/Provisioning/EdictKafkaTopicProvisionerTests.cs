@@ -1,6 +1,7 @@
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 
+using Edict.Kafka;
 using Edict.Kafka.Internal;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -107,5 +108,52 @@ public sealed class EdictKafkaTopicProvisionerTests
         var metadata = admin.GetMetadata(topic, TimeSpan.FromSeconds(10));
         var topicMetadata = Assert.Single(metadata.Topics);
         Assert.Equal(2, topicMetadata.Partitions.Count);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldProvisionEveryRegisteredStream()
+    {
+        // Two stream names guarantees the per-stream loop is exercised — a
+        // single-stream registry would still pass the slice-3 provisioner.
+        var bootstrap = await KafkaAssemblyHost.GetBootstrapServersAsync();
+        var topicA = UniqueTopicName();
+        var topicB = UniqueTopicName();
+        var options = new EdictKafkaStreamsOptions { BootstrapServers = bootstrap };
+        var registry = new EdictKafkaStreamRegistry(new[] { topicA, topicB });
+        var provisioner = new EdictKafkaTopicProvisioner(
+            options, registry, NullLogger<EdictKafkaTopicProvisioner>.Instance);
+
+        await provisioner.StartAsync(CancellationToken.None);
+
+        using var admin = await CreateAdminAsync();
+        var topicAMeta = admin.GetMetadata(topicA, TimeSpan.FromSeconds(10)).Topics.Single();
+        var topicBMeta = admin.GetMetadata(topicB, TimeSpan.FromSeconds(10)).Topics.Single();
+        Assert.NotEmpty(topicAMeta.Partitions);
+        Assert.NotEmpty(topicBMeta.Partitions);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldHonourPerStreamPartitionOverride()
+    {
+        var bootstrap = await KafkaAssemblyHost.GetBootstrapServersAsync();
+        var hotTopic = UniqueTopicName();
+        var coldTopic = UniqueTopicName();
+        var options = new EdictKafkaStreamsOptions
+        {
+            BootstrapServers = bootstrap,
+            PartitionCount = 2,
+        };
+        options.PartitionCountByStream[hotTopic] = 6;
+        var registry = new EdictKafkaStreamRegistry(new[] { hotTopic, coldTopic });
+        var provisioner = new EdictKafkaTopicProvisioner(
+            options, registry, NullLogger<EdictKafkaTopicProvisioner>.Instance);
+
+        await provisioner.StartAsync(CancellationToken.None);
+
+        using var admin = await CreateAdminAsync();
+        var hot = admin.GetMetadata(hotTopic, TimeSpan.FromSeconds(10)).Topics.Single();
+        var cold = admin.GetMetadata(coldTopic, TimeSpan.FromSeconds(10)).Topics.Single();
+        Assert.Equal(6, hot.Partitions.Count);
+        Assert.Equal(2, cold.Partitions.Count);
     }
 }
