@@ -1,6 +1,8 @@
 using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Npgsql;
 
 using NpgsqlTypes;
@@ -21,11 +23,16 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
 {
     readonly string _connectionString;
     readonly Serializer _serializer;
+    readonly IServiceProvider? _services;
 
     public PostgresTableWriteStoreFactory(string connectionString, Serializer serializer)
+        : this(connectionString, serializer, services: null) { }
+
+    public PostgresTableWriteStoreFactory(string connectionString, Serializer serializer, IServiceProvider? services)
     {
         _connectionString = connectionString;
         _serializer = serializer;
+        _services = services;
     }
 
     public async Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
@@ -49,7 +56,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
         // deserialises from JSON to the concrete type), so dispatch
         // SerializeToArray<T> at the runtime type. Reflection here is fine —
         // each effect drain is a per-grain-turn ceremony, not a hot loop.
-        var bytes = SerializeToArrayBoxed(_serializer, row);
+        var bytes = SerializeRow(row);
         var etag = Guid.NewGuid().ToString("N");
 
         await using var connection = new NpgsqlConnection(_connectionString);
@@ -67,17 +74,65 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    static byte[] SerializeToArrayBoxed(Serializer serializer, object row)
+    byte[] SerializeRow(object row)
     {
-        var method = typeof(Serializer).GetMethods()
+        var rowType = row.GetType();
+        // Prefer the DI-resolved typed serializer when a service provider is
+        // available — Orleans materialises a <see cref="Serializer{T}"/> per
+        // type via DI, so the runtime cost is a single dictionary lookup. The
+        // reflection fallback is here for callers that constructed the
+        // factory without a service provider (extension-call-time
+        // registration).
+        if (_services is not null)
+        {
+            var serializerType = typeof(Serializer<>).MakeGenericType(rowType);
+            var typedSerializer = _services.GetRequiredService(serializerType);
+            // Orleans 10.x signature: `byte[] SerializeToArray(in T value, int sizeHint = 0)`.
+            // The `in` modifier makes the parameter a by-ref type at the metadata level,
+            // so a plain GetMethod(..., [rowType, typeof(int)]) returns null. Iterate
+            // candidate overloads and pick the one whose first parameter's element
+            // type matches the row type.
+            var method = serializerType.GetMethods()
+                .FirstOrDefault(m =>
+                {
+                    if (m.Name != nameof(Serializer<object>.SerializeToArray)) return false;
+                    var parameters = m.GetParameters();
+                    if (parameters.Length == 0) return false;
+                    var first = parameters[0].ParameterType;
+                    var elementType = first.IsByRef ? first.GetElementType() : first;
+                    return elementType == rowType;
+                })
+                ?? throw new InvalidOperationException(
+                    $"Serializer<{rowType.FullName}>.SerializeToArray with the expected shape not found.");
+            var parameters2 = method.GetParameters();
+            var args2 = new object?[parameters2.Length];
+            args2[0] = row;
+            for (var i = 1; i < args2.Length; i++)
+            {
+                args2[i] = parameters2[i].HasDefaultValue ? parameters2[i].DefaultValue : null;
+            }
+            var bytes = method.Invoke(typedSerializer, args2)
+                ?? throw new InvalidOperationException(
+                    $"Serializer<{rowType.FullName}>.SerializeToArray returned null.");
+            return (byte[])bytes;
+        }
+
+        var openMethod = typeof(Serializer).GetMethods()
             .FirstOrDefault(m => m.Name == nameof(Serializer.SerializeToArray)
                 && m.IsGenericMethodDefinition
-                && m.GetParameters().Length == 1)
+                && m.GetGenericArguments().Length == 1)
             ?? throw new InvalidOperationException(
-                "Orleans Serializer.SerializeToArray<T>(T) not found.");
-        var bytes = method.MakeGenericMethod(row.GetType()).Invoke(serializer, [row])
+                "Orleans Serializer.SerializeToArray<T> not found.");
+        var parameters = openMethod.GetParameters();
+        var args = new object?[parameters.Length];
+        args[0] = row;
+        for (var i = 1; i < args.Length; i++)
+        {
+            args[i] = parameters[i].HasDefaultValue ? parameters[i].DefaultValue : null;
+        }
+        var serialized = openMethod.MakeGenericMethod(rowType).Invoke(_serializer, args)
             ?? throw new InvalidOperationException(
-                $"SerializeToArray returned null for {row.GetType().FullName}.");
-        return (byte[])bytes;
+                $"SerializeToArray returned null for {rowType.FullName}.");
+        return (byte[])serialized;
     }
 }

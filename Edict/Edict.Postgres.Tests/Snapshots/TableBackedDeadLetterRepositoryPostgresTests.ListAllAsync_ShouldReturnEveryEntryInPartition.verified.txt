@@ -1,0 +1,26 @@
+﻿[
+  {
+    EntryId: 00000000-0000-0000-0000-0000000000a1,
+    Kind: PublishEvent,
+    AttemptCount: 8,
+    DeadLetteredAt: 2026-05-19 12:00 +0,
+    SourceGrainKey: grain-A,
+    SourceGrainType: Sample.OrderCommandHandler,
+    EffectTarget: Orders/OrderPlacedEvent,
+    ExceptionType: System.InvalidOperationException,
+    Reason: downstream unavailable,
+    PayloadJson: {"OrderId":"00000000-0000-0000-0000-000000000099"}
+  },
+  {
+    EntryId: 00000000-0000-0000-0000-0000000000b1,
+    Kind: PublishEvent,
+    AttemptCount: 8,
+    DeadLetteredAt: 2026-05-19 12:00 +0,
+    SourceGrainKey: grain-B,
+    SourceGrainType: Sample.OrderCommandHandler,
+    EffectTarget: Orders/OrderPlacedEvent,
+    ExceptionType: System.InvalidOperationException,
+    Reason: downstream unavailable,
+    PayloadJson: {"OrderId":"00000000-0000-0000-0000-000000000099"}
+  }
+]

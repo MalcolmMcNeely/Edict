@@ -5,13 +5,19 @@ using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
 using Edict.Postgres.Bootstrap;
 using Edict.Postgres.ClaimCheck;
+using Edict.Postgres.Persistence;
 using Edict.Postgres.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
+using Orleans.Configuration;
 using Orleans.Hosting;
+using Orleans.Runtime;
 using Orleans.Serialization;
+using Orleans.Storage;
 
 namespace Edict.Postgres;
 
@@ -58,12 +64,27 @@ public static class EdictPostgresSiloBuilderExtensions
             PostgresDdlBootstrap.Run(options.ConnectionString);
         }
 
-        silo.AddAdoNetGrainStorage(options.GrainStorageProviderName, opt =>
+        // Edict.Postgres ships its own grain-storage provider rather than
+        // chaining Orleans 10's AdoNetGrainStorage because the latter
+        // collapses every Grain<T>-derived grain that shares an id (the
+        // command handler and any per-aggregate projection grain) into one
+        // row — dotnet/orleans issue #9737. EdictPostgresGrainStorage keys on
+        // (grain_type, grain_id, state_name, service_id) so concept-level
+        // grains stay distinct.
+        var grainStorageProviderName = options.GrainStorageProviderName;
+        silo.Services.AddKeyedSingleton<IGrainStorage>(grainStorageProviderName, (sp, _) =>
         {
-            opt.Invariant = options.Invariant;
-            opt.ConnectionString = options.ConnectionString;
+            var clusterOptions = sp.GetRequiredService<IOptions<ClusterOptions>>().Value;
+            return new EdictPostgresGrainStorage(
+                options.ConnectionString,
+                clusterOptions.ServiceId,
+                sp.GetRequiredService<Serializer>(),
+                sp,
+                sp.GetRequiredService<ILogger<EdictPostgresGrainStorage>>());
         });
-        // PubSubStore stays on AdoNet too — Orleans-internal, bounded shape.
+        // PubSubStore stays on Orleans' AdoNet provider — its grain type is
+        // Orleans-internal (PubSubRendezvousGrain), no other grain type
+        // shares its key shape, so the issue #9737 collision does not bite.
         silo.AddAdoNetGrainStorage("PubSubStore", opt =>
         {
             opt.Invariant = options.Invariant;
@@ -81,7 +102,10 @@ public static class EdictPostgresSiloBuilderExtensions
         var claimCheckTable = options.ClaimCheckTableName;
 
         silo.Services.AddSingleton<IEdictTableStoreFactory>(sp =>
-            new PostgresTableWriteStoreFactory(connectionString, sp.GetRequiredService<Serializer>()));
+            new PostgresTableWriteStoreFactory(
+                connectionString,
+                sp.GetRequiredService<Serializer>(),
+                sp));
 
         silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
             new PostgresTableRepository<EdictDeadLetterEntry>(
