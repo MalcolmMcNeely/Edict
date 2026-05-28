@@ -22,7 +22,7 @@ namespace Edict.Generated
                 (command, activity) =>
                 {
                     var typedCommand = (global::Sample.PlaceOrder)command;
-                    activity?.SetTag("edict.placeorder.sku", typedCommand.Sku);
+                    activity?.SetTag("edict.sku", typedCommand.Sku);
                 });
         }
     }

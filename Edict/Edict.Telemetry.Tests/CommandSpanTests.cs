@@ -65,7 +65,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        Assert.Equal(sku, span.GetTagItem("edict.telplaceordercommand.sku"));
+        Assert.Equal(sku, span.GetTagItem("edict.sku"));
     }
 
     [Fact]

@@ -20,4 +20,8 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Edict.Generators.Tests" />
+    </ItemGroup>
+
 </Project>

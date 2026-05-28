@@ -63,7 +63,7 @@ namespace Edict.Generated
                     "Sample.OrderCommandHandler",
                     extraTags: static (c, a) =>
                     {
-                        a.SetTag("edict.placeorder.sku", c.Sku);
+                        a.SetTag("edict.sku", c.Sku);
                     });
             }
             return sender.Send(command);
