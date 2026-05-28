@@ -204,52 +204,85 @@ sealed class OutboxHost<TPayload>
                 break;
             }
 
-            var tasks = new Task<Exception?>[ready.Length];
+            // Per-entry batch-key resolution. Entries that opt out (the
+            // default for every non-PublishEvent executor) get a synthetic
+            // entry-id-scoped key so the grouping function leaves them in
+            // singleton groups. PublishEvent entries return their stream
+            // address, which lets the grouping function coalesce a run of
+            // events headed for the same (streamName, routeKey) into a
+            // single OnNextBatchAsync.
+            var liveByEntry = new Dictionary<Guid, EdictEvent?>(ready.Length);
+            var keyByEntry = new Dictionary<Guid, (string, Guid)>(ready.Length);
             for (var i = 0; i < ready.Length; i++)
             {
                 var entry = ready[i];
                 EdictEvent? live = null;
                 liveRefs?.TryGetValue(entry.EntryId, out live);
-                tasks[i] = ExecuteCapturingAsync(entry, live);
+                var executor = _executors[entry.Kind];
+                var resolved = executor.TryResolveBatchKey(entry, live);
+                if (resolved is { } r)
+                {
+                    keyByEntry[entry.EntryId] = (r.StreamName, r.RouteKey);
+                    liveByEntry[entry.EntryId] = r.ResolvedEvent ?? live;
+                }
+                else
+                {
+                    // Synthetic key — entry.EntryId is unique so a non-batchable
+                    // entry never coalesces with anything.
+                    keyByEntry[entry.EntryId] = (string.Empty, entry.EntryId);
+                    liveByEntry[entry.EntryId] = live;
+                }
             }
 
-            var outcomes = await Task.WhenAll(tasks);
+            var groups = OutboxBatchGrouping.Group(ready, e => keyByEntry[e.EntryId]);
+
+            var groupTasks = new Task<Exception?>[groups.Count];
+            for (var i = 0; i < groups.Count; i++)
+            {
+                groupTasks[i] = ExecuteGroupCapturingAsync(groups[i].Entries, liveByEntry);
+            }
+
+            var outcomes = await Task.WhenAll(groupTasks);
 
             var anyTailAppend = false;
-            for (var i = 0; i < ready.Length; i++)
+            for (var g = 0; g < groups.Count; g++)
             {
-                var entry = ready[i];
-                var exception = outcomes[i];
+                var groupEntries = groups[g].Entries;
+                var exception = outcomes[g];
 
                 if (exception is null)
                 {
-                    State.Outbox = State.Outbox.Ack(entry.EntryId);
-                    dirty = true;
+                    foreach (var entry in groupEntries)
+                    {
+                        State.Outbox = State.Outbox.Ack(entry.EntryId);
+                        dirty = true;
+                    }
                     continue;
                 }
 
-                // Post-commit failure: do not roll back, do not surface.
-                // Bump backoff; if attempts are now exhausted, Promote: the
-                // failing entry is removed and an EdictDeadLetterRaised
-                // PublishEvent entry is appended at the tail (atomic by
-                // construction). The outer loop picks up the tail entry in
-                // the next pass.
-                State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
-
-                var bumped = State.Outbox.Pending.FirstOrDefault(p => p.EntryId == entry.EntryId);
-                if (bumped is not null && bumped.AttemptCount >= _options.OutboxMaxAttempts)
+                // Batch failure unwinds to single-entry FailWithBackoff /
+                // Promote for every entry that was in the failing group
+                // (OnNextBatchAsync is all-or-nothing per the substrate
+                // contract; partial-success accounting is out of scope).
+                foreach (var entry in groupEntries)
                 {
-                    var promoted = _promoter.Promote(
-                        bumped, exception, _grainKey, _grainTypeName, now);
-                    State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
+                    State.Outbox = State.Outbox.FailWithBackoff(entry.EntryId, now, _options);
+
+                    var bumped = State.Outbox.Pending.FirstOrDefault(p => p.EntryId == entry.EntryId);
+                    if (bumped is not null && bumped.AttemptCount >= _options.OutboxMaxAttempts)
+                    {
+                        var promoted = _promoter.Promote(
+                            bumped, exception, _grainKey, _grainTypeName, now);
+                        State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
+                        await _state.WriteStateAsync();
+                        dirty = false;
+                        anyTailAppend = true;
+                        continue;
+                    }
+
                     await _state.WriteStateAsync();
                     dirty = false;
-                    anyTailAppend = true;
-                    continue;
                 }
-
-                await _state.WriteStateAsync();
-                dirty = false;
             }
 
             // Loop only if a Promote appended a tail entry that's ready now.
@@ -276,12 +309,20 @@ sealed class OutboxHost<TPayload>
         }
     }
 
-    async Task<Exception?> ExecuteCapturingAsync(OutboxEntry entry, EdictEvent? liveWireEvent)
+    async Task<Exception?> ExecuteGroupCapturingAsync(
+        IReadOnlyList<OutboxEntry> entries,
+        IReadOnlyDictionary<Guid, EdictEvent?> liveByEntry)
     {
         try
         {
-            await _executors[entry.Kind].ExecuteAsync(
-                entry, _streamProvider, _deferredDispatch, _consumerType, liveWireEvent);
+            var liveBatch = new EdictEvent?[entries.Count];
+            for (var i = 0; i < entries.Count; i++)
+            {
+                liveBatch[i] = liveByEntry[entries[i].EntryId];
+            }
+
+            await _executors[entries[0].Kind].ExecuteBatchAsync(
+                entries, _streamProvider, _deferredDispatch, _consumerType, liveBatch);
             return null;
         }
         catch (Exception ex)

@@ -93,6 +93,45 @@ public sealed class OutboxHostTests
         Assert.True(lastWrite < register, $"expected last WriteStateAsync ({lastWrite}) before RegisterOrUpdateReminderAsync ({register}); log={Describe(log)}");
     }
 
+    [Fact]
+    public async Task DrainAsync_ConsecutivePublishEntriesSharingBatchKey_ShouldDispatchOneBatch()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new BatchKeyAwareExecutor();
+        var host = BuildHost(state, log, executor);
+
+        // All three entries route to the same (stream, routeKey) — they must
+        // coalesce into one ExecuteBatchAsync call.
+        await host.EnqueueAndDrainAsync(
+        [
+            executor.Entry(1, "orders", BatchKeyAwareExecutor.RouteKeyX),
+            executor.Entry(2, "orders", BatchKeyAwareExecutor.RouteKeyX),
+            executor.Entry(3, "orders", BatchKeyAwareExecutor.RouteKeyX),
+        ]);
+
+        await Verify(executor.BatchInvocations).DontScrubGuids();
+    }
+
+    [Fact]
+    public async Task DrainAsync_NonContiguousBatchKey_ShouldEmitSeparateBatches()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new BatchKeyAwareExecutor();
+        var host = BuildHost(state, log, executor);
+
+        // X, Y, X — the trailing X must NOT merge with the leading X.
+        await host.EnqueueAndDrainAsync(
+        [
+            executor.Entry(1, "orders", BatchKeyAwareExecutor.RouteKeyX),
+            executor.Entry(2, "orders", BatchKeyAwareExecutor.RouteKeyY),
+            executor.Entry(3, "orders", BatchKeyAwareExecutor.RouteKeyX),
+        ]);
+
+        await Verify(executor.BatchInvocations).DontScrubGuids();
+    }
+
     static OutboxHost<EdictUnit> BuildHost(
         CountingPersistentState<GrainEnvelope<EdictUnit>> state,
         CallLog log,
@@ -155,5 +194,66 @@ public sealed class OutboxHostTests
         public bool IsRewindable => false;
         public IAsyncStream<T> GetStream<T>(StreamId streamId) =>
             throw new NotSupportedException("NullStreamProvider has no streams.");
+    }
+
+    sealed class BatchKeyAwareExecutor : IOutboxEffectExecutor
+    {
+        public static readonly Guid RouteKeyX = new("11111111-1111-1111-1111-111111111111");
+        public static readonly Guid RouteKeyY = new("22222222-2222-2222-2222-222222222222");
+
+        readonly List<BatchInvocation> _batchInvocations = [];
+
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+
+        public IReadOnlyList<BatchInvocation> BatchInvocations => _batchInvocations;
+
+        public OutboxEntry Entry(int seed, string streamName, Guid routeKey) => new()
+        {
+            EntryId = new Guid(seed, (short)0, (short)0, 0, 0, 0, 0, 0, 0, 0, 0),
+            Kind = OutboxEffectKind.PublishEvent,
+            // Stash the batch key in TraceState so TryResolveBatchKey can pull
+            // it back without needing a real Orleans-serialised payload.
+            Payload = [(byte)seed],
+            TraceState = $"{streamName}|{routeKey:D}",
+        };
+
+        public (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
+            OutboxEntry entry, EdictEvent? liveWireEvent)
+        {
+            if (entry.TraceState is not { } trace || !trace.Contains('|'))
+            {
+                return null;
+            }
+            var parts = trace.Split('|');
+            return (parts[0], Guid.Parse(parts[1]), null);
+        }
+
+        public Task ExecuteAsync(
+            OutboxEntry entry,
+            IStreamProvider streamProvider,
+            Func<EdictEvent, Task>? deferredDispatch,
+            Type? consumerType,
+            EdictEvent? liveWireEvent) =>
+            // The drain calls ExecuteBatchAsync for every group — even
+            // singleton groups would normally route through the default
+            // fan-out, which calls back into this method. The batch tests
+            // assert the BATCH path, so per-entry fan-out is fine to ignore
+            // here.
+            Task.CompletedTask;
+
+        public Task ExecuteBatchAsync(
+            IReadOnlyList<OutboxEntry> entries,
+            IStreamProvider streamProvider,
+            Func<EdictEvent, Task>? deferredDispatch,
+            Type? consumerType,
+            IReadOnlyList<EdictEvent?> liveWireEvents)
+        {
+            var key = TryResolveBatchKey(entries[0], liveWireEvents[0])!.Value;
+            _batchInvocations.Add(new BatchInvocation(
+                key.StreamName, key.RouteKey, entries.Select(e => e.EntryId).ToArray()));
+            return Task.CompletedTask;
+        }
+
+        public sealed record BatchInvocation(string StreamName, Guid RouteKey, Guid[] EntryIds);
     }
 }
