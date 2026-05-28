@@ -1,7 +1,6 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Events;
-using Edict.Core.ClaimCheck;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
@@ -111,19 +110,18 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
         var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
-        // InvokeHandler entry payloads are serialised EdictEventEnvelopes
-        // (inline or pointer). The inline-branch case the EventHandler
-        // stream-callback hits gets wrapped here; the executor unwraps
-        // via ClaimCheckUnwrap before dispatching.
-        var envelope = evt is EdictEventEnvelope already
-            ? already
-            : EnvelopeCodec.WrapInline(serializer.SerializeToArray<EdictEvent>(evt));
-
+        // Inline-branch InvokeHandler entries persist the event itself,
+        // not an envelope wrap. The executor's ClaimCheckUnwrap returns
+        // non-envelopes as-is, so the wrap was redundant — one serialise
+        // and one deserialise per handled event. The pointer-branch path
+        // (StagePointerEnvelopeForDeferredDispatchAsync) keeps the
+        // envelope because the ClaimCheckKey is what drives the deferred
+        // blob fetch.
         return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.InvokeHandler,
-            Payload = serializer.SerializeToArray<EdictEvent>(envelope),
+            Payload = serializer.SerializeToArray<EdictEvent>(evt),
             TraceParent = traceParent,
             TraceState = traceState,
         };
