@@ -8,7 +8,7 @@ namespace Edict.Generated
     file static class RaiseInterceptor_Sample_OrderCancelledEvent
     {
         // Consumer.cs(35,9)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "IOq+4k4Kl7ix+W9tYhKFYDUDAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "uJH1SVroLn9sRrrGcgaIuFcDAABDb25zdW1lci5jcw==")]
         public static void InterceptRaise<TState>(
             this global::Edict.Core.Commands.EdictCommandHandler<TState> self,
             global::Edict.Contracts.Events.EdictEvent theEvent)
@@ -35,7 +35,7 @@ namespace Edict.Generated
     file static class RaiseInterceptor_Sample_OrderPlacedEvent
     {
         // Consumer.cs(34,9)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "IOq+4k4Kl7ix+W9tYhKFYAUDAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "uJH1SVroLn9sRrrGcgaIuCYDAABDb25zdW1lci5jcw==")]
         public static void InterceptRaise<TState>(
             this global::Edict.Core.Commands.EdictCommandHandler<TState> self,
             global::Edict.Contracts.Events.EdictEvent theEvent)

@@ -42,13 +42,13 @@ public sealed class CommandPublishHandleSpanStitchTests(AzureClusterFixture fixt
         lock (stopped)
         {
             commandSpan = stopped.First(a =>
-                a.OperationName == "edict.command NotifyCustomerCommand"
-                && customerId.Equals(a.GetTagItem("edict.command.route_key")));
+                a.OperationName == $"{SemanticConventions.Commands.Spans.Command} NotifyCustomerCommand"
+                && customerId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
             publishSpan = stopped.First(a =>
-                a.OperationName == "edict.event.publish CustomerNotifiedEvent"
+                a.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent"
                 && a.ParentSpanId == commandSpan.SpanId);
             handleSpan = stopped.First(a =>
-                a.OperationName == "edict.event.handle CustomerNotifiedEvent"
+                a.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
                 && a.ParentSpanId == publishSpan.SpanId);
         }
 

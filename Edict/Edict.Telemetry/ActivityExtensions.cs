@@ -12,7 +12,7 @@ public static class ActivityExtensions
 {
     /// <summary>Writes <c>edict.command.route_key</c> on the activity.</summary>
     public static void SetEdictCommandTags(this Activity activity, Guid routeKey)
-        => activity.SetTag("edict.command.route_key", routeKey);
+        => activity.SetTag(SemanticConventions.Commands.Tags.RouteKey, routeKey);
 
     /// <summary>
     /// Captures the current activity's W3C trace context into Orleans

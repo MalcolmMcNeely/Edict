@@ -16,7 +16,7 @@ public static class ActivitySourceExtensions
         string eventTypeName,
         ActivityContext parentContext)
         => source.StartActivity(
-            $"edict.event.publish {eventTypeName}",
+            $"{SemanticConventions.Events.Spans.Publish} {eventTypeName}",
             ActivityKind.Producer,
             parentContext);
 
@@ -25,7 +25,7 @@ public static class ActivitySourceExtensions
         string eventTypeName,
         ActivityContext parentContext)
         => source.StartActivity(
-            $"edict.event.handle {eventTypeName}",
+            $"{SemanticConventions.Events.Spans.Handle} {eventTypeName}",
             ActivityKind.Consumer,
             parentContext);
 
@@ -34,7 +34,7 @@ public static class ActivitySourceExtensions
         string eventTypeName,
         ActivityContext parentContext)
         => source.StartActivity(
-            $"edict.event.deduplicated {eventTypeName}",
+            $"{SemanticConventions.Events.Spans.Deduplicated} {eventTypeName}",
             ActivityKind.Consumer,
             parentContext);
 
@@ -43,7 +43,7 @@ public static class ActivitySourceExtensions
         string commandTypeName,
         ActivityContext parentContext)
         => source.StartActivity(
-            $"edict.command.send {commandTypeName}",
+            $"{SemanticConventions.Commands.Spans.Send} {commandTypeName}",
             ActivityKind.Producer,
             parentContext);
 
@@ -52,7 +52,7 @@ public static class ActivitySourceExtensions
         string tableName,
         ActivityContext parentContext)
         => source.StartActivity(
-            $"edict.table.upsert {tableName}",
+            $"{SemanticConventions.Tables.Spans.Upsert} {tableName}",
             ActivityKind.Client,
             parentContext);
 }

@@ -8,7 +8,7 @@ namespace Edict.Generated
     file static class DispatchInterceptor_Sample_AuthorizePayment
     {
         // Consumer.cs(45,9)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "njv1UVISOTA05MP6RO1TCBgEAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "RvLp62kV174Ao7gn4iOE+UQEAABDb25zdW1lci5jcw==")]
         public static void InterceptDispatch<TProgress>(
             this global::Edict.Core.Sagas.EdictSaga<TProgress> self,
             global::Edict.Contracts.Commands.EdictCommand command)
@@ -35,7 +35,7 @@ namespace Edict.Generated
     file static class DispatchInterceptor_Sample_CancelOrder
     {
         // Consumer.cs(51,9)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "njv1UVISOTA05MP6RO1TCLUEAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "RvLp62kV174Ao7gn4iOE+ecEAABDb25zdW1lci5jcw==")]
         public static void InterceptDispatch<TProgress>(
             this global::Edict.Core.Sagas.EdictSaga<TProgress> self,
             global::Edict.Contracts.Commands.EdictCommand command)

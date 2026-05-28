@@ -41,7 +41,7 @@ internal static class CommandRouteRegistrarEmitter
                     var tagLines = new StringBuilder();
                     foreach (var property in command.TelemeterizedProperties)
                     {
-                        var tagName = $"edict.{command.SimpleName.ToLowerInvariant()}.{property.PropertyName.ToLowerInvariant()}";
+                        var tagName = $"{EdictWellKnownNames.TelemeterizedTagPrefix}{command.SimpleName.ToLowerInvariant()}.{property.PropertyName.ToLowerInvariant()}";
                         tagLines.Append("                    activity?.SetTag(\"")
                             .Append(tagName)
                             .Append("\", typedCommand.")

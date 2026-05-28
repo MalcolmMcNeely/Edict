@@ -167,7 +167,7 @@ public abstract class EdictCommandHandler<TState>
         var state = GetValidationState();
         if (state is not null)
         {
-            context.RootContextData[EdictValidationKeys.GrainState] = state;
+            context.RootContextData[SemanticConventions.Validation.GrainStateKey] = state;
         }
 
         var result = await validator.ValidateAsync(context);
@@ -186,7 +186,7 @@ public abstract class EdictCommandHandler<TState>
 
     /// <summary>
     /// Override to expose the grain's current state to validators via
-    /// <c>ValidationContext.RootContextData[<see cref="EdictValidationKeys.GrainState"/>]</c>.
+    /// <c>ValidationContext.RootContextData[<see cref="SemanticConventions.Validation.GrainStateKey"/>]</c>.
     /// The default returns <c>null</c> (no state injected).
     /// </summary>
     protected virtual object? GetValidationState() => null;

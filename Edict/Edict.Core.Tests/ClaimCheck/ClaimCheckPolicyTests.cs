@@ -88,17 +88,17 @@ public sealed class ClaimCheckPolicyTests
         var evt = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
-        using (var parent = EdictDiagnostics.ActivitySource.StartActivity("edict.event.publish OrderPlacedEvent"))
+        using (var parent = EdictDiagnostics.ActivitySource.StartActivity($"{SemanticConventions.Events.Spans.Publish} OrderPlacedEvent"))
         {
             Assert.NotNull(parent);
             await policy.ApplyAsync(evt, CancellationToken.None);
-            Assert.Equal(true, parent.GetTagItem("edict.event.claimChecked"));
+            Assert.Equal(true, parent.GetTagItem(SemanticConventions.Events.Tags.ClaimChecked));
         }
 
-        var put = stopped.Single(a => a.OperationName == "edict.event.claim_check.put");
-        Assert.Equal(nameof(OrderPlacedEvent), put.GetTagItem("edict.event.type"));
-        Assert.NotNull(put.GetTagItem("edict.event.size_bytes"));
-        Assert.Equal(store.Puts[0].ReturnedKey, put.GetTagItem("edict.claim_check.key"));
+        var put = stopped.Single(a => a.OperationName == SemanticConventions.ClaimCheck.Spans.Put);
+        Assert.Equal(nameof(OrderPlacedEvent), put.GetTagItem(SemanticConventions.Events.Tags.Type));
+        Assert.NotNull(put.GetTagItem(SemanticConventions.Events.Tags.SizeBytes));
+        Assert.Equal(store.Puts[0].ReturnedKey, put.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
     }
 
     [Fact]

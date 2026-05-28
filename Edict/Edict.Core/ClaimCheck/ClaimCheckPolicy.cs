@@ -86,7 +86,7 @@ public sealed class ClaimCheckPolicy
                 innerRouteKey, evt.GetType().FullName!, envelopeBytes.Length);
         }
 
-        Activity.Current?.SetTag("edict.event.claimChecked", true);
+        Activity.Current?.SetTag(SemanticConventions.Events.Tags.ClaimChecked, true);
 
         return new ClaimCheckApplyResult(envelopeBytes, envelope);
     }
@@ -102,12 +102,12 @@ public sealed class ClaimCheckPolicy
     async Task<string> PutAsync(EdictEvent evt, byte[] innerBytes, CancellationToken ct)
     {
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
-            "edict.event.claim_check.put", ActivityKind.Client);
-        span?.SetTag("edict.event.type", evt.GetType().Name);
-        span?.SetTag("edict.event.size_bytes", innerBytes.Length);
+            SemanticConventions.ClaimCheck.Spans.Put, ActivityKind.Client);
+        span?.SetTag(SemanticConventions.Events.Tags.Type, evt.GetType().Name);
+        span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, innerBytes.Length);
 
         var key = await _store!.PutAsync(innerBytes, ct);
-        span?.SetTag("edict.claim_check.key", key);
+        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
         return key;
     }
 }

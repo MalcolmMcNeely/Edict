@@ -2,6 +2,7 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
+using Edict.Telemetry;
 
 using FluentValidation;
 using FluentValidation.Results;
@@ -90,7 +91,7 @@ public sealed class GrainStateRequiredValidator : AbstractValidator<StateCheckCo
     {
         RuleFor(x => x).Custom((_, ctx) =>
         {
-            if (!ctx.RootContextData.TryGetValue(EdictValidationKeys.GrainState, out var state) || state is null)
+            if (!ctx.RootContextData.TryGetValue(SemanticConventions.Validation.GrainStateKey, out var state) || state is null)
             {
                 ctx.AddFailure(new ValidationFailure("GrainState", "Grain state was not injected.")
                     { ErrorCode = "missing_state" });

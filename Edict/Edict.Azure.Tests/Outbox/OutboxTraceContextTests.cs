@@ -63,7 +63,7 @@ public sealed class OutboxTraceContextTests(AzureClusterFixture fixture)
         await WaitForRowAsync(repository, orderId.ToString(), orderId.ToString());
 
         var publishSpan = stopped.FirstOrDefault(a =>
-            a.OperationName.StartsWith("edict.event.publish ", StringComparison.Ordinal)
+            a.OperationName.StartsWith($"{SemanticConventions.Events.Spans.Publish} ", StringComparison.Ordinal)
             && a.TraceId.ToHexString() == expectedTraceId);
         Assert.NotNull(publishSpan);
     }

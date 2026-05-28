@@ -23,7 +23,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
         var key = route.RouteKeySelector(command);
         var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
 
-        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"edict.command {command.GetType().Name}");
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {command.GetType().Name}");
 
         if (activity is not null)
         {
@@ -68,7 +68,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
 
         var grain = grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
 
-        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"edict.command {commandSimpleName}");
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");
 
         if (activity is not null)
         {

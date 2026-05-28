@@ -8,7 +8,7 @@ namespace Edict.Generated
     file static class SendInterceptor_Sample_CancelOrder
     {
         // Consumer.cs(41,22)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "UOgKS8Q2OvDBJr8rQK14jHwEAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "O6Fenip62Dv2Ju8xH2YvoaQEAABDb25zdW1lci5jcw==")]
         public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSend(
             this global::Edict.Contracts.Sending.IEdictSender sender,
             global::Edict.Contracts.Commands.EdictCommand command)
@@ -46,9 +46,9 @@ namespace Edict.Generated
     file static class SendInterceptor_Sample_PlaceOrder
     {
         // Consumer.cs(39,22)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "UOgKS8Q2OvDBJr8rQK14jAIEAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "O6Fenip62Dv2Ju8xH2YvoSgEAABDb25zdW1lci5jcw==")]
         // Consumer.cs(40,22)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "UOgKS8Q2OvDBJr8rQK14jD8EAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "O6Fenip62Dv2Ju8xH2YvoWYEAABDb25zdW1lci5jcw==")]
         public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSend(
             this global::Edict.Contracts.Sending.IEdictSender sender,
             global::Edict.Contracts.Commands.EdictCommand command)

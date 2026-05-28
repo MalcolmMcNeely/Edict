@@ -61,14 +61,14 @@ public sealed class ClaimCheckUnwrap
 
         var key = envelope.ClaimCheckKey!;
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
-            "edict.event.claim_check.get", ActivityKind.Client);
-        span?.SetTag("edict.claim_check.key", key);
+            SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client);
+        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
 
         var bytes = await _store.GetAsync(key, ct);
-        span?.SetTag("edict.event.size_bytes", bytes.Length);
+        span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, bytes.Length);
 
         var inner = _serializer.Deserialize<EdictEvent>(bytes.ToArray());
-        span?.SetTag("edict.event.type", inner.GetType().Name);
+        span?.SetTag(SemanticConventions.Events.Tags.Type, inner.GetType().Name);
         return inner;
     }
 }

@@ -132,7 +132,7 @@ public sealed class InvokeHandlerExecutorTests
 
         // Filter by operation name — parallel tests sharing the process-wide
         // ActivityListener mechanism may surface unrelated edict.* spans here.
-        var span = Assert.Single(stopped, a => a.OperationName == "edict.event.handle OrderPlacedEvent");
+        var span = Assert.Single(stopped, a => a.OperationName == $"{SemanticConventions.Events.Spans.Handle} OrderPlacedEvent");
         Assert.Equal(capturedTraceId, span.TraceId.ToHexString());
         Assert.Equal(capturedSpanId, span.ParentSpanId.ToHexString());
     }

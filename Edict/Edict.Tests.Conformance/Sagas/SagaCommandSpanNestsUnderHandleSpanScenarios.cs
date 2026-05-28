@@ -54,9 +54,9 @@ public abstract class SagaCommandSpanNestsUnderHandleSpanScenarios<TFixture>
         Activity commandSpan;
         lock (stopped)
         {
-            handleSpan = stopped.Single(a => a.OperationName == "edict.event.handle SagaTriggerEvent");
-            sendSpan = stopped.Single(a => a.OperationName == "edict.command.send SagaTrackerCommand");
-            commandSpan = stopped.Single(a => a.OperationName == "edict.command SagaTrackerCommand");
+            handleSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Events.Spans.Handle} SagaTriggerEvent");
+            sendSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Commands.Spans.Send} SagaTrackerCommand");
+            commandSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Commands.Spans.Command} SagaTrackerCommand");
         }
 
         Assert.Equal(handleSpan.SpanId, sendSpan.ParentSpanId);

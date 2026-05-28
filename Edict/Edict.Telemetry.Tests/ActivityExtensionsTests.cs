@@ -28,15 +28,17 @@ public sealed class ActivityExtensionsTests : IDisposable
     public void EdictDiagnostics_ShouldHaveSourceNameEdict()
     {
         Assert.Equal("Edict", EdictDiagnostics.SourceName);
+        Assert.Equal(EdictDiagnostics.SourceName, SemanticConventions.ActivitySources.Edict);
     }
 
     [Fact]
     public void StartEdictCommand_ShouldStartActivityWithGivenOperationName()
     {
-        using (EdictDiagnostics.ActivitySource.StartEdictCommand("edict.command TestCommand"))
+        var operationName = $"{SemanticConventions.Commands.Spans.Command} TestCommand";
+        using (EdictDiagnostics.ActivitySource.StartEdictCommand(operationName))
         { }
 
-        Assert.Contains(_stopped, a => a.OperationName == "edict.command TestCommand");
+        Assert.Contains(_stopped, a => a.OperationName == operationName);
     }
 
     [Fact]
@@ -50,7 +52,7 @@ public sealed class ActivityExtensionsTests : IDisposable
         }
 
         var span = Assert.Single(_stopped);
-        Assert.Equal(routeKey, span.GetTagItem("edict.command.route_key"));
+        Assert.Equal(routeKey, span.GetTagItem(SemanticConventions.Commands.Tags.RouteKey));
     }
 
     [Fact]

@@ -15,7 +15,7 @@ public static class EdictDiagnostics
     /// <summary>The shared activity source used across the command/event spine.</summary>
     public static readonly ActivitySource ActivitySource = new(SourceName);
 
-    internal const string TraceIdKey = "edict.cmd-trace-id";
-    internal const string SpanIdKey = "edict.cmd-span-id";
-    internal const string TraceStateKey = "edict.cmd-trace-state";
+    internal const string TraceIdKey = SemanticConventions.RequestContext.TraceId;
+    internal const string SpanIdKey = SemanticConventions.RequestContext.SpanId;
+    internal const string TraceStateKey = SemanticConventions.RequestContext.TraceState;
 }

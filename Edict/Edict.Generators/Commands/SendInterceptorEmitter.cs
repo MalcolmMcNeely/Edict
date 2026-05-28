@@ -130,7 +130,7 @@ internal static class SendInterceptorEmitter
             sb.Append("                    {\n");
             foreach (var prop in command.TelemeterizedProperties)
             {
-                var tagName = $"edict.{command.SimpleName.ToLowerInvariant()}.{prop.PropertyName.ToLowerInvariant()}";
+                var tagName = $"{EdictWellKnownNames.TelemeterizedTagPrefix}{command.SimpleName.ToLowerInvariant()}.{prop.PropertyName.ToLowerInvariant()}";
                 sb.Append("                        a.SetTag(\"")
                     .Append(tagName)
                     .Append("\", c.")

@@ -117,10 +117,10 @@ public sealed class ClaimCheckUnwrapTests
 
         await unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None);
 
-        var get = stopped.Single(a => a.OperationName == "edict.event.claim_check.get");
-        Assert.Equal(nameof(OrderPlacedEvent), get.GetTagItem("edict.event.type"));
-        Assert.Equal(innerBytes.Length, get.GetTagItem("edict.event.size_bytes"));
-        Assert.Equal("blob-key-span", get.GetTagItem("edict.claim_check.key"));
+        var get = stopped.Single(a => a.OperationName == SemanticConventions.ClaimCheck.Spans.Get);
+        Assert.Equal(nameof(OrderPlacedEvent), get.GetTagItem(SemanticConventions.Events.Tags.Type));
+        Assert.Equal(innerBytes.Length, get.GetTagItem(SemanticConventions.Events.Tags.SizeBytes));
+        Assert.Equal("blob-key-span", get.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class ClaimCheckUnwrapTests
             consumerType: typeof(object),
             CancellationToken.None);
 
-        Assert.DoesNotContain(stopped, a => a.OperationName == "edict.event.claim_check.get");
+        Assert.DoesNotContain(stopped, a => a.OperationName == SemanticConventions.ClaimCheck.Spans.Get);
     }
 
     [Fact]

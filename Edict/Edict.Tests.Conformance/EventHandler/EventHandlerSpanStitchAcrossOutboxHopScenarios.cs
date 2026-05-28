@@ -52,9 +52,9 @@ public abstract class EventHandlerSpanStitchAcrossOutboxHopScenarios<TFixture>
         lock (stopped)
         {
             publishSpan = stopped.First(a =>
-                a.OperationName == "edict.event.publish CustomerNotifiedEvent");
+                a.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent");
             invocationSpan = stopped.First(a =>
-                a.OperationName == "edict.event.handle CustomerNotifiedEvent"
+                a.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
                 && a.ParentSpanId == publishSpan.SpanId);
         }
 

@@ -58,7 +58,7 @@ public abstract class CommandValidatorScenarios<TFixture>
         var orderId = Guid.NewGuid();
         await _fixture.Sender.Send(new ValidateSkuCommand(orderId, string.Empty));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem("edict.command.route_key")));
+        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Unset, span.Status);
     }
 

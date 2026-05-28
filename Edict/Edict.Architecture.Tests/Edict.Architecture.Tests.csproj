@@ -24,6 +24,8 @@
         <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
         <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
+        <!-- Needed for TelemeterizedTagPrefix parity test (issue #173) -->
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" ReferenceOutputAssembly="true" />
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Domain\Sample.Domain.csproj" />

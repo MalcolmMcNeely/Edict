@@ -49,7 +49,7 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
         while (DateTimeOffset.UtcNow < deadline)
         {
             dedupSpan = stopped.FirstOrDefault(
-                a => a.OperationName == "edict.event.deduplicated DedupTestEvent");
+                a => a.OperationName == $"{SemanticConventions.Events.Spans.Deduplicated} DedupTestEvent");
             if (dedupSpan is not null)
             {
                 break;
@@ -58,6 +58,6 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
         }
 
         Assert.NotNull(dedupSpan);
-        Assert.Equal(true, dedupSpan!.GetTagItem("edict.deduplicated"));
+        Assert.Equal(true, dedupSpan!.GetTagItem(SemanticConventions.Events.Tags.Deduplicated));
     }
 }

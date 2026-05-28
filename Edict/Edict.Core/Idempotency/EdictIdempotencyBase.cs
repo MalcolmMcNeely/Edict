@@ -339,7 +339,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     {
         var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(evt.GetType().Name, parentContext);
-        span?.SetTag("edict.deduplicated", true);
+        span?.SetTag(SemanticConventions.Events.Tags.Deduplicated, true);
     }
 
     OutboxHost<TPayload> BuildHost() =>

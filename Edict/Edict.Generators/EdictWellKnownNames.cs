@@ -29,6 +29,12 @@ internal static class EdictWellKnownNames
     public const string EdictTelemeterizedAttributeFqn =
         "global::Edict.Contracts.Telemetry.EdictTelemeterizedAttribute";
 
+    // Generators can't reference the runtime Edict.Telemetry assembly, so the
+    // Telemeterized tag prefix lives here as a literal. An
+    // Edict.Architecture.Tests fact asserts equality with
+    // SemanticConventions.Telemeterized.Prefix so the two can't drift silently.
+    public const string TelemeterizedTagPrefix = "edict.";
+
     // ── Edict.Telemetry ──────────────────────────────────────────────────────
     public const string EdictDiagnosticsActivitySourceFqn =
         "global::Edict.Telemetry.EdictDiagnostics.ActivitySource";

@@ -24,8 +24,8 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem("edict.command.route_key")));
-        Assert.Equal("edict.command TelPlaceOrderCommand", span.OperationName);
+        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        Assert.Equal($"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand", span.OperationName);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await Assert.ThrowsAnyAsync<Exception>(
             () => fixture.Sender.Send(new TelFailOrderCommand(orderId)));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem("edict.command.route_key")));
+        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Error, span.Status);
     }
 
@@ -64,7 +64,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem("edict.command.route_key")));
+        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(sku, span.GetTagItem("edict.telplaceordercommand.sku"));
     }
 
@@ -84,10 +84,10 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
         var commandSpan = stopped.Single(a =>
-            a.OperationName == "edict.command TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem("edict.command.route_key")));
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         var publishSpan = stopped.Single(a =>
-            a.OperationName == "edict.event.publish TelOrderPlacedEvent");
+            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent");
 
         Assert.Equal(commandSpan.TraceId, publishSpan.TraceId);
         Assert.Equal(commandSpan.SpanId, publishSpan.ParentSpanId);
