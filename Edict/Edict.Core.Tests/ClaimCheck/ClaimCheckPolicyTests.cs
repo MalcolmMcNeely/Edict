@@ -4,6 +4,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,7 @@ public sealed class ClaimCheckPolicyTests
         var store = new RecordingStore();
         var evt = new OrderPlacedEvent(Guid.NewGuid(), "SKU-SMALL");
         var expected = Serializer.SerializeToArray<EdictEvent>(evt);
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store);
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store, new StubEdictEventStreamAccessors());
 
         var result = await policy.ApplyAsync(evt, CancellationToken.None);
 
@@ -39,7 +40,7 @@ public sealed class ClaimCheckPolicyTests
         // healthy margin, so the size_bytes tag has a deterministic ballpark.
         var evt = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(evt);
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store);
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
         var result = await policy.ApplyAsync(evt, CancellationToken.None);
 
@@ -61,7 +62,7 @@ public sealed class ClaimCheckPolicyTests
         var store = new FixedKeyStore(new string('K', 40_000));
         var routeKey = Guid.NewGuid();
         var evt = new OrderPlacedEvent(routeKey, "SKU-A");
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store);
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store, new StubEdictEventStreamAccessors());
 
         var ex = await Assert.ThrowsAsync<EdictEnvelopeOverflowException>(
             () => policy.ApplyAsync(evt, CancellationToken.None));
@@ -85,7 +86,7 @@ public sealed class ClaimCheckPolicyTests
 
         var store = new RecordingStore();
         var evt = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store);
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
         using (var parent = EdictDiagnostics.ActivitySource.StartActivity("edict.event.publish OrderPlacedEvent"))
         {
@@ -103,7 +104,7 @@ public sealed class ClaimCheckPolicyTests
     [Fact]
     public async Task ApplyAsync_ShouldThrow_WhenStoreNotConfiguredButThresholdExceeded()
     {
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store: null);
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store: null, accessors: new StubEdictEventStreamAccessors());
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => policy.ApplyAsync(new OrderPlacedEvent(Guid.NewGuid(), "SKU"), CancellationToken.None));

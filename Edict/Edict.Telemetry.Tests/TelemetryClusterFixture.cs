@@ -42,6 +42,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
         {
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

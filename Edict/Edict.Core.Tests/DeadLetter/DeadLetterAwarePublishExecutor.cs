@@ -10,9 +10,9 @@ namespace Edict.Core.Tests.DeadLetter;
 // Fails every PublishEvent except EdictDeadLetterRaised — drives the engine's
 // promotion path while letting the dead-letter notification itself publish
 // cleanly so the projection grain can write the row.
-sealed class DeadLetterAwarePublishExecutor(Serializer serializer) : IOutboxEffectExecutor
+sealed class DeadLetterAwarePublishExecutor(Serializer serializer, IEventStreamAccessors accessors) : IOutboxEffectExecutor
 {
-    readonly PublishEventExecutor _inner = new(serializer);
+    readonly PublishEventExecutor _inner = new(serializer, accessors);
 
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 

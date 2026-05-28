@@ -14,6 +14,7 @@ using Edict.Core;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
+using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Kafka.Wire;
@@ -155,7 +156,8 @@ public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>()));
+                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();

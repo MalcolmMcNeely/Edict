@@ -10,6 +10,7 @@ using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
+using Edict.Core.Outbox;
 using Edict.Core.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -84,7 +85,8 @@ public static class EdictAzureSiloBuilderExtensions
         silo.Services.AddSingleton(sp => new ClaimCheckPolicy(
             sp.GetRequiredService<Serializer>(),
             options.ClaimCheckThresholdBytes,
-            sp.GetService<IEdictClaimCheckStore>()));
+            sp.GetService<IEdictClaimCheckStore>(),
+            sp.GetRequiredService<IEventStreamAccessors>()));
 
         return silo;
     }

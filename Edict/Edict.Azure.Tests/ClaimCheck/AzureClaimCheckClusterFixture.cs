@@ -11,6 +11,7 @@ using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.ClaimCheck;
+using Edict.Core.Outbox;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
@@ -142,7 +143,8 @@ public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>()));
+                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
 
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();

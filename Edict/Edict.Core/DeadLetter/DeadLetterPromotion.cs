@@ -13,12 +13,13 @@ static class DeadLetterPromotion
     public static EdictDeadLetterRaised Build(
         OutboxEntry entry,
         EdictEvent evt,
+        IEventStreamAccessors accessors,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var (streamName, _) = EventStreamAddress.Resolve(evt);
+        var (streamName, _) = accessors.Resolve(evt);
         var effectTarget = $"{streamName}/{evt.GetType().Name}";
         var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
@@ -42,12 +43,13 @@ static class DeadLetterPromotion
     public static EdictDeadLetterRaised BuildForInvokeHandler(
         OutboxEntry entry,
         EdictEvent evt,
+        IEventStreamAccessors accessors,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var (streamName, _) = EventStreamAddress.Resolve(evt);
+        var (streamName, _) = accessors.Resolve(evt);
         var effectTarget = $"{streamName}/{evt.GetType().Name}";
         var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
         var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);

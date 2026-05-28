@@ -3,6 +3,7 @@ using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.TestSupport;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,7 +36,7 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
             AttemptCount = 5,
             TraceParent = "00-0123456789abcdef0123456789abcdef-fedcba9876543210-01",
         };
-        var promoter = new DeadLetterPromoter(Serializer, new ServiceCollection().BuildServiceProvider());
+        var promoter = new DeadLetterPromoter(Serializer, new StubEdictEventStreamAccessors(), new ServiceCollection().BuildServiceProvider());
 
         var promoted = promoter.Promote(
             failed,

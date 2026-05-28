@@ -10,7 +10,7 @@ using Orleans.Serialization;
 
 namespace Edict.Core.DeadLetter;
 
-sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services)
+sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors accessors, IServiceProvider services)
     : IDeadLetterPromoter
 {
     public OutboxEntry Promote(
@@ -54,7 +54,7 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
             return DeadLetterPromotion.BuildForEnvelopeFailure(
                 failed, envelope, exception, sourceGrainKey, sourceGrainType, now);
         }
-        return DeadLetterPromotion.Build(failed, evt, exception, sourceGrainKey, sourceGrainType, now);
+        return DeadLetterPromotion.Build(failed, evt, accessors, exception, sourceGrainKey, sourceGrainType, now);
     }
 
     EdictDeadLetterRaised BuildFromSendCommand(
@@ -96,8 +96,8 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         if (evt is EdictEventEnvelope { InlinePayload: { Length: > 0 } innerBytes })
         {
             var inner = serializer.Deserialize<EdictEvent>(innerBytes);
-            return DeadLetterPromotion.BuildForInvokeHandler(failed, inner, exception, sourceGrainKey, sourceGrainType, now);
+            return DeadLetterPromotion.BuildForInvokeHandler(failed, inner, accessors, exception, sourceGrainKey, sourceGrainType, now);
         }
-        return DeadLetterPromotion.BuildForInvokeHandler(failed, evt, exception, sourceGrainKey, sourceGrainType, now);
+        return DeadLetterPromotion.BuildForInvokeHandler(failed, evt, accessors, exception, sourceGrainKey, sourceGrainType, now);
     }
 }

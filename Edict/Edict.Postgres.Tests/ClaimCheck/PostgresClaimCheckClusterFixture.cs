@@ -11,6 +11,7 @@ using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
+using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Postgres;
@@ -162,7 +163,8 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>()));
+                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
         }
     }
 

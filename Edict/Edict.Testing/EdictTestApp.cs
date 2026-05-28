@@ -182,8 +182,13 @@ public sealed class EdictTestApp : IAsyncDisposable
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer());
 
-    static void InvokeAddEdict(IServiceCollection services, Assembly consumerAssembly) =>
-        services.AddEdict(consumerAssembly);
+    // Scan AppDomain so both the consumer's handler assembly AND its referenced
+    // contracts assembly (events live there) contribute to the route map and
+    // the event-stream accessor map. Passing only the handler assembly would
+    // miss every event whose [EdictStream] annotation lives next to the
+    // contract type, not next to the handler.
+    static void InvokeAddEdict(IServiceCollection services) =>
+        services.AddEdict();
 
     // Plug the in-memory IEdictTableRepository<EdictDeadLetterEntry> behind
     // AddEdict()'s auto-registered IEdictDeadLetterRepository facade so silo
@@ -220,9 +225,10 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
                 sp.GetRequiredService<Serializer>(),
                 ctx.ClaimCheckThresholdBytes,
-                sp.GetRequiredService<IEdictClaimCheckStore>()));
+                sp.GetRequiredService<IEdictClaimCheckStore>(),
+                sp.GetRequiredService<IEventStreamAccessors>()));
 
-            InvokeAddEdict(siloBuilder.Services, ctx.ConsumerAssembly);
+            InvokeAddEdict(siloBuilder.Services);
             RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);
             siloBuilder.Services.AddEdictOutbox();
 
@@ -282,7 +288,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             var ctx = HarnessRegistry.Current;
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
-            InvokeAddEdict(clientBuilder.Services, ctx.ConsumerAssembly);
+            InvokeAddEdict(clientBuilder.Services);
             RegisterInMemoryDeadLetterTable(clientBuilder.Services, ctx);
             DecorateSender(clientBuilder.Services, ctx.Recorder);
 

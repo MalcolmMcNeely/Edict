@@ -199,7 +199,7 @@ public abstract class EdictCommandHandler<TState>
         // registration. Fall back to a never-trip policy so consumer code
         // works either way.
         sp.GetService<ClaimCheckPolicy>()
-        ?? new ClaimCheckPolicy(sp.GetRequiredService<Serializer>(), int.MaxValue, null);
+        ?? new ClaimCheckPolicy(sp.GetRequiredService<Serializer>(), int.MaxValue, null, sp.GetRequiredService<IEventStreamAccessors>());
 }
 
 /// <summary>

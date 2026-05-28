@@ -7,7 +7,7 @@ using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
-sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
+sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors accessors) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
@@ -51,10 +51,10 @@ sealed class PublishEventExecutor(Serializer serializer) : IOutboxEffectExecutor
     // ridden. The envelope itself carries no [EdictStream] because the
     // stream choice is data, not metadata. The receiver-side unwrap picks
     // the envelope off this stream and rehydrates the inner event.
-    static (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent evt) =>
+    (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent evt) =>
         evt is EdictEventEnvelope envelope && envelope.InnerEventStreamName is { } streamName
             ? (streamName, envelope.InnerEventRouteKey)
-            : EventStreamAddress.Resolve(evt);
+            : accessors.Resolve(evt);
 
     static (string? TraceId, string? SpanId) SplitTraceParent(string? traceParent)
     {

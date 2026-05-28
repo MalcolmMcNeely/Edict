@@ -3,11 +3,13 @@ using System.Reflection;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
+using Edict.Core.Outbox;
 using Edict.Telemetry;
 
 using FluentValidation;
@@ -57,9 +59,13 @@ public static class EdictServiceCollectionExtensions
         var discovered = RouteDiscovery.Discover(materialised, requireAttribute, logger);
         var routes = new Dictionary<Type, CommandRoute>(discovered);
 
+        var discoveredAccessors = EventStreamAccessorDiscovery.Discover(materialised, logger);
+        var accessors = new Dictionary<Type, EdictEventStreamAccessor>(discoveredAccessors);
+
         services.AddValidatorsFromAssemblies(materialised);
 
         services.AddSingleton(new CommandRouteResolver(routes));
+        services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 

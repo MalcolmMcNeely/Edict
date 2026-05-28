@@ -29,6 +29,7 @@ sealed class InProcPublishExecutor(
     IGrainFactory grainFactory,
     SubscriberMap subscribers,
     ChaosOptions chaos,
+    IEventStreamAccessors accessors,
     TimelineRecorder recorder) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
@@ -74,7 +75,7 @@ sealed class InProcPublishExecutor(
 
         var routeKey = stamped is EdictEventEnvelope envelope && envelope.InnerEventStreamName is not null
             ? envelope.InnerEventRouteKey
-            : EventStreamAddress.Resolve(stamped).RouteKey;
+            : accessors.Resolve(stamped).RouteKey;
 
         // Fire-and-forget per subscriber: a real stream hop is asynchronous to
         // the publishing grain, so a saga reaction that fans back to the

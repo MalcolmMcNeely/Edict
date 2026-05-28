@@ -16,9 +16,9 @@ namespace Edict.Tests.Conformance.Outbox;
 /// fixture that wires this executor must serialise its tests via an xUnit
 /// collection so the toggle does not race across fixture shapes.
 /// </summary>
-public sealed class ControllableOutboxExecutor(Serializer serializer) : IOutboxEffectExecutor
+public sealed class ControllableOutboxExecutor(Serializer serializer, IEventStreamAccessors accessors) : IOutboxEffectExecutor
 {
-    readonly PublishEventExecutor _inner = new(serializer);
+    readonly PublishEventExecutor _inner = new(serializer, accessors);
 
     public static volatile bool ShouldFail;
     public static int FailedAttempts;

@@ -2,6 +2,7 @@ using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
+using Edict.Core.Tests.TestSupport;
 
 using static VerifyXunit.Verifier;
 
@@ -17,6 +18,8 @@ public sealed class DeadLetterPromotionTests
     const string SourceGrainKey = "33333333-3333-3333-3333-333333333333";
     const string SourceGrainType = "Sample.OrderCommandHandler";
     const string TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+
+    static readonly StubEdictEventStreamAccessors Accessors = new();
 
     static OutboxEntry PublishEventEntry(string? traceParent = TraceParent) => new()
     {
@@ -35,7 +38,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("nope"),
+            entry, evt, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal("Orders/OrderPlacedEvent", raised.EffectTarget);
@@ -98,7 +101,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("nope"),
+            entry, evt, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.NotNull(raised.PayloadJson);
@@ -115,7 +118,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("nope"),
+            entry, evt, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(TraceParent, raised.TraceParent);
@@ -128,7 +131,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("nope"),
+            entry, evt, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Null(raised.TraceParent);
@@ -141,7 +144,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("downstream unavailable"),
+            entry, evt, Accessors, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal("System.InvalidOperationException", raised.ExceptionType);
@@ -155,7 +158,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("nope"),
+            entry, evt, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(FixedEntryId, raised.EntryId);
@@ -168,7 +171,7 @@ public sealed class DeadLetterPromotionTests
         var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, new InvalidOperationException("downstream unavailable"),
+            entry, evt, Accessors, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();

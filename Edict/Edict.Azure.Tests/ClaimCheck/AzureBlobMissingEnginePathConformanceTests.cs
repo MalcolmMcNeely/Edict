@@ -77,7 +77,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             },
         };
         var reminders = new FakeReminderRegistrar();
-        var promoter = new DeadLetterPromoter(_serializer, new ServiceCollection().BuildServiceProvider());
+        var promoter = new DeadLetterPromoter(_serializer, new StubEdictEventStreamAccessors(), new ServiceCollection().BuildServiceProvider());
 
         var host = new OutboxHost<EdictUnit>(
             state,

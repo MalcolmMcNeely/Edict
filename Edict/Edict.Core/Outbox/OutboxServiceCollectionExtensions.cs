@@ -48,7 +48,8 @@ public static class OutboxServiceCollectionExtensions
         services.TryAddSingleton(sp => new ClaimCheckPolicy(
             sp.GetRequiredService<Serializer>(),
             thresholdBytes: int.MaxValue,
-            store: sp.GetService<IEdictClaimCheckStore>()));
+            store: sp.GetService<IEdictClaimCheckStore>(),
+            accessors: sp.GetRequiredService<IEventStreamAccessors>()));
         // InvokeHandlerExecutor calls ClaimCheckUnwrap.ApplyAsync before
         // dispatch. Re-registering with TryAddSingleton means the
         // dead-letter-projection-aware variant from AddEdict() wins when both

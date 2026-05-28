@@ -47,7 +47,8 @@
       "Bash(wait %1)",
       "Read(//c/Users/malco/AppData/Local/Temp/claude/C--Projects-Edict/a593e5dd-6435-41cd-bdbf-165226a2ba26/tasks/**)",
       "Bash(grep -rc \"^\\\\s*//\" --include=\"*.cs\" Edict/Edict.Core/)",
-      "Bash(sort -t: -k2 -nr)"
+      "Bash(sort -t: -k2 -nr)",
+      "Bash(grep -E \"\\\\.cs$\")"
     ]
   }
 }

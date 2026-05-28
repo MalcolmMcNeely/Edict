@@ -34,12 +34,14 @@ public sealed class ClaimCheckPolicy
     readonly Serializer _serializer;
     readonly int _thresholdBytes;
     readonly IEdictClaimCheckStore? _store;
+    readonly IEventStreamAccessors _accessors;
 
-    public ClaimCheckPolicy(Serializer serializer, int thresholdBytes, IEdictClaimCheckStore? store)
+    public ClaimCheckPolicy(Serializer serializer, int thresholdBytes, IEdictClaimCheckStore? store, IEventStreamAccessors accessors)
     {
         _serializer = serializer;
         _thresholdBytes = thresholdBytes;
         _store = store;
+        _accessors = accessors;
     }
 
     /// <summary>
@@ -71,17 +73,17 @@ public sealed class ClaimCheckPolicy
 
         var key = await PutAsync(evt, innerBytes, ct);
 
+        var (innerStreamName, innerRouteKey) = _accessors.Resolve(evt);
         var envelope = EnvelopeCodec.WrapPointer(key) with
         {
-            InnerEventStreamName = EventStreamAddress.Resolve(evt).StreamName,
-            InnerEventRouteKey = EventStreamAddress.Resolve(evt).RouteKey,
+            InnerEventStreamName = innerStreamName,
+            InnerEventRouteKey = innerRouteKey,
         };
         var envelopeBytes = _serializer.SerializeToArray<EdictEvent>(envelope);
         if (envelopeBytes.Length > MaxEnvelopeBytes)
         {
-            var (_, routeKey) = EventStreamAddress.Resolve(evt);
             throw new EdictEnvelopeOverflowException(
-                routeKey, evt.GetType().FullName!, envelopeBytes.Length);
+                innerRouteKey, evt.GetType().FullName!, envelopeBytes.Length);
         }
 
         Activity.Current?.SetTag("edict.event.claimChecked", true);
