@@ -16,7 +16,7 @@ namespace Edict.Analyzers.Tests;
 public class EdictWellKnownNamesParityTests
 {
     private static readonly Assembly GeneratorsAssembly =
-        typeof(EdictCommandGenerator).Assembly;
+        typeof(EdictGenerator).Assembly;
 
     private static readonly Assembly AnalyzersAssembly =
         typeof(GrainMustBePartialAnalyzer).Assembly;

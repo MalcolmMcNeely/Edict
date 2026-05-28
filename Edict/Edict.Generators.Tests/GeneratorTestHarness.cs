@@ -8,29 +8,43 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Edict.Generators.Tests;
 
 /// <summary>
-/// Runs an Edict source generator over a snippet of consumer source and
-/// returns the emitted files as a deterministic name-to-text map, so a
-/// Verify snapshot can assert the generated output.
+/// Runs the unified <see cref="EdictGenerator"/> over a snippet of consumer
+/// source and returns the emitted files as a deterministic name-to-text map.
+/// Each <c>Run*</c> overload filters the unified output to the files the
+/// caller's concept-specific Verify snapshot expects, so the existing
+/// per-concept snapshots remain byte-identical after the seven-to-one collapse.
 /// </summary>
 internal static class GeneratorTestHarness
 {
     public static IReadOnlyDictionary<string, string> Run(string consumerSource) =>
-        Run(consumerSource, new EdictCommandGenerator());
+        RunUnified(consumerSource)
+            .Where(kvp => !kvp.Key.EndsWith(".EventHandler.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith(".Saga.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
     public static IReadOnlyDictionary<string, string> RunEventGenerator(string consumerSource) =>
-        Run(consumerSource, new EdictEventGenerator());
+        RunUnified(consumerSource)
+            .Where(kvp => kvp.Key.EndsWith(".Alias.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
     public static IReadOnlyDictionary<string, string> RunProjectionGenerator(string consumerSource) =>
-        Run(consumerSource, new EdictProjectionGenerator());
+        RunUnified(consumerSource)
+            .Where(kvp => !kvp.Key.EndsWith(".Alias.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
     public static IReadOnlyDictionary<string, string> RunEventHandlerGenerator(string consumerSource) =>
-        Run(consumerSource, new EdictEventHandlerGenerator());
+        RunUnified(consumerSource)
+            .Where(kvp => kvp.Key.EndsWith(".EventHandler.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
     public static IReadOnlyDictionary<string, string> RunEdictEventStreamAccessorsGenerator(string consumerSource) =>
-        Run(consumerSource, new EdictEventStreamAccessorsGenerator());
+        RunUnified(consumerSource)
+            .Where(kvp => kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-    private static IReadOnlyDictionary<string, string> Run(
-        string consumerSource, IIncrementalGenerator generator)
+    private static IReadOnlyDictionary<string, string> RunUnified(string consumerSource)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
@@ -45,7 +59,7 @@ internal static class GeneratorTestHarness
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var driver = CSharpGeneratorDriver
-            .Create(generator.AsSourceGenerator())
+            .Create(new EdictGenerator().AsSourceGenerator())
             .RunGenerators(compilation);
 
         var result = driver.GetRunResult();

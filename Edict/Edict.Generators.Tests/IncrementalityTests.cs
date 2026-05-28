@@ -18,39 +18,33 @@ public class IncrementalityTests
     }
 
     [Fact]
-    public void EdictCommandGenerator_RemainsCached_OnUnrelatedEdit()
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForCommands()
     {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictCommandGenerator>(CommandSource);
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(CommandSource);
     }
 
     [Fact]
-    public void EdictEventGenerator_RemainsCached_OnUnrelatedEdit()
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForEvents()
     {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictEventGenerator>(EventSource);
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(EventSource);
     }
 
     [Fact]
-    public void EdictEventHandlerGenerator_RemainsCached_OnUnrelatedEdit()
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForEventHandlers()
     {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictEventHandlerGenerator>(EventHandlerSource);
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(EventHandlerSource);
     }
 
     [Fact]
-    public void EdictEventStreamAccessorsGenerator_RemainsCached_OnUnrelatedEdit()
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForProjections()
     {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictEventStreamAccessorsGenerator>(EventSource);
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(ProjectionSource);
     }
 
     [Fact]
-    public void EdictProjectionGenerator_RemainsCached_OnUnrelatedEdit()
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForSagas()
     {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictProjectionGenerator>(ProjectionSource);
-    }
-
-    [Fact]
-    public void EdictSagaGenerator_RemainsCached_OnUnrelatedEdit()
-    {
-        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictSagaGenerator>(SagaSource);
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(SagaSource);
     }
 
     private const string CommandSource = """
