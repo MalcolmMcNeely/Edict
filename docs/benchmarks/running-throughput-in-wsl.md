@@ -1,5 +1,7 @@
 # Running throughput benchmarks under WSL (with Podman)
 
+> **Setup in progress.** A first run paused at step 7 with `dotnet test` failing to start testhost in WSL — diagnostic plan and ruled-out hypotheses are in [`running-throughput-in-wsl-handoff.md`](./running-throughput-in-wsl-handoff.md). Pick up there before re-running step 7.
+
 Run `Edict.Benchmarks.Throughput.Tests` inside a WSL2 Ubuntu distro with rootless Podman in the same VM, so the .NET process and the Azurite/Postgres/Kafka containers share one network. No Windows-to-container network hop.
 
 **Assumes:** Windows 11, WSL2 + Ubuntu already installed. Your existing Windows-side Podman is left alone — a separate Podman is installed inside Ubuntu.
@@ -158,17 +160,54 @@ Expect green tests. If you get a socket error, re-check step 3 (socket active) a
 
 ## 8. Open the WSL clone in Rider
 
-**In Rider:** File → Open → paste this into the path field (replace `<your-username>` with your Ubuntu username, which `whoami` in Ubuntu will tell you):
+Rider runs on **Windows**, not inside Ubuntu (Ubuntu in WSL2 is CLI-only). Windows exposes the Ubuntu filesystem as a network share at `\\wsl$\Ubuntu\...`, so Rider on Windows opens the solution from there and its WSL toolchain dispatches builds and test runs into the Ubuntu distro.
 
-```
-\\wsl$\Ubuntu\home\<your-username>\projects\Edict\Edict\Edict.sln
-```
+**In Rider on Windows:** File → Open → paste the path into the path field.
 
-Rider auto-detects the WSL toolchain for solutions opened from a WSL path. Build, run, debug, and test all dispatch into Ubuntu from here on.
+- If you set up a normal user in Ubuntu (typical case):
+
+  ```
+  \\wsl$\Ubuntu\home\<your-username>\projects\Edict\Edict\Edict.sln
+  ```
+
+  Replace `<your-username>` with your Ubuntu username (`whoami` in Ubuntu prints it).
+
+- If you're running as root in Ubuntu (root's home is `/root`, not `/home/root`):
+
+  ```
+  \\wsl$\Ubuntu\root\projects\Edict\Edict\Edict.sln
+  ```
+
+Rider will *suggest* the WSL toolchain when it loads the solution, but doesn't always apply it automatically. Confirm/configure it in the next step before running anything.
 
 ---
 
-## 9. Run the throughput benchmarks
+## 9. Switch Rider's toolchain to WSL
+
+**Why this step matters.** Without it, Rider opens the solution from the `\\wsl$\` share but still builds and runs with the **Windows** .NET SDK. The .NET process would run on Windows and reach Podman containers across the Hyper-V vSwitch — the exact hop this whole exercise is meant to eliminate. So this step is the difference between a real WSL colocation run and a slower-than-before Windows run.
+
+**In Rider on Windows — first-run popup (easiest path):**
+
+When Rider finishes loading the solution from a `\\wsl$\` path, it often pops a notification saying something like "WSL detected. Use WSL toolchain?" Click **Yes / Apply**, let it reload, and skip to the verify step below.
+
+**In Rider on Windows — manual path (if the popup didn't appear, or you dismissed it):**
+
+1. Open Settings: **File → Settings** (or Ctrl+Alt+S).
+2. Navigate to **Build, Execution, Deployment → Toolset and Build**.
+3. In the **Use MSBuild version** dropdown, choose the entry that says **WSL: Ubuntu** (Rider auto-registers it when the distro is installed). If no such entry exists, click the **+** next to the dropdown → **Add WSL** → pick **Ubuntu**.
+4. The **.NET CLI executable path** field should auto-populate. Verify it points to the `dotnet` you installed in step 5 — typically `/root/.dotnet/dotnet` (root) or `/home/<user>/.dotnet/dotnet` (normal user). If it shows `/usr/bin/dotnet` or is blank, override it to the `.dotnet/dotnet` path.
+5. **Apply → OK**. Rider reloads the solution and re-runs restore inside WSL — first restore is slow because NuGet caches inside Ubuntu separately from Windows.
+
+**Verify it took:**
+
+- In Rider, open the **Terminal** tab (Alt+F12). The prompt should be a WSL Ubuntu shell, not PowerShell. Run `dotnet --version` and confirm it matches what you got in step 5.
+- Right-click `Edict.Core` in the solution explorer → Build. Watch the build output — it should show paths like `/root/projects/Edict/...`, not `C:\...`.
+
+If either check still shows Windows paths, the toolchain switch didn't apply — go back into Settings → Toolset and Build and re-select the WSL entry as the active toolset, then Apply.
+
+---
+
+## 10. Run the throughput benchmarks
 
 **In Rider:** right-click `Edict.Benchmarks.Throughput.Tests` → Run Tests.
 
