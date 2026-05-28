@@ -19,13 +19,13 @@ namespace Edict.Postgres.TableStorage;
 public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
     where T : class, new()
 {
-    readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly string _tableName;
     readonly Serializer _serializer;
 
-    public PostgresTableRepository(string connectionString, string tableName, Serializer serializer)
+    public PostgresTableRepository(NpgsqlDataSource dataSource, string tableName, Serializer serializer)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _tableName = tableName;
         _serializer = serializer;
     }
@@ -35,8 +35,7 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
@@ -67,8 +66,7 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
         var results = new List<T>();
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";

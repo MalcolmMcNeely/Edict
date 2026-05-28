@@ -17,6 +17,8 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans;
 using Orleans.Hosting;
 using Orleans.Serialization;
@@ -168,9 +170,11 @@ public sealed class KafkaResilienceClusterFixture : IAsyncLifetime
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
+            clientBuilder.Services.AddSingleton(
+                new NpgsqlDataSourceBuilder(ctx.PostgresConnectionString).Build());
             clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    ctx.PostgresConnectionString,
+                    sp.GetRequiredService<NpgsqlDataSource>(),
                     ctx.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         }

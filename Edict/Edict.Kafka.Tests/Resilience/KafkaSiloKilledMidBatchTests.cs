@@ -55,7 +55,7 @@ public sealed class KafkaSiloKilledMidBatchTests(KafkaSiloKillClusterFixture fix
 
         var serializer = fixture.Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
         var repository = new PostgresTableRepository<KafkaSiloKillTableRow>(
-            fixture.PostgresConnectionString,
+            fixture.PostgresDataSource,
             KafkaSiloKillBatchProjectionBuilder.Table,
             serializer);
 

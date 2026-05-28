@@ -36,6 +36,7 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
 {
     string _databaseConnectionString = "";
     string _azuriteConnectionString = "";
+    NpgsqlDataSource _dataSource = null!;
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
     QueueServiceClient _queueServiceClient = null!;
@@ -50,13 +51,13 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
 
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new PostgresTableRepository<T>(
-            _databaseConnectionString,
+            _dataSource,
             tableName,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override IEdictTableStoreFactory TableStoreFactory =>
         new PostgresTableWriteStoreFactory(
-            _databaseConnectionString,
+            _dataSource,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override async Task<bool> ClaimCheckBlobExistsAsync(string key)
@@ -68,8 +69,7 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
         {
             return false;
         }
-        await using var connection = new NpgsqlConnection(_databaseConnectionString);
-        await connection.OpenAsync();
+        await using var connection = await _dataSource.OpenConnectionAsync();
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT 1 FROM edict_claim_check WHERE id = @id;";
         cmd.Parameters.AddWithValue("id", id);
@@ -88,6 +88,7 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
 
         var databaseName = $"edict_{Guid.NewGuid():N}";
         _databaseConnectionString = await PostgresDatabaseFactory.CreateDatabaseAsync(adminConnectionString, databaseName);
+        _dataSource = new NpgsqlDataSourceBuilder(_databaseConnectionString).Build();
 
         _tableServiceClient = new TableServiceClient(_azuriteConnectionString);
         _blobServiceClient = new BlobServiceClient(_azuriteConnectionString);
@@ -117,6 +118,10 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
         if (Cluster is not null)
         {
             await Cluster.DisposeAsync();
+        }
+        if (_dataSource is not null)
+        {
+            await _dataSource.DisposeAsync();
         }
         PostgresClusterContextRegistry.Unregister(_contextKey);
     }

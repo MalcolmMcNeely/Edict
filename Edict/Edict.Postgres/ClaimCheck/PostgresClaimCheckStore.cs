@@ -17,12 +17,12 @@ namespace Edict.Postgres.ClaimCheck;
 /// </summary>
 public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
 {
-    readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly string _tableName;
 
-    public PostgresClaimCheckStore(string connectionString, string tableName)
+    public PostgresClaimCheckStore(NpgsqlDataSource dataSource, string tableName)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _tableName = tableName;
     }
 
@@ -31,8 +31,7 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
         var id = Guid.NewGuid();
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(ct);
+            await using var connection = await _dataSource.OpenConnectionAsync(ct);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"INSERT INTO {_tableName} (id, payload, created_at) VALUES (@id, @payload, now());";
@@ -61,8 +60,7 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(ct);
+            await using var connection = await _dataSource.OpenConnectionAsync(ct);
             await using var command = connection.CreateCommand();
             command.CommandText = $"SELECT payload FROM {_tableName} WHERE id = @id;";
             command.Parameters.AddWithValue("id", id);

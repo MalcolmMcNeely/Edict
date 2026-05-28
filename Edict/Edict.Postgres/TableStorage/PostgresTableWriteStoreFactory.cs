@@ -21,16 +21,16 @@ namespace Edict.Postgres.TableStorage;
 /// </summary>
 public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
 {
-    readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly Serializer _serializer;
     readonly IServiceProvider? _services;
 
-    public PostgresTableWriteStoreFactory(string connectionString, Serializer serializer)
-        : this(connectionString, serializer, services: null) { }
+    public PostgresTableWriteStoreFactory(NpgsqlDataSource dataSource, Serializer serializer)
+        : this(dataSource, serializer, services: null) { }
 
-    public PostgresTableWriteStoreFactory(string connectionString, Serializer serializer, IServiceProvider? services)
+    public PostgresTableWriteStoreFactory(NpgsqlDataSource dataSource, Serializer serializer, IServiceProvider? services)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _serializer = serializer;
         _services = services;
     }
@@ -38,8 +38,8 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
     public async Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
         where T : class, new()
     {
-        await PostgresTableSchema.EnsureProjectionTableAsync(_connectionString, tableName, cancellationToken);
-        return new PostgresTableWriteStore<T>(_connectionString, tableName, _serializer);
+        await PostgresTableSchema.EnsureProjectionTableAsync(_dataSource, tableName, cancellationToken);
+        return new PostgresTableWriteStore<T>(_dataSource, tableName, _serializer);
     }
 
     public async Task UpsertRowAsync(
@@ -49,7 +49,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
         object row,
         CancellationToken cancellationToken = default)
     {
-        await PostgresTableSchema.EnsureProjectionTableAsync(_connectionString, tableName, cancellationToken);
+        await PostgresTableSchema.EnsureProjectionTableAsync(_dataSource, tableName, cancellationToken);
 
         var quoted = PostgresTableSchema.QuoteIdentifier(tableName);
         // The row arrives as an object (the Outbox UpsertRow executor
@@ -61,8 +61,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +

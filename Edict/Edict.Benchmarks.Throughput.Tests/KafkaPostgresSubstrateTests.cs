@@ -10,6 +10,8 @@ using Edict.Substrate.KafkaPostgres;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans.Hosting;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -39,7 +41,8 @@ public sealed class KafkaPostgresSubstrateTests
         await using var sp = services.BuildServiceProvider();
         var serializer = sp.GetRequiredService<Serializer>();
 
-        var factory = new PostgresTableWriteStoreFactory(runtime.PostgresConnectionString, serializer);
+        await using var dataSource = new NpgsqlDataSourceBuilder(runtime.PostgresConnectionString).Build();
+        var factory = new PostgresTableWriteStoreFactory(dataSource, serializer);
         var store = await factory.CreateAsync<BenchEventRow>(BenchProjectionBuilder.TableNameLiteral);
         var partitionKey = Guid.NewGuid().ToString("N");
         var rowKey = Guid.NewGuid().ToString("N");
@@ -91,8 +94,9 @@ public sealed class KafkaPostgresSubstrateTests
                 // payload format, so seeding happens post-deploy (unlike the
                 // Azurite mirror which seeds raw TableEntity rows).
                 var serializer = cluster.ServiceProvider.GetRequiredService<Serializer>();
+                await using var dataSource = new NpgsqlDataSourceBuilder(runtime.PostgresConnectionString).Build();
                 var factory = new PostgresTableWriteStoreFactory(
-                    runtime.PostgresConnectionString, serializer);
+                    dataSource, serializer);
                 var store = await factory.CreateAsync<EdictDeadLetterEntry>(
                     KafkaPostgresSubstrate.DeadLetterTableName);
                 var partitionKey = Guid.NewGuid().ToString("N");

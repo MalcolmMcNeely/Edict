@@ -13,6 +13,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using Npgsql;
+
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
@@ -59,9 +61,21 @@ public static class EdictPostgresSiloBuilderExtensions
 
         silo.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
 
+        // Build the shared NpgsqlDataSource once at silo wiring time
+        // (ADR-0035). Every Postgres call-site — grain storage, table
+        // repositories, claim-check store, DDL bootstrap — runs against this
+        // one DataSource so the connection pool is owned in a single place
+        // with MaxPoolSize/MinPoolSize from EdictPostgresPersistenceOptions
+        // winning over any conflicting keyword in the supplied connection
+        // string. Registered via factory so the silo SP disposes it on
+        // container teardown — AddSingleton(instance) skips IDisposable
+        // tracking, factory form does not.
+        var dataSource = BuildDataSource(options);
+        silo.Services.AddSingleton<NpgsqlDataSource>(_ => dataSource);
+
         if (options.BootstrapSchema)
         {
-            PostgresDdlBootstrap.Run(options.ConnectionString);
+            PostgresDdlBootstrap.Run(dataSource);
         }
 
         // Edict.Postgres ships its own grain-storage provider rather than
@@ -79,7 +93,7 @@ public static class EdictPostgresSiloBuilderExtensions
         {
             var clusterOptions = sp.GetRequiredService<IOptions<ClusterOptions>>().Value;
             return new EdictPostgresGrainStorage(
-                options.ConnectionString,
+                sp.GetRequiredService<NpgsqlDataSource>(),
                 clusterOptions.ServiceId,
                 sp.GetRequiredService<Serializer>(),
                 sp,
@@ -88,7 +102,12 @@ public static class EdictPostgresSiloBuilderExtensions
         // PubSubStore stays on Orleans' shipped AdoNet provider — its grain
         // type is Orleans-internal (PubSubRendezvousGrain) and no other
         // grain type shares its key shape, so the dotnet/orleans#9737 row
-        // collision does not bite here.
+        // collision does not bite here. Orleans' AdoNet provider owns its
+        // own connection-string-keyed Npgsql pool; that's two pools per
+        // silo (Edict's tuned one, plus Orleans' default-sized one for
+        // PubSubStore + Reminders). The PubSubStore/Reminders pool is not
+        // load-bearing for command throughput and so does not need the
+        // ADR-0035 tuning.
         silo.AddAdoNetGrainStorage("PubSubStore", opt =>
         {
             opt.Invariant = options.Invariant;
@@ -101,23 +120,41 @@ public static class EdictPostgresSiloBuilderExtensions
             opt.ConnectionString = options.ConnectionString;
         });
 
-        var connectionString = options.ConnectionString;
         var deadLetterTable = options.DeadLetterTableName;
         var claimCheckTable = options.ClaimCheckTableName;
 
         silo.Services.AddSingleton<IEdictTableStoreFactory>(sp =>
             new PostgresTableWriteStoreFactory(
-                connectionString,
+                sp.GetRequiredService<NpgsqlDataSource>(),
                 sp.GetRequiredService<Serializer>(),
                 sp));
 
         silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
             new PostgresTableRepository<EdictDeadLetterEntry>(
-                connectionString, deadLetterTable, sp.GetRequiredService<Serializer>()));
+                sp.GetRequiredService<NpgsqlDataSource>(),
+                deadLetterTable,
+                sp.GetRequiredService<Serializer>()));
 
-        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(
-            new PostgresClaimCheckStore(connectionString, claimCheckTable));
+        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(sp =>
+            new PostgresClaimCheckStore(
+                sp.GetRequiredService<NpgsqlDataSource>(),
+                claimCheckTable));
 
         return silo;
+    }
+
+    static NpgsqlDataSource BuildDataSource(EdictPostgresPersistenceOptions options)
+    {
+        // MaxPoolSize / MinPoolSize on the options surface win over any
+        // Maximum Pool Size / Minimum Pool Size keywords in the supplied
+        // connection string (ADR-0035). The options surface is the one
+        // obvious place to tune; conflicting keywords stay as a no-op
+        // record of intent rather than triggering a wiring-time warning.
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(options.ConnectionString)
+        {
+            MaxPoolSize = options.MaxPoolSize,
+            MinPoolSize = options.MinPoolSize,
+        };
+        return new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString).Build();
     }
 }

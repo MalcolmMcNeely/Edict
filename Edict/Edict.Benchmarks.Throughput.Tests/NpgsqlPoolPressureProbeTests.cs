@@ -42,7 +42,7 @@ public sealed class NpgsqlPoolPressureProbeTests
         _output = output;
     }
 
-    [Fact(Skip = "Issue #148 diagnostic probe — un-skip manually to run against live Kafka+Postgres containers (~1.5 min). Captures Npgsql connection-pool metrics during a Commands sweep at N ∈ {64, 256}; verdict against ADR-0029 thresholds is printed to ITestOutputHelper.")]
+    [Fact(Skip = "Issue #148 / #149 diagnostic probe — un-skip manually to run against live Kafka+Postgres containers (~1.5 min). Captures Npgsql connection-pool metrics during a Commands sweep at N ∈ {64, 256}; verdict against ADR-0029/ADR-0035 thresholds is printed to ITestOutputHelper.")]
     public async Task Probe_CommandsSweep_OnKafkaPostgres_ReportsPoolPressureVerdict()
     {
         var warmup = TimeSpan.FromSeconds(3);

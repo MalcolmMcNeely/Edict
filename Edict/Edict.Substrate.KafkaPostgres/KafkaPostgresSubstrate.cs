@@ -10,6 +10,8 @@ using Edict.Postgres.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans.Hosting;
 using Orleans.Serialization;
 
@@ -72,6 +74,7 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
 {
     readonly PostgreSqlContainer _postgresContainer;
     readonly KafkaContainer _kafkaContainer;
+    readonly NpgsqlDataSource _dataSource;
 
     internal KafkaPostgresSubstrateRuntime(
         PostgreSqlContainer postgresContainer,
@@ -83,10 +86,13 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
     {
         _postgresContainer = postgresContainer;
         _kafkaContainer = kafkaContainer;
+        _dataSource = new NpgsqlDataSourceBuilder(postgresConnectionString).Build();
         PostgresConnectionString = postgresConnectionString;
         BootstrapServers = bootstrapServers;
         ConsumerGroupId = consumerGroupId;
         KafkaAutoOffsetReset = kafkaAutoOffsetReset;
+
+        var dataSource = _dataSource;
 
         ConfigureSilo = silo =>
         {
@@ -113,9 +119,10 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
                 .AddAssembly(typeof(KafkaPostgresSubstrate).Assembly)
                 .AddEdictContractSerializer());
             client.Services.AddEdict();
+            client.Services.AddSingleton(dataSource);
             client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    postgresConnectionString,
+                    sp.GetRequiredService<NpgsqlDataSource>(),
                     KafkaPostgresSubstrate.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         };
@@ -146,13 +153,14 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
         ArgumentNullException.ThrowIfNull(sp);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         return new PostgresTableRepository<TRow>(
-            PostgresConnectionString,
+            _dataSource,
             tableName,
             sp.GetRequiredService<Serializer>());
     }
 
     public async ValueTask DisposeAsync()
     {
+        await _dataSource.DisposeAsync();
         await _postgresContainer.DisposeAsync();
         await _kafkaContainer.DisposeAsync();
     }

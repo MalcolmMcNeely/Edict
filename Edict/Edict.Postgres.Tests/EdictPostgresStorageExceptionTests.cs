@@ -82,6 +82,9 @@ public sealed class EdictPostgresStorageExceptionTests
     const string UnreachableConnectionString =
         "Host=127.0.0.1;Port=1;Username=u;Password=p;Database=d;Timeout=2;Command Timeout=2";
 
+    static NpgsqlDataSource UnreachableDataSource() =>
+        new NpgsqlDataSourceBuilder(UnreachableConnectionString).Build();
+
     static Serializer EmptySerializer()
     {
         var services = new ServiceCollection();
@@ -97,7 +100,7 @@ public sealed class EdictPostgresStorageExceptionTests
     [Fact]
     public async Task TableRepository_GetAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var repo = new PostgresTableRepository<DummyRow>(UnreachableConnectionString, "dummy_table", EmptySerializer());
+        var repo = new PostgresTableRepository<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => repo.GetAsync("pk", "rk"));
@@ -106,7 +109,7 @@ public sealed class EdictPostgresStorageExceptionTests
     [Fact]
     public async Task TableRepository_QueryPartitionAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var repo = new PostgresTableRepository<DummyRow>(UnreachableConnectionString, "dummy_table", EmptySerializer());
+        var repo = new PostgresTableRepository<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => repo.QueryPartitionAsync("pk"));
@@ -115,7 +118,7 @@ public sealed class EdictPostgresStorageExceptionTests
     [Fact]
     public async Task ClaimCheckStore_PutAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var store = new PostgresClaimCheckStore(UnreachableConnectionString, "edict_claim_check");
+        var store = new PostgresClaimCheckStore(UnreachableDataSource(), "edict_claim_check");
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => store.PutAsync(new byte[] { 0x01 }, CancellationToken.None));
@@ -124,7 +127,7 @@ public sealed class EdictPostgresStorageExceptionTests
     [Fact]
     public async Task ClaimCheckStore_GetAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var store = new PostgresClaimCheckStore(UnreachableConnectionString, "edict_claim_check");
+        var store = new PostgresClaimCheckStore(UnreachableDataSource(), "edict_claim_check");
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => store.GetAsync(Guid.NewGuid().ToString("N"), CancellationToken.None));
@@ -133,7 +136,7 @@ public sealed class EdictPostgresStorageExceptionTests
     [Fact]
     public async Task TableWriteStoreFactory_UpsertRowAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var factory = new PostgresTableWriteStoreFactory(UnreachableConnectionString, EmptySerializer());
+        var factory = new PostgresTableWriteStoreFactory(UnreachableDataSource(), EmptySerializer());
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => factory.UpsertRowAsync("dummy_table", "pk", "rk", new DummyRow { Value = "x" }));

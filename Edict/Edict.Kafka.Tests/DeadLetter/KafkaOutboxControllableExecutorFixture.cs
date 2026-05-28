@@ -19,6 +19,8 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans;
 using Orleans.Hosting;
 using Orleans.Serialization;
@@ -41,6 +43,7 @@ public sealed class KafkaOutboxControllableExecutorFixture : ConformanceFixture
     string _databaseConnectionString = "";
     string _bootstrapServers = "";
     string _consumerGroup = "";
+    NpgsqlDataSource _dataSource = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -56,13 +59,13 @@ public sealed class KafkaOutboxControllableExecutorFixture : ConformanceFixture
 
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new PostgresTableRepository<T>(
-            _databaseConnectionString,
+            _dataSource,
             tableName,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override IEdictTableStoreFactory TableStoreFactory =>
         new PostgresTableWriteStoreFactory(
-            _databaseConnectionString,
+            _dataSource,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override async Task InitializeAsync()
@@ -74,6 +77,7 @@ public sealed class KafkaOutboxControllableExecutorFixture : ConformanceFixture
         var databaseName = $"edict_{Guid.NewGuid():N}";
         _databaseConnectionString =
             await PostgresDatabaseFactory.CreateDatabaseAsync(_adminConnectionString, databaseName);
+        _dataSource = new NpgsqlDataSourceBuilder(_databaseConnectionString).Build();
 
         var context = new KafkaClusterContext(
             _bootstrapServers,
@@ -98,6 +102,10 @@ public sealed class KafkaOutboxControllableExecutorFixture : ConformanceFixture
         if (Cluster is not null)
         {
             await Cluster.DisposeAsync();
+        }
+        if (_dataSource is not null)
+        {
+            await _dataSource.DisposeAsync();
         }
         KafkaClusterContextRegistry.Unregister(_contextKey);
     }
@@ -166,9 +174,11 @@ public sealed class KafkaOutboxControllableExecutorFixture : ConformanceFixture
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
+            clientBuilder.Services.AddSingleton(
+                new NpgsqlDataSourceBuilder(ctx.PostgresConnectionString).Build());
             clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    ctx.PostgresConnectionString,
+                    sp.GetRequiredService<NpgsqlDataSource>(),
                     ctx.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         }

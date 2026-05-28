@@ -34,20 +34,20 @@ namespace Edict.Postgres.Persistence;
 /// </summary>
 internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
 {
-    readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly string _serviceId;
     readonly Serializer _serializer;
     readonly IServiceProvider _services;
     readonly ILogger<EdictPostgresGrainStorage> _logger;
 
     public EdictPostgresGrainStorage(
-        string connectionString,
+        NpgsqlDataSource dataSource,
         string serviceId,
         Serializer serializer,
         IServiceProvider services,
         ILogger<EdictPostgresGrainStorage> logger)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _serviceId = serviceId;
         _serializer = serializer;
         _services = services;
@@ -61,8 +61,7 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await _dataSource.OpenConnectionAsync();
             await using var command = connection.CreateCommand();
             command.CommandText =
                 "SELECT payload, version FROM edict_grain_state " +
@@ -111,8 +110,7 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await _dataSource.OpenConnectionAsync();
 
             if (grainState.ETag is null)
             {
@@ -174,8 +172,7 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await _dataSource.OpenConnectionAsync();
             await using var command = connection.CreateCommand();
             command.CommandText =
                 "DELETE FROM edict_grain_state " +

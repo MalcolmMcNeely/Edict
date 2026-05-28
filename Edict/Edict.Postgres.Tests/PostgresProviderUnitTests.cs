@@ -24,12 +24,14 @@ namespace Edict.Postgres.Tests;
 public sealed class PostgresProviderUnitTests
 {
     readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly Serializer _serializer;
     readonly IServiceProvider _services;
 
     public PostgresProviderUnitTests(PostgresClusterFixture fixture)
     {
         _connectionString = fixture.PostgresConnectionString;
+        _dataSource = new NpgsqlDataSourceBuilder(_connectionString).Build();
         var services = new ServiceCollection();
         services.AddSerializer(s => s.AddAssembly(typeof(OrderTableRow).Assembly));
         _services = services.BuildServiceProvider();
@@ -57,7 +59,7 @@ public sealed class PostgresProviderUnitTests
     [Fact]
     public async Task ClaimCheckStore_ShouldRoundTripBytes()
     {
-        var store = new PostgresClaimCheckStore(_connectionString, "edict_claim_check");
+        var store = new PostgresClaimCheckStore(_dataSource, "edict_claim_check");
         var payload = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF, 0x10, 0x20, 0x30, 0x40 };
 
         var key = await store.PutAsync(payload, CancellationToken.None);
@@ -71,14 +73,14 @@ public sealed class PostgresProviderUnitTests
     public async Task TableRepository_ShouldRoundTripRowViaMessagePackPayload()
     {
         var tableName = $"unit_round_trip_{Guid.NewGuid():N}";
-        var factory = new PostgresTableWriteStoreFactory(_connectionString, _serializer, _services);
+        var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer, _services);
         var store = await factory.CreateAsync<OrderTableRow>(tableName);
 
         var partitionKey = Guid.NewGuid().ToString();
         var rowKey = Guid.NewGuid().ToString();
         await store.UpsertAsync(partitionKey, rowKey, new OrderTableRow { OrderCount = 42 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_connectionString, tableName, _serializer);
+        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
         var row = await repository.GetAsync(partitionKey, rowKey);
         Assert.NotNull(row);
         Assert.Equal(42, row!.OrderCount);
@@ -88,7 +90,7 @@ public sealed class PostgresProviderUnitTests
     public async Task TableRepository_ShouldRespectCompositeKey()
     {
         var tableName = $"unit_composite_{Guid.NewGuid():N}";
-        var factory = new PostgresTableWriteStoreFactory(_connectionString, _serializer, _services);
+        var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer, _services);
         var store = await factory.CreateAsync<OrderTableRow>(tableName);
 
         var partitionKey = Guid.NewGuid().ToString();
@@ -96,7 +98,7 @@ public sealed class PostgresProviderUnitTests
         await store.UpsertAsync(partitionKey, "rk-b", new OrderTableRow { OrderCount = 2 });
         await store.UpsertAsync("other-pk", "rk-a", new OrderTableRow { OrderCount = 99 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_connectionString, tableName, _serializer);
+        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
         var a = await repository.GetAsync(partitionKey, "rk-a");
         var b = await repository.GetAsync(partitionKey, "rk-b");
         Assert.Equal(1, a!.OrderCount);
@@ -107,7 +109,7 @@ public sealed class PostgresProviderUnitTests
     public async Task TableRepository_ShouldRangeScanByPartition()
     {
         var tableName = $"unit_range_{Guid.NewGuid():N}";
-        var factory = new PostgresTableWriteStoreFactory(_connectionString, _serializer, _services);
+        var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer, _services);
         var store = await factory.CreateAsync<OrderTableRow>(tableName);
 
         var partitionKey = Guid.NewGuid().ToString();
@@ -117,7 +119,7 @@ public sealed class PostgresProviderUnitTests
         }
         await store.UpsertAsync("other-pk", "rk-1", new OrderTableRow { OrderCount = 999 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_connectionString, tableName, _serializer);
+        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
         var rows = await repository.QueryPartitionAsync(partitionKey);
         Assert.Equal(5, rows.Count);
         Assert.Equal([1, 2, 3, 4, 5], rows.Select(r => r.OrderCount).OrderBy(c => c).ToArray());
@@ -127,10 +129,10 @@ public sealed class PostgresProviderUnitTests
     public async Task TableRepository_ShouldReturnNullForMissingRow()
     {
         var tableName = $"unit_missing_{Guid.NewGuid():N}";
-        var factory = new PostgresTableWriteStoreFactory(_connectionString, _serializer, _services);
+        var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer, _services);
         await factory.CreateAsync<OrderTableRow>(tableName);
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_connectionString, tableName, _serializer);
+        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
         var row = await repository.GetAsync(Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
         Assert.Null(row);
     }
@@ -139,7 +141,7 @@ public sealed class PostgresProviderUnitTests
     public async Task TableRepository_ShouldReturnEmpty_WhenTableDoesNotExist()
     {
         var repository = new PostgresTableRepository<OrderTableRow>(
-            _connectionString, $"unit_nonexistent_{Guid.NewGuid():N}", _serializer);
+            _dataSource, $"unit_nonexistent_{Guid.NewGuid():N}", _serializer);
 
         var rows = await repository.QueryPartitionAsync("anything");
         Assert.Empty(rows);
@@ -152,7 +154,7 @@ public sealed class PostgresProviderUnitTests
         // AddEdictPostgresPersistence. Re-run synchronously and confirm the
         // existing tables stay in place — no DROP, no rename, no exception.
         var tablesBefore = await ListPublicTablesAsync();
-        Edict.Postgres.Bootstrap.PostgresDdlBootstrap.Run(_connectionString);
+        Edict.Postgres.Bootstrap.PostgresDdlBootstrap.Run(_dataSource);
         var tablesAfter = await ListPublicTablesAsync();
 
         Assert.Equal(tablesBefore.OrderBy(t => t), tablesAfter.OrderBy(t => t));

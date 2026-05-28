@@ -17,10 +17,9 @@ internal static class PostgresDdlBootstrap
     const string RemindersScriptResource = "Edict.Postgres.Sql.PostgreSQL-Reminders.sql";
     const string EdictBootstrapResource = "Edict.Postgres.Sql.EdictPostgres-Bootstrap.sql";
 
-    internal static void Run(string connectionString)
+    internal static void Run(NpgsqlDataSource dataSource)
     {
-        using var connection = new NpgsqlConnection(connectionString);
-        connection.Open();
+        using var connection = dataSource.OpenConnection();
 
         // Orleans scripts are gated by their canonical table to make rerun a
         // no-op. The scripts use `CREATE TABLE`, not `CREATE TABLE IF NOT

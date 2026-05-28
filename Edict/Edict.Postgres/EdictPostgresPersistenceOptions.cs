@@ -53,4 +53,33 @@ public sealed class EdictPostgresPersistenceOptions
     /// deployment pipeline already manages the schema.
     /// </summary>
     public bool BootstrapSchema { get; set; } = true;
+
+    /// <summary>
+    /// Upper bound on connections held by the shared <c>NpgsqlDataSource</c>
+    /// the silo wires at startup (ADR-0035). Default <c>200</c> gives a single
+    /// silo 2× headroom against the published <c>N = 256</c> closed-loop sweep
+    /// point and absorbs the projection/idempotency grain-turn demand that
+    /// does not appear in the headline EPS number. Trade-off: each silo's
+    /// <c>MaxPoolSize</c> is a multiplier against Postgres
+    /// <c>max_connections</c> — a 5-silo fleet at the default demands
+    /// <c>1000</c> connections, well above Postgres 16's default
+    /// <c>max_connections = 100</c>, so a multi-silo deployment must raise
+    /// the Postgres ceiling or lower this knob. Wins over any
+    /// <c>Maximum Pool Size</c> keyword in
+    /// <see cref="ConnectionString"/> — the options surface is the one
+    /// obvious place to tune.
+    /// </summary>
+    public int MaxPoolSize { get; set; } = 200;
+
+    /// <summary>
+    /// Minimum number of connections the shared <c>NpgsqlDataSource</c>
+    /// pre-creates at startup (ADR-0035). Default <c>10</c> absorbs the slow
+    /// <c>create_time</c> tail observed by probe #148 at <c>N = 64</c>
+    /// (p99 1.31 s per new pooled connection) so first-burst traffic does
+    /// not pay establishment latency. Trade-off: 10 idle TCP sessions per
+    /// silo against the Postgres connection budget — cheap on the
+    /// pooling axis, negligible on the substrate axis. Wins over any
+    /// <c>Minimum Pool Size</c> keyword in <see cref="ConnectionString"/>.
+    /// </summary>
+    public int MinPoolSize { get; set; } = 10;
 }

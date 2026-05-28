@@ -7,6 +7,8 @@ using Edict.Core.Serialization;
 using Edict.Postgres.TableStorage;
 using Edict.Telemetry;
 
+using Npgsql;
+
 using Orleans.Serialization;
 
 using Sample.Contracts.Fulfillment.Projections;
@@ -40,15 +42,21 @@ var postgresConnectionString = builder.Configuration.GetConnectionString("appdb"
     ?? throw new InvalidOperationException(
         "Postgres connection string 'appdb' missing. Run via Sample.KafkaPostgres.AppHost.");
 
+// The Web process holds its own NpgsqlDataSource for the read-side
+// projection repositories. The silo's tuned DataSource (ADR-0035) lives in
+// the silo process and is unreachable from here; default pool sizing is
+// fine because the Web read path is not the throughput-sensitive surface.
+builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(postgresConnectionString).Build());
+
 builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(sp =>
     new PostgresTableRepository<OrderStatusRow>(
-        postgresConnectionString, "ordersbystatus", sp.GetRequiredService<Serializer>()));
+        sp.GetRequiredService<NpgsqlDataSource>(), "ordersbystatus", sp.GetRequiredService<Serializer>()));
 builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(sp =>
     new PostgresTableRepository<OrderOutcomeRow>(
-        postgresConnectionString, "orderoutcome", sp.GetRequiredService<Serializer>()));
+        sp.GetRequiredService<NpgsqlDataSource>(), "orderoutcome", sp.GetRequiredService<Serializer>()));
 builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(sp =>
     new PostgresTableRepository<LineItemFulfillmentRow>(
-        postgresConnectionString, "lineitemfulfillment", sp.GetRequiredService<Serializer>()));
+        sp.GetRequiredService<NpgsqlDataSource>(), "lineitemfulfillment", sp.GetRequiredService<Serializer>()));
 
 // The framework projection writes to the literal table named by
 // EdictDeadLetterProjectionBuilder.DeadLetterPartition; AddEdictPostgresPersistence's
@@ -57,7 +65,7 @@ builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(sp 
 // table to see what the projection actually wrote.
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
     new PostgresTableRepository<EdictDeadLetterEntry>(
-        postgresConnectionString,
+        sp.GetRequiredService<NpgsqlDataSource>(),
         EdictDeadLetterProjectionBuilder.DeadLetterPartition,
         sp.GetRequiredService<Serializer>()));
 

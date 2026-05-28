@@ -17,6 +17,8 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans;
 using Orleans.Hosting;
 using Orleans.Serialization;
@@ -41,6 +43,7 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
     string _databaseConnectionString = "";
     string _bootstrapServers = "";
     string _consumerGroup = "";
+    NpgsqlDataSource _dataSource = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -49,6 +52,8 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
     public string PostgresConnectionString => _databaseConnectionString;
+
+    public NpgsqlDataSource PostgresDataSource => _dataSource;
 
     public string DeadLetterTableName { get; } = "edict_dead_letter";
 
@@ -69,6 +74,7 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
         var databaseName = $"edict_{Guid.NewGuid():N}";
         _databaseConnectionString =
             await PostgresDatabaseFactory.CreateDatabaseAsync(_adminConnectionString, databaseName);
+        _dataSource = new NpgsqlDataSourceBuilder(_databaseConnectionString).Build();
 
         var context = new KafkaClusterContext(
             _bootstrapServers,
@@ -93,6 +99,10 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
         if (Cluster is not null)
         {
             await Cluster.DisposeAsync();
+        }
+        if (_dataSource is not null)
+        {
+            await _dataSource.DisposeAsync();
         }
         KafkaClusterContextRegistry.Unregister(_contextKey);
         if (_kafka is not null)
@@ -162,9 +172,11 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
+            clientBuilder.Services.AddSingleton(
+                new NpgsqlDataSourceBuilder(ctx.PostgresConnectionString).Build());
             clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    ctx.PostgresConnectionString,
+                    sp.GetRequiredService<NpgsqlDataSource>(),
                     ctx.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         }

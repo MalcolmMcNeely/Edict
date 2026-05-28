@@ -43,7 +43,7 @@ public sealed class KafkaSiloKilledMidHandlerTests(KafkaSiloKillClusterFixture f
 
         var serializer = fixture.Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
         var repository = new PostgresTableRepository<KafkaSiloKillTableRow>(
-            fixture.PostgresConnectionString,
+            fixture.PostgresDataSource,
             KafkaSiloKillProjectionBuilder.Table,
             serializer);
 

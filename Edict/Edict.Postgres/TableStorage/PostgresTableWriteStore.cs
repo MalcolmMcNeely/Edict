@@ -19,13 +19,13 @@ namespace Edict.Postgres.TableStorage;
 internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
     where T : class, new()
 {
-    readonly string _connectionString;
+    readonly NpgsqlDataSource _dataSource;
     readonly string _tableName;
     readonly Serializer _serializer;
 
-    internal PostgresTableWriteStore(string connectionString, string tableName, Serializer serializer)
+    internal PostgresTableWriteStore(NpgsqlDataSource dataSource, string tableName, Serializer serializer)
     {
-        _connectionString = connectionString;
+        _dataSource = dataSource;
         _tableName = tableName;
         _serializer = serializer;
     }
@@ -35,8 +35,7 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
@@ -64,8 +63,7 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
 
         try
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"INSERT INTO {quoted} (partition_key, row_key, payload, etag) " +

@@ -12,14 +12,13 @@ namespace Edict.Postgres.TableStorage;
 internal static class PostgresTableSchema
 {
     internal static async Task EnsureProjectionTableAsync(
-        string connectionString,
+        NpgsqlDataSource dataSource,
         string tableName,
         CancellationToken ct)
     {
         try
         {
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync(ct);
+            await using var connection = await dataSource.OpenConnectionAsync(ct);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(tableName)} (" +

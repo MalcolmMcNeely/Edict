@@ -19,6 +19,8 @@ using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Npgsql;
+
 using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -41,6 +43,7 @@ public sealed class PostgresClusterFixture : ConformanceFixture
     string _adminConnectionString = "";
     string _databaseConnectionString = "";
     string _azuriteConnectionString = "";
+    NpgsqlDataSource _dataSource = null!;
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
     QueueServiceClient _queueServiceClient = null!;
@@ -61,13 +64,13 @@ public sealed class PostgresClusterFixture : ConformanceFixture
 
     public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
         new PostgresTableRepository<T>(
-            _databaseConnectionString,
+            _dataSource,
             tableName,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override IEdictTableStoreFactory TableStoreFactory =>
         new PostgresTableWriteStoreFactory(
-            _databaseConnectionString,
+            _dataSource,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
     public override async Task InitializeAsync()
@@ -77,6 +80,7 @@ public sealed class PostgresClusterFixture : ConformanceFixture
 
         var databaseName = $"edict_{Guid.NewGuid():N}";
         _databaseConnectionString = await PostgresDatabaseFactory.CreateDatabaseAsync(_adminConnectionString, databaseName);
+        _dataSource = new NpgsqlDataSourceBuilder(_databaseConnectionString).Build();
 
         _tableServiceClient = new TableServiceClient(_azuriteConnectionString);
         _blobServiceClient = new BlobServiceClient(_azuriteConnectionString);
@@ -106,6 +110,10 @@ public sealed class PostgresClusterFixture : ConformanceFixture
         if (Cluster is not null)
         {
             await Cluster.DisposeAsync();
+        }
+        if (_dataSource is not null)
+        {
+            await _dataSource.DisposeAsync();
         }
         PostgresClusterContextRegistry.Unregister(_contextKey);
     }
@@ -170,9 +178,15 @@ public sealed class PostgresClusterFixture : ConformanceFixture
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
+            // Client-side dead-letter repository reads through its own
+            // NpgsqlDataSource — the silo-side singleton lives in the silo's
+            // service provider and isn't reachable from here. Default pool
+            // tuning is fine; the client read path isn't load-bearing.
+            clientBuilder.Services.AddSingleton(
+                new NpgsqlDataSourceBuilder(ctx.PostgresConnectionString).Build());
             clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    ctx.PostgresConnectionString,
+                    sp.GetRequiredService<NpgsqlDataSource>(),
                     ctx.DeadLetterTableName,
                     sp.GetRequiredService<Serializer>()));
         }
