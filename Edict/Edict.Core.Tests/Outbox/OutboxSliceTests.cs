@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
@@ -22,6 +24,15 @@ public sealed class OutboxSliceTests
         TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
         TraceState = null,
     };
+
+    [Fact]
+    public void Pending_ShouldBe_ImmutableList_ForStructuralSharing()
+    {
+        var slice = new OutboxSlice()
+            .Enqueue(Entry(EntryA, OutboxEffectKind.PublishEvent));
+
+        Assert.IsType<ImmutableList<OutboxEntry>>(slice.Pending);
+    }
 
     [Fact]
     public Task Enqueue_ShouldAppendToPendingTail()

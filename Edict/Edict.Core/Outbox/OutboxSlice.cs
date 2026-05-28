@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 using Edict.Contracts.Configuration;
 
 namespace Edict.Core.Outbox;
@@ -22,11 +24,11 @@ namespace Edict.Core.Outbox;
 public sealed record OutboxSlice
 {
     [Id(0)]
-    public List<OutboxEntry> Pending { get; init; } = [];
+    public ImmutableList<OutboxEntry> Pending { get; init; } = ImmutableList<OutboxEntry>.Empty;
 
     /// <summary>Appends an effect to the tail (insertion order).</summary>
     public OutboxSlice Enqueue(OutboxEntry entry) =>
-        this with { Pending = [.. Pending, entry] };
+        this with { Pending = Pending.Add(entry) };
 
     /// <summary>
     /// Removes the entry with <paramref name="entryId"/> after a successful
@@ -40,7 +42,7 @@ public sealed record OutboxSlice
             return this;
         }
 
-        return this with { Pending = [.. Pending.Take(index), .. Pending.Skip(index + 1)] };
+        return this with { Pending = Pending.RemoveAt(index) };
     }
 
     /// <summary>
@@ -68,7 +70,7 @@ public sealed record OutboxSlice
             NextAttemptUtc = OutboxBackoff.NextAttemptUtc(attempt, now, failing.EntryId, options),
         };
 
-        return this with { Pending = [.. Pending.Take(index), bumped, .. Pending.Skip(index + 1)] };
+        return this with { Pending = Pending.SetItem(index, bumped) };
     }
 
     /// <summary>
@@ -87,7 +89,7 @@ public sealed record OutboxSlice
             return this;
         }
 
-        return this with { Pending = [.. Pending.Take(index), .. Pending.Skip(index + 1), promoted] };
+        return this with { Pending = Pending.RemoveAt(index).Add(promoted) };
     }
 
     int IndexOf(Guid entryId)
