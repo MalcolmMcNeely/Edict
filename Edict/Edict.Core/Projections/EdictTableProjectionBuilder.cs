@@ -33,6 +33,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     IEdictTableWriteStore<T>? _writeStore;
     OutboxEntry? _pendingUpsert;
     Serializer? _cachedSerializer;
+    Orleans.Serialization.TypeSystem.TypeConverter? _cachedTypeConverter;
     readonly TableProjectionRowSlot<T> _rowSlot = new();
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
@@ -114,7 +115,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         // string that survives a class rename is what the drain resolves with
         // TypeConverter.Parse. Replaces the previous AssemblyQualifiedName hop
         // that dead-lettered on rename or move.
-        var typeConverter = ServiceProvider.GetRequiredService<Orleans.Serialization.TypeSystem.TypeConverter>();
+        var typeConverter = _cachedTypeConverter ??= ServiceProvider.GetRequiredService<Orleans.Serialization.TypeSystem.TypeConverter>();
         var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
         var effect = new UpsertRowEffect
         {

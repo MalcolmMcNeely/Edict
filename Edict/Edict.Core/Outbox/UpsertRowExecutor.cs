@@ -9,7 +9,11 @@ using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
-sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services) : IOutboxEffectExecutor
+sealed class UpsertRowExecutor(
+    Serializer serializer,
+    ObjectSerializer rowSerializer,
+    RowTypeResolver rowTypeResolver,
+    IServiceProvider services) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
@@ -26,9 +30,12 @@ sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services)
         using var activity = EdictDiagnostics.ActivitySource.StartEdictTableUpsert(
             effect.TableName, parentContext);
 
-        // The row is polymorphic-over-object: Orleans round-trips the concrete
-        // type via the same TypeConverter that captured its [Alias] at stage.
-        var row = serializer.Deserialize<object>(effect.RowBytes);
+        // Resolve the row's concrete CLR type from its frozen [Alias] literal
+        // and decode straight into that type via ObjectSerializer — skipping
+        // the polymorphic Deserialize<object> dispatch the previous codec hop
+        // required.
+        var rowType = rowTypeResolver.Resolve(effect.RowAlias);
+        var row = rowSerializer.Deserialize(effect.RowBytes, rowType);
 
         var factory = services.GetRequiredService<IEdictTableStoreFactory>();
         await factory.UpsertRowAsync(effect.TableName, effect.PartitionKey, effect.RowKey, row);

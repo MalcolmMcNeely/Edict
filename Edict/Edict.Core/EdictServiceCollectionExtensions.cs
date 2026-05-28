@@ -62,6 +62,14 @@ public static class EdictServiceCollectionExtensions
         var discoveredAccessors = EventStreamAccessorDiscovery.Discover(materialised, logger);
         var accessors = new Dictionary<Type, EdictEventStreamAccessor>(discoveredAccessors);
 
+        // EdictDeadLetterRaised lives in Edict.Contracts where the Edict
+        // generator does not run, so the per-assembly registrar mechanism
+        // cannot contribute its accessor. Hand-register it: the framework
+        // owns this event and its stream + route key are statically known.
+        accessors[typeof(EdictDeadLetterRaised)] = new EdictEventStreamAccessor(
+            "edict-dead-letter",
+            static evt => ((EdictDeadLetterRaised)evt).SingletonKey);
+
         services.AddValidatorsFromAssemblies(materialised);
 
         services.AddSingleton(new CommandRouteResolver(routes));

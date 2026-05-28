@@ -35,6 +35,7 @@ public static class OutboxServiceCollectionExtensions
         }
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<RowTypeResolver>();
         services.AddSingleton<IOutboxEffectExecutor, PublishEventExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, SendCommandExecutor>();
         services.AddSingleton<IOutboxEffectExecutor, UpsertRowExecutor>();
