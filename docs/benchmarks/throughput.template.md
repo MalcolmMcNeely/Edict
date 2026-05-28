@@ -1,6 +1,6 @@
 # Edict throughput
 
-Machine: {{machine_class}}
+Machine: {{machine_class}} / AMD Ryzen AI 9 365 @ 2.0 GHz / 64 GB RAM
 .NET version: {{dotnet_version}}
 Azure run date: {{run_date:azure}}
 Kafka × Postgres run date: {{run_date:kafkapostgres}}
