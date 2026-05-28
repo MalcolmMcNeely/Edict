@@ -93,4 +93,27 @@ public sealed class ActivityExtensionsTests : IDisposable
         var result = ActivityExtensions.RestoreFromStrings(null, null, null);
         Assert.Equal(default, result);
     }
+
+    [Fact]
+    public void BuildTraceParent_Activity_ShouldReturnW3CFormatReflectingRecordingFlag()
+    {
+        Activity? captured;
+        string? traceParent;
+        using (var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test"))
+        {
+            captured = activity;
+            traceParent = activity!.BuildTraceParent();
+        }
+
+        var expectedFlags = (captured!.ActivityTraceFlags & ActivityTraceFlags.Recorded) != 0 ? "01" : "00";
+        Assert.Equal($"00-{captured.TraceId.ToHexString()}-{captured.SpanId.ToHexString()}-{expectedFlags}", traceParent);
+    }
+
+    [Fact]
+    public void BuildTraceParent_Activity_ShouldReturnActivityIdReference()
+    {
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test");
+
+        Assert.Same(activity!.Id, activity.BuildTraceParent());
+    }
 }

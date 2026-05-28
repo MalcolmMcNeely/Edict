@@ -200,8 +200,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         }
         else if (Activity.Current is { } current)
         {
-            traceParent = ActivityExtensions.BuildTraceParent(
-                current.TraceId.ToHexString(), current.SpanId.ToHexString());
+            traceParent = current.BuildTraceParent();
             traceState = current.TraceStateString;
         }
         else

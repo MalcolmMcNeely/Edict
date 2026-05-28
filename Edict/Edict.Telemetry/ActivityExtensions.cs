@@ -76,6 +76,16 @@ public static class ActivityExtensions
         => $"00-{traceId}-{spanId}-01";
 
     /// <summary>
+    /// Returns the W3C <c>traceparent</c> for an <see cref="Activity"/> using
+    /// its lazily-cached <see cref="Activity.Id"/>. Zero per-call allocation
+    /// after first read, and the flag byte reflects the activity's actual
+    /// recording decision instead of the forced <c>-01</c> of the string-pair
+    /// overload.
+    /// </summary>
+    public static string BuildTraceParent(this Activity activity)
+        => activity.Id!;
+
+    /// <summary>
     /// Reconstitutes an <see cref="ActivityContext"/> from a W3C
     /// <c>traceparent</c> produced by <see cref="BuildTraceParent"/>. Returns
     /// <see langword="default"/> when absent or malformed.

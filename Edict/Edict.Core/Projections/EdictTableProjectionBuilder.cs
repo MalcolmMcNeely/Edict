@@ -132,9 +132,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         // Nest the deferred upsert under the live handle span as parent-child,
         // even when a crash-recovery drain runs much later.
         var current = Activity.Current;
-        var traceParent = current is not null
-            ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
-            : null;
+        var traceParent = current?.BuildTraceParent();
 
         return new OutboxEntry
         {
