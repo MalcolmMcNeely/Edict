@@ -117,6 +117,14 @@ public sealed class AzureClusterFixture : ConformanceFixture
 
             siloBuilder.AddActivityPropagation();
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            // Azurite first-time blob/table provisioning under a burst of
+            // cold grain activations can run past Orleans' default 30s
+            // response timeout; the bumped timeout gives the silo headroom
+            // (mirrors the precedent in EdictAzureSiloBuilderExtensionsClusterFixture).
+            siloBuilder.Configure<global::Orleans.Configuration.SiloMessagingOptions>(o =>
+            {
+                o.ResponseTimeout = TimeSpan.FromMinutes(2);
+            });
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
@@ -169,6 +177,10 @@ public sealed class AzureClusterFixture : ConformanceFixture
 
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
+            clientBuilder.Configure<global::Orleans.Configuration.ClientMessagingOptions>(o =>
+            {
+                o.ResponseTimeout = TimeSpan.FromMinutes(2);
+            });
             clientBuilder.Services.AddSingleton(ctx.TableServiceClient);
             clientBuilder.Services.AddEdict();
             clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
