@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    ADR-0034: Interceptor fast-path for consumer-facing dispatch APIs.
+
+    The shipped Edict.Core.targets file is auto-imported by any consumer that
+    PackageReferences Edict.Core. For in-repo ProjectReference consumers the
+    same effect is needed without packing, so we mirror the property here.
+    The unified Edict generator emits per-type Send/Raise/Dispatch interceptor
+    stubs into the `Edict.Generated` namespace; the Roslyn 5.0 C# compiler
+    only recognises `[InterceptsLocation]` attributes whose namespace appears
+    in this list.
+
+    Projects that do not reference the generator (Edict framework assemblies,
+    contracts-only consumers) emit no interceptor files, so the property is a
+    no-op for them. `EdictInterceptorsEnabled=false` makes the generator
+    short-circuit emission and reverts every call site to the registrar.
+  -->
+
+  <PropertyGroup>
+    <EdictInterceptorsEnabled Condition="'$(EdictInterceptorsEnabled)' == ''">true</EdictInterceptorsEnabled>
+    <InterceptorsNamespaces Condition="'$(EdictInterceptorsEnabled)' == 'true'">$(InterceptorsNamespaces);Edict.Generated</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="EdictInterceptorsEnabled" />
+  </ItemGroup>
+
+</Project>

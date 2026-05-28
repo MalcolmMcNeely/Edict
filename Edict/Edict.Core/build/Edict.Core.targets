@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    ADR-0034: Interceptor fast-path for consumer-facing dispatch APIs.
+
+    This targets file ships in the Edict.Core nuget package and is
+    auto-imported by any consumer csproj that PackageReferences Edict.Core.
+    It tells the Roslyn 5.0 C# compiler to recognise [InterceptsLocation]
+    attributes emitted into the `Edict.Generated` namespace by the unified
+    Edict generator (Edict.Generators).
+
+    Consumers do not need to edit their csproj — referencing Edict.Core is
+    enough to opt the project into the fast path. `<EdictInterceptorsEnabled>`
+    is an experimental escape hatch read by the generator via
+    AnalyzerConfigOptions; setting it to `false` reverts every call site to
+    the registrar-based slow path.
+  -->
+
+  <PropertyGroup>
+    <EdictInterceptorsEnabled Condition="'$(EdictInterceptorsEnabled)' == ''">true</EdictInterceptorsEnabled>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Edict.Generated</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="EdictInterceptorsEnabled" />
+  </ItemGroup>
+
+</Project>

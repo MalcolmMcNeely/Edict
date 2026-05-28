@@ -101,6 +101,20 @@ public abstract class EdictCommandHandler<TState>
     }
 
     /// <summary>
+    /// Generator-only fast path called by the per-type Raise interceptor stubs
+    /// (ADR-0034). Identical semantics to <see cref="Raise"/> on the typed
+    /// argument — the win is a monomorphic typed call site so the JIT can
+    /// devirtualize the record-<c>with</c> clone. Not a stable public API; the
+    /// interceptor emitter is the only caller.
+    /// </summary>
+    public void RaiseFast<TEvent>(TEvent theEvent) where TEvent : EdictEvent
+    {
+        ArgumentNullException.ThrowIfNull(theEvent);
+        var time = _timeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
+        (_raisedEvents ??= []).Add(theEvent with { OccurredAt = time.GetUtcNow() });
+    }
+
+    /// <summary>
     /// Stages buffered events as <see cref="OutboxEffectKind.PublishEvent"/>
     /// entries, commits <c>{ State, Outbox }</c> in one write, then awaits the
     /// inline FIFO drain. Called by the generated <c>Dispatch</c> after

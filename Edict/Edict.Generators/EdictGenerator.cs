@@ -144,5 +144,108 @@ public sealed class EdictGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(sagaGrains, static (spc, grain) =>
             spc.AddSource($"{grain.Namespace}.{grain.GrainName}.Saga.g.cs",
                 SourceText.From(SagaGrainSpineEmitter.Emit(grain), Encoding.UTF8)));
+
+        // Interceptors ────────────────────────────────────────────────────────
+        // ADR-0034. Per-type intercept stubs for concrete-typed
+        // IEdictSender.Send / EdictCommandHandler.Raise / EdictSaga.Dispatch
+        // call sites. Generator-driven fast path; the registrars stay
+        // load-bearing for deferred dispatch from persisted state.
+        var interceptorsEnabled = context.AnalyzerConfigOptionsProvider
+            .Select(static (options, _) =>
+                !options.GlobalOptions.TryGetValue("build_property.EdictInterceptorsEnabled", out var v)
+                || !string.Equals(v, "false", System.StringComparison.OrdinalIgnoreCase));
+
+        var sendInvocations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => SendInterceptorDiscovery.IsCandidate(node),
+                static (ctx, ct) => SendInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
+        var sendInterceptorBundles = sendInvocations.Collect()
+            .Combine(commandHandlers.Collect())
+            .Combine(interceptorsEnabled)
+            .Select(static (tuple, _) =>
+            {
+                var (invocationsAndGrains, enabled) = tuple;
+                if (!enabled)
+                {
+                    return System.Collections.Immutable.ImmutableArray<SendInterceptorEmitter.TypeBundle>.Empty;
+                }
+                var (invocations, grains) = invocationsAndGrains;
+                return SendInterceptorEmitter.Group(invocations, grains);
+            });
+
+        context.RegisterSourceOutput(sendInterceptorBundles, static (spc, bundles) =>
+        {
+            foreach (var bundle in bundles)
+            {
+                spc.AddSource(
+                    $"{StripGlobal(bundle.Command.Fqn)}.SendInterceptor.g.cs",
+                    SourceText.From(SendInterceptorEmitter.Emit(bundle), Encoding.UTF8));
+            }
+        });
+
+        var raiseInvocations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => RaiseInterceptorDiscovery.IsCandidate(node),
+                static (ctx, ct) => RaiseInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
+        var raiseInterceptorBundles = raiseInvocations.Collect()
+            .Combine(interceptorsEnabled)
+            .Select(static (tuple, _) =>
+            {
+                var (invocations, enabled) = tuple;
+                return enabled
+                    ? RaiseInterceptorEmitter.Group(invocations)
+                    : System.Collections.Immutable.ImmutableArray<RaiseInterceptorEmitter.TypeBundle>.Empty;
+            });
+
+        context.RegisterSourceOutput(raiseInterceptorBundles, static (spc, bundles) =>
+        {
+            foreach (var bundle in bundles)
+            {
+                spc.AddSource(
+                    $"{StripGlobal(bundle.EventFqn)}.RaiseInterceptor.g.cs",
+                    SourceText.From(RaiseInterceptorEmitter.Emit(bundle), Encoding.UTF8));
+            }
+        });
+
+        var dispatchInvocations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => DispatchInterceptorDiscovery.IsCandidate(node),
+                static (ctx, ct) => DispatchInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
+        var dispatchInterceptorBundles = dispatchInvocations.Collect()
+            .Combine(interceptorsEnabled)
+            .Select(static (tuple, _) =>
+            {
+                var (invocations, enabled) = tuple;
+                return enabled
+                    ? DispatchInterceptorEmitter.Group(invocations)
+                    : System.Collections.Immutable.ImmutableArray<DispatchInterceptorEmitter.TypeBundle>.Empty;
+            });
+
+        context.RegisterSourceOutput(dispatchInterceptorBundles, static (spc, bundles) =>
+        {
+            foreach (var bundle in bundles)
+            {
+                spc.AddSource(
+                    $"{StripGlobal(bundle.CommandFqn)}.DispatchInterceptor.g.cs",
+                    SourceText.From(DispatchInterceptorEmitter.Emit(bundle), Encoding.UTF8));
+            }
+        });
     }
+
+    static string StripGlobal(string fqn) =>
+        fqn.StartsWith("global::", System.StringComparison.Ordinal)
+            ? fqn.Substring("global::".Length)
+            : fqn;
 }

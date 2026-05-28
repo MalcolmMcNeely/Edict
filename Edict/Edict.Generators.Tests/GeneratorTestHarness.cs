@@ -4,6 +4,7 @@ using Edict.Generators;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Edict.Generators.Tests;
 
@@ -21,6 +22,10 @@ internal static class GeneratorTestHarness
             .Where(kvp => !kvp.Key.EndsWith(".EventHandler.g.cs", StringComparison.Ordinal))
             .Where(kvp => !kvp.Key.EndsWith(".Saga.g.cs", StringComparison.Ordinal))
             .Where(kvp => !kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith(".SendInterceptor.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith(".RaiseInterceptor.g.cs", StringComparison.Ordinal))
+            .Where(kvp => !kvp.Key.EndsWith(".DispatchInterceptor.g.cs", StringComparison.Ordinal))
+            .Where(kvp => kvp.Key != "Edict.Generated.InterceptsLocationAttribute.g.cs")
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
     public static IReadOnlyDictionary<string, string> RunEventGenerator(string consumerSource) =>
@@ -44,7 +49,29 @@ internal static class GeneratorTestHarness
             .Where(kvp => kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-    private static IReadOnlyDictionary<string, string> RunUnified(string consumerSource)
+    public static IReadOnlyDictionary<string, string> RunSendInterceptorGenerator(
+        string consumerSource, bool interceptorsEnabled = true) =>
+        RunUnified(consumerSource, interceptorsEnabled)
+            .Where(kvp => kvp.Key.EndsWith(".SendInterceptor.g.cs", StringComparison.Ordinal)
+                       || kvp.Key == "Edict.Generated.InterceptsLocationAttribute.g.cs")
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+    public static IReadOnlyDictionary<string, string> RunRaiseInterceptorGenerator(
+        string consumerSource, bool interceptorsEnabled = true) =>
+        RunUnified(consumerSource, interceptorsEnabled)
+            .Where(kvp => kvp.Key.EndsWith(".RaiseInterceptor.g.cs", StringComparison.Ordinal)
+                       || kvp.Key == "Edict.Generated.InterceptsLocationAttribute.g.cs")
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+    public static IReadOnlyDictionary<string, string> RunDispatchInterceptorGenerator(
+        string consumerSource, bool interceptorsEnabled = true) =>
+        RunUnified(consumerSource, interceptorsEnabled)
+            .Where(kvp => kvp.Key.EndsWith(".DispatchInterceptor.g.cs", StringComparison.Ordinal)
+                       || kvp.Key == "Edict.Generated.InterceptsLocationAttribute.g.cs")
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+    private static IReadOnlyDictionary<string, string> RunUnified(
+        string consumerSource, bool interceptorsEnabled = true)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
@@ -52,22 +79,58 @@ internal static class GeneratorTestHarness
             .Select(path => MetadataReference.CreateFromFile(path))
             .ToImmutableArray<MetadataReference>();
 
+        // Stable, non-empty file path so the InterceptableLocation base64 data
+        // does not encode build-host noise — the Verify snapshot must remain
+        // byte-identical across machines.
+        var parseOptions = CSharpParseOptions.Default
+            .WithLanguageVersion(LanguageVersion.Latest)
+            .WithFeatures(new[] { new KeyValuePair<string, string>("InterceptorsNamespaces", "Edict.Generated") });
+
         var compilation = CSharpCompilation.Create(
             assemblyName: "ConsumerUnderTest",
-            syntaxTrees: [CSharpSyntaxTree.ParseText(consumerSource)],
+            syntaxTrees: [CSharpSyntaxTree.ParseText(consumerSource, parseOptions, path: "Consumer.cs")],
             references: references,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var driver = CSharpGeneratorDriver
-            .Create(new EdictGenerator().AsSourceGenerator())
-            .RunGenerators(compilation);
+        var optionsProvider = new InterceptorsToggleOptionsProvider(interceptorsEnabled);
 
-        var result = driver.GetRunResult();
+        var driver = CSharpGeneratorDriver.Create(
+            generators: [new EdictGenerator().AsSourceGenerator()],
+            additionalTexts: ImmutableArray<AdditionalText>.Empty,
+            parseOptions: parseOptions,
+            optionsProvider: optionsProvider);
+
+        var ranDriver = driver.RunGenerators(compilation);
+
+        var result = ranDriver.GetRunResult();
 
         return result.GeneratedTrees
             .OrderBy(tree => tree.FilePath, StringComparer.Ordinal)
             .ToDictionary(
                 tree => Path.GetFileName(tree.FilePath),
                 tree => tree.GetText().ToString());
+    }
+
+    sealed class InterceptorsToggleOptionsProvider(bool interceptorsEnabled) : AnalyzerConfigOptionsProvider
+    {
+        public override AnalyzerConfigOptions GlobalOptions { get; } =
+            new ToggleOptions(interceptorsEnabled);
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
+
+        sealed class ToggleOptions(bool interceptorsEnabled) : AnalyzerConfigOptions
+        {
+            public override bool TryGetValue(string key, out string value)
+            {
+                if (key == "build_property.EdictInterceptorsEnabled")
+                {
+                    value = interceptorsEnabled ? "true" : "false";
+                    return true;
+                }
+                value = null!;
+                return false;
+            }
+        }
     }
 }

@@ -64,6 +64,18 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     protected void Dispatch(EdictCommand command) => _dispatchBuffer.Set(command);
 
     /// <summary>
+    /// Generator-only fast path called by the per-type saga Dispatch
+    /// interceptor stubs (ADR-0034). Identical semantics to
+    /// <see cref="Dispatch"/> on the typed argument — the win is a
+    /// monomorphic typed call site. Not a stable public API; the interceptor
+    /// emitter is the only caller. The single-command-per-event invariant
+    /// (<see cref="SagaDispatchBuffer.Set"/> throws on a second call) still
+    /// holds.
+    /// </summary>
+    public void DispatchFast<TCommand>(TCommand command) where TCommand : EdictCommand
+        => _dispatchBuffer.Set(command);
+
+    /// <summary>
     /// Resets the single outbound-command buffer before each handler so the
     /// one-command-per-event limit is scoped to one Event, then runs the
     /// handler. The buffered command is collected by

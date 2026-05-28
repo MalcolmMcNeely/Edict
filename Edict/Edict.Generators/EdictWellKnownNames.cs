@@ -68,6 +68,14 @@ internal static class EdictWellKnownNames
     public const string IEdictPersistedStateFqn =
         "global::Edict.Contracts.Persistence.IEdictPersistedState";
 
+    // ── Edict.Contracts.Sending ──────────────────────────────────────────────
+    public const string IEdictSenderFqn =
+        "global::Edict.Contracts.Sending.IEdictSender";
+
+    // ── Edict.Core.Commands.EdictSender ──────────────────────────────────────
+    public const string EdictSenderFqn =
+        "global::Edict.Core.Commands.EdictSender";
+
     // ── Orleans serialization attributes ─────────────────────────────────────
     public const string OrleansGenerateSerializerAttributeFqn =
         "global::Orleans.GenerateSerializerAttribute";

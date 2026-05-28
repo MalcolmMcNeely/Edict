@@ -53,12 +53,31 @@ var closedLoop = new ClosedLoopRunner();
 var saturation = new SaturationRunner();
 var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 
+// ADR-0034: indirect proof that the EdictInterceptorsEnabled build property
+// took effect. The Commands sweep below A/Bs the same workload against the
+// base-typed call site, so a single run produces both numbers regardless of
+// the toggle's value.
+var interceptorsEmitted = InterceptorProbe.SendInterceptorsEmitted();
+Console.WriteLine($"Send interceptors emitted: {(interceptorsEmitted ? "yes (fast path)" : "no (registrar slow path)")}");
+
 foreach (var substrate in substrates)
 {
     perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
     Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in commandsResults)
+    {
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
+    }
+
+    // ADR-0034 A/B: the typed scenario above exercises the interceptor fast
+    // path (when emitted); the base-typed scenario below forces the
+    // registrar slow path even when interceptors are present. Both must
+    // produce valid runs — the second proves the perf claim at the
+    // call-site level.
+    Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance (base-typed, slow path): N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+    var baseTypedResults = await closedLoop.RunCommandsBaseTypedSweepAsync(substrate, parallelisms, warmup, window);
+    foreach (var point in baseTypedResults)
     {
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
     }
@@ -70,8 +89,9 @@ foreach (var substrate in substrates)
         Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
     }
 
-    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + eventsResults.Count);
+    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + baseTypedResults.Count + eventsResults.Count);
     perSubstrate.AddRange(commandsResults);
+    perSubstrate.AddRange(baseTypedResults);
     perSubstrate.AddRange(eventsResults);
     combined.AddRange(perSubstrate);
 

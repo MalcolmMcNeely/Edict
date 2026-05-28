@@ -50,4 +50,10 @@
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
     </ItemGroup>
 
+    <!-- ADR-0034: ships Edict.Core.targets so consumers that PackageReference
+         Edict.Core auto-enrol in the interceptors-namespaces gate. -->
+    <ItemGroup>
+        <None Include="build\Edict.Core.targets" Pack="true" PackagePath="build" />
+    </ItemGroup>
+
 </Project>
