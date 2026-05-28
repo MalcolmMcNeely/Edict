@@ -18,8 +18,8 @@ A notification that something happened, broadcast on a domain stream to zero or 
 _Avoid_: assuming the event key equals the command key; treating the command→event Guid as a guaranteed-continuous correlation id (trace context, not the Guid, is what reliably stitches the chain).
 
 **Telemeterized**:
-An attribute placed on a primitive property of a `Command`/`Event` subclass that causes the generator to emit code writing the property as an OpenTelemetry tag on the active span.
-_Avoid_: runtime reflection; auto-tagging properties that are not annotated.
+An attribute placed on a primitive property of a `Command`/`Event` subclass that causes the generator to emit code writing the property as an OpenTelemetry tag of the form `edict.{snake_case_property_name}` on the active span — for a Command, the `edict.command` span; for an Event, both the `edict.event.publish` and `edict.event.handle` spans. The tag key is shared across declaring types so the same domain concept queries by a single key.
+_Avoid_: runtime reflection; auto-tagging properties that are not annotated; type-prefixing the tag key; tagging the `edict.event.deduplicated` span (forensic-only, no query story).
 
 **Command Handler**:
 The Guid-keyed aggregate grain that accepts Commands, performs the state change, and may raise Events, with framework-owned durable aggregate state.
