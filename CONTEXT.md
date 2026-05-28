@@ -58,8 +58,8 @@ A named Orleans stream that carries every event type for one domain, declared on
 _Avoid_: per-event-type streams; inferring the stream name from the CLR namespace; a publisher and subscriber naming the stream independently.
 
 **Table Projection Builder**:
-A Projection Builder whose read model lives in an external composite-key store instead of grain state, so grain activation stays small no matter how large the read model grows.
-_Avoid_: reading the store directly instead of via the Table Repository; putting the read model in grain state "to be safe"; treating "Table" as Azure-specific; putting an `ITableEntity`/storage type on the row.
+A Projection Builder whose read model lives in an external composite-key store instead of grain state, so grain activation stays small no matter how large the read model grows. The grain holds a transient last-touched-slot cache of the row in memory so consecutive events on the same `(pk, rk)` skip the store read; the *durable* read model still lives in the external store.
+_Avoid_: reading the store directly instead of via the Table Repository; putting the *durable* read model in grain state "to be safe"; treating "Table" as Azure-specific; putting an `ITableEntity`/storage type on the row.
 
 **Table Repository**:
 The framework-provided read-only, persistence-neutral interface (`IEdictTableRepository`) the application uses to read a Table Projection Builder's output.
