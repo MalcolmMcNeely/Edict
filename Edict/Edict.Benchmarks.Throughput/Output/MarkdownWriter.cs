@@ -23,8 +23,10 @@ public static partial class MarkdownWriter
         IReadOnlyList<SaturationResults>? saturation = null,
         TextWriter? warningSink = null)
     {
+        var saturationResults = saturation ?? [];
         var output = template.Replace("{{table:closed_loop}}", RenderClosedLoopTable(results));
-        output = output.Replace("{{table:saturation}}", RenderSaturationTable(saturation ?? []));
+        output = output.Replace("{{table:saturation}}", RenderSaturationTable(saturationResults));
+        output = output.Replace("{{section:run_health}}", RenderRunHealthSection(results, saturationResults));
         foreach (var pair in tokens)
         {
             output = output.Replace("{{" + pair.Key + "}}", pair.Value);
@@ -51,8 +53,8 @@ public static partial class MarkdownWriter
     static string RenderClosedLoopTable(IReadOnlyList<ThroughputResults> results)
     {
         var sb = new StringBuilder();
-        sb.Append("| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) |\n");
-        sb.Append("| --- | --- | --- | ---: | ---: | ---: |");
+        sb.Append("| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |\n");
+        sb.Append("| --- | --- | --- | ---: | ---: | ---: | :---: |");
         foreach (var r in results)
         {
             if (!ClosedLoopScenarios.Contains(r.Scenario) || !ClosedLoopParallelisms.Contains(r.Parallelism))
@@ -61,7 +63,7 @@ public static partial class MarkdownWriter
             }
             sb.Append('\n');
             sb.Append(CultureInfo.InvariantCulture,
-                $"| {r.Substrate} | {r.Scenario} | {r.Parallelism} | {r.Latency.P50.TotalMilliseconds:F2} | {r.Latency.P95.TotalMilliseconds:F2} | {r.Latency.P99.TotalMilliseconds:F2} |");
+                $"| {r.Substrate} | {r.Scenario} | {r.Parallelism} | {r.Latency.P50.TotalMilliseconds:F2} | {r.Latency.P95.TotalMilliseconds:F2} | {r.Latency.P99.TotalMilliseconds:F2} | {RenderHealthCell(r.Health)} |");
         }
         return sb.ToString();
     }
@@ -69,14 +71,63 @@ public static partial class MarkdownWriter
     static string RenderSaturationTable(IReadOnlyList<SaturationResults> results)
     {
         var sb = new StringBuilder();
-        sb.Append("| Substrate | Events / sec (end-to-end) |\n");
-        sb.Append("| --- | ---: |");
+        sb.Append("| Substrate | Events / sec (end-to-end) | Health |\n");
+        sb.Append("| --- | ---: | :---: |");
         foreach (var r in results)
         {
             sb.Append('\n');
-            sb.Append(CultureInfo.InvariantCulture, $"| {r.Substrate} | {r.EventsPerSecond:F0} |");
+            sb.Append(CultureInfo.InvariantCulture,
+                $"| {r.Substrate} | {r.EventsPerSecond:F0} | {RenderHealthCell(r.Health)} |");
         }
         return sb.ToString();
+    }
+
+    static string RenderHealthCell(Measurement.RunHealth health)
+    {
+        if (health.Attempted == 0)
+        {
+            return "—";
+        }
+        var rate = health.FailureRate;
+        return health.IsHealthy
+            ? string.Create(CultureInfo.InvariantCulture, $"OK ({rate:P2})")
+            : string.Create(CultureInfo.InvariantCulture, $"⚠ {rate:P2}");
+    }
+
+    static string RenderRunHealthSection(
+        IReadOnlyList<ThroughputResults> closedLoop,
+        IReadOnlyList<SaturationResults> saturation)
+    {
+        var degraded = new List<string>();
+        foreach (var r in closedLoop)
+        {
+            if (!r.Health.IsHealthy && r.Health.Attempted > 0)
+            {
+                degraded.Add(string.Create(CultureInfo.InvariantCulture,
+                    $"- **{r.Substrate} / {r.Scenario} / N={r.Parallelism}** — {r.Health.Failed:N0} failed of {r.Health.Attempted:N0} ({r.Health.FailureRate:P2}); breakdown: {r.Health.RenderFailureTypes()}"));
+            }
+        }
+        foreach (var r in saturation)
+        {
+            if (!r.Health.IsHealthy && r.Health.Attempted > 0)
+            {
+                degraded.Add(string.Create(CultureInfo.InvariantCulture,
+                    $"- **{r.Substrate} / Saturation / N={r.ProducerConcurrency}** — {r.Health.Failed:N0} failed of {r.Health.Attempted:N0} ({r.Health.FailureRate:P2}); breakdown: {r.Health.RenderFailureTypes()}"));
+            }
+        }
+        if (degraded.Count == 0)
+        {
+            return "All sweep points completed under the 1% failure-rate threshold.";
+        }
+        var sb = new StringBuilder();
+        sb.AppendLine(CultureInfo.InvariantCulture,
+            $"> ⚠ {degraded.Count} sweep point(s) exceeded the 1% failure-rate threshold. The throughput numbers above are computed from successful sends only — read them against the failure breakdown below.");
+        sb.AppendLine();
+        foreach (var line in degraded)
+        {
+            sb.AppendLine(line);
+        }
+        return sb.ToString().TrimEnd();
     }
 
     public static async Task WriteAsync(

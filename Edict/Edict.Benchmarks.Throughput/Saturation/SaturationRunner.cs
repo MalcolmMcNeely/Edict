@@ -1,4 +1,5 @@
 using Edict.Benchmarks.Throughput.Cluster;
+using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
@@ -48,14 +49,22 @@ public sealed class SaturationRunner
 
             // Warmup phase — producers fire at full rate so the consumer
             // reaches steady-state before the measurement window opens.
-            await FireAndForgetAsync(sender, aggregatePool, parallelism, warmup, ct);
+            // Failures during warmup don't bias the window-bracketed counter
+            // delta, but they still flow through a tracker so the first-
+            // occurrence stderr log fires early on a structurally broken run.
+            await FireAndForgetAsync(
+                sender, aggregatePool, parallelism, warmup,
+                new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism} warmup"),
+                ct);
 
             // Subtracting the warmup-end snapshot from the window-end
             // snapshot leaves only window contributions in the count — the
             // honest steady-state delta the saturation EPS formula needs.
             var preWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
 
-            await FireAndForgetAsync(sender, aggregatePool, parallelism, window, ct);
+            var windowTracker = new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism}");
+            await FireAndForgetAsync(
+                sender, aggregatePool, parallelism, window, windowTracker, ct);
 
             var postWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
             var windowEvents = postWindow - preWindow;
@@ -68,7 +77,8 @@ public sealed class SaturationRunner
                 EventsPerSecond: eps,
                 WindowSeconds: window.TotalSeconds,
                 ProducerConcurrency: parallelism,
-                AggregateCount: aggregatePool.Length);
+                AggregateCount: aggregatePool.Length,
+                Health: windowTracker.Build());
         }, ct);
     }
 
@@ -77,6 +87,7 @@ public sealed class SaturationRunner
         Guid[] aggregatePool,
         int parallelism,
         TimeSpan duration,
+        IssuerOutcomeTracker tracker,
         CancellationToken outerCt)
     {
         using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
@@ -95,16 +106,23 @@ public sealed class SaturationRunner
                     try
                     {
                         await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), FillerBuffer));
+                        tracker.RecordSuccess();
                     }
                     catch (OperationCanceledException)
                     {
+                        // Window-end cancellation — not a failure.
                         break;
                     }
-                    catch (TimeoutException)
+                    catch (Exception ex)
                     {
-                        // Saturation backpressure: skip slow sends rather than crash
-                        // the run. The sum-of-counters read at window-end measures
-                        // what the consumer actually drained, not issuer attempts.
+                        // Any other escape is counted: TimeoutException from
+                        // Orleans' grain-call backpressure, OrleansException
+                        // wrapping a storage-pool fault, or a framework
+                        // regression. The window-bracketed counter delta
+                        // measures consumer-side throughput; the producer-side
+                        // failure breakdown lives in the RunHealth so the EPS
+                        // is read against the offered load actually achieved.
+                        tracker.RecordFailure(ex);
                     }
                     index += parallelism;
                 }

@@ -1,2 +1,2 @@
-| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) |
-| --- | --- | --- | ---: | ---: | ---: |
+﻿| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
+| --- | --- | --- | ---: | ---: | ---: | :---: |

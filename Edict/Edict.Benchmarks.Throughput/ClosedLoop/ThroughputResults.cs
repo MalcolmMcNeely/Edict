@@ -8,7 +8,8 @@ public sealed record ThroughputResults(
     int Parallelism,
     long CompletedCount,
     TimeSpan ElapsedMeasurement,
-    LatencyResults Latency)
+    LatencyResults Latency,
+    RunHealth Health)
 {
     public double EventsPerSecond =>
         ElapsedMeasurement.TotalSeconds > 0

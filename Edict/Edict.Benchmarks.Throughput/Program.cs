@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 
 using Edict.Benchmarks.Throughput.ClosedLoop;
 using Edict.Benchmarks.Throughput.Cluster;
+using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Output;
 using Edict.Benchmarks.Throughput.Saturation;
 using Edict.Substrate;
@@ -59,14 +60,14 @@ foreach (var substrate in substrates)
     var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in commandsResults)
     {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
     }
 
     Console.WriteLine($"Sweeping {substrate.Name} — Command → Event delivery: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
     var eventsResults = await closedLoop.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
     foreach (var point in eventsResults)
     {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS");
+        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
     }
 
     var perSubstrate = new List<ThroughputResults>(commandsResults.Count + eventsResults.Count);
@@ -84,7 +85,7 @@ foreach (var substrate in substrates)
     Console.WriteLine($"Saturating {substrate.Name} — Events: N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
     var saturationResult = await saturation.RunAsync(
         substrate, saturationParallelism, saturationWarmup, saturationWindow);
-    Console.WriteLine($"  {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount})");
+    Console.WriteLine($"  {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount}) — {FormatHealth(saturationResult.Health)}");
     saturationCombined.Add(saturationResult);
 
     var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
@@ -108,7 +109,35 @@ foreach (var (substrateName, substrateRunDate) in perSubstrateRunDate)
 var markdownPath = Path.Combine(docsRoot, "throughput.md");
 await MarkdownWriter.WriteAsync(markdownPath, template, tokens, combined, saturationCombined);
 Console.WriteLine($"Wrote {markdownPath}");
+
+// Run-level health rollup: any point exceeding the failure-rate threshold
+// drives a non-zero exit code so this benchmark is safe to wire into
+// automation. The throughput numbers stay published either way — silently
+// dropping a degraded run would defeat the whole "confidence in the
+// framework" point of the bench.
+var degradedClosedLoop = combined.Count(r => !r.Health.IsHealthy && r.Health.Attempted > 0);
+var degradedSaturation = saturationCombined.Count(r => !r.Health.IsHealthy && r.Health.Attempted > 0);
+var degradedCount = degradedClosedLoop + degradedSaturation;
+if (degradedCount > 0)
+{
+    Console.Error.WriteLine();
+    Console.Error.WriteLine($"⚠ Benchmark complete with {degradedCount} degraded point(s) above the {RunHealth.DefaultFailureRateThreshold:P0} failure-rate threshold. See {markdownPath} § Run health for the breakdown.");
+    return 1;
+}
 return 0;
+
+static string FormatHealth(RunHealth health)
+{
+    if (health.Attempted == 0)
+    {
+        return "no producer outcomes recorded";
+    }
+    var prefix = health.IsHealthy ? "OK" : "⚠ DEGRADED";
+    var breakdown = health.Failed == 0
+        ? string.Empty
+        : $"; {health.RenderFailureTypes()}";
+    return $"{prefix} ({health.Succeeded:N0} OK + {health.Failed:N0} failed, {health.FailureRate:P2}{breakdown})";
+}
 
 static string ResolveDocsRoot()
 {

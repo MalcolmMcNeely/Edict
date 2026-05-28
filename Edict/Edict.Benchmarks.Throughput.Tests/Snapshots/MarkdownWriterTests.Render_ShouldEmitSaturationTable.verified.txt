@@ -1,4 +1,4 @@
-| Substrate | Events / sec (end-to-end) |
-| --- | ---: |
-| azure | 73 |
-| kafkapostgres | 413 |
+﻿| Substrate | Events / sec (end-to-end) | Health |
+| --- | ---: | :---: |
+| azure | 73 | OK (0.00 %) |
+| kafkapostgres | 413 | OK (0.00 %) |

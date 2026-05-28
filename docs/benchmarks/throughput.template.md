@@ -23,6 +23,10 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 
 {{table:closed_loop}}
 
+## Run health
+
+{{section:run_health}}
+
 ## Setup
 
 - Both substrates measured on the same machine and the same .NET runtime, one day apart, both registered through `Edict.Benchmarks.Throughput` via `SubstrateRegistry`.

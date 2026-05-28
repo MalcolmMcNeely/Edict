@@ -1,2 +1,2 @@
-| Substrate | Events / sec (end-to-end) |
-| --- | ---: |
+﻿| Substrate | Events / sec (end-to-end) | Health |
+| --- | ---: | :---: |

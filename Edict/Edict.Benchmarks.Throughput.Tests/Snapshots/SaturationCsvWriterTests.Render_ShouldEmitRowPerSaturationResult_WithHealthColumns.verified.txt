@@ -1,0 +1,3 @@
+﻿substrate,events_per_second,window_seconds,producer_concurrency,aggregate_count,succeeded,failed,failure_rate,failure_types
+azure,73.40,30.00,256,1024,8400,0,0.0000,
+kafkapostgres,412.60,30.00,256,1024,19320,4280,0.1814,EdictPostgresStorageException:3100;TimeoutException:1180

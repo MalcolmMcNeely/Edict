@@ -1,0 +1,6 @@
+﻿substrate,scenario,parallelism,events_per_second,succeeded,failed,failure_rate,failure_types,latency_ms
+azure,Command acceptance,2,10.00,300,0,0.0000,,5.100
+azure,Command acceptance,2,10.00,300,0,0.0000,,6.200
+azure,Command acceptance,2,10.00,300,0,0.0000,,7.400
+azure,Command → Event delivery,16,20.00,600,47,0.0726,OrleansException:32;TimeoutException:15,4.800
+azure,Command → Event delivery,16,20.00,600,47,0.0726,OrleansException:32;TimeoutException:15,5.500

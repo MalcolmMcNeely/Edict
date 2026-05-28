@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 using Edict.Benchmarks.Throughput.ClosedLoop;
 using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Output;
@@ -113,7 +115,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(1),
                     P95: TimeSpan.FromMilliseconds(2),
-                    P99: TimeSpan.FromMilliseconds(3))),
+                    P99: TimeSpan.FromMilliseconds(3)),
+                Health: RunHealth.Empty with { Succeeded = 100 }),
             new ThroughputResults(
                 Substrate: "azure",
                 Scenario: "Command acceptance",
@@ -123,7 +126,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(4.10),
                     P95: TimeSpan.FromMilliseconds(5.20),
-                    P99: TimeSpan.FromMilliseconds(6.30))),
+                    P99: TimeSpan.FromMilliseconds(6.30)),
+                Health: RunHealth.Empty with { Succeeded = 200 }),
             new ThroughputResults(
                 Substrate: "azure",
                 Scenario: "RaiseOnly",
@@ -133,7 +137,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(7),
                     P95: TimeSpan.FromMilliseconds(8),
-                    P99: TimeSpan.FromMilliseconds(9))),
+                    P99: TimeSpan.FromMilliseconds(9)),
+                Health: RunHealth.Empty with { Succeeded = 300 }),
             new ThroughputResults(
                 Substrate: "azure",
                 Scenario: "Command → Event delivery",
@@ -143,7 +148,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(10.40),
                     P95: TimeSpan.FromMilliseconds(15.55),
-                    P99: TimeSpan.FromMilliseconds(20.66))),
+                    P99: TimeSpan.FromMilliseconds(20.66)),
+                Health: RunHealth.Empty with { Succeeded = 400 }),
             new ThroughputResults(
                 Substrate: "azure",
                 Scenario: "Command → Event delivery",
@@ -153,7 +159,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(12.34),
                     P95: TimeSpan.FromMilliseconds(18.99),
-                    P99: TimeSpan.FromMilliseconds(25.01))),
+                    P99: TimeSpan.FromMilliseconds(25.01)),
+                Health: RunHealth.Empty with { Succeeded = 500 }),
             new ThroughputResults(
                 Substrate: "azure",
                 Scenario: "Command → Event delivery",
@@ -163,7 +170,8 @@ public sealed class MarkdownWriterTests
                 Latency: new LatencyResults(
                     P50: TimeSpan.FromMilliseconds(99),
                     P95: TimeSpan.FromMilliseconds(99),
-                    P99: TimeSpan.FromMilliseconds(99))),
+                    P99: TimeSpan.FromMilliseconds(99)),
+                Health: RunHealth.Empty with { Succeeded = 600 }),
         };
 
         var output = MarkdownWriter.Render(
@@ -195,13 +203,15 @@ public sealed class MarkdownWriterTests
                 EventsPerSecond: 73.4,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
-                AggregateCount: 1024),
+                AggregateCount: 1024,
+                Health: RunHealth.Empty with { Succeeded = 8400 }),
             new SaturationResults(
                 Substrate: "kafkapostgres",
                 EventsPerSecond: 412.6,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
-                AggregateCount: 1024),
+                AggregateCount: 1024,
+                Health: RunHealth.Empty with { Succeeded = 41200 }),
         };
 
         var output = MarkdownWriter.Render(
@@ -221,6 +231,83 @@ public sealed class MarkdownWriterTests
             tokens: new Dictionary<string, string>(),
             results: [],
             saturation: []);
+
+        return Verify(output);
+    }
+
+    [Fact]
+    public Task RunHealthSection_AllPointsHealthy_RendersGreenLine()
+    {
+        var output = MarkdownWriter.Render(
+            template: "{{section:run_health}}",
+            tokens: new Dictionary<string, string>(),
+            results: new[]
+            {
+                new ThroughputResults(
+                    Substrate: "azure",
+                    Scenario: "Command acceptance",
+                    Parallelism: 2,
+                    CompletedCount: 200,
+                    ElapsedMeasurement: TimeSpan.FromSeconds(30),
+                    Latency: new LatencyResults(
+                        P50: TimeSpan.FromMilliseconds(5),
+                        P95: TimeSpan.FromMilliseconds(6),
+                        P99: TimeSpan.FromMilliseconds(7)),
+                    Health: RunHealth.Empty with { Succeeded = 200 }),
+            },
+            saturation: new[]
+            {
+                new SaturationResults(
+                    Substrate: "kafkapostgres",
+                    EventsPerSecond: 412,
+                    WindowSeconds: 30,
+                    ProducerConcurrency: 256,
+                    AggregateCount: 1024,
+                    Health: RunHealth.Empty with { Succeeded = 41200 }),
+            });
+
+        return Verify(output);
+    }
+
+    [Fact]
+    public Task RunHealthSection_DegradedPoints_RendersWarningCallout()
+    {
+        var output = MarkdownWriter.Render(
+            template: "{{section:run_health}}",
+            tokens: new Dictionary<string, string>(),
+            results: new[]
+            {
+                new ThroughputResults(
+                    Substrate: "azure",
+                    Scenario: "Command acceptance",
+                    Parallelism: 64,
+                    CompletedCount: 400,
+                    ElapsedMeasurement: TimeSpan.FromSeconds(30),
+                    Latency: new LatencyResults(
+                        P50: TimeSpan.FromMilliseconds(5),
+                        P95: TimeSpan.FromMilliseconds(6),
+                        P99: TimeSpan.FromMilliseconds(7)),
+                    Health: new RunHealth(
+                        Succeeded: 400,
+                        Failed: 100,
+                        FailuresByType: ImmutableSortedDictionary<string, long>.Empty
+                            .Add("TimeoutException", 100))),
+            },
+            saturation: new[]
+            {
+                new SaturationResults(
+                    Substrate: "kafkapostgres",
+                    EventsPerSecond: 161,
+                    WindowSeconds: 30,
+                    ProducerConcurrency: 256,
+                    AggregateCount: 1024,
+                    Health: new RunHealth(
+                        Succeeded: 4823,
+                        Failed: 1287,
+                        FailuresByType: ImmutableSortedDictionary<string, long>.Empty
+                            .Add("EdictPostgresStorageException", 1180)
+                            .Add("TimeoutException", 107))),
+            });
 
         return Verify(output);
     }

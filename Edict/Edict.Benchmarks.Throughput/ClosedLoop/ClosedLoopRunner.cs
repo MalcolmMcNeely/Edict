@@ -115,12 +115,20 @@ public sealed class ClosedLoopRunner
         TimeSpan measurement,
         CancellationToken ct)
     {
-        // Warmup — discarded.
-        await RunIssuersAsync(scenario, aggregatePool, parallelism, warmup, histograms: null, ct);
+        var warmupLabel = $"{substrateName} {scenario.Name} N={parallelism} warmup";
+        var windowLabel = $"{substrateName} {scenario.Name} N={parallelism}";
+
+        // Warmup — counts discarded, but failures still flow through a tracker
+        // so first-failure stderr logs fire early. If the warmup is dying it
+        // is wasted to burn the measurement window on a doomed point.
+        await RunIssuersAsync(
+            scenario, aggregatePool, parallelism, warmup, histograms: null,
+            new IssuerOutcomeTracker(warmupLabel), ct);
 
         var histograms = LatencyCapture.CreateForIssuers(measurement, parallelism);
+        var tracker = new IssuerOutcomeTracker(windowLabel);
         var (completed, elapsed) = await RunIssuersAsync(
-            scenario, aggregatePool, parallelism, measurement, histograms, ct);
+            scenario, aggregatePool, parallelism, measurement, histograms, tracker, ct);
 
         return new ThroughputResults(
             Substrate: substrateName,
@@ -128,7 +136,8 @@ public sealed class ClosedLoopRunner
             Parallelism: parallelism,
             CompletedCount: completed,
             ElapsedMeasurement: elapsed,
-            Latency: LatencyCapture.MergePercentiles(histograms))
+            Latency: LatencyCapture.MergePercentiles(histograms),
+            Health: tracker.Build())
         {
             LatencySamples = LatencyCapture.DownsampleSamples(histograms),
         };
@@ -140,6 +149,7 @@ public sealed class ClosedLoopRunner
         int parallelism,
         TimeSpan window,
         LatencyHistogram[]? histograms,
+        IssuerOutcomeTracker tracker,
         CancellationToken outerCt)
     {
         using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
@@ -166,17 +176,23 @@ public sealed class ClosedLoopRunner
                     }
                     catch (OperationCanceledException)
                     {
+                        // Window-end cancellation — not a failure.
                         break;
                     }
-                    catch (TimeoutException)
+                    catch (Exception ex)
                     {
-                        // Saturation backpressure: the silo did not respond within
-                        // Orleans' default 30 s grain-call timeout. Skip this send so
-                        // one slow grain call doesn't crash the whole sweep.
+                        // Any other escape is recorded: TimeoutException from
+                        // Orleans' default grain-call timeout, OrleansException
+                        // wrapping a storage-pool fault, framework regression.
+                        // Captured into the per-point tracker so the EPS row is
+                        // read against an honest failure breakdown rather than
+                        // a silent low number.
+                        tracker.RecordFailure(ex);
                         index += parallelism;
                         continue;
                     }
                     histograms?[issuerIndex].Record(Stopwatch.GetTimestamp() - sendStarted);
+                    tracker.RecordSuccess();
                     localCompleted++;
                     index += parallelism;
                 }

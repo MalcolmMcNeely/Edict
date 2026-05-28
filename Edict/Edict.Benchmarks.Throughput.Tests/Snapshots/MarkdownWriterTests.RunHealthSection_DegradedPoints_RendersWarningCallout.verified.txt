@@ -1,0 +1,4 @@
+﻿> ⚠ 2 sweep point(s) exceeded the 1% failure-rate threshold. The throughput numbers above are computed from successful sends only — read them against the failure breakdown below.
+
+- **azure / Command acceptance / N=64** — 100 failed of 500 (20.00 %); breakdown: TimeoutException:100
+- **kafkapostgres / Saturation / N=256** — 1,287 failed of 6,110 (21.06 %); breakdown: EdictPostgresStorageException:1180;TimeoutException:107
