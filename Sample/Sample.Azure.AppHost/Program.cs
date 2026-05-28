@@ -12,12 +12,13 @@ var tables = storage.AddTables("tables");
 //                         by AzureBlobClaimCheckStore.CreateAsync.
 var blobs = storage.AddBlobs("blobs");
 
-builder.AddProject<Projects.Sample_Azure_Silo>("silo")
-    .WithReference(queues)
+var silo = builder.AddProject<Projects.Sample_Azure_Silo>("silo")
+    .WithReference(queues).WaitFor(storage)
     .WithReference(tables)
     .WithReference(blobs);
 builder.AddProject<Projects.Sample_Azure_Web>("web")
-    .WithReference(tables)
-    .WithReference(blobs);
+    .WithReference(tables).WaitFor(storage)
+    .WithReference(blobs)
+    .WaitFor(silo);
 
 await builder.Build().RunAsync();

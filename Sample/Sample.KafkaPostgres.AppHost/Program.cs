@@ -16,10 +16,11 @@ var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin();
 var appdb = postgres.AddDatabase("appdb");
 
-builder.AddProject<Projects.Sample_KafkaPostgres_Silo>("silo")
+var silo = builder.AddProject<Projects.Sample_KafkaPostgres_Silo>("silo")
     .WithReference(kafka).WaitFor(kafka)
     .WithReference(appdb).WaitFor(postgres);
 builder.AddProject<Projects.Sample_KafkaPostgres_Web>("web")
-    .WithReference(appdb).WaitFor(postgres);
+    .WithReference(appdb).WaitFor(postgres)
+    .WaitFor(silo);
 
 await builder.Build().RunAsync();

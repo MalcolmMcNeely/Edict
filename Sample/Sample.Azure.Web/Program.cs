@@ -73,8 +73,8 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.UseStaticFiles();
 app.UseAntiforgery();
+app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
