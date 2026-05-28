@@ -1,3 +1,5 @@
+using Confluent.Kafka;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,7 +16,7 @@ namespace Edict.Kafka.Internal;
 /// provider. Resolved per stream-provider name from DI in
 /// <see cref="EdictKafkaSiloBuilderExtensions.AddEdictKafkaStreams"/>.
 /// </summary>
-sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
+sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory, IDisposable
 {
     readonly EdictKafkaPartitionMapper _mapper;
     readonly IQueueAdapterCache _cache;
@@ -27,6 +29,18 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
         Serializer serializer,
         ILoggerFactory loggerFactory,
         EdictKafkaStreamRegistry streamRegistry)
+        : this(name, options, cacheOptions, serializer, loggerFactory, streamRegistry, producerFactory: null)
+    {
+    }
+
+    internal EdictKafkaAdapterFactory(
+        string name,
+        EdictKafkaStreamsOptions options,
+        SimpleQueueCacheOptions cacheOptions,
+        Serializer serializer,
+        ILoggerFactory loggerFactory,
+        EdictKafkaStreamRegistry streamRegistry,
+        Func<EdictKafkaStreamsOptions, IProducer<string, byte[]>>? producerFactory)
     {
         _mapper = new EdictKafkaPartitionMapper(options, streamRegistry);
         _cache = new SimpleQueueAdapterCache(cacheOptions, name, loggerFactory);
@@ -35,10 +49,23 @@ sealed class EdictKafkaAdapterFactory : IQueueAdapterFactory
         // instances and leak the losing one's IProducer (librdkafka background
         // threads + TCP connections).
         _adapter = new Lazy<EdictKafkaAdapter>(() =>
-            new EdictKafkaAdapter(name, options, _mapper, serializer, loggerFactory));
+            new EdictKafkaAdapter(name, options, _mapper, serializer, loggerFactory, producerFactory));
     }
 
     public Task<IQueueAdapter> CreateAdapter() => Task.FromResult<IQueueAdapter>(_adapter.Value);
+
+    // DI disposes the factory at silo shutdown; without this hop the
+    // Lazy-held EdictKafkaAdapter (and the librdkafka IProducer it owns) only
+    // releases on GC, which leaves background threads and TCP connections
+    // pointing at the dead broker for the lifetime of the next silo in the
+    // same process.
+    public void Dispose()
+    {
+        if (_adapter.IsValueCreated)
+        {
+            _adapter.Value.Dispose();
+        }
+    }
 
     public IQueueAdapterCache GetQueueAdapterCache() => _cache;
 

@@ -12,6 +12,8 @@ Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can 
 
 {{table:saturation}}
 
+> **Per-silo baseline.** The published number is the rate **one** Orleans silo sustains on this hardware against the configured substrate. Orleans scales horizontally; an N-silo deployment extrapolates from this baseline modulo cross-silo coordination cost. A single-silo number is not the framework ceiling.
+
 ## Per-event latency (closed-loop)
 
 Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per substrate, 10 s warmup + 30 s measurement window. **No EPS column** here — closed-loop's bounded `await` rate-paces the producer, so any per-second figure would read as a throughput claim it cannot make. The full closed-loop EPS surface is preserved in the raw CSV alongside per-sample latency.
@@ -25,6 +27,10 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 
 - Both substrates measured on the same machine and the same .NET runtime, one day apart, both registered through `Edict.Benchmarks.Throughput` via `SubstrateRegistry`.
 - Single Orleans TestCluster silo per substrate run (producer and consumers share one process).
+- Edict tunables in effect, all framework defaults — no bench-side overrides:
+  - `PartitionCount = 32` (ADR-0028) — Kafka substrate, `[EdictStream]`-level partition count.
+  - `NumQueues = 16` (`EdictAzureStreamsOptions`) — Azure substrate, pulling-agent fan-out.
+  - `QueuePollingPeriod = 10 ms` (`EdictAzureStreamsOptions`) — Azure substrate, consumer-side poll cadence.
 - Single run per substrate on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered defaults of each substrate, not a framework ceiling.
 
 ## What you're looking at — `azure` (Azurite + Azure Queue streams)
@@ -42,4 +48,4 @@ Treat the table as registered defaults on a laptop emulator. A real storage acco
 `Edict.Kafka` (custom `IQueueAdapter` over `Confluent.Kafka`, ADR-0028) + `Edict.Postgres` persistence. Testcontainers Kafka broker + Postgres 16, same single silo, same `BenchAggregateHandler` workload, same per-send `CorrelationId`-keyed completion poll as `azure`.
 
 - Producer: `acks=all`, idempotent, lz4. Consumer: `enable.auto.commit=false`, manual commit after `HandleAsync` (ADR-0028 §2).
-- `PartitionCount = 4` per `[EdictStream]` matches the slice 4-7 conformance fixture.
+- `PartitionCount = 32` per `[EdictStream]` — Edict's framework default (ADR-0028), inherited by the bench substrate.
