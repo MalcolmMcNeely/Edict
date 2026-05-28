@@ -94,7 +94,7 @@ public sealed class EdictEventHandlerGenerator : IIncrementalGenerator
             ? "Edict.Generated"
             : grain.ContainingNamespace.ToDisplayString();
 
-        return new GrainModel(grainNamespace, grain.Name, handlers.ToImmutableArray());
+        return new GrainModel(grainNamespace, grain.Name, new EquatableArray<HandlerModel>(handlers));
     }
 
     private static string? GetStreamName(INamedTypeSymbol eventType)
@@ -219,7 +219,7 @@ public sealed class EdictEventHandlerGenerator : IIncrementalGenerator
     private sealed record GrainModel(
         string Namespace,
         string GrainName,
-        ImmutableArray<HandlerModel> Handlers);
+        EquatableArray<HandlerModel> Handlers);
 
     private sealed record HandlerModel(
         string EventFqn,

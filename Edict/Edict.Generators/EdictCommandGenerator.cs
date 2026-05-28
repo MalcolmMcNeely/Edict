@@ -147,7 +147,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
                 ? grainFqn.Substring("global::".Length)
                 : grainFqn,
             grainFqn,
-            commands.ToImmutableArray());
+            new EquatableArray<CommandModel>(commands));
     }
 
     private static CommandModel? MapCommand(INamedTypeSymbol command)
@@ -194,7 +194,7 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
             command.Name,
             commandNamespace,
             routeKeyProperty,
-            telemeterizedProperties.ToImmutableArray());
+            new EquatableArray<TelemeterizedProperty>(telemeterizedProperties));
     }
 
     private static bool IsPrimitiveType(ITypeSymbol type) =>
@@ -407,14 +407,14 @@ public sealed class EdictCommandGenerator : IIncrementalGenerator
         string GrainName,
         string GrainTypeName,
         string GrainFqn,
-        ImmutableArray<CommandModel> Commands);
+        EquatableArray<CommandModel> Commands);
 
     private sealed record CommandModel(
         string Fqn,
         string SimpleName,
         string Namespace,
         string RouteKeyProperty,
-        ImmutableArray<TelemeterizedProperty> TelemeterizedProperties);
+        EquatableArray<TelemeterizedProperty> TelemeterizedProperties);
 
     private sealed record TelemeterizedProperty(string PropertyName);
 }
