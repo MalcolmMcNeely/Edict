@@ -32,6 +32,16 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
     readonly ILoggerFactory _loggerFactory;
     readonly Func<EdictKafkaStreamsOptions, string, int, IConsumer<string, byte[]>>? _consumerFactory;
 
+    // Receivers Orleans has handed out via CreateReceiver. Tracked so that
+    // adapter Dispose can force-shutdown any consumer Orleans did not drain
+    // — under saturation load Orleans' silo-shutdown budget can finish
+    // before every PullingAgent has awaited its Receiver.Shutdown to
+    // completion, leaving librdkafka background threads polling a dead
+    // broker into the next test or benchmark iteration and stealing CPU on
+    // small hosts.
+    readonly object _receiversLock = new();
+    readonly List<EdictKafkaReceiver> _receivers = [];
+
     public EdictKafkaAdapter(
         string name,
         EdictKafkaStreamsOptions options,
@@ -71,7 +81,7 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
         var consumerFactory = _consumerFactory is null
             ? (Func<IConsumer<string, byte[]>>?)null
             : () => _consumerFactory(_options, topic, partition);
-        return new EdictKafkaReceiver(
+        var receiver = new EdictKafkaReceiver(
             Name,
             partition,
             topic,
@@ -79,6 +89,11 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
             _serializer,
             _loggerFactory.CreateLogger<EdictKafkaReceiver>(),
             consumerFactory);
+        lock (_receiversLock)
+        {
+            _receivers.Add(receiver);
+        }
+        return receiver;
     }
 
     public async Task QueueMessageBatchAsync<T>(
@@ -111,6 +126,34 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
 
     public void Dispose()
     {
+        EdictKafkaReceiver[] receivers;
+        lock (_receiversLock)
+        {
+            receivers = [.. _receivers];
+            _receivers.Clear();
+        }
+        // Force-drain any receiver Orleans did not await to completion. Each
+        // receiver tracks its own _shutdownInFlight, so a second Shutdown is
+        // a no-op handoff to the in-flight task; if Orleans never called
+        // Shutdown at all (silo died inside its budget), this is the only
+        // path that disposes the librdkafka client.
+        var drainTimeout = TimeSpan.FromSeconds(10);
+        foreach (var receiver in receivers)
+        {
+            try
+            {
+                if (!receiver.Shutdown(drainTimeout).Wait(drainTimeout))
+                {
+                    _logger.LogWarning(
+                        "Edict.Kafka receiver shutdown did not complete within {Timeout} during adapter dispose.",
+                        drainTimeout);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Edict.Kafka receiver shutdown threw during adapter dispose.");
+            }
+        }
         _producer.Flush(TimeSpan.FromSeconds(5));
         _producer.Dispose();
     }

@@ -29,6 +29,7 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
 
     IConsumer<string, byte[]>? _consumer;
     Task? _shutdownInFlight;
+    readonly object _shutdownLock = new();
 
     public EdictKafkaReceiver(
         string providerName,
@@ -161,27 +162,29 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
 
     public Task Shutdown(TimeSpan timeout)
     {
-        if (_shutdownInFlight is not null)
+        // Idempotent — Orleans and EdictKafkaAdapter.Dispose can both call
+        // Shutdown concurrently, and the inner Task.Run must run exactly once
+        // (consumer.Close() is not re-entrant — duplicate Close+Dispose
+        // throws ObjectDisposedException). Both callers await the same Task.
+        lock (_shutdownLock)
         {
+            _shutdownInFlight ??= Task.Run(() =>
+            {
+                try
+                {
+                    _consumer?.Close();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Edict.Kafka receiver shutdown error");
+                }
+                finally
+                {
+                    _consumer?.Dispose();
+                    _consumer = null;
+                }
+            });
             return _shutdownInFlight;
         }
-
-        _shutdownInFlight = Task.Run(() =>
-        {
-            try
-            {
-                _consumer?.Close();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Edict.Kafka receiver shutdown error");
-            }
-            finally
-            {
-                _consumer?.Dispose();
-                _consumer = null;
-            }
-        });
-        return _shutdownInFlight;
     }
 }

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "_comment_purpose": "Throughput.Tests has multiple test classes that all funnel through ClusterHarness.RunAsync, which writes a singleton ActiveRuntime.Current/Mode and consults it from the parameterless TestClusterBuilder configurators. Two collections running in parallel race on that static — typical symptom is the wrong-mode IEdictTableRepository<TRow> ending up registered (BenchEventRow missing on a closed-loop client, etc.). Cluster fixtures run serially within the assembly until the harness is refactored to thread state through the cluster builder instead of a static. Mirrors Edict.Kafka.Tests, which made the same call for substrate-pressure reasons.",
+  "parallelizeAssembly": true,
+  "parallelizeTestCollections": false,
+  "methodDisplay": "method"
+}
