@@ -33,6 +33,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     IEdictTableWriteStore<T>? _writeStore;
     OutboxEntry? _pendingUpsert;
     Serializer? _cachedSerializer;
+    readonly TableProjectionRowSlot<T> _rowSlot = new();
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -61,7 +62,11 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// when the row type is immutable (e.g. a record with <c>init</c>-only
     /// properties).
     /// </summary>
-    protected T CurrentRow { get; set; } = new();
+    protected T CurrentRow
+    {
+        get => _rowSlot.CurrentRow;
+        set => _rowSlot.CurrentRow = value;
+    }
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
@@ -82,7 +87,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         var partitionKey = DefaultPartitionKey;
         var rowKey = GetRowKey(evt);
 
-        CurrentRow = await _writeStore!.GetAsync(partitionKey, rowKey) ?? new T();
+        await _rowSlot.EnsureLoadedAsync(_writeStore!, partitionKey, rowKey);
 
         await handler(evt);
 
