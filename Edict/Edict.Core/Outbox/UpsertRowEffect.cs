@@ -8,14 +8,14 @@ namespace Edict.Core.Outbox;
 /// a pk/rk full-row replace, redelivery of the effect is idempotent — this is
 /// how the table-projection double-apply gap is <b>closed</b>, not merely accepted.
 /// <para>
-/// The row is a consumer POCO with no Orleans codec on the wire, so it travels
-/// as JSON plus its frozen <c>[Alias]</c> literal: the alias is what
-/// the publisher captures via <c>Orleans.Serialization.TypeConverter.Format</c>
-/// and the drain resolves via <c>TypeConverter.Parse</c>, so a consumer who
-/// renames the row POCO class — but preserves its <c>[Alias]</c> — has no
-/// in-flight entries dead-lettered. Persisted state, so a frozen
-/// string-literal <c>[Alias]</c> survives a class rename;
-/// <c>ORLEANS0010</c> is never suppressed. Bare-named — no consumer types it.
+/// The row is encoded with the Orleans <c>Serializer</c> end-to-end (the row
+/// POCO carries <c>[GenerateSerializer]</c> via <c>IEdictPersistedState</c>, per
+/// ADR-0022). Its type identity travels as its frozen <c>[Alias]</c> literal,
+/// captured by the publisher via <c>Orleans.Serialization.TypeConverter.Format</c>
+/// and resolved by the drain via <c>TypeConverter.Parse</c>, so a consumer
+/// who renames the row POCO class — but preserves its <c>[Alias]</c> — has no
+/// in-flight entries dead-lettered. <c>ORLEANS0010</c> is never suppressed.
+/// Bare-named — no consumer types it.
 /// </para>
 /// </summary>
 [GenerateSerializer]
@@ -41,7 +41,7 @@ public sealed record UpsertRowEffect
     [Id(3)]
     public string RowAlias { get; init; } = "";
 
-    /// <summary>The row serialized as UTF-8 JSON (the POCO carries no Orleans codec).</summary>
+    /// <summary>The row serialized with the Orleans <c>Serializer</c>; decoded at drain via <c>Serializer.Deserialize(rowType, bytes)</c>.</summary>
     [Id(4)]
-    public byte[] RowJson { get; init; } = [];
+    public byte[] RowBytes { get; init; } = [];
 }

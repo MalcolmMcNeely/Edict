@@ -41,6 +41,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 {
     readonly SagaDispatchBuffer _dispatchBuffer = new();
     OutboxEntry? _stagedEntry;
+    Serializer? _cachedSerializer;
 
     /// <summary>
     /// Durable workflow progress. The consumer mutates this inside a
@@ -110,7 +111,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
             : null;
 
-        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
         return new OutboxEntry
         {

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.Json;
 
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
@@ -33,6 +32,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
 {
     IEdictTableWriteStore<T>? _writeStore;
     OutboxEntry? _pendingUpsert;
+    Serializer? _cachedSerializer;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -110,13 +110,17 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         // TypeConverter.Parse. Replaces the previous AssemblyQualifiedName hop
         // that dead-lettered on rename or move.
         var typeConverter = ServiceProvider.GetRequiredService<Orleans.Serialization.TypeSystem.TypeConverter>();
+        var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
         var effect = new UpsertRowEffect
         {
             TableName = TableName,
             PartitionKey = partitionKey,
             RowKey = rowKey,
             RowAlias = typeConverter.Format(typeof(T)),
-            RowJson = JsonSerializer.SerializeToUtf8Bytes(row),
+            // Stage as object so the wire bytes carry the Orleans type id;
+            // the drain decodes via Deserialize<object> and gets the concrete
+            // row instance back without needing T at runtime.
+            RowBytes = serializer.SerializeToArray<object>(row),
         };
 
         // Nest the deferred upsert under the live handle span as parent-child,
@@ -125,8 +129,6 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         var traceParent = current is not null
             ? ActivityExtensions.BuildTraceParent(current.TraceId.ToHexString(), current.SpanId.ToHexString())
             : null;
-
-        var serializer = ServiceProvider.GetRequiredService<Serializer>();
 
         return new OutboxEntry
         {

@@ -42,6 +42,9 @@ namespace Edict.Core.EventHandler;
 /// </summary>
 public abstract class EdictEventHandler : EdictIdempotencyBase
 {
+    Serializer? _cachedSerializer;
+
+
     /// <summary>
     /// Synchronous pre-flight emitted by the generator: <c>true</c> if the
     /// concrete subclass has a matching <c>Handle(TEvent)</c> overload for
@@ -106,7 +109,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
             traceState = null;
         }
 
-        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
         // InvokeHandler entry payloads are serialised EdictEventEnvelopes
         // (inline or pointer). The inline-branch case the EventHandler

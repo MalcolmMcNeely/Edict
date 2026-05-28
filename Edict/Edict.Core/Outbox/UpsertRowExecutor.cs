@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 using Edict.Contracts.Events;
 using Edict.Core.TableStorage;
 using Edict.Telemetry;
@@ -11,10 +9,7 @@ using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
-sealed class UpsertRowExecutor(
-    Serializer serializer,
-    Orleans.Serialization.TypeSystem.TypeConverter typeConverter,
-    IServiceProvider services) : IOutboxEffectExecutor
+sealed class UpsertRowExecutor(Serializer serializer, IServiceProvider services) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
@@ -31,20 +26,9 @@ sealed class UpsertRowExecutor(
         using var activity = EdictDiagnostics.ActivitySource.StartEdictTableUpsert(
             effect.TableName, parentContext);
 
-        Type rowType;
-        try
-        {
-            rowType = typeConverter.Parse(effect.RowAlias);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException(
-                $"UpsertRow effect references an unresolvable row alias '{effect.RowAlias}'.", ex);
-        }
-
-        var row = JsonSerializer.Deserialize(effect.RowJson, rowType)
-            ?? throw new InvalidOperationException(
-                $"UpsertRow effect row for table '{effect.TableName}' deserialized to null.");
+        // The row is polymorphic-over-object: Orleans round-trips the concrete
+        // type via the same TypeConverter that captured its [Alias] at stage.
+        var row = serializer.Deserialize<object>(effect.RowBytes);
 
         var factory = services.GetRequiredService<IEdictTableStoreFactory>();
         await factory.UpsertRowAsync(effect.TableName, effect.PartitionKey, effect.RowKey, row);

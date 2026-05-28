@@ -66,6 +66,9 @@ public abstract class EdictIdempotencyBase<TPayload>
     OutboxHost<TPayload>? _host;
     ClaimCheckUnwrap? _unwrap;
     int? _cachedWindowSize;
+    DedupRingMirror? _dedupMirror;
+    Guid[]? _mirroredRing;
+    Serializer? _cachedSerializer;
 
     /// <summary>
     /// Maximum number of distinct <see cref="EdictEvent.EventId"/>s remembered
@@ -181,7 +184,7 @@ public abstract class EdictIdempotencyBase<TPayload>
 
         Commit(envelope.EventId);
 
-        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
         // Prefer the envelope's embedded trace ids (stamped by
         // PublishEventExecutor) over Activity.Current — Azure Queue streams do
@@ -305,17 +308,20 @@ public abstract class EdictIdempotencyBase<TPayload>
             Idempotency.Head = 0;
             Idempotency.Count = 0;
         }
-    }
 
-    private protected bool Contains(Guid eventId)
-    {
-        if (Idempotency.Count < Idempotency.HandledEventIds.Length)
+        // The mirror is in-memory only and must be rebuilt from the canonical
+        // persisted ring on activation, or whenever the ring reference is
+        // swapped (e.g. WindowSize changed). Steady state hits the
+        // reference-equal early-out.
+        if (_dedupMirror is null || !ReferenceEquals(_mirroredRing, Idempotency.HandledEventIds))
         {
-            return Array.IndexOf(Idempotency.HandledEventIds, eventId, 0, Idempotency.Count) >= 0;
+            _dedupMirror ??= new DedupRingMirror();
+            _dedupMirror.Activate(Idempotency.HandledEventIds, Idempotency.Head, Idempotency.Count);
+            _mirroredRing = Idempotency.HandledEventIds;
         }
-
-        return Array.IndexOf(Idempotency.HandledEventIds, eventId) >= 0;
     }
+
+    private protected bool Contains(Guid eventId) => _dedupMirror!.Contains(eventId);
 
     private protected void Commit(Guid eventId)
     {
@@ -326,6 +332,8 @@ public abstract class EdictIdempotencyBase<TPayload>
         {
             Idempotency.Count++;
         }
+
+        _dedupMirror!.Commit(eventId);
     }
 
     private protected static void EmitDedupSpan(EdictEvent evt)

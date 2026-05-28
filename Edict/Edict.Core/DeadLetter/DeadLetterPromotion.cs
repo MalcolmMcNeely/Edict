@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 
 using Edict.Contracts.Commands;
@@ -80,17 +79,13 @@ static class DeadLetterPromotion
     public static EdictDeadLetterRaised Build(
         OutboxEntry entry,
         UpsertRowEffect effect,
+        string? payloadJson,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
         var effectTarget = $"{effect.TableName}/{effect.PartitionKey}/{effect.RowKey}";
-        // UpsertRowEffect already carries the row as UTF-8 JSON (the row POCO has
-        // no Orleans codec — see UpsertRowEffect). Use it verbatim as display data.
-        var payloadJson = effect.RowJson.Length == 0
-            ? null
-            : Encoding.UTF8.GetString(effect.RowJson);
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 

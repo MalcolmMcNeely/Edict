@@ -79,11 +79,11 @@ public sealed class DeadLetterPromotionTests
             PartitionKey = "orders",
             RowKey = FixedOrderId.ToString("N"),
             RowAlias = "OrderSummaryRow",
-            RowJson = "{\"OrderId\":\"22222222-2222-2222-2222-222222222222\"}"u8.ToArray(),
+            RowBytes = [0x01, 0x02, 0x03],
         };
 
         var raised = DeadLetterPromotion.Build(
-            entry, effect, new InvalidOperationException("boom"),
+            entry, effect, payloadJson: null, new InvalidOperationException("boom"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(

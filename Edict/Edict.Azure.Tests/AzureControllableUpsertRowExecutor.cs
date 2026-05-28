@@ -16,10 +16,9 @@ namespace Edict.Azure.Tests;
 /// </summary>
 sealed class AzureControllableUpsertRowExecutor(
     Serializer serializer,
-    Orleans.Serialization.TypeSystem.TypeConverter typeConverter,
     IServiceProvider services) : IOutboxEffectExecutor
 {
-    readonly UpsertRowExecutor _inner = new(serializer, typeConverter, services);
+    readonly UpsertRowExecutor _inner = new(serializer, services);
 
     public static volatile bool ShouldFail;
 

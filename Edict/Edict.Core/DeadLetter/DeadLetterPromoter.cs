@@ -70,7 +70,9 @@ sealed class DeadLetterPromoter(Serializer serializer, IServiceProvider services
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(failed.Payload);
-        return DeadLetterPromotion.Build(failed, effect, exception, sourceGrainKey, sourceGrainType, now);
+        var row = serializer.Deserialize<object>(effect.RowBytes);
+        var payloadJson = System.Text.Json.JsonSerializer.Serialize(row, row.GetType());
+        return DeadLetterPromotion.Build(failed, effect, payloadJson, exception, sourceGrainKey, sourceGrainType, now);
     }
 
     EdictDeadLetterRaised BuildFromInvokeHandler(
