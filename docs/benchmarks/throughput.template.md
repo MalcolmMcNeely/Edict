@@ -6,9 +6,11 @@ Azure run date: {{run_date:azure}}
 Kafka × Postgres run date: {{run_date:kafkapostgres}}
 Git SHA: {{git_sha}}
 
+> **Read this first.** The substrates are Testcontainers (Azurite, Postgres, Kafka) on the same laptop as the silo process. Containers share host CPU and RAM with the producer/consumer Orleans process; no resource caps are set, so Docker defaults apply. The reported machine class is what the .NET process sees, not what each substrate sees in isolation. **Do not read these numbers as "Edict will do X EPS in production"** — a managed Postgres, a real Kafka cluster, or an Azure Storage account would all change the substrate ceiling independently of any Edict code change. The bench is a regression guard for the *framework's* per-event overhead on a known substrate, not a sizing tool for your deployment.
+
 ## System throughput (sustained, end-to-end)
 
-Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment.
+Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment. Saturation runs against the same Testcontainers substrate as the closed-loop sweeps — a real Postgres / Kafka / Azure Storage backend will sit at a different ceiling, generally higher.
 
 {{table:saturation}}
 
@@ -30,6 +32,7 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 ## Setup
 
 - Both substrates measured on the same machine and the same .NET runtime, one day apart, both registered through `Edict.Benchmarks.Throughput` via `SubstrateRegistry`.
+- Substrates are Testcontainers running on the same host as the silo process — they share CPU, RAM, and the local loopback with everything else the bench does. No container resource caps are set; Docker defaults apply. A real managed substrate (Azure Storage, Aiven Kafka, Cloud SQL) would not have these contention or latency characteristics.
 - Single Orleans TestCluster silo per substrate run (producer and consumers share one process).
 - Edict tunables in effect, all framework defaults — no bench-side overrides:
   - `PartitionCount = 32` (ADR-0028) — Kafka substrate, `[EdictStream]`-level partition count.
@@ -45,11 +48,11 @@ Azurite emulator, single Orleans silo, producer and consumers in one process. Th
 - The Azure Queue stream provider polls on a fixed timer (`EdictAzureStreamsOptions.QueuePollingPeriod`); at high parallelism the `Command → Event delivery` row sits on that floor.
 - One silo serialises everything; Orleans scales horizontally and these numbers don't exercise that.
 
-Treat the table as registered defaults on a laptop emulator. A real storage account, a tuned poll period, or a multi-silo deployment moves the numbers up independently of any framework change.
+Treat the table as registered defaults on a laptop emulator. A real Azure Storage account, a tuned poll period, or a multi-silo deployment moves the numbers up independently of any framework change.
 
 ## What you're looking at — `kafkapostgres` (Testcontainers Kafka + Postgres)
 
-`Edict.Kafka` (custom `IQueueAdapter` over `Confluent.Kafka`, ADR-0028) + `Edict.Postgres` persistence. Testcontainers Kafka broker + Postgres 16, same single silo, same `BenchAggregateHandler` workload, same per-send `CorrelationId`-keyed completion poll as `azure`.
+`Edict.Kafka` (custom `IQueueAdapter` over `Confluent.Kafka`, ADR-0028) + `Edict.Postgres` persistence. Testcontainers Kafka broker + Postgres 17, same single silo, same `BenchAggregateHandler` workload, same per-send `CorrelationId`-keyed completion poll as `azure`. A single-broker container under Docker defaults is the relevant ceiling here, not a multi-broker Kafka cluster on dedicated hardware.
 
 - Producer: `acks=all`, idempotent, lz4. Consumer: `enable.auto.commit=false`, manual commit after `HandleAsync` (ADR-0028 §2).
 - `PartitionCount = 32` per `[EdictStream]` — Edict's framework default (ADR-0028), inherited by the bench substrate.
