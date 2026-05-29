@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Edict/Edict.slnx
+
+      - name: Build
+        run: dotnet build Edict/Edict.slnx --configuration Release --no-restore
+
+      - name: Test (excluding Edict.Benchmarks.Throughput.Tests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find . \( -name '*.Tests.csproj' -o -name 'Edict.Tests.Conformance.csproj' \) -not -path '*Edict.Benchmarks.Throughput.Tests*' | sort)
+          for project in "${projects[@]}"; do
+            echo "::group::Testing $project"
+            dotnet test "$project" --configuration Release --no-build
+            echo "::endgroup::"
+          done
+
+      - name: Pack
+        run: dotnet pack Edict/Edict.slnx --configuration Release --no-build --output ./artifacts
+
+      - name: Push to nuget.org
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./artifacts/*.nupkg
+            ./artifacts/*.snupkg
+          generate_release_notes: true
