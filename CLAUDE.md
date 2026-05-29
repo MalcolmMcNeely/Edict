@@ -20,6 +20,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 
 ## Conventions
 
+- **Never abbreviate identifiers.** Variable, parameter, field, and property names use the full word. `CancellationToken cancellationToken`, not `ct`. `IServiceProvider serviceProvider`, not `sp`. `Exception exception`, not `ex`. `ILogger<T> logger`, not `log`. The only allowed shortenings are domain acronyms that are proper nouns and the `string[] args` entry-point parameter.
 - Never use namespace-qualified types inline — always add a `using` directive; use a `using` alias only if names collide.
 - No redundant `private` — members are private by default, so omit the keyword (`.editorconfig` warns via `dotnet_style_require_accessibility_modifiers = never`). Keep `private` only where it changes accessibility, e.g. `{ get; private set; }` on a wider property.
 - Always use braces, even single-line `if`/`for`/`while` bodies (`csharp_prefer_braces`).
@@ -37,11 +38,10 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 
 ## Skills available
 
-Skills are auto-loaded on demand. Key skills for this project:
+A SessionStart hook (`.claude/hooks/inject-skills-on-session-start.ps1`) injects the bodies of `csharp`, `blazor`, `testing`, and `surface-config` at the start of every session, so the full conventions are already in context. A PostToolUse hook (`.claude/hooks/block-style-violations.ps1`) blocks edits that ship known offenders (e.g. `CancellationToken ct`).
 
-- **csharp** — C# naming, using directives, framework project structure (triggers on `.cs` files)
-- **blazor** — Blazor component rules (triggers on `.razor` files)
-- **testing** — xUnit/Verify/Testcontainers conventions, what not to do (triggers on test files)
+Other skills available on demand via the Skill tool:
+
 - **tdd** — red-green-refactor loop
 - **diagnose** — disciplined debugging loop
 - **grill-me** / **grill-with-docs** — alignment sessions before building

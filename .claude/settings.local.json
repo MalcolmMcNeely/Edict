@@ -48,7 +48,10 @@
       "Read(//c/Users/malco/AppData/Local/Temp/claude/C--Projects-Edict/a593e5dd-6435-41cd-bdbf-165226a2ba26/tasks/**)",
       "Bash(grep -rc \"^\\\\s*//\" --include=\"*.cs\" Edict/Edict.Core/)",
       "Bash(sort -t: -k2 -nr)",
-      "Bash(grep -E \"\\\\.cs$\")"
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Projects\\\\Edict\" -Filter \"*.csproj\" -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Projects\\\\Edict\" -Depth 2 | Where-Object { $_.Name -match \"^\\(global\\\\.json|Directory\\\\..+\\\\.props\\)$\" })"
     ]
   }
 }
