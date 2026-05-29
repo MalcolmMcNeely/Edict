@@ -115,7 +115,10 @@ public class TypePlacementTests
     [Fact]
     public void EdictSaga_ShouldResideInEdictCoreSagas()
     {
+        // Exception types live alongside the other dead-letter-runtime types,
+        // not with consumer saga bases.
         var rule = Classes().That().HaveNameStartingWith("EdictSaga")
+            .And().DoNotHaveNameEndingWith("Exception")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Sagas$");
 
         rule.Check(Architecture);
@@ -190,9 +193,13 @@ public class TypePlacementTests
     {
         // EdictDeadLetterProjectionBuilder is excluded: its role-named consumer
         // subclass inherits the brand from EdictTableProjectionBuilder.
+        // Edict*Exception types are excluded: a consumer can catch them, which
+        // is what earns them the Edict prefix even though they sit beside the
+        // bare engine.
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
             .And().DoNotHaveNameStartingWith("EdictDeadLetterProjectionBuilder")
+            .And().DoNotHaveNameEndingWith("Exception")
             .Should().HaveNameMatching("^(?!Edict)")
             .AndShould().HaveNameMatching("^(?!IEdict)");
 

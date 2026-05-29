@@ -1,4 +1,5 @@
 using Edict.Contracts.TableStorage;
+using Edict.Core.DeadLetter;
 using Edict.Core.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -117,7 +118,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
                     var elementType = first.IsByRef ? first.GetElementType() : first;
                     return elementType == rowType;
                 })
-                ?? throw new InvalidOperationException(
+                ?? throw new EdictInternalInvariantException(
                     $"Serializer<{rowType.FullName}>.SerializeToArray with the expected shape not found.");
             var parameters2 = method.GetParameters();
             var args2 = new object?[parameters2.Length];
@@ -127,7 +128,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
                 args2[i] = parameters2[i].HasDefaultValue ? parameters2[i].DefaultValue : null;
             }
             var bytes = method.Invoke(typedSerializer, args2)
-                ?? throw new InvalidOperationException(
+                ?? throw new EdictInternalInvariantException(
                     $"Serializer<{rowType.FullName}>.SerializeToArray returned null.");
             return (byte[])bytes;
         }
@@ -136,7 +137,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
             .FirstOrDefault(m => m.Name == nameof(Serializer.SerializeToArray)
                 && m.IsGenericMethodDefinition
                 && m.GetGenericArguments().Length == 1)
-            ?? throw new InvalidOperationException(
+            ?? throw new EdictInternalInvariantException(
                 "Orleans Serializer.SerializeToArray<T> not found.");
         var parameters = openMethod.GetParameters();
         var args = new object?[parameters.Length];
@@ -146,7 +147,7 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
             args[i] = parameters[i].HasDefaultValue ? parameters[i].DefaultValue : null;
         }
         var serialized = openMethod.MakeGenericMethod(rowType).Invoke(_serializer, args)
-            ?? throw new InvalidOperationException(
+            ?? throw new EdictInternalInvariantException(
                 $"SerializeToArray returned null for {rowType.FullName}.");
         return (byte[])serialized;
     }

@@ -1,5 +1,6 @@
 using Edict.Contracts.Events;
 using Edict.Contracts.Routing;
+using Edict.Core.DeadLetter;
 
 namespace Edict.Core.Outbox;
 
@@ -18,8 +19,11 @@ public sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventStr
 
         if (!accessors.TryGetValue(edictEvent.GetType(), out var accessor))
         {
-            throw new InvalidOperationException(
-                $"Event '{edictEvent.GetType().FullName}' has no registered EdictEventStreamAccessor. "
+            var typeName = edictEvent.GetType().FullName ?? edictEvent.GetType().Name;
+            throw new EdictUnregisteredTypeException(
+                EdictUnregisteredTypeException.Kind.Event,
+                typeName,
+                $"Event '{typeName}' has no registered EdictEventStreamAccessor. "
                 + "Ensure the concrete EdictEvent carries [EdictStream] and exactly one [EdictRouteKey] Guid property, "
                 + "and that its declaring assembly is scanned by AddEdict().");
         }

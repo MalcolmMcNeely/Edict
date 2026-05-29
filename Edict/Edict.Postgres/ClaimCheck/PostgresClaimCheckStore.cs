@@ -1,4 +1,5 @@
 using Edict.Contracts.ClaimCheck;
+using Edict.Core.DeadLetter;
 
 using Npgsql;
 
@@ -54,7 +55,9 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
     {
         if (!Guid.TryParseExact(key, "N", out var id))
         {
-            throw new InvalidOperationException(
+            throw new EdictClaimCheckFetchException(
+                EdictClaimCheckFetchException.Reason.KeyMalformed,
+                key,
                 $"Claim-check key '{key}' is not in the expected GUID-N format.");
         }
 
@@ -67,7 +70,9 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
             var result = await command.ExecuteScalarAsync(cancellationToken);
             if (result is null || result is DBNull)
             {
-                throw new InvalidOperationException(
+                throw new EdictClaimCheckFetchException(
+                    EdictClaimCheckFetchException.Reason.PayloadMissing,
+                    key,
                     $"Claim-check payload not found for key '{key}'.");
             }
             return (byte[])result;

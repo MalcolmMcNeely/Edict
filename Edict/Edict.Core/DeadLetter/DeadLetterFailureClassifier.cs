@@ -24,6 +24,13 @@ static class DeadLetterFailureClassifier
             HttpRequestException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             SocketException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             IOException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
+            EdictUnregisteredTypeException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Wiring,
+            EdictClaimCheckFetchException { FetchReason: EdictClaimCheckFetchException.Reason.KeyMalformed } =>
+                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Serialization,
+            EdictClaimCheckFetchException { FetchReason: EdictClaimCheckFetchException.Reason.PayloadMissing } =>
+                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
+            EdictSagaCoordinationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
+            EdictInternalInvariantException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug,
             _ when ContainsSaturated(exception.GetType().Name) =>
                 SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated,
             _ => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,

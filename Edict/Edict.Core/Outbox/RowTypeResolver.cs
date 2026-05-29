@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 
+using Edict.Core.DeadLetter;
+
 using Orleans.Serialization.TypeSystem;
 
 namespace Edict.Core.Outbox;
@@ -18,10 +20,29 @@ sealed class RowTypeResolver(TypeConverter typeConverter)
             return cached;
         }
 
-        var resolved = typeConverter.Parse(alias)
-            ?? throw new InvalidOperationException(
+        Type? resolved;
+        try
+        {
+            resolved = typeConverter.Parse(alias);
+        }
+        catch (TypeLoadException exception)
+        {
+            throw new EdictUnregisteredTypeException(
+                EdictUnregisteredTypeException.Kind.RowAlias,
+                alias,
+                $"UpsertRow drain could not resolve row alias '{alias}' to a CLR type. " +
+                "The consumer's [Alias]-decorated row POCO must be present in a loaded assembly.",
+                exception);
+        }
+
+        if (resolved is null)
+        {
+            throw new EdictUnregisteredTypeException(
+                EdictUnregisteredTypeException.Kind.RowAlias,
+                alias,
                 $"UpsertRow drain could not resolve row alias '{alias}' to a CLR type. " +
                 "The consumer's [Alias]-decorated row POCO must be present in a loaded assembly.");
+        }
 
         return _cache.GetOrAdd(alias, resolved);
     }

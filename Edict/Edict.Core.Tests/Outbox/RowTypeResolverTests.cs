@@ -1,3 +1,4 @@
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -22,16 +23,15 @@ public sealed class RowTypeResolverTests
     }
 
     [Fact]
-    public void Resolve_ShouldThrow_WhenAliasUnknown()
+    public void Resolve_ShouldThrowEdictUnregisteredTypeException_WhenAliasUnknown()
     {
         var resolver = new RowTypeResolver(Converter);
+        const string alias = "Edict.Tests.NoSuchRowAliasShouldNotResolve";
 
-        Action act = () => resolver.Resolve("Edict.Tests.NoSuchRowAliasShouldNotResolve");
+        var exception = Assert.Throws<EdictUnregisteredTypeException>(() => resolver.Resolve(alias));
 
-        // Match the same failure surface today's Deserialize<object> path
-        // produces on an unrecognised type — any throw funnels the entry
-        // through the standard retry → backoff → dead-letter cycle.
-        Assert.ThrowsAny<Exception>(act);
+        Assert.Equal(EdictUnregisteredTypeException.Kind.RowAlias, exception.UnregisteredKind);
+        Assert.Equal(alias, exception.TypeName);
     }
 
     [Fact]

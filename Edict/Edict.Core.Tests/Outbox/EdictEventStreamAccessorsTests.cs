@@ -1,6 +1,7 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Routing;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 namespace Edict.Core.Tests.Outbox;
@@ -62,13 +63,14 @@ public class EventStreamAccessorsTests
     }
 
     [Fact]
-    public void Resolve_ShouldThrow_WhenEventTypeIsUnregistered()
+    public void Resolve_ShouldThrowEdictUnregisteredTypeException_WhenEventTypeIsUnregistered()
     {
         var accessors = AccessorsFor();
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictUnregisteredTypeException>(
             () => accessors.Resolve(new UnmappedEvent(Guid.NewGuid())));
 
-        Assert.Contains(nameof(UnmappedEvent), exception.Message, StringComparison.Ordinal);
+        Assert.Equal(EdictUnregisteredTypeException.Kind.Event, exception.UnregisteredKind);
+        Assert.Contains(nameof(UnmappedEvent), exception.TypeName, StringComparison.Ordinal);
     }
 }

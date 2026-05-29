@@ -1,4 +1,5 @@
 using Edict.Contracts.Commands;
+using Edict.Core.DeadLetter;
 
 namespace Edict.Core.Sagas;
 
@@ -12,7 +13,7 @@ sealed class SagaDispatchBuffer
 
         if (_pending is not null)
         {
-            throw new InvalidOperationException(
+            throw new EdictSagaCoordinationException(
                 "A saga issues exactly one Command per Event; Dispatch was called more than once " +
                 "within a single event handler. Command fan-out from a saga is a coordination smell.");
         }

@@ -151,17 +151,22 @@ public static class SemanticConventions
             /// <summary>Closed allowlist classifying the exception that drove a promotion:
             /// <see cref="FailureReasonValues.Timeout"/>, <see cref="FailureReasonValues.Saturated"/>,
             /// <see cref="FailureReasonValues.Serialization"/>, <see cref="FailureReasonValues.Substrate"/>,
-            /// or <see cref="FailureReasonValues.Unhandled"/>.</summary>
+            /// <see cref="FailureReasonValues.Wiring"/>, <see cref="FailureReasonValues.ConsumerBug"/>,
+            /// <see cref="FailureReasonValues.InternalBug"/>, or <see cref="FailureReasonValues.Unhandled"/>.</summary>
             public const string FailureReason = "edict.dead_letter.failure_reason";
 
-            /// <summary>The five allowlist values for <see cref="FailureReason"/>. Anything the classifier
-            /// can't bucket lands in <see cref="Unhandled"/> rather than leaking the exception type name.</summary>
+            /// <summary>The eight allowlist values for <see cref="FailureReason"/>. Anything the classifier
+            /// can't bucket lands in <see cref="Unhandled"/> rather than leaking the exception type name.
+            /// The set is closed at compile time so the dimension stays bounded.</summary>
             public static class FailureReasonValues
             {
                 public const string Timeout = "Timeout";
                 public const string Saturated = "Saturated";
                 public const string Serialization = "Serialization";
                 public const string Substrate = "Substrate";
+                public const string Wiring = "Wiring";
+                public const string ConsumerBug = "ConsumerBug";
+                public const string InternalBug = "InternalBug";
                 public const string Unhandled = "Unhandled";
             }
         }

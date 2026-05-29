@@ -1,3 +1,5 @@
+using Edict.Core.DeadLetter;
+
 using Orleans.Runtime;
 using Orleans.Streams;
 
@@ -60,7 +62,9 @@ sealed class EdictKafkaPartitionMapper : IConsistentRingStreamQueueMapper
         var ns = streamId.GetNamespace() ?? string.Empty;
         if (!_queuesByStream.TryGetValue(ns, out var queues))
         {
-            throw new InvalidOperationException(
+            throw new EdictUnregisteredTypeException(
+                EdictUnregisteredTypeException.Kind.Stream,
+                ns,
                 $"Edict.Kafka has no registered topic for stream '{ns}'. Every concrete event must carry [EdictStream(\"...\")] and be reachable from an assembly loaded by the silo's AppDomain when AddEdictKafkaStreams runs.");
         }
 
@@ -87,7 +91,7 @@ sealed class EdictKafkaPartitionMapper : IConsistentRingStreamQueueMapper
         var prefix = queueId.GetStringNamePrefix();
         if (!prefix.StartsWith(QueueNamePrefixRoot, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException(
+            throw new EdictInternalInvariantException(
                 $"QueueId prefix '{prefix}' is not an Edict.Kafka queue (expected prefix '{QueueNamePrefixRoot}').");
         }
         return prefix.Substring(QueueNamePrefixRoot.Length);
