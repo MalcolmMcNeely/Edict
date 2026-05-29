@@ -40,7 +40,7 @@ jobs:
           done
 
       - name: Pack
-        run: dotnet pack Edict/Edict.slnx --configuration Release --no-build --output ./artifacts
+        run: dotnet pack Edict/Edict.slnx --configuration Release --output ./artifacts
 
       - name: Push
         shell: bash
