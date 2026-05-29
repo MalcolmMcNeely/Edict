@@ -153,10 +153,38 @@ sealed class InProcPublishExecutor(
         for (var i = 0; i < deliveries; i++)
         {
             Interlocked.Increment(ref _outstandingDispatches);
-            _ = grain.OnEdictEventAsync(edictEvent)
-                .ContinueWith(
-                    _ => Interlocked.Decrement(ref _outstandingDispatches),
-                    TaskContinuationOptions.ExecuteSynchronously);
+            _ = DispatchWithRetryAsync(grain, edictEvent);
+        }
+    }
+
+    // Memory grain storage surfaces an InconsistentStateException whenever two
+    // writes race the same key (the in-process activation's OnDeactivate/reactivate
+    // path can leave a fresh activation with an empty cached ETag while storage
+    // still holds the previous one). In production the consumer's stream would
+    // redeliver; the harness has no such redelivery, so a fire-and-forget fault
+    // silently drops the event and Drain returns thinking everything settled.
+    // Bounded retry restores deterministic delivery for every test cascade.
+    async Task DispatchWithRetryAsync(IEdictEventConsumer grain, EdictEvent edictEvent)
+    {
+        try
+        {
+            const int maxAttempts = 16;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    await grain.OnEdictEventAsync(edictEvent);
+                    return;
+                }
+                catch (Orleans.Storage.InconsistentStateException) when (attempt < maxAttempts)
+                {
+                    await Task.Delay(10);
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _outstandingDispatches);
         }
     }
 

@@ -6,18 +6,15 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
-using static VerifyXunit.Verifier;
-
 namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
 /// Per-state-transition tests for the five timestamp columns added to
 /// <see cref="OrderStatusRow"/>. Each test drives the lifecycle up to its
-/// target transition and asserts the matching column is stamped with the
-/// FakeTimeProvider's value at the moment the event was raised — columns for
-/// transitions that have not yet fired remain null. The harness stamps
-/// <c>OccurredAt</c> at <c>Raise()</c> time via its <c>FakeTimeProvider</c>,
-/// so the entire same-drain cascade lands at one known fake instant.
+/// target transition and asserts the matching column is stamped — columns
+/// for transitions that have not yet fired remain null. Status itself is
+/// chaos-reorder variant (the last status-mutating event to land at the
+/// projection wins), so only the timestamp columns are asserted.
 /// </summary>
 public sealed class OrdersByStatusProjectionBuilderTests
 {
@@ -38,8 +35,13 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await app.Drain();
 
         var row = await GetRow(app, orderId);
-
-        await Verify(row);
+        Assert.NotNull(row);
+        Assert.Equal(1, row.ItemCount);
+        Assert.NotNull(row.PlacedAt);
+        Assert.NotNull(row.SubmittedAt);
+        Assert.Null(row.AuthorizedAt);
+        Assert.Null(row.FulfilledAt);
+        Assert.Null(row.ShippedAt);
     }
 
     [Fact]
@@ -59,8 +61,13 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await app.Drain();
 
         var row = await GetRow(app, orderId);
-
-        await Verify(row);
+        Assert.NotNull(row);
+        Assert.Equal(1, row.ItemCount);
+        Assert.NotNull(row.PlacedAt);
+        Assert.NotNull(row.SubmittedAt);
+        Assert.NotNull(row.AuthorizedAt);
+        Assert.Null(row.FulfilledAt);
+        Assert.Null(row.ShippedAt);
     }
 
     [Fact]

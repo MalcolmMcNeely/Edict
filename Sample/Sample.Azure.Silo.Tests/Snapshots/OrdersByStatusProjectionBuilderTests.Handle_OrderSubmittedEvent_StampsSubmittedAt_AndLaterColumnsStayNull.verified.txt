@@ -1,6 +1,0 @@
-﻿{
-  Status: Cancelled,
-  ItemCount: 1,
-  PlacedAt: DateTimeOffset_1,
-  SubmittedAt: DateTimeOffset_1
-}

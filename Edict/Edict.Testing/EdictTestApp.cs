@@ -158,38 +158,40 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>
     /// Waits for the in-memory engine to quiesce: the inline outbox drain plus
     /// the asynchronous memory-stream fan-out to projection builders and sagas
-    /// (whose own dispatched Commands cascade). The dispatch counter, held
-    /// queue and silo-wide outbox pending aggregate all going to zero is the
-    /// load-bearing signal — a short stable window catches the gap between
-    /// FakeTimeProvider firing a grain timer and the resulting grain method
-    /// landing on the scheduler.
+    /// (whose own dispatched Commands cascade). Quiet requires the dispatch
+    /// counter, held queue, silo-wide outbox pending aggregate AND a short
+    /// recorder-count stability window — the counter+pending pair catches the
+    /// cascade race the recorder alone misses, the stability window catches
+    /// the gap between FakeTimeProvider firing a grain timer and the resulting
+    /// grain method landing on the scheduler.
     /// </summary>
     public async Task Drain()
     {
         var timeout = TimeSpan.FromSeconds(30);
-        var stableWindow = TimeSpan.FromMilliseconds(150);
+        var stableWindow = TimeSpan.FromMilliseconds(500);
         var start = DateTime.UtcNow;
         var executor = _context.PublishExecutor;
         var cache = _context.MetricsCache;
-        DateTime? settledAt = null;
+        var lastCount = -1;
+        var lastChange = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             var inflight = executor?.OutstandingDispatches ?? 0;
             var held = executor?.HeldCount ?? 0;
             var pending = cache?.GetOutboxStateAggregate().TotalPending ?? 0;
+            var count = _context.Recorder.Count;
 
-            if (inflight == 0 && held == 0 && pending == 0)
+            if (count != lastCount)
             {
-                settledAt ??= DateTime.UtcNow;
-                if (DateTime.UtcNow - settledAt.Value >= stableWindow)
-                {
-                    return;
-                }
+                lastCount = count;
+                lastChange = DateTime.UtcNow;
             }
-            else
+
+            if (inflight == 0 && held == 0 && pending == 0
+                && DateTime.UtcNow - lastChange >= stableWindow)
             {
-                settledAt = null;
+                return;
             }
 
             if (inflight == 0 && held > 0)
@@ -197,7 +199,7 @@ public sealed class EdictTestApp : IAsyncDisposable
                 // Held events release on arrivals to the same subscriber.
                 // No arrivals are coming, so release them explicitly.
                 await executor!.FlushHeldAsync();
-                settledAt = null;
+                lastChange = DateTime.UtcNow;
             }
 
             await Task.Delay(10);
