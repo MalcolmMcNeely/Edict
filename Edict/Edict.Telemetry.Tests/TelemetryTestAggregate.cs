@@ -2,6 +2,7 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
+using Edict.Core.EventHandler;
 
 using MessagePack;
 
@@ -32,6 +33,7 @@ public sealed partial record TelOrderPlacedEvent(Guid OrderId, string Sku) : Edi
     [EdictRouteKey]
     public Guid OrderId { get; init; } = OrderId;
 
+    [EdictTelemeterized]
     public string Sku { get; init; } = Sku;
 }
 
@@ -45,6 +47,11 @@ public partial class TelOrderCommandHandler : EdictCommandHandler
 
     public Task<EdictCommandResult> Handle(TelFailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
+}
+
+public partial class TelOrderPlacedHandler : EdictEventHandler
+{
+    public Task Handle(TelOrderPlacedEvent _) => Task.CompletedTask;
 }
 
 public interface ITelOrderEventCaptureGrain : IGrainWithGuidKey

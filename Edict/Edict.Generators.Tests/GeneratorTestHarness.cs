@@ -49,6 +49,11 @@ internal static class GeneratorTestHarness
             .Where(kvp => kvp.Key.EndsWith("EdictEventStreamRegistrar.g.cs", StringComparison.Ordinal))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
+    public static IReadOnlyDictionary<string, string> RunEventTagWritersGenerator(string consumerSource) =>
+        RunUnified(consumerSource)
+            .Where(kvp => kvp.Key.EndsWith("EdictEventTagWritersRegistrar.g.cs", StringComparison.Ordinal))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
     public static IReadOnlyDictionary<string, string> RunSendInterceptorGenerator(
         string consumerSource, bool interceptorsEnabled = true) =>
         RunUnified(consumerSource, interceptorsEnabled)

@@ -6,6 +6,7 @@ namespace Sample.Contracts.Orders.Commands;
 public sealed partial record AddLineItemCommand(Guid OrderId, Guid LineItemId, string Sku, int Quantity) : EdictCommand
 {
     [EdictRouteKey]
+    [EdictTelemeterized]
     public Guid OrderId { get; init; } = OrderId;
 
     public Guid LineItemId { get; init; } = LineItemId;

@@ -10,6 +10,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Telemetry;
 using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +49,8 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
     {
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _claimCheckContainerName);
         var unwrap = new ClaimCheckUnwrap(_serializer, store);
-        var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap);
+        var noWriters = new EventTagWriters(new Dictionary<Type, Action<EdictEvent, System.Diagnostics.Activity>>());
+        var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap, noWriters);
         var publishExecutor = new RecordingPublishEventExecutor(_serializer);
 
         var missingKey = $"edict-claim-check/{Guid.NewGuid():N}";

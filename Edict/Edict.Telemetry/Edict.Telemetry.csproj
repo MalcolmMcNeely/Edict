@@ -13,6 +13,7 @@
           (ADR 0014).
         -->
         <PackageReference Include="Microsoft.Orleans.Core" Version="10.1.0" />
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
     </ItemGroup>
 
 </Project>

@@ -8,7 +8,7 @@ using Orleans.Streams;
 
 namespace Edict.Core.EventHandler;
 
-sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwrap) : IOutboxEffectExecutor
+sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwrap, IEventTagWriters tagWriters) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
@@ -32,6 +32,11 @@ sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwra
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
             materialised.GetType().Name, parentContext);
+
+        if (span is not null && tagWriters.TryGet(materialised.GetType(), out var write))
+        {
+            write(materialised, span);
+        }
 
         await deferredDispatch(materialised);
     }

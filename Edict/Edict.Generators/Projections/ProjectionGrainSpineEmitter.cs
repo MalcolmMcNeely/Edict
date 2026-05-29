@@ -38,6 +38,13 @@ internal static class ProjectionGrainSpineEmitter
                 .Append(".StartEdictEventHandle(")
                 .Append(EdictWellKnownNames.EdictDiagnosticsActivitySourceFqn)
                 .Append(", \"").Append(handler.EventSimpleName).Append("\", parentContext);\n")
+                .Append("                    if (span is not null && this.ServiceProvider.GetService(typeof(")
+                .Append(EdictWellKnownNames.IEventTagWritersFqn)
+                .Append(")) is ")
+                .Append(EdictWellKnownNames.IEventTagWritersFqn)
+                .Append(" __writers && __writers.TryGet(typeof(")
+                .Append(handler.EventFqn)
+                .Append("), out var __write)) { __write(typed, span); }\n")
                 .Append("                    await DispatchEventAsync(typed, Handle);\n")
                 .Append("                    return true;\n")
                 .Append("                }\n");

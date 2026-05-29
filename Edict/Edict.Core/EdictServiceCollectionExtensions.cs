@@ -62,6 +62,9 @@ public static class EdictServiceCollectionExtensions
         var discoveredAccessors = EventStreamAccessorDiscovery.Discover(materialised, logger);
         var accessors = new Dictionary<Type, EdictEventStreamAccessor>(discoveredAccessors);
 
+        var discoveredTagWriters = EventTagWritersDiscovery.Discover(materialised, logger);
+        var tagWriters = new Dictionary<Type, Action<Edict.Contracts.Events.EdictEvent, System.Diagnostics.Activity>>(discoveredTagWriters);
+
         // EdictDeadLetterRaised lives in Edict.Contracts where the Edict
         // generator does not run, so the per-assembly registrar mechanism
         // cannot contribute its accessor. Hand-register it: the framework
@@ -74,6 +77,7 @@ public static class EdictServiceCollectionExtensions
 
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
+        services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 

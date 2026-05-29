@@ -45,6 +45,9 @@ internal static class EdictWellKnownNames
     public const string ActivityExtensionsFqn =
         "global::Edict.Telemetry.ActivityExtensions";
 
+    public const string IEventTagWritersFqn =
+        "global::Edict.Telemetry.IEventTagWriters";
+
     // ── Edict.Core.Commands ──────────────────────────────────────────────────
     public const string EdictCommandHandlerFqn =
         "global::Edict.Core.Commands.EdictCommandHandler";

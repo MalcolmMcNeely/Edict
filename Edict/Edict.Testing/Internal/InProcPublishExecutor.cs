@@ -30,6 +30,7 @@ sealed class InProcPublishExecutor(
     SubscriberMap subscribers,
     ChaosOptions chaos,
     IEventStreamAccessors accessors,
+    IEventTagWriters tagWriters,
     TimelineRecorder recorder) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
@@ -46,6 +47,11 @@ sealed class InProcPublishExecutor(
 
         using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
             evt.GetType().Name, parentContext);
+
+        if (publishActivity is not null && tagWriters.TryGet(evt.GetType(), out var write))
+        {
+            write(evt, publishActivity);
+        }
 
         var (fallbackTraceId, fallbackSpanId) = SplitTraceParent(entry.TraceParent);
 

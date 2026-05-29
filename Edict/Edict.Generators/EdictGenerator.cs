@@ -6,6 +6,7 @@ using Edict.Generators.Commands;
 using Edict.Generators.EventHandler;
 using Edict.Generators.Events;
 using Edict.Generators.EventStreamAccessors;
+using Edict.Generators.EventTagWriters;
 using Edict.Generators.Projections;
 using Edict.Generators.Sagas;
 using Edict.Generators.Shared;
@@ -104,6 +105,27 @@ public sealed class EdictGenerator : IIncrementalGenerator
 
             spc.AddSource("Edict.Generated.EdictEventStreamRegistrar.g.cs",
                 SourceText.From(EventStreamRegistrarEmitter.Emit(allEvents), Encoding.UTF8));
+        });
+
+        // EventTagWriters ─────────────────────────────────────────────────────
+        var eventTagWriters = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is RecordDeclarationSyntax { BaseList: not null } candidate
+                    && candidate.Modifiers.Any(static m => m.ValueText == "partial")
+                    && !candidate.Modifiers.Any(static m => m.ValueText == "abstract"),
+                static (ctx, _) => EventTagWritersDiscovery.MapEvent((RecordDeclarationSyntax)ctx.Node, ctx.SemanticModel))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
+        context.RegisterSourceOutput(eventTagWriters.Collect(), static (spc, allEvents) =>
+        {
+            if (allEvents.Length == 0)
+            {
+                return;
+            }
+
+            spc.AddSource("Edict.Generated.EdictEventTagWritersRegistrar.g.cs",
+                SourceText.From(EventTagWritersRegistrarEmitter.Emit(allEvents), Encoding.UTF8));
         });
 
         // EventHandler ────────────────────────────────────────────────────────

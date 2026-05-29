@@ -40,7 +40,7 @@ public sealed class InvokeHandlerExecutorTests
         };
         var dispatched = new List<EdictEvent>();
 
-        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null));
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters);
         await executor.ExecuteAsync(
             entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
 
@@ -69,7 +69,7 @@ public sealed class InvokeHandlerExecutorTests
         };
         var dispatched = new List<EdictEvent>();
 
-        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store));
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store), NoWriters);
         await executor.ExecuteAsync(
             entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
 
@@ -88,7 +88,7 @@ public sealed class InvokeHandlerExecutorTests
             Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
         };
 
-        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(new InMemoryClaimCheckStore()));
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(new InMemoryClaimCheckStore()), NoWriters);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null));
@@ -126,7 +126,7 @@ public sealed class InvokeHandlerExecutorTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null));
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters);
 
         await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null);
 
@@ -154,12 +154,15 @@ public sealed class InvokeHandlerExecutorTests
             Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
         };
 
-        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null));
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             executor.ExecuteAsync(entry, NullStreamProvider.Instance,
                 _ => throw new InvalidOperationException("simulated dispatch failure"), consumerType: typeof(object), liveWireEvent: null));
     }
+
+    static readonly IEventTagWriters NoWriters =
+        new EventTagWriters(new Dictionary<Type, Action<EdictEvent, Activity>>());
 
     static Serializer BuildSerializer()
     {

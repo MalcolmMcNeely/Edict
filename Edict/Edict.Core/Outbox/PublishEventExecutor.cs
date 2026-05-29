@@ -9,7 +9,7 @@ using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
 
-sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors accessors) : IOutboxEffectExecutor
+sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors accessors, IEventTagWriters tagWriters) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
@@ -31,6 +31,11 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 
         using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
             evt.GetType().Name, parentContext);
+
+        if (publishActivity is not null && tagWriters.TryGet(evt.GetType(), out var write))
+        {
+            write(evt, publishActivity);
+        }
 
         var stamped = Stamp(evt, entry, publishActivity);
 
@@ -74,6 +79,10 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
                 var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
                 activities[i] = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
                     evt.GetType().Name, parentContext);
+                if (activities[i] is { } a && tagWriters.TryGet(evt.GetType(), out var write))
+                {
+                    write(evt, a);
+                }
                 stamped[i] = Stamp(evt, entry, activities[i]);
             }
 

@@ -69,6 +69,50 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     }
 
     [Fact]
+    public async Task PublishSpan_ShouldWriteTelemeterizedEventPropertiesAsEdictTags()
+    {
+        var orderId = Guid.NewGuid();
+        const string sku = "SKU-EVTPUB-1";
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+
+        var publishSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent");
+        Assert.Equal(sku, publishSpan.GetTagItem("edict.sku"));
+    }
+
+    [Fact]
+    public async Task HandleSpan_ShouldWriteTelemeterizedEventPropertiesAsEdictTags()
+    {
+        var orderId = Guid.NewGuid();
+        const string sku = "SKU-EVTHANDLE-1";
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+        await WaitForEventsAsync(orderId);
+
+        var handleSpan = stopped.SingleOrDefault(a =>
+            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent");
+        Assert.NotNull(handleSpan);
+        Assert.Equal(sku, handleSpan!.GetTagItem("edict.sku"));
+    }
+
+    [Fact]
     public async Task PublishSpan_ShouldBeParentChildUnderCommandSpan()
     {
         var orderId = Guid.NewGuid();

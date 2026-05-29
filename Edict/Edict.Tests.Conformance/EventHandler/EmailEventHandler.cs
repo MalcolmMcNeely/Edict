@@ -15,6 +15,7 @@ public sealed partial record CustomerNotifiedEvent(Guid CustomerId, string Reaso
     [EdictRouteKey]
     public Guid CustomerId { get; init; } = CustomerId;
 
+    [Edict.Contracts.Telemetry.EdictTelemeterized]
     public string Reason { get; init; } = Reason;
 }
 

@@ -53,6 +53,10 @@ public static class Extensions
             .WithMetrics(metrics =>
             {
                 metrics.AddRuntimeInstrumentation();
+                // Dormant until the metrics PRD lands an Edict instrument; once any
+                // Edict meter is registered, exemplars are sampled from in-flight
+                // traces with zero further wiring.
+                metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
             })
             .WithTracing(_ =>
             {
