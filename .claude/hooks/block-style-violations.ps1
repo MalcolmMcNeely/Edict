@@ -47,8 +47,12 @@ switch ($toolName) {
 if ($candidates.Count -eq 0) { exit 0 }
 
 $violations = @(
-    @{ pattern = '\bCancellationToken\s+ct\b';   message = "abbreviated parameter 'ct' for CancellationToken — use 'cancellationToken'" }
-    @{ pattern = '\bIServiceProvider\s+sp\b';    message = "abbreviated parameter 'sp' for IServiceProvider — use 'serviceProvider'" }
+    @{ pattern = '\bCancellationToken\s+ct\b';     message = "abbreviated parameter 'ct' for CancellationToken — use 'cancellationToken'" }
+    @{ pattern = '\bIServiceProvider\s+sp\b';      message = "abbreviated parameter 'sp' for IServiceProvider — use 'serviceProvider'" }
+    @{ pattern = '\bEdictEvent\s+evt\b';           message = "abbreviated parameter 'evt' for EdictEvent — use 'edictEvent'" }
+    @{ pattern = '\bEdictCommand\s+cmd\b';         message = "abbreviated parameter 'cmd' for EdictCommand — use 'command'" }
+    @{ pattern = '\bEdictCommandResult\s+res\b';   message = "abbreviated parameter 'res' for EdictCommandResult — use 'result'" }
+    @{ pattern = '\bException\s+ex\b';             message = "abbreviated catch variable 'ex' for Exception — use 'exception'" }
 )
 
 $hits = New-Object System.Collections.Generic.List[string]
