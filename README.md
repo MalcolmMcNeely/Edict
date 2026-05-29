@@ -1,5 +1,7 @@
 # Edict
 
+New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
+
 A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics.
 
 ```csharp

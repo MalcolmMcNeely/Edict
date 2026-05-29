@@ -1,0 +1,57 @@
+name: Link check
+
+on:
+  pull_request:
+    paths:
+      - 'docs/usage/**'
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'Edict/Edict.*/README.md'
+      - '.github/workflows/link-check.yml'
+      - '.github/markdown-link-check.json'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/usage/**'
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'Edict/Edict.*/README.md'
+      - '.github/workflows/link-check.yml'
+      - '.github/markdown-link-check.json'
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdown-link-check
+        run: npm install --global markdown-link-check@3.13.6
+
+      - name: Check consumer-facing markdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          files=(
+            README.md
+            AGENTS.md
+            docs/usage/**/*.md
+            Edict/Edict.*/README.md
+          )
+          fail=0
+          for file in "${files[@]}"; do
+            echo "::group::Checking $file"
+            if ! markdown-link-check --config .github/markdown-link-check.json --quiet "$file"; then
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
