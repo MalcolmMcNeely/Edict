@@ -12,13 +12,19 @@ using Edict.Substrate;
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: dotnet run -- <substrate>");
-    Console.Error.WriteLine($"  substrate: all | {string.Join(" | ", SubstrateRegistry.All().Select(s => s.Name))}");
+    Console.Error.WriteLine($"  substrate: all | render | {string.Join(" | ", SubstrateRegistry.All().Select(s => s.Name))}");
+    Console.Error.WriteLine("  render: skip the bench, re-render throughput.md from every <substrate>-summary.json on disk");
     return 2;
 }
 
 var selector = args[0].ToLowerInvariant();
 ISubstrate[] substrates;
-if (selector == "all")
+var renderOnly = selector == "render";
+if (renderOnly)
+{
+    substrates = [];
+}
+else if (selector == "all")
 {
     substrates = [.. SubstrateRegistry.All()];
 }
@@ -27,7 +33,7 @@ else
     var resolved = SubstrateRegistry.Resolve(selector);
     if (resolved is null)
     {
-        Console.Error.WriteLine($"unknown substrate '{args[0]}'. Known: all, {string.Join(", ", SubstrateRegistry.All().Select(s => s.Name))}");
+        Console.Error.WriteLine($"unknown substrate '{args[0]}'. Known: all, render, {string.Join(", ", SubstrateRegistry.All().Select(s => s.Name))}");
         return 2;
     }
     substrates = [resolved];
@@ -47,6 +53,7 @@ var metadata = new RunMetadata(
 
 var runDate = DateTimeOffset.UtcNow;
 var docsRoot = ResolveDocsRoot();
+var rawDirectory = Path.Combine(docsRoot, "raw");
 var combined = new List<ThroughputResults>();
 var saturationCombined = new List<SaturationResults>();
 var closedLoop = new ClosedLoopRunner();
@@ -111,6 +118,15 @@ foreach (var substrate in substrates)
     var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
     await SaturationCsvWriter.WriteAsync(saturationCsvPath, [saturationResult]);
     Console.WriteLine($"  Wrote {saturationCsvPath}");
+
+    // Per-substrate sidecar summary — keyed by substrate name (no date in the
+    // file name), so a single-substrate run only refreshes its own file. The
+    // markdown render below unions every substrate's summary on disk, so
+    // unrun substrates keep their published rows + run date.
+    var substrateSummary = SubstrateSummaryStore.BuildFromResults(
+        substrate.Name, perSubstrateRunDate[substrate.Name], perSubstrate, saturationResult);
+    var substrateSummaryPath = SubstrateSummaryStore.PathFor(rawDirectory, substrate.Name);
+    await SubstrateSummaryStore.WriteAsync(substrateSummaryPath, substrateSummary);
 }
 
 var templatePath = Path.Combine(docsRoot, "throughput.template.md");
@@ -121,13 +137,20 @@ var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
     ["dotnet_version"] = metadata.DotnetVersion,
     ["git_sha"] = metadata.GitSha,
 };
-foreach (var (substrateName, substrateRunDate) in perSubstrateRunDate)
+
+// Render from the union of every substrate's sidecar summary, not just the
+// current run. The current run's substrates were just (over-)written above;
+// any other substrate's prior summary on disk is read here, so its rows +
+// run-date token survive a single-substrate invocation.
+var allSummaries = await SubstrateSummaryStore.ReadAllAsync(rawDirectory);
+var hydrated = SubstrateSummaryStore.Hydrate(allSummaries);
+foreach (var (substrateName, substrateRunDate) in hydrated.RunDates)
 {
     tokens["run_date:" + substrateName] = substrateRunDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }
 
 var markdownPath = Path.Combine(docsRoot, "throughput.md");
-await MarkdownWriter.WriteAsync(markdownPath, template, tokens, combined, saturationCombined);
+await MarkdownWriter.WriteAsync(markdownPath, template, tokens, hydrated.ClosedLoop, hydrated.Saturation);
 Console.WriteLine($"Wrote {markdownPath}");
 
 // Run-level health rollup: any point exceeding the failure-rate threshold

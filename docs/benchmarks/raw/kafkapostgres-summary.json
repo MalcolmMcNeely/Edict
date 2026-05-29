@@ -1,0 +1,73 @@
+{
+  "substrate": "kafkapostgres",
+  "run_date": "2026-05-29T00:00:00+00:00",
+  "closed_loop": [
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 2,
+      "completed_count": 25609,
+      "elapsed_seconds": 30,
+      "p50_ms": 1.84,
+      "p95_ms": 4.66,
+      "p99_ms": 7.46,
+      "health": { "succeeded": 25609, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 16,
+      "completed_count": 67412,
+      "elapsed_seconds": 30,
+      "p50_ms": 6.41,
+      "p95_ms": 11.81,
+      "p99_ms": 18.14,
+      "health": { "succeeded": 67412, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 64,
+      "completed_count": 80564,
+      "elapsed_seconds": 30,
+      "p50_ms": 24.39,
+      "p95_ms": 34.48,
+      "p99_ms": 46.83,
+      "health": { "succeeded": 80564, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 2,
+      "completed_count": 419,
+      "elapsed_seconds": 30,
+      "p50_ms": 143.25,
+      "p95_ms": 220.56,
+      "p99_ms": 236.84,
+      "health": { "succeeded": 419, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 16,
+      "completed_count": 3386,
+      "elapsed_seconds": 30,
+      "p50_ms": 142.45,
+      "p95_ms": 216.01,
+      "p99_ms": 244.16,
+      "health": { "succeeded": 3386, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 64,
+      "completed_count": 5970,
+      "elapsed_seconds": 30,
+      "p50_ms": 319.15,
+      "p95_ms": 446.78,
+      "p99_ms": 507.62,
+      "health": { "succeeded": 5970, "failed": 0, "failures_by_type": {} }
+    }
+  ],
+  "saturation": {
+    "events_per_second": 373.13,
+    "window_seconds": 30,
+    "producer_concurrency": 256,
+    "aggregate_count": 1024,
+    "health": { "succeeded": 11188, "failed": 0, "failures_by_type": {} }
+  }
+}

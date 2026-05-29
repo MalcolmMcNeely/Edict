@@ -1,0 +1,73 @@
+{
+  "substrate": "azure",
+  "run_date": "2026-05-29T00:00:00+00:00",
+  "closed_loop": [
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 2,
+      "completed_count": 100,
+      "elapsed_seconds": 30,
+      "p50_ms": 11.95,
+      "p95_ms": 18.56,
+      "p99_ms": 25.52,
+      "health": { "succeeded": 100, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 16,
+      "completed_count": 200,
+      "elapsed_seconds": 30,
+      "p50_ms": 36.58,
+      "p95_ms": 57.11,
+      "p99_ms": 141.14,
+      "health": { "succeeded": 200, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command acceptance",
+      "parallelism": 64,
+      "completed_count": 300,
+      "elapsed_seconds": 30,
+      "p50_ms": 144.73,
+      "p95_ms": 187.36,
+      "p99_ms": 353.11,
+      "health": { "succeeded": 300, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 2,
+      "completed_count": 400,
+      "elapsed_seconds": 30,
+      "p50_ms": 77.42,
+      "p95_ms": 98.10,
+      "p99_ms": 114.85,
+      "health": { "succeeded": 400, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 16,
+      "completed_count": 500,
+      "elapsed_seconds": 30,
+      "p50_ms": 277.55,
+      "p95_ms": 362.74,
+      "p99_ms": 405.43,
+      "health": { "succeeded": 500, "failed": 0, "failures_by_type": {} }
+    },
+    {
+      "scenario": "Command → Event delivery",
+      "parallelism": 64,
+      "completed_count": 600,
+      "elapsed_seconds": 30,
+      "p50_ms": 1149.58,
+      "p95_ms": 1251.14,
+      "p99_ms": 1398.65,
+      "health": { "succeeded": 600, "failed": 0, "failures_by_type": {} }
+    }
+  ],
+  "saturation": {
+    "events_per_second": 70,
+    "window_seconds": 30,
+    "producer_concurrency": 256,
+    "aggregate_count": 1024,
+    "health": { "succeeded": 2100, "failed": 0, "failures_by_type": {} }
+  }
+}
