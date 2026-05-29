@@ -35,6 +35,12 @@ public sealed class ClaimCheckPolicy
     static readonly Histogram<long> PayloadSize = EdictDiagnostics.Meter.CreateHistogram<long>(
         SemanticConventions.ClaimCheck.Meters.PayloadSize);
 
+    // Boxed once so the per-event tag construction below doesn't allocate a
+    // fresh box on each Record call (ClaimCheckPolicy.ApplyAsync runs at every
+    // raised event, the boxed-bool was the only non-string tag value).
+    static readonly object BoxedFalse = false;
+    static readonly object BoxedTrue = true;
+
     readonly Serializer _serializer;
     readonly int _thresholdBytes;
     readonly IEdictClaimCheckStore? _store;
@@ -65,7 +71,7 @@ public sealed class ClaimCheckPolicy
         {
             PayloadSize.Record(innerBytes.Length,
                 new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
-                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, false));
+                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedFalse));
             return new ClaimCheckApplyResult(innerBytes, evt);
         }
 
@@ -97,7 +103,7 @@ public sealed class ClaimCheckPolicy
 
         PayloadSize.Record(innerBytes.Length,
             new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
-            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, true));
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedTrue));
 
         return new ClaimCheckApplyResult(envelopeBytes, envelope);
     }

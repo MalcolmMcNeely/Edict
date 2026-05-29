@@ -45,6 +45,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     Serializer? _cachedSerializer;
     IEdictMetricsCache? _cachedMetricsCache;
     TimeProvider? _cachedTimeProvider;
+    string? _cachedSagaType;
+    string? _cachedSagaKey;
 
     /// <summary>
     /// Durable workflow progress. The consumer mutates this inside a
@@ -115,8 +117,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         }
         var time = _cachedTimeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
         cache.ReportSaga(
-            sagaType: GetType().FullName ?? GetType().Name,
-            sagaKey: this.GetPrimaryKey().ToString(),
+            sagaType: _cachedSagaType ??= GetType().FullName ?? GetType().Name,
+            sagaKey: _cachedSagaKey ??= this.GetPrimaryKey().ToString(),
             lastHandledAt: time.GetUtcNow());
     }
 
