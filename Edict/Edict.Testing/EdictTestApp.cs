@@ -169,8 +169,13 @@ public sealed class EdictTestApp : IAsyncDisposable
         // stability window we flush the chaos-held queue and, if it released
         // anything, re-poll until the cascade settles again — release is the
         // load-bearing trigger, never a wall-clock wait.
-        var stableWindow = TimeSpan.FromMilliseconds(250);
-        var timeout = TimeSpan.FromSeconds(10);
+        // 500 ms gives a slow GitHub-hosted Linux runner enough headroom
+        // for chaos-released events to dispatch through a freshly-activated
+        // projection grain before drain calls the cascade stable. Outstanding
+        // fire-and-forget dispatches are tracked separately so this window
+        // is only ever consulted when nothing measurable is in-flight.
+        var stableWindow = TimeSpan.FromMilliseconds(500);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
         var lastCount = -1;
         var lastChange = DateTime.UtcNow;
