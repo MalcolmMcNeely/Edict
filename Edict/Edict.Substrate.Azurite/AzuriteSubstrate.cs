@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Net.Sockets;
+
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
@@ -48,6 +51,7 @@ public sealed class AzuriteSubstrate : ISubstrate
             })
             .Build();
         await container.StartAsync(ct);
+        await WaitForHostEndpointsAsync(container, ct);
 
         var connectionString = container.GetConnectionString();
         var tableClient = new TableServiceClient(connectionString);
@@ -60,6 +64,62 @@ public sealed class AzuriteSubstrate : ISubstrate
             tableClient,
             blobClient,
             queueClient);
+    }
+
+    // Testcontainers' Azurite wait strategy keys off in-container readiness,
+    // not the host-side port mapping. On Podman/Windows the gvproxy forwarder
+    // can lag behind the container being "ready" — the in-container Azurite
+    // accepts connections, but 127.0.0.1:{mapped-port} on the host still
+    // returns RST. The Azure SDK's default retry budget (~25–30 s) gives up
+    // before gvproxy publishes the mapping, surfacing as a
+    // "connection actively refused" AggregateException out of the first
+    // CreateIfNotExistsAsync call inside AddEdictAzurePersistence.
+    // This probe makes the substrate wait for host-side TCP connectivity on
+    // every endpoint before handing the runtime back, so the silo configurator
+    // never races the forwarder.
+    static async Task WaitForHostEndpointsAsync(AzuriteContainer container, CancellationToken ct)
+    {
+        Uri[] endpoints =
+        [
+            new Uri(container.GetBlobEndpoint()),
+            new Uri(container.GetQueueEndpoint()),
+            new Uri(container.GetTableEndpoint()),
+        ];
+
+        var deadline = TimeSpan.FromSeconds(60);
+
+        foreach (var endpoint in endpoints)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            SocketException? lastError = null;
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    using var probe = new TcpClient();
+                    await probe.ConnectAsync(endpoint.Host, endpoint.Port, ct);
+                    lastError = null;
+                    break;
+                }
+                catch (SocketException ex)
+                {
+                    lastError = ex;
+                    if (stopwatch.Elapsed >= deadline)
+                    {
+                        break;
+                    }
+                    await Task.Delay(TimeSpan.FromMilliseconds(250), ct);
+                }
+            }
+
+            if (lastError is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Azurite container reported ready, but the host could not connect to {endpoint} within {deadline.TotalSeconds:F0} s. On Podman/Windows this is typically a gvproxy port-forwarder stall after rapid container churn — the in-container Azurite is reachable, the host-mapped port is not.",
+                    lastError);
+            }
+        }
     }
 }
 
