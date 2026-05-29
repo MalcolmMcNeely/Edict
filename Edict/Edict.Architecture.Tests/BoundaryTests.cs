@@ -127,8 +127,9 @@ public class BoundaryTests
                      || a.Name.StartsWith("Npgsql", StringComparison.OrdinalIgnoreCase)));
     }
 
-    // Azure implementations live in Edict.Azure, not Edict.Core — so taking
-    // Core does not drag any Azure SDK into a non-Azure deployment.
+    // Azure implementations live in Edict.Azure.Streaming or
+    // Edict.Azure.Persistence, not Edict.Core — so taking Core does not drag
+    // any Azure SDK into a non-Azure deployment.
     [Fact]
     public void EdictCore_ShouldNotDependOnAnyAzureSdkPackages()
     {
@@ -137,6 +138,42 @@ public class BoundaryTests
         Assert.DoesNotContain(referenced,
             a => a.Name is not null
                  && a.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // ADR-0042 drift guard: the only framework assemblies allowed to reference
+    // an Azure.* SDK are Edict.Azure.Streaming and Edict.Azure.Persistence. A
+    // future regression that re-bundles AQS + Tables into one assembly, or
+    // leaks an Azure dependency into Edict.Core / Edict.Kafka / Edict.Postgres,
+    // shows up here as an unexpected carrier.
+    [Fact]
+    public void EdictAzureSdks_ShouldOnlyResideInTheTwoAzurePackages()
+    {
+        var permitted = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Edict.Azure.Streaming",
+            "Edict.Azure.Persistence",
+        };
+
+        var frameworkAssemblies = new[]
+        {
+            typeof(EdictCommand).Assembly,
+            typeof(EdictIdempotencyBase).Assembly,
+            typeof(EdictDiagnostics).Assembly,
+            typeof(Edict.Azure.Streaming.EdictAzureStreamsOptions).Assembly,
+            typeof(Edict.Azure.Persistence.EdictAzurePersistenceOptions).Assembly,
+            typeof(Edict.Kafka.EdictKafkaStreamsOptions).Assembly,
+            typeof(Edict.Postgres.EdictPostgresPersistenceOptions).Assembly,
+        };
+
+        var violations = frameworkAssemblies
+            .Where(assembly => !permitted.Contains(assembly.GetName().Name!))
+            .SelectMany(assembly => assembly.GetReferencedAssemblies()
+                .Where(referenced => referenced.Name is not null
+                    && referenced.Name.StartsWith("Azure.", StringComparison.OrdinalIgnoreCase))
+                .Select(referenced => $"{assembly.GetName().Name} → {referenced.Name}"))
+            .ToList();
+
+        Assert.Empty(violations);
     }
 
     // Kafka implementations live in Edict.Kafka, not Edict.Core — taking Core
@@ -202,7 +239,7 @@ public class BoundaryTests
     // TimeSpan.FromMinutes(1) into the engine instead of surfacing it through
     // EdictOptions. Options classes (filenames matching *Options.cs) are the
     // sanctioned home for literals — the test scans every other source file
-    // in Edict.Core and Edict.Azure.
+    // in Edict.Core, Edict.Azure.Streaming, and Edict.Azure.Persistence.
     [Fact]
     public void EdictMechanismCode_ShouldNotContainTimeSpanLiteralDefaults()
     {
@@ -210,7 +247,8 @@ public class BoundaryTests
         var mechanismRoots = new[]
         {
             Path.Combine(solutionRoot, "Edict.Core"),
-            Path.Combine(solutionRoot, "Edict.Azure"),
+            Path.Combine(solutionRoot, "Edict.Azure.Streaming"),
+            Path.Combine(solutionRoot, "Edict.Azure.Persistence"),
         };
 
         var literalPattern = new Regex(

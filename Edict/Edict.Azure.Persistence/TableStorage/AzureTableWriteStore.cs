@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 
 using Edict.Contracts.TableStorage;
 
-namespace Edict.Azure.TableStorage;
+namespace Edict.Azure.Persistence.TableStorage;
 
 internal sealed class AzureTableWriteStore<T> : IEdictTableWriteStore<T>
     where T : class, new()

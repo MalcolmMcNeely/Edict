@@ -28,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Edict.Azure\Edict.Azure.csproj" />
+        <ProjectReference Include="..\Edict.Azure.Streaming\Edict.Azure.Streaming.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />

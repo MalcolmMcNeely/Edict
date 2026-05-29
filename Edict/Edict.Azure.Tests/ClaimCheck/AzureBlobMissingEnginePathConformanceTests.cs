@@ -1,7 +1,7 @@
 using Azure.Storage.Blobs;
 using System.Diagnostics;
 
-using Edict.Azure.ClaimCheck;
+using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;

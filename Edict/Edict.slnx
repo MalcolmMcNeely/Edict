@@ -9,7 +9,8 @@
     <Project Path="Edict.Telemetry/Edict.Telemetry.csproj" />
     <Project Path="Edict.Core/Edict.Core.csproj" />
     <Project Path="Edict.Testing/Edict.Testing.csproj" />
-    <Project Path="Edict.Azure/Edict.Azure.csproj" />
+    <Project Path="Edict.Azure.Streaming/Edict.Azure.Streaming.csproj" />
+    <Project Path="Edict.Azure.Persistence/Edict.Azure.Persistence.csproj" />
     <Project Path="Edict.Postgres/Edict.Postgres.csproj" />
     <Project Path="Edict.Kafka/Edict.Kafka.csproj" />
     <Project Path="Edict.Generators/Edict.Generators.csproj" />

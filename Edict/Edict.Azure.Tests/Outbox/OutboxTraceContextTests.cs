@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Telemetry;
 
 namespace Edict.Azure.Tests.Outbox;

@@ -1,7 +1,7 @@
 using System.Reflection;
 using Azure.Data.Tables;
 
-namespace Edict.Azure.TableStorage;
+namespace Edict.Azure.Persistence.TableStorage;
 
 internal static class AzureTablePocoMapper
 {

@@ -1,3 +1,5 @@
+using Edict.Azure.Streaming;
+
 using static VerifyXunit.Verifier;
 
 namespace Edict.Azure.Tests.Configuration;

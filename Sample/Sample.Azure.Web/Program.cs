@@ -1,6 +1,6 @@
 using Azure.Data.Tables;
 
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;

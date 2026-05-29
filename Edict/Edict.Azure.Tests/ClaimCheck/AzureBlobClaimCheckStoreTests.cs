@@ -1,7 +1,7 @@
 using Azure;
 using Azure.Storage.Blobs;
 
-using Edict.Azure.ClaimCheck;
+using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts.ClaimCheck;
 using Edict.Tests.Conformance;
 

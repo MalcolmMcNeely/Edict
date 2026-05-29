@@ -22,7 +22,7 @@
         <ProjectReference Include="../Sample.Web.Components/Sample.Web.Components.csproj" />
         <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
-        <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Azure.Persistence/Edict.Azure.Persistence.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
     </ItemGroup>
 

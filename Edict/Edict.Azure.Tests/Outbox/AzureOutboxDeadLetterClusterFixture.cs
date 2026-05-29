@@ -2,7 +2,7 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;

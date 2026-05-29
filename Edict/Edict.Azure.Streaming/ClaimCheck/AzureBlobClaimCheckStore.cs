@@ -3,7 +3,7 @@ using Azure.Storage.Blobs.Models;
 
 using Edict.Contracts.ClaimCheck;
 
-namespace Edict.Azure.ClaimCheck;
+namespace Edict.Azure.Streaming.ClaimCheck;
 
 /// <summary>
 /// Azure Blob-backed <see cref="IEdictClaimCheckStore"/> for the production
@@ -13,8 +13,10 @@ namespace Edict.Azure.ClaimCheck;
 /// GUID-based key so collisions are impossible and operator forensics can
 /// click through the dead-letter row's <c>ClaimCheckKey</c> to the blob.
 /// <para>
-/// Lives under <c>Edict.Azure</c> so the <c>Azure.*</c> dependency stays
-/// inside the provider assembly.
+/// Lives under <c>Edict.Azure.Streaming</c> because the Azure Queue wire-cap
+/// is what makes claim-check operationally required for AQS users; a Kafka
+/// consumer who wants Azure-blob claim-check still has the
+/// <see cref="IEdictClaimCheckStore"/> seam to wire one up directly.
 /// </para>
 /// </summary>
 public sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore

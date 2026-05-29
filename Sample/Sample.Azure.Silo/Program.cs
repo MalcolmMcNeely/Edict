@@ -2,7 +2,9 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure;
+using Edict.Azure.Persistence;
+using Edict.Azure.Streaming;
+using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Core;
 using Edict.Core.Serialization;
 using Edict.Telemetry;
@@ -66,13 +68,18 @@ var host = Host.CreateDefaultBuilder(args)
             o.QueueServiceClient       = new QueueServiceClient(queueConnectionString);
         });
 
+        silo.AddEdictAzureBlobClaimCheck(o =>
+        {
+            o.ContainerName      = "edict-claim-check";
+            o.BlobServiceClient  = new BlobServiceClient(blobConnectionString);
+        });
+
         silo.AddEdictAzurePersistence(o =>
         {
-            o.GrainStateContainerName     = "edict-state";
-            o.ClaimCheckBlobContainerName = "edict-claim-check";
-            o.DeadLetterTableName         = "edict-dead-letter";
-            o.TableServiceClient          = new TableServiceClient(tableConnectionString);
-            o.BlobServiceClient           = new BlobServiceClient(blobConnectionString);
+            o.GrainStateContainerName = "edict-state";
+            o.DeadLetterTableName     = "edict-dead-letter";
+            o.TableServiceClient      = new TableServiceClient(tableConnectionString);
+            o.BlobServiceClient       = new BlobServiceClient(blobConnectionString);
         });
     })
     .ConfigureServices(services =>

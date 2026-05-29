@@ -3,8 +3,8 @@ using Azure.Storage.Blobs;
 
 using Confluent.Kafka;
 
-using Edict.Azure.ClaimCheck;
-using Edict.Azure.TableStorage;
+using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
@@ -39,7 +39,7 @@ namespace Edict.Kafka.Tests;
 /// name is per-fixture-namespaced. Streams half goes through
 /// <see cref="EdictKafkaSiloBuilderExtensions.AddEdictKafkaStreams"/>;
 /// persistence half through
-/// <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzurePersistence"/> —
+/// <see cref="Edict.Azure.Persistence.EdictAzurePersistenceSiloBuilderExtensions.AddEdictAzurePersistence"/> —
 /// proves the same conformance battery from the Postgres pairing rides on
 /// the Kafka × Azure mix-and-match shape end-to-end.
 /// </summary>

@@ -1,4 +1,4 @@
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;

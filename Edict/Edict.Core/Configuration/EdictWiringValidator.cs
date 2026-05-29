@@ -35,7 +35,8 @@ public sealed class EdictWiringValidator(IServiceProvider services) : IHostedSer
         {
             problems.Add(
                 "Missing claim-check store: a streams provider is registered but no IEdictClaimCheckStore is. "
-                + "Call silo.AddEdictAzurePersistence(...) (or another persistence provider that registers the store) "
+                + "Call silo.AddEdictAzureBlobClaimCheck(...) (for the Azure-blob store) "
+                + "or silo.AddEdictPostgresPersistence(...) (which registers the Postgres-backed store) "
                 + "so oversized events and pointer envelopes have somewhere to land.");
         }
 

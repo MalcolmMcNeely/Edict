@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 
 using Edict.Contracts.TableStorage;
 
-namespace Edict.Azure.TableStorage;
+namespace Edict.Azure.Persistence.TableStorage;
 
 /// <summary>
 /// Azure Table Storage implementation of <see cref="IEdictTableRepository{T}"/>.

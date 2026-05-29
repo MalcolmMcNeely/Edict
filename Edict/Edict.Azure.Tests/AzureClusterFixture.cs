@@ -2,7 +2,7 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -140,7 +140,8 @@ public sealed class AzureClusterFixture : ConformanceFixture
             // The fixture wires its own Azure streams/storage (shorter
             // visibility timeout + in-memory PubSubStore for test isolation),
             // so it registers the wiring markers manually rather than going
-            // through AddEdictAzureStreams + AddEdictAzurePersistence.
+            // through AddEdictAzureStreams + AddEdictAzureBlobClaimCheck +
+            // AddEdictAzurePersistence.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict();

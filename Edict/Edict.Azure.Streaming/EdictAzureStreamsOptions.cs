@@ -1,13 +1,18 @@
 using Azure.Storage.Queues;
 
-namespace Edict.Azure;
+namespace Edict.Azure.Streaming;
 
 /// <summary>
 /// Tuning knobs for the Azure streams provider. Lives in
-/// <c>Edict.Azure</c> because the wire-cap that constrains
-/// <see cref="ClaimCheckThresholdBytes"/> is the Azure Queue / Azure Table
-/// per-property limit; a future Kafka provider would expose its own
-/// equivalent. Brand-prefixed because the consumer types it.
+/// <c>Edict.Azure.Streaming</c> because the wire-cap that constrains
+/// <see cref="ClaimCheckThresholdBytes"/> is the Azure Queue per-property
+/// limit; a future Kafka provider would expose its own equivalent.
+/// Brand-prefixed because the consumer types it. Claim-check store
+/// location is configured separately via <c>AddEdictAzureBlobClaimCheck</c>
+/// (Azure-blob substrate) or by registering an <c>IEdictClaimCheckStore</c>
+/// the persistence side ships (e.g. <c>AddEdictPostgresPersistence</c>) —
+/// the wire-cap concern (this options class) is orthogonal to where the
+/// offloaded bytes physically sit.
 /// </summary>
 public sealed class EdictAzureStreamsOptions
 {

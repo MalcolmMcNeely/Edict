@@ -2,7 +2,9 @@ using ArchUnitNET.Loader;
 using System.Reflection;
 using ArchUnitNET.xUnit;
 
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence;
+using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.TableStorage;
@@ -30,6 +32,7 @@ public class TypePlacementTests
     static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(AzureTableWriteStoreFactory).Assembly,
+            typeof(EdictAzureStreamsOptions).Assembly,
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
             typeof(ISubstrate).Assembly,
@@ -348,19 +351,19 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void AzureBlobClaimCheckStore_ShouldResideInEdictAzureClaimCheck()
+    public void AzureBlobClaimCheckStore_ShouldResideInEdictAzureStreamingClaimCheck()
     {
         var rule = Classes().That().HaveNameMatching("^AzureBlobClaimCheckStore$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.ClaimCheck$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Streaming\.ClaimCheck$");
 
         rule.Check(Architecture);
     }
 
     [Fact]
-    public void EdictAzureStreamsOptions_ShouldResideInEdictAzure()
+    public void EdictAzureStreamsOptions_ShouldResideInEdictAzureStreaming()
     {
         var rule = Classes().That().HaveNameMatching("^EdictAzureStreamsOptions$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Streaming$");
 
         rule.Check(Architecture);
     }
@@ -435,28 +438,28 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void EdictAzurePersistenceOptions_ShouldResideInEdictAzure()
+    public void EdictAzurePersistenceOptions_ShouldResideInEdictAzurePersistence()
     {
         var rule = Classes().That().HaveNameMatching("^EdictAzurePersistenceOptions$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Persistence$");
 
         rule.Check(Architecture);
     }
 
     [Fact]
-    public void AzureTableRepository_ShouldResideInEdictAzure()
+    public void AzureTableRepository_ShouldResideInEdictAzurePersistence()
     {
         var rule = Classes().That().HaveNameStartingWith("AzureTableRepository")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Persistence\.TableStorage$");
 
         rule.Check(Architecture);
     }
 
     [Fact]
-    public void AzureTableWriteStoreFactory_ShouldResideInEdictAzure()
+    public void AzureTableWriteStoreFactory_ShouldResideInEdictAzurePersistence()
     {
         var rule = Classes().That().HaveNameMatching("^AzureTableWriteStoreFactory$")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.TableStorage$");
+            .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Persistence\.TableStorage$");
 
         rule.Check(Architecture);
     }

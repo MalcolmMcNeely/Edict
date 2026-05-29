@@ -2,6 +2,9 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
+using Edict.Azure.Persistence;
+using Edict.Azure.Streaming;
+using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
@@ -129,13 +132,17 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             {
                 o.QueueServiceClient = ctx.QueueServiceClient;
             });
+            siloBuilder.AddEdictAzureBlobClaimCheck(o =>
+            {
+                o.ContainerName = claimCheckContainer;
+                o.BlobServiceClient = ctx.BlobServiceClient;
+            });
             siloBuilder.AddEdictAzurePersistence(o =>
             {
                 o.TableServiceClient = ctx.TableServiceClient;
                 o.BlobServiceClient = ctx.BlobServiceClient;
                 o.GrainStateContainerName = ctx.GrainStateContainerName;
                 o.DeadLetterTableName = ctx.DeadLetterTableName;
-                o.ClaimCheckBlobContainerName = claimCheckContainer;
             });
         }
     }

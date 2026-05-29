@@ -7,10 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Edict.Azure.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
         <PackageReference Include="Azure.Storage.Blobs" Version="12.28.0" />
-        <PackageReference Include="Azure.Storage.Queues" Version="12.26.0" />
-        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
         <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="10.1.0" />
         <PackageReference Include="Microsoft.Orleans.Reminders.AzureStorage" Version="10.1.0" />
     </ItemGroup>

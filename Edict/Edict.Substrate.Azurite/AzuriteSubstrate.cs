@@ -5,8 +5,10 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure;
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence;
+using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming;
+using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -23,8 +25,8 @@ namespace Edict.Substrate.Azurite;
 
 /// <summary>
 /// Brings up an Azurite container and hands back ConfigureSilo/ConfigureClient
-/// callbacks wiring <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzureStreams"/>
-/// and <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzurePersistence"/> at
+/// callbacks wiring <see cref="EdictAzureStreamingSiloBuilderExtensions.AddEdictAzureStreams"/>
+/// and <see cref="EdictAzurePersistenceSiloBuilderExtensions.AddEdictAzurePersistence"/> at
 /// the container endpoints. Workload-specific repositories (a harness's own
 /// projection row types) stay in the harness — this substrate only registers
 /// framework-level surfaces.
@@ -153,10 +155,14 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
             {
                 o.QueueServiceClient = queueClient;
             });
+            silo.AddEdictAzureBlobClaimCheck(o =>
+            {
+                o.ContainerName = AzuriteSubstrate.ClaimCheckBlobContainerName;
+                o.BlobServiceClient = blobClient;
+            });
             silo.AddEdictAzurePersistence(o =>
             {
                 o.GrainStateContainerName = AzuriteSubstrate.GrainStateContainerName;
-                o.ClaimCheckBlobContainerName = AzuriteSubstrate.ClaimCheckBlobContainerName;
                 o.DeadLetterTableName = AzuriteSubstrate.DeadLetterTableName;
                 o.TableServiceClient = tableClient;
                 o.BlobServiceClient = blobClient;

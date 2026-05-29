@@ -2,7 +2,7 @@ using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
-using Edict.Azure;
+using Edict.Azure.Streaming;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -33,7 +33,7 @@ namespace Edict.Postgres.Tests;
 /// Postgres-persistence × AQS-streams substrate cross. Postgres is per-fixture
 /// (own database inside the shared testcontainer); Azurite is per-fixture
 /// namespaced (Guid-suffixed table/blob/queue names). The configurator
-/// invokes <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzureStreams"/>
+/// invokes <see cref="EdictAzureStreamingSiloBuilderExtensions.AddEdictAzureStreams"/>
 /// for the streams half and
 /// <see cref="EdictPostgresSiloBuilderExtensions.AddEdictPostgresPersistence"/>
 /// for the persistence half, proving the second persistence backend against

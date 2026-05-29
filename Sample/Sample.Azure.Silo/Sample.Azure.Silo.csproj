@@ -25,7 +25,8 @@
           [assembly: EdictRoutes] that AddEdict() picks up on startup.
         -->
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
-        <ProjectReference Include="../../Edict/Edict.Azure/Edict.Azure.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Azure.Streaming/Edict.Azure.Streaming.csproj" />
+        <ProjectReference Include="../../Edict/Edict.Azure.Persistence/Edict.Azure.Persistence.csproj" />
     </ItemGroup>
 
 </Project>

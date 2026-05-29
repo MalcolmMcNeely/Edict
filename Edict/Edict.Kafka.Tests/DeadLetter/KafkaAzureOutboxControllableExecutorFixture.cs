@@ -3,8 +3,8 @@ using Azure.Storage.Blobs;
 
 using Confluent.Kafka;
 
-using Edict.Azure.ClaimCheck;
-using Edict.Azure.TableStorage;
+using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;

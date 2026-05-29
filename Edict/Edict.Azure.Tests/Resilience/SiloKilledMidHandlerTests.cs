@@ -1,4 +1,4 @@
-using Edict.Azure.TableStorage;
+using Edict.Azure.Persistence.TableStorage;
 
 namespace Edict.Azure.Tests.Resilience;
 

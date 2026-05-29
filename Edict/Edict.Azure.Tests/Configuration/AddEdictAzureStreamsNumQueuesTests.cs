@@ -1,5 +1,7 @@
 using Azure.Storage.Queues;
 
+using Edict.Azure.Streaming;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
