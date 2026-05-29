@@ -10,26 +10,9 @@ using Orleans.Serialization;
 
 namespace Edict.Core.ClaimCheck;
 
-/// <summary>
-/// Publisher-side decision point at the Outbox commit boundary.
-/// Serialises the buffered event, measures the byte length, and
-/// either rides it on the wire as itself (under threshold) or uploads the
-/// body to <see cref="IEdictClaimCheckStore"/> and substitutes a pointer
-/// <see cref="EdictEventEnvelope"/> (over threshold). Conditional-wrap shape:
-/// small events stay raw so the existing PublishEventExecutor /
-/// stream-observer surface is unchanged until slice 3 wires receiver-side
-/// unwrap.
-/// <para>
-/// Deep module: a single <see cref="ApplyAsync"/> entry point folds
-/// serialisation, threshold gating, the optional blob put, envelope wrapping
-/// via <see cref="EnvelopeCodec"/>, and the post-wrap framing assertion
-/// behind one async call. Pure-ish — no Orleans runtime, no DI beyond its
-/// own constructor — so it is callable from xUnit with a fake store.
-/// </para>
-/// </summary>
-public sealed class ClaimCheckPolicy
+internal sealed class ClaimCheckPolicy
 {
-    /// <summary>Azure Table per-property cap; the post-wrap envelope must fit.</summary>
+    // Azure Table per-property cap; the post-wrap envelope must fit.
     internal const int MaxEnvelopeBytes = 32_768;
 
     static readonly Histogram<long> PayloadSize = EdictDiagnostics.Meter.CreateHistogram<long>(

@@ -33,16 +33,13 @@ public class PublicSurfaceAllowListTests
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
-        "Edict.Contracts.ClaimCheck.IEdictClaimCheckStore",
         "Edict.Contracts.Commands.EdictCommand",
         "Edict.Contracts.Commands.EdictCommandResult",
         "Edict.Contracts.Commands.EdictRejectionReason",
         "Edict.Contracts.Commands.EdictRouteKeyAttribute",
         "Edict.Contracts.Configuration.EdictOptions",
-        "Edict.Contracts.Configuration.EdictOptionsValidator",
         "Edict.Contracts.Configuration.EdictPersistenceProviderMarker",
         "Edict.Contracts.Configuration.EdictStreamsProviderMarker",
-        "Edict.Contracts.Configuration.EdictWiringInspector",
         "Edict.Contracts.Configuration.IEdictWiringMarker",
         "Edict.Contracts.DeadLetter.EdictDeadLetterEntry",
         "Edict.Contracts.DeadLetter.EdictDeadLetterFailureKind",

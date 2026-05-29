@@ -8,19 +8,7 @@ using Orleans.Serialization;
 
 namespace Edict.Core.ClaimCheck;
 
-/// <summary>
-/// Receiver-side decision point at the stream-observer hop.
-/// Given an incoming <see cref="EdictEvent"/> and the consumer's CLR type,
-/// returns the concrete event to dispatch to <c>Handle</c>: passthrough for
-/// non-envelopes, deserialise from inline bytes for inline-branch envelopes,
-/// or fetch via <see cref="IEdictClaimCheckStore"/> for pointer-branch
-/// envelopes. The store fetch is gated by a per-consumer-type predicate (the
-/// dead-letter projection's pointer-preserving special case lands on this
-/// seam). Missing-blob surfaces from the store unchanged — the
-/// caller (the stream-observer in <c>EdictIdempotencyBase</c>) treats it as a
-/// transient delivery failure and runs the receiver-side dead-letter promotion.
-/// </summary>
-public sealed class ClaimCheckUnwrap
+internal sealed class ClaimCheckUnwrap
 {
     readonly Serializer _serializer;
     readonly IEdictClaimCheckStore? _store;

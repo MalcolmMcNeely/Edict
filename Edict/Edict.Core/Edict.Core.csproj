@@ -52,6 +52,10 @@
              directly with a FakeTimeProvider; the test lives in
              Edict.Telemetry.Tests next to the existing telemetry suite. -->
         <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
+        <!-- AddEdictAzureStreams constructs the framework-internal
+             ClaimCheckPolicy as the publisher-side singleton; the policy stays
+             internal so its conditional-wrap shape can refactor freely. -->
+        <InternalsVisibleTo Include="Edict.Azure.Streaming" />
     </ItemGroup>
 
     <ItemGroup>

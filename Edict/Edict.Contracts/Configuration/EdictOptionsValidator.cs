@@ -1,14 +1,12 @@
 namespace Edict.Contracts.Configuration;
 
-/// <summary>
-/// Pure validation surface over the framework's options classes.
-/// Returns the full list of failure messages per invocation — a host with two
-/// problems sees two problems — so the <see cref="EdictWiringValidator"/>
-/// hosted service can aggregate every option-bag's failures into one
-/// <see cref="InvalidOperationException"/> at <c>StartAsync</c>. No DI access;
-/// runs identically under the in-memory Test Framework and a production silo.
-/// </summary>
-public static class EdictOptionsValidator
+// Pure validation surface over the framework's options classes. Returns the
+// full list of failure messages per invocation — a host with two problems sees
+// two problems — so the EdictWiringValidator hosted service can aggregate every
+// option-bag's failures into one InvalidOperationException at StartAsync.
+// No DI access; runs identically under the in-memory Test Framework and a
+// production silo.
+internal static class EdictOptionsValidator
 {
     public static IReadOnlyList<string> Validate(EdictOptions options)
     {

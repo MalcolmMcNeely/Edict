@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 using MessagePack;
 
 namespace Edict.Contracts.Events;
@@ -12,14 +14,15 @@ namespace Edict.Contracts.Events;
 /// only the key travels). Consumer <c>Handle(TEvent)</c> never sees the
 /// envelope; the runtime unwraps it before dispatch.
 /// <para>
-/// Wire-format identity is the class name plus the property names
-/// (MessagePack keyAsPropertyName). The class name is frozen — a rename
-/// would break in-flight events on the queue and persisted entries in
-/// every Outbox grain document (the equivalent of an Orleans
-/// frozen-alias rule, satisfied via property names in this Orleans-free
-/// assembly).
+/// Stays <c>public</c> only because MessagePack's
+/// <c>DynamicObjectResolver</c> emits IL formatters via Reflection.Emit and
+/// refuses non-public types. The <see cref="EditorBrowsableAttribute"/> hides
+/// it from consumer IntelliSense; the class name is frozen because a rename
+/// would break in-flight events on the queue and persisted entries in every
+/// Outbox grain document.
 /// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [MessagePackObject(keyAsPropertyName: true)]
 public sealed record EdictEventEnvelope : EdictEvent
 {

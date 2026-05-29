@@ -24,4 +24,19 @@
         <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Edict.Core" />
+        <InternalsVisibleTo Include="Edict.Azure.Streaming" />
+        <InternalsVisibleTo Include="Edict.Azure.Persistence" />
+        <InternalsVisibleTo Include="Edict.Postgres" />
+        <InternalsVisibleTo Include="Edict.Testing" />
+        <InternalsVisibleTo Include="Edict.Core.Tests" />
+        <InternalsVisibleTo Include="Edict.Architecture.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <InternalsVisibleTo Include="Edict.Postgres.Tests" />
+        <InternalsVisibleTo Include="Edict.Kafka.Tests" />
+        <InternalsVisibleTo Include="Edict.Tests.Conformance" />
+        <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
+    </ItemGroup>
+
 </Project>
