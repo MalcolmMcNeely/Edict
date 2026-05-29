@@ -6,6 +6,8 @@ using Sample.Domain.Orders.CommandHandlers;
 
 using Xunit;
 
+using static VerifyXunit.Verifier;
+
 namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
@@ -20,11 +22,6 @@ namespace Sample.Azure.Silo.Tests.Orders;
 /// </summary>
 public sealed class OrdersByStatusProjectionBuilderTests
 {
-    // The harness's FakeTimeProvider starts at this instant
-    // (see EdictTestApp.StartAsync).
-    static readonly DateTimeOffset HarnessStart =
-        new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
     [Fact]
     public async Task Handle_OrderSubmittedEvent_StampsSubmittedAt_AndLaterColumnsStayNull()
     {
@@ -42,11 +39,8 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await app.Drain();
 
         var row = await GetRow(app, orderId);
-        Assert.NotNull(row);
-        Assert.Equal(HarnessStart, row.SubmittedAt);
-        Assert.Null(row.AuthorizedAt);
-        Assert.Null(row.FulfilledAt);
-        Assert.Null(row.ShippedAt);
+
+        await Verify(row);
     }
 
     [Fact]
@@ -66,10 +60,8 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await app.Drain();
 
         var row = await GetRow(app, orderId);
-        Assert.NotNull(row);
-        Assert.Equal(HarnessStart, row.AuthorizedAt);
-        Assert.Null(row.FulfilledAt);
-        Assert.Null(row.ShippedAt);
+
+        await Verify(row);
     }
 
     [Fact]
