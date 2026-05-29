@@ -1,0 +1,29 @@
+# Force LF line endings on all text files so they round-trip
+# byte-identical between Windows and Linux checkouts. This matters
+# for any code that hashes source-text bytes — Roslyn's
+# InterceptableLocation v1 attribute embeds a SHA-256 of the syntax-
+# tree source, and a CRLF/LF drift surfaces as a Verify snapshot
+# diff. The harness in Edict.Generators.Tests normalises explicitly,
+# but the working-tree default is the durable fix.
+* text=auto eol=lf
+
+# Verify snapshots (text comparison; LF keeps received/verified
+# byte-stable between platforms)
+*.verified.txt text eol=lf
+*.received.txt text eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.nupkg binary
+*.snupkg binary
+*.pdb binary
+*.dll binary
