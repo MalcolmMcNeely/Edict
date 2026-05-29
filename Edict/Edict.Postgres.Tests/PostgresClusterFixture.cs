@@ -23,6 +23,7 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 using Orleans;
+using Orleans.Runtime;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
@@ -104,6 +105,32 @@ public sealed class PostgresClusterFixture : ConformanceFixture
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
         Cluster = builder.Build();
         await Cluster.DeployAsync();
+        await WarmReminderServiceAsync();
+    }
+
+    // LocalReminderService caps its sanity-check wait at a hardcoded
+    // 20s `InitialReadMaxWaitTimeForUpdates`. On a slow CI runner the
+    // initial table read against a cold Postgres testcontainer can slip
+    // past that, and the first command that triggers RegisterOrUpdateReminder
+    // throws `OrleansException("Reminder Service is still initializing…")`.
+    // Drive a no-op command through the outbox path until the service
+    // settles, then real tests start in a stable state.
+    async Task WarmReminderServiceAsync()
+    {
+        var deadline = DateTime.UtcNow.AddMinutes(2);
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                await Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "warmup"));
+                return;
+            }
+            catch (OrleansException orleansException) when (orleansException.Message.Contains("still initializing", StringComparison.Ordinal))
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+            }
+        }
+        throw new TimeoutException("ReminderService warm-up never settled within the 2-minute deadline.");
     }
 
     public override async Task DisposeAsync()
