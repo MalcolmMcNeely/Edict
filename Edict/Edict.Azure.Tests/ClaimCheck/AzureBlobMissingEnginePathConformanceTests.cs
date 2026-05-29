@@ -50,7 +50,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _claimCheckContainerName);
         var unwrap = new ClaimCheckUnwrap(_serializer, store);
         var noWriters = new EventTagWriters(new Dictionary<Type, Action<EdictEvent, System.Diagnostics.Activity>>());
-        var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap, noWriters);
+        var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap, noWriters, TimeProvider.System);
         var publishExecutor = new RecordingPublishEventExecutor(_serializer);
 
         var missingKey = $"edict-claim-check/{Guid.NewGuid():N}";

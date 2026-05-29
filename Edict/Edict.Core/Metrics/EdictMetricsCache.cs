@@ -160,6 +160,21 @@ sealed class EdictMetricsCache : IEdictMetricsCache
         return (sum, oldest);
     }
 
+    public (int TotalPending, DateTimeOffset? OldestEnqueuedAt) GetOutboxStateAggregate()
+    {
+        var sum = 0;
+        DateTimeOffset? oldest = null;
+        foreach (var (_, state) in _outbox)
+        {
+            sum += state.PendingCount;
+            if (state.OldestEnqueuedAt is { } enqueued && (oldest is null || enqueued < oldest))
+            {
+                oldest = enqueued;
+            }
+        }
+        return (sum, oldest);
+    }
+
     /// <summary>Probe surface for <c>Edict.Testing</c>: most-recent last-handled
     /// timestamp across every active saga of <paramref name="sagaType"/>.</summary>
     public DateTimeOffset? GetSagaState(string sagaType)

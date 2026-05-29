@@ -1,0 +1,114 @@
+@page "/metrics"
+@using Orleans
+@using Sample.Contracts.Diagnostics.Metrics
+@inject IClusterClient ClusterClient
+@implements IDisposable
+
+<PageTitle>Live Metrics</PageTitle>
+
+<h1>Live Metrics</h1>
+
+<p class="tagline">The four headline operator metrics, polled at 1Hz from the silo's <code>IEdictMetricsCache</code> and a process-local <code>MeterListener</code>. Each tile shows the PromQL recipe a real Prometheus + Grafana deployment would use — collapse the &lt;details&gt; to see it.</p>
+
+<div class="metrics-grid">
+    <div class="metrics-tile">
+        <div class="metrics-tile-label">Outbox pending</div>
+        <div class="metrics-tile-value">@_snapshot.OutboxPendingSum</div>
+        <div class="metrics-tile-sub">oldest @FormatSeconds(_snapshot.OutboxOldestAgeSeconds) ago</div>
+        <details>
+            <summary>PromQL recipe</summary>
+            <pre><code>max by (edict_grain_type) (edict_outbox_oldest_entry_age_seconds) > 300</code></pre>
+            <p><em>Outbox stalled — see <a href="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/operations/alerts.md#1-outbox-stalled">alerts.md §1</a>.</em></p>
+        </details>
+    </div>
+
+    <div class="metrics-tile">
+        <div class="metrics-tile-label">Dead-letter rate</div>
+        <div class="metrics-tile-value">@FormatRate(_snapshot.DeadLetterPromotionsPerSecond)</div>
+        <div class="metrics-tile-sub">promotions / sec, 60s window</div>
+        <details>
+            <summary>PromQL recipe</summary>
+            <pre><code>sum by (edict_outbox_effect_kind, edict_dead_letter_failure_reason) (rate(edict_dead_letter_promotion_count[5m])) > 0.1</code></pre>
+            <p><em>Dead-letter spike — see <a href="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/operations/alerts.md#3-dead-letter-spike">alerts.md §3</a>.</em></p>
+        </details>
+    </div>
+
+    <div class="metrics-tile">
+        <div class="metrics-tile-label">Event handle p99</div>
+        <div class="metrics-tile-value">@FormatSeconds(_snapshot.EventHandleDurationP99Seconds)</div>
+        <div class="metrics-tile-sub">edict.event.handle.duration</div>
+        <details>
+            <summary>PromQL recipe</summary>
+            <pre><code>histogram_quantile(0.99, sum by (edict_event_type, le) (rate(edict_event_handle_duration_bucket[5m]))) > 1.0</code></pre>
+            <p><em>Handler p99 regression — see <a href="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/operations/alerts.md#5-handler-p99-regression">alerts.md §5</a>.</em></p>
+        </details>
+    </div>
+
+    <div class="metrics-tile">
+        <div class="metrics-tile-label">Stream lag p99</div>
+        <div class="metrics-tile-value">@FormatSeconds(_snapshot.EventHandleLagP99Seconds)</div>
+        <div class="metrics-tile-sub">edict.event.handle.lag</div>
+        <details>
+            <summary>PromQL recipe</summary>
+            <pre><code>histogram_quantile(0.99, sum by (edict_event_type, le) (rate(edict_event_handle_lag_bucket[5m]))) > 30</code></pre>
+            <p><em>Stream falling behind — see <a href="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/operations/alerts.md#4-stream-falling-behind">alerts.md §4</a>.</em></p>
+        </details>
+    </div>
+</div>
+
+<p class="metrics-footnote">For substrate-side metrics (Npgsql connection pool, Confluent.Kafka consumer lag, Azure Queue Storage request latency) see <a href="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/operations/observability.md"><code>observability.md</code></a>.</p>
+
+@code {
+    MetricsSnapshot _snapshot = new(0, 0, 0, 0, 0);
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cts.Token);
+    }
+
+    async Task PollAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(ct))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        try
+        {
+            var probe = ClusterClient.GetGrain<IEdictMetricsProbeGrain>(Guid.Empty);
+            _snapshot = await probe.GetSnapshotAsync();
+        }
+        catch
+        {
+            // Read-only refresh path: a transient grain hiccup must not surface
+            // as a Blazor error boundary in the demo.
+        }
+    }
+
+    static string FormatSeconds(double seconds) =>
+        seconds < 1 ? $"{seconds * 1000:N0} ms" : $"{seconds:N1} s";
+
+    static string FormatRate(double rate) =>
+        rate < 0.01 ? "0" : $"{rate:N2}";
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+    }
+}

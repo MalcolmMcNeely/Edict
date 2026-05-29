@@ -11,6 +11,7 @@ using OpenTelemetry;
 
 using Orleans.Serialization;
 
+using Sample.Domain.Diagnostics.Metrics;
 using Sample.Domain.Orders;
 using Sample.Domain.Orders.CommandHandlers;
 
@@ -77,6 +78,12 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
         services.AddSingleton<IEmailNotifier, LoggingEmailNotifier>();
+
+        // Silo-side MeterListener feeding the Sample.Web Live Metrics spoke.
+        // Same singleton resolved as IHostedService (starts/stops the listener
+        // with the silo) and as itself (read by EdictMetricsProbeGrain).
+        services.AddSingleton<EdictMetricsAggregator>();
+        services.AddHostedService(sp => sp.GetRequiredService<EdictMetricsAggregator>());
 
         services.AddOpenTelemetry()
             .WithMetrics(metrics => metrics.AddMeter(EdictDiagnostics.SourceName))

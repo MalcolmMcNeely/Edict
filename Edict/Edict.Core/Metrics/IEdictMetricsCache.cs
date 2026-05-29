@@ -42,4 +42,14 @@ public interface IEdictMetricsCache
     /// (ADR-0040's load-bearing cleanup).
     /// </summary>
     void Remove(string grainType, string grainKey);
+
+    /// <summary>
+    /// Aggregate read of every cached outbox entry on this silo: total pending
+    /// count across all grain types, and the oldest enqueue timestamp across
+    /// any host. The Sample.Web Live Metrics spoke reads this via a probe
+    /// grain so the operator-facing tile reflects the same source the
+    /// <c>edict.outbox.pending.count</c> gauge does. Operators running
+    /// Prometheus + Grafana go through the gauge instead.
+    /// </summary>
+    (int TotalPending, DateTimeOffset? OldestEnqueuedAt) GetOutboxStateAggregate();
 }

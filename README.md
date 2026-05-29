@@ -108,13 +108,13 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Retries that don't block.** Failing outbox entries back off independently.
 - **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
 - **One trace per business flow.** Trace context propagated across every async stream hop.
+- **Operational metrics.** Outbox depth + oldest-entry age, dead-letter rate by failure kind, handler p99 by command/event type, stream lag, saga progress age, claim-check size distribution, drain-cycle stability — all on a single `Meter` named `"Edict"`. Vendor-neutral PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
 - **Configurable.** Every knob is an options property with a default and startup validation.
 - **In-memory tests.** Send → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
 ## What's next
 
-- **Operational telemetry.** Today there's tracing but no metrics. Next: outbox depth + oldest-entry age, dedup-window hit rate, dead-letter rate by failure kind, stream lag (event-time vs wire-time), claim-check size distribution, handler p99 by command/event type, saga-progress age, drain-cycle stability. Standard alerting recipes shipped alongside — "outbox stalled", "dead-letter spike", "stream falling behind".
 - **Saga timeouts.** Declarative deadlines per saga step with automatic compensation — today a saga that never gets its next event sits forever.
 - **Sharded dead-letter projection.** Today it's a single grain — under a poison-event storm the *thing recording the storm* becomes the bottleneck.
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
@@ -136,7 +136,7 @@ The Aspire dashboard prints a URL on startup. From there, follow two links:
 - **Sample.Azure.Web** — the demo at `/`. A paused dashboard of a live order-processing system. Press ▶ to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire. Click any row in the orders table to spotlight it; the right-hand timeline shows that order's state transitions with the span name beside each row, so you can navigate the Aspire trace by reading down the spotlight. Three injection buttons demonstrate the failure modes — poison, oversize-payload (claim check), and saga-rejected commands.
 - **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
 
-A single forensic spoke at `/dead-letter` lists outbox effects that exhausted their retry budget.
+Two spokes hang off the demo: `/dead-letter` lists outbox effects that exhausted their retry budget; `/metrics` shows live tiles for outbox depth, dead-letter rate, handler p99 and stream lag, each with its PromQL recipe inline.
 
 Run the test suites with `dotnet test Edict/Edict.slnx`. On Windows, enable long paths first: `git config core.longpaths true`.
 

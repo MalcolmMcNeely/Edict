@@ -291,3 +291,61 @@ main {
     font-size: 1.75rem;
     font-weight: 600;
 }
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.metrics-tile {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.metrics-tile-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.metrics-tile-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.metrics-tile-sub {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.metrics-tile details {
+    border-top: 1px dashed #e5e7eb;
+    padding-top: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.metrics-tile details summary {
+    cursor: pointer;
+    color: #2563eb;
+}
+
+.metrics-tile pre {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 0.5rem;
+    overflow-x: auto;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.metrics-footnote {
+    color: #6b7280;
+    font-size: 0.85rem;
+}

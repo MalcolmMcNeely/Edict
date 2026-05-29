@@ -70,6 +70,13 @@ public static class SemanticConventions
         {
             /// <summary>Histogram of event-handle duration in seconds.</summary>
             public const string HandleDuration = "edict.event.handle.duration";
+
+            /// <summary>Histogram of producer-to-consumer event lag in seconds —
+            /// <c>now − <see cref="Edict.Contracts.Events.EdictEvent.OccurredAt"/></c>
+            /// recorded at handle entry. ADR-0026 stamps <c>OccurredAt</c> at
+            /// <c>Raise</c> time so the value is true intent-to-handle lag, not
+            /// wire-time lag.</summary>
+            public const string HandleLag = "edict.event.handle.lag";
         }
     }
 

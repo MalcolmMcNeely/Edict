@@ -122,6 +122,8 @@ public sealed class OutboxHostMetricsCacheTests
 
         public void Remove(string grainType, string grainKey) =>
             Removals.Add(new Removal(grainType, grainKey));
+
+        public (int TotalPending, DateTimeOffset? OldestEnqueuedAt) GetOutboxStateAggregate() => (0, null);
     }
 
     sealed record OutboxReport(string GrainType, string GrainKey, int PendingCount, DateTimeOffset? OldestEnqueuedAt);

@@ -11,10 +11,17 @@ using Orleans.Streams;
 
 namespace Edict.Core.EventHandler;
 
-sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwrap, IEventTagWriters tagWriters) : IOutboxEffectExecutor
+sealed class InvokeHandlerExecutor(
+    Serializer serializer,
+    ClaimCheckUnwrap unwrap,
+    IEventTagWriters tagWriters,
+    TimeProvider timeProvider) : IOutboxEffectExecutor
 {
     static readonly Histogram<double> HandleDuration = EdictDiagnostics.Meter.CreateHistogram<double>(
         SemanticConventions.Events.Meters.HandleDuration);
+
+    static readonly Histogram<double> HandleLag = EdictDiagnostics.Meter.CreateHistogram<double>(
+        SemanticConventions.Events.Meters.HandleLag);
 
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
@@ -44,6 +51,16 @@ sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwra
             write(materialised, span);
         }
 
+        var eventTypeTag = new KeyValuePair<string, object?>(
+            SemanticConventions.Events.Tags.Type, materialised.GetType().Name);
+        var grainTypeTag = new KeyValuePair<string, object?>(
+            SemanticConventions.Common.Tags.GrainType, (consumerType ?? typeof(object)).FullName);
+
+        HandleLag.Record(
+            Math.Max(0, (timeProvider.GetUtcNow() - materialised.OccurredAt).TotalSeconds),
+            eventTypeTag,
+            grainTypeTag);
+
         var startTimestamp = Stopwatch.GetTimestamp();
         try
         {
@@ -53,8 +70,8 @@ sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwra
         {
             HandleDuration.Record(
                 Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds,
-                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, materialised.GetType().Name),
-                new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, (consumerType ?? typeof(object)).FullName));
+                eventTypeTag,
+                grainTypeTag);
         }
     }
 }

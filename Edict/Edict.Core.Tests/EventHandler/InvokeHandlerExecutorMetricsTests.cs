@@ -40,7 +40,7 @@ public sealed class InvokeHandlerExecutorMetricsTests
             Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
         };
 
-        var executor = new InvokeHandlerExecutor(Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters);
+        var executor = new InvokeHandlerExecutor(Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters, TimeProvider.System);
         await executor.ExecuteAsync(
             entry, NullStreamProvider.Instance,
             async e => await Task.Delay(TimeSpan.FromMilliseconds(5)),
@@ -71,7 +71,7 @@ public sealed class InvokeHandlerExecutorMetricsTests
             Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
         };
 
-        var executor = new InvokeHandlerExecutor(Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters);
+        var executor = new InvokeHandlerExecutor(Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters, TimeProvider.System);
         await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(
             entry, NullStreamProvider.Instance,
             _ => throw new InvalidOperationException("simulated"),
