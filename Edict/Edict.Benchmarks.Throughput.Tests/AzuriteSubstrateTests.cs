@@ -19,12 +19,12 @@ public sealed class AzuriteSubstrateTests
     [Fact]
     public async Task Runtime_CreateRowRepository_ReadsBackPreloadedBenchEventRow()
     {
-        // The harness now drives its workload-specific row registration through
-        // the substrate runtime's generic CreateRowRepository<T> seam (ADR-0030
-        // refinement). The substrate library still owns no workload types; the
-        // factory picks the substrate-correct repo (AzureTableRepository on
-        // Azurite, PostgresTableRepository on Kafka+Postgres) from one call site
-        // in the harness.
+        // The harness drives its workload-specific row registration
+        // through the substrate runtime's generic CreateRowRepository<T>
+        // seam. The substrate library still owns no workload types; the
+        // factory picks the substrate-correct repo (AzureTableRepository
+        // on Azurite, PostgresTableRepository on Kafka+Postgres) from one
+        // call site in the harness.
         var substrate = new AzuriteSubstrate();
         await using var runtime = (AzuriteSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
 
@@ -50,11 +50,12 @@ public sealed class AzuriteSubstrateTests
     [Fact]
     public async Task HarnessWiredOverRuntime_ResolvesBenchEventRowRepositoryThatReadsBackPreloadedRow()
     {
-        // The Events scenario's issuer polls IEdictTableRepository<BenchEventRow>
-        // for completion. The substrate library no longer owns this workload-
-        // specific repo (ADR-0030); the harness layers it on top of the
-        // substrate's ConfigureClient. Same end-to-end wiring, expressed at
-        // the layer that actually owns the workload.
+        // The Events scenario's issuer polls
+        // IEdictTableRepository<BenchEventRow> for completion. The
+        // substrate library no longer owns this workload-specific repo;
+        // the harness layers it on top of the substrate's ConfigureClient.
+        // Same end-to-end wiring, expressed at the layer that actually
+        // owns the workload.
         var substrate = new AzuriteSubstrate();
         await using var runtime = (AzuriteSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
 

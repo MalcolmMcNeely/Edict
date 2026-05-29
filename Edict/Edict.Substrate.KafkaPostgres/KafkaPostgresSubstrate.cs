@@ -43,13 +43,13 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
             // Postgres ships max_connections=100. The bench silo opens up to
-            // EdictPostgresPersistenceOptions.MaxPoolSize=200 (ADR-0035) on
-            // its dedicated DataSource, plus Orleans PubSubStore + Reminders
-            // each get their own AdoNet pool (~100 default), plus the client-
-            // side substrate DataSource below (~100). The harness pins
+            // EdictPostgresPersistenceOptions.MaxPoolSize=200 on its
+            // dedicated DataSource, plus Orleans PubSubStore + Reminders each
+            // get their own AdoNet pool (~100 default), plus the client-side
+            // substrate DataSource below (~100). The harness pins
             // InitialSilosCount=1 (see ClusterHarness), so peak demand is
             // 200 + 100 + 100 + 100 = 500. 1024 fits that with 2× headroom
-            // and keeps the operator math from ADR-0035 satisfied
+            // and keeps the per-silo pool-size budget satisfied
             // ("silos × MaxPoolSize ≤ pg.max_connections").
             .WithCommand("-c", "max_connections=1024")
             .Build();

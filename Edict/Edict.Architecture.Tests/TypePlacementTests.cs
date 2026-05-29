@@ -384,12 +384,13 @@ public class TypePlacementTests
         Assert.Empty(leakingTypes);
     }
 
-    // ADR-0028 §2 topology: one Kafka topic per [EdictStream]. The
-    // EdictKafkaPartitionMapper carries the topology through the opaque Orleans
-    // QueueId via two static decode helpers — TopicFor and PartitionFor. A
-    // regression to a single-topic hardcode would either drop TopicFor entirely
-    // (no topic to decode if there is only one) or hide the topic in a field
-    // not surfaced as a static helper. Either way, this fact would fail.
+    // Topology: one Kafka topic per [EdictStream]. The
+    // EdictKafkaPartitionMapper carries the topology through the opaque
+    // Orleans QueueId via two static decode helpers — TopicFor and
+    // PartitionFor. A regression to a single-topic hardcode would either
+    // drop TopicFor entirely (no topic to decode if there is only one) or
+    // hide the topic in a field not surfaced as a static helper. Either
+    // way, this fact would fail.
     [Fact]
     public void EdictKafkaPartitionMapper_ShouldExposeTopicAndPartitionDecodeHelpers()
     {

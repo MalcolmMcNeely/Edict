@@ -107,9 +107,10 @@ internal sealed class NpgsqlPoolListener : IDisposable
             {
                 case "db.client.connection.npgsql.pending_requests":
                     // Eager UpDownCounter — value is a delta. Maintain the
-                    // running sum and watermark; track the longest contiguous
-                    // >0 interval so the verdict can say "sustained pending for
-                    // longer than 1 second" against ADR-0029's threshold.
+                    // running sum and watermark; track the longest
+                    // contiguous >0 interval so the verdict can say
+                    // "sustained pending for longer than 1 second" against
+                    // the pool-pressure threshold.
                     var newPending = _currentPending + value;
                     if (newPending > 0 && _currentPending == 0)
                     {

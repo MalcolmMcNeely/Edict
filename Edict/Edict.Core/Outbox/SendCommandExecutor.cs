@@ -14,9 +14,9 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
 {
     public OutboxEffectKind Kind => OutboxEffectKind.SendCommand;
 
-    // The deferred path deserialises an EdictCommand from persisted state, so
-    // the call site is unavoidably base-typed. EDICT015 (ADR-0034) exists to
-    // catch the same shape in *consumer* code, where the typed receiver is
+    // The deferred path deserialises an EdictCommand from persisted state,
+    // so the call site is unavoidably base-typed. EDICT015 exists to catch
+    // the same shape in *consumer* code, where the typed receiver is
     // statically knowable. Edict.Core does not reference the analyzer, so
     // this attribute is documentary today and a future-proof guard.
     [System.Diagnostics.CodeAnalysis.SuppressMessage(

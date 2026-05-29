@@ -44,9 +44,9 @@ var postgresConnectionString = builder.Configuration.GetConnectionString("appdb"
         "Postgres connection string 'appdb' missing. Run via Sample.KafkaPostgres.AppHost.");
 
 // The Web process holds its own NpgsqlDataSource for the read-side
-// projection repositories. The silo's tuned DataSource (ADR-0035) lives in
-// the silo process and is unreachable from here; default pool sizing is
-// fine because the Web read path is not the throughput-sensitive surface.
+// projection repositories. The silo's tuned DataSource lives in the silo
+// process and is unreachable from here; default pool sizing is fine
+// because the Web read path is not the throughput-sensitive surface.
 builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(postgresConnectionString).Build());
 
 builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(serviceProvider =>

@@ -61,11 +61,11 @@ public static class EdictPostgresSiloBuilderExtensions
 
         silo.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
 
-        // Build the shared NpgsqlDataSource once at silo wiring time
-        // (ADR-0035). Every Postgres call-site — grain storage, table
-        // repositories, claim-check store, DDL bootstrap — runs against this
-        // one DataSource so the connection pool is owned in a single place
-        // with MaxPoolSize/MinPoolSize from EdictPostgresPersistenceOptions
+        // Build the shared NpgsqlDataSource once at silo wiring time.
+        // Every Postgres call-site — grain storage, table repositories,
+        // claim-check store, DDL bootstrap — runs against this one
+        // DataSource so the connection pool is owned in a single place with
+        // MaxPoolSize/MinPoolSize from EdictPostgresPersistenceOptions
         // winning over any conflicting keyword in the supplied connection
         // string. Registered via factory so the silo SP disposes it on
         // container teardown — AddSingleton(instance) skips IDisposable
@@ -107,7 +107,7 @@ public static class EdictPostgresSiloBuilderExtensions
         // silo (Edict's tuned one, plus Orleans' default-sized one for
         // PubSubStore + Reminders). The PubSubStore/Reminders pool is not
         // load-bearing for command throughput and so does not need the
-        // ADR-0035 tuning.
+        // EdictPostgresPersistenceOptions tuning.
         silo.AddAdoNetGrainStorage("PubSubStore", opt =>
         {
             opt.Invariant = options.Invariant;
@@ -147,9 +147,9 @@ public static class EdictPostgresSiloBuilderExtensions
     {
         // MaxPoolSize / MinPoolSize on the options surface win over any
         // Maximum Pool Size / Minimum Pool Size keywords in the supplied
-        // connection string (ADR-0035). The options surface is the one
-        // obvious place to tune; conflicting keywords stay as a no-op
-        // record of intent rather than triggering a wiring-time warning.
+        // connection string. The options surface is the one obvious place
+        // to tune; conflicting keywords stay as a no-op record of intent
+        // rather than triggering a wiring-time warning.
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(options.ConnectionString)
         {
             MaxPoolSize = options.MaxPoolSize,

@@ -8,12 +8,9 @@ namespace Edict.Kafka.Tests.Resilience;
 // observe every event exactly once and in per-aggregate sequence order.
 //
 // Sequential await on the producer side is deliberate: it removes any
-// ambiguity around fire-and-forget grain-call ordering and isolates what the
-// test is pinning to the consumer's poll-through-disruption behaviour and the
-// producer's reconnect-and-finish-publish behaviour.
-//
-// Multi-broker consumer-group rebalance is a #139b multi-silo concern and is
-// captured separately in ADR-0028.
+// ambiguity around fire-and-forget grain-call ordering and isolates what
+// the test is pinning to the consumer's poll-through-disruption behaviour
+// and the producer's reconnect-and-finish-publish behaviour.
 [Collection(KafkaResilienceCollection.Name)]
 public sealed class KafkaPausedMidPublishTests(KafkaResilienceClusterFixture fixture)
 {

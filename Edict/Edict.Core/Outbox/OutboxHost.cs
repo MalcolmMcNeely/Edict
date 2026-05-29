@@ -237,12 +237,12 @@ sealed class OutboxHost<TPayload>
         // a crash between the unregister and a missing write would lose the
         // pending tail.
         //
-        // Parallel drain is sound under ADR-0015 because executors are
-        // independent and consumers are already reorder-tolerant (the dedup
-        // ring is keyed by EventId, not delivery order). The original v1
-        // rationale assumed WriteStateAsync dominated; the throughput bench
-        // showed the queue PUT inside the executor dominates for RaiseOnly,
-        // so the lever sits here.
+        // Parallel drain is sound because executors are independent and
+        // consumers are already reorder-tolerant (the dedup ring is keyed
+        // by EventId, not delivery order). The original v1 rationale
+        // assumed WriteStateAsync dominated; the throughput bench showed
+        // the queue PUT inside the executor dominates for RaiseOnly, so
+        // the lever sits here.
         var liveRefs = _inlineLiveRefs;
         _inlineLiveRefs = null;
 

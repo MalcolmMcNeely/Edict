@@ -82,13 +82,14 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
-        // Silo-local metrics cache (ADR-0040): fed by every OutboxHost commit
-        // and EdictSaga event-handle, scraped by the three Slice-2 observable
-        // gauges. TryAdd so a host with its own assertable variant (the
+        // Silo-local metrics cache: fed by every OutboxHost commit and
+        // EdictSaga event-handle, scraped by the three observable gauges.
+        // TryAdd so a host with its own assertable variant (the
         // Edict.Testing rig) wins via the same swap-seam pattern as
-        // IEdictSender. The concrete EdictMetricsCache requires a TimeProvider
-        // — TryAddSingleton(TimeProvider.System) inside AddEdictOutbox or the
-        // test harness's FakeTimeProvider registration covers both cases.
+        // IEdictSender. The concrete EdictMetricsCache requires a
+        // TimeProvider — TryAddSingleton(TimeProvider.System) inside
+        // AddEdictOutbox or the test harness's FakeTimeProvider
+        // registration covers both cases.
         services.TryAddSingleton<IEdictMetricsCache>(serviceProvider =>
             new EdictMetricsCache(serviceProvider.GetRequiredService<TimeProvider>()));
 

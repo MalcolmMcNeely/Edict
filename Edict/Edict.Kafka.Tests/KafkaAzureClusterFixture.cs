@@ -175,8 +175,8 @@ public sealed class KafkaAzureClusterFixture : ConformanceFixture
                 o.ConsumerGroupId = ctx.KafkaConsumerGroup;
                 o.PartitionCount = 4;
                 // Earliest matches the Kafka × Postgres fixture rationale —
-                // the test producer can write before the fresh consumer group
-                // finishes joining; production default is Latest (ADR-0001).
+                // the test producer can write before the fresh consumer
+                // group finishes joining; production default is Latest.
                 o.AutoOffsetReset = AutoOffsetReset.Earliest;
             });
         }

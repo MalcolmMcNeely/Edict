@@ -168,7 +168,7 @@ public sealed class EdictGenerator : IIncrementalGenerator
                 SourceText.From(SagaGrainSpineEmitter.Emit(grain), Encoding.UTF8)));
 
         // Interceptors ────────────────────────────────────────────────────────
-        // ADR-0034. Per-type intercept stubs for concrete-typed
+        // Per-type intercept stubs for concrete-typed
         // IEdictSender.Send / EdictCommandHandler.Raise / EdictSaga.Dispatch
         // call sites. Generator-driven fast path; the registrars stay
         // load-bearing for deferred dispatch from persisted state.

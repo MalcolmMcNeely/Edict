@@ -43,7 +43,8 @@ public sealed class PostgresProviderUnitTests
     {
         // Compile-time check: the IEdictClaimCheckStore contract — and the
         // Postgres implementation — must not surface a Delete affordance.
-        // Append-only is load-bearing for ADR-0020's forensic guarantee.
+        // Append-only is load-bearing for the forensic guarantee: a
+        // framework bug or config mistake cannot erase the claim-check blob.
         var contractMethods = typeof(IEdictClaimCheckStore).GetMethods()
             .Select(m => m.Name).ToArray();
         Assert.DoesNotContain("DeleteAsync", contractMethods);

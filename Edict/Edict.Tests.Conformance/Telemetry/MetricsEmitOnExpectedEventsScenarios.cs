@@ -154,9 +154,9 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
         }
         Assert.Equal(1L, capture.Value);
         Assert.Equal("PublishEvent", capture.Tags[SemanticConventions.Outbox.Tags.EffectKind]);
-        // The classifier maps the controllable's InvalidOperationException to
-        // the Unhandled bucket (ADR-0039 explicitly notes raw InvalidOperationException
-        // always buckets to Unhandled).
+        // The classifier maps the controllable's InvalidOperationException
+        // to the Unhandled bucket — raw InvalidOperationException always
+        // buckets there because no per-cause Edict* subtype matches it.
         Assert.Equal(
             SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,
             capture.Tags[SemanticConventions.DeadLetter.Tags.FailureReason]);
