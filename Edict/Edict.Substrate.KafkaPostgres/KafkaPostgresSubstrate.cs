@@ -40,6 +40,14 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     {
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
+            // Postgres ships max_connections=100. One bench silo opens up to
+            // EdictPostgresPersistenceOptions.MaxPoolSize=200 (ADR-0035) on
+            // its dedicated DataSource, plus Orleans PubSubStore + Reminders
+            // share Npgsql's ambient pool (~100), plus the client-side
+            // substrate DataSource below (~100). 512 fits that demand with
+            // headroom and matches the operator math the ADR-0035 doc on
+            // MaxPoolSize names ("silos × MaxPoolSize ≤ pg.max_connections").
+            .WithCommand("-c", "max_connections=512")
             .Build();
         var kafkaContainer = new KafkaBuilder().Build();
         await Task.WhenAll(postgresContainer.StartAsync(ct), kafkaContainer.StartAsync(ct));

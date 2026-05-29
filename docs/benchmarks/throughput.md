@@ -1,19 +1,19 @@
 # Edict throughput
 
-Machine: Microsoft Windows 10.0.26200 / 20 cores
+Machine: Microsoft Windows 10.0.26200 / 20 cores / AMD Ryzen AI 9 365 @ 2.0 GHz / 64 GB RAM
 .NET version: 10.0.8
-Azure run date: 2026-05-28
-Kafka × Postgres run date: 2026-05-28
-Git SHA: 53f0a00
+Azure run date: 2026-05-29
+Kafka × Postgres run date: 2026-05-29
+Git SHA: 6e246c3
 
 ## System throughput (sustained, end-to-end)
 
 Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment.
 
-| Substrate | Events / sec (end-to-end) |
-| --- | ---: |
-| azure | 55 |
-| kafkapostgres | 102 |
+| Substrate | Events / sec (end-to-end) | Health |
+| --- | ---: | :---: |
+| azure | 68 | OK (0.00 %) |
+| kafkapostgres | 210 | OK (0.00 %) |
 
 > **Per-silo baseline.** The published number is the rate **one** Orleans silo sustains on this hardware against the configured substrate. Orleans scales horizontally; an N-silo deployment extrapolates from this baseline modulo cross-silo coordination cost. A single-silo number is not the framework ceiling.
 
@@ -24,20 +24,24 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 - **Command acceptance** — `Send` round-trip, handler increments durable state and returns `Accepted`. No `Raise`, no stream hop, no projection.
 - **Command → Event delivery** — `Send` + handler `Raise` + stream hop + consumer dispatch + projection write, with completion signalled by a 5 ms point-get poll on the projection row.
 
-| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) |
-| --- | --- | --- | ---: | ---: | ---: |
-| azure | Command acceptance | 2 | 64.19 | 85.92 | 103.03 |
-| azure | Command acceptance | 16 | 68.74 | 100.27 | 137.19 |
-| azure | Command acceptance | 64 | 168.31 | 237.29 | 295.56 |
-| azure | Command → Event delivery | 2 | 431.11 | 540.72 | 686.79 |
-| azure | Command → Event delivery | 16 | 879.89 | 1053.36 | 1160.92 |
-| azure | Command → Event delivery | 64 | 1919.57 | 2906.28 | 3066.22 |
-| kafkapostgres | Command acceptance | 2 | 20.09 | 46.51 | 60.69 |
-| kafkapostgres | Command acceptance | 16 | 31.35 | 52.94 | 66.77 |
-| kafkapostgres | Command acceptance | 64 | 90.49 | 121.81 | 139.22 |
-| kafkapostgres | Command → Event delivery | 2 | 327.61 | 412.62 | 469.23 |
-| kafkapostgres | Command → Event delivery | 16 | 370.97 | 22923.98 | 25644.00 |
-| kafkapostgres | Command → Event delivery | 64 | 977.66 | 21970.76 | 27868.10 |
+| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
+| --- | --- | --- | ---: | ---: | ---: | :---: |
+| azure | Command acceptance | 2 | 30.88 | 51.35 | 59.62 | OK (0.00 %) |
+| azure | Command acceptance | 16 | 56.93 | 70.84 | 84.10 | OK (0.00 %) |
+| azure | Command acceptance | 64 | 148.08 | 206.38 | 299.91 | OK (0.00 %) |
+| azure | Command → Event delivery | 2 | 246.93 | 326.22 | 365.96 | OK (0.00 %) |
+| azure | Command → Event delivery | 16 | 584.25 | 723.51 | 776.18 | OK (0.00 %) |
+| azure | Command → Event delivery | 64 | 1371.17 | 2143.25 | 2266.47 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 2 | 9.92 | 19.04 | 24.86 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 16 | 16.13 | 35.80 | 45.12 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 64 | 50.45 | 67.88 | 81.79 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 2 | 30000.63 | 30000.63 | 30000.63 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 16 | 243.39 | 380.33 | 26221.66 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 64 | 558.45 | 766.46 | 24278.25 | OK (0.00 %) |
+
+## Run health
+
+All sweep points completed under the 1% failure-rate threshold.
 
 ## Setup
 
