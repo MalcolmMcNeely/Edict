@@ -25,6 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddMeter(EdictDiagnostics.SourceName))
     .WithTracing(tracing => tracing.AddSource(EdictDiagnostics.SourceName));
 
 builder.UseOrleansClient(client =>

@@ -156,11 +156,12 @@ public abstract class EdictCommandHandler<TState>
         Func<Task<EdictCommandResult>> handle)
         where TCommand : EdictCommand
     {
+        var grainTypeName = GetType().FullName ?? GetType().Name;
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
         if (validator is null)
         {
-            return await handle();
+            return await CommandHandleMetrics.RunAndRecordAsync<TCommand>(handle, grainTypeName);
         }
 
         var context = new ValidationContext<TCommand>(command);
@@ -181,7 +182,7 @@ public abstract class EdictCommandHandler<TState>
                     .ToArray());
         }
 
-        return await handle();
+        return await CommandHandleMetrics.RunAndRecordAsync<TCommand>(handle, grainTypeName);
     }
 
     /// <summary>

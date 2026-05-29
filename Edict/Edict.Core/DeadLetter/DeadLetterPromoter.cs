@@ -1,8 +1,11 @@
+using System.Diagnostics.Metrics;
+
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
+using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,6 +16,9 @@ namespace Edict.Core.DeadLetter;
 sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors accessors, IServiceProvider services)
     : IDeadLetterPromoter
 {
+    static readonly Counter<long> PromotionCount = EdictDiagnostics.Meter.CreateCounter<long>(
+        SemanticConventions.DeadLetter.Meters.PromotionCount);
+
     public OutboxEntry Promote(
         OutboxEntry failed,
         Exception exception,
@@ -28,6 +34,11 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
             OutboxEffectKind.InvokeHandler => BuildFromInvokeHandler(failed, exception, sourceGrainKey, sourceGrainType, now),
             _ => throw new InvalidOperationException($"Unsupported effect kind '{failed.Kind}'."),
         };
+
+        PromotionCount.Add(1,
+            new KeyValuePair<string, object?>(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString()),
+            new KeyValuePair<string, object?>(SemanticConventions.DeadLetter.Tags.FailureReason, DeadLetterFailureClassifier.Classify(exception)),
+            new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, sourceGrainType));
 
         return new OutboxEntry
         {

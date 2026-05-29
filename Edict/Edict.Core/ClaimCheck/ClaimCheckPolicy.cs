@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
@@ -31,6 +32,9 @@ public sealed class ClaimCheckPolicy
     /// <summary>Azure Table per-property cap; the post-wrap envelope must fit.</summary>
     internal const int MaxEnvelopeBytes = 32_768;
 
+    static readonly Histogram<long> PayloadSize = EdictDiagnostics.Meter.CreateHistogram<long>(
+        SemanticConventions.ClaimCheck.Meters.PayloadSize);
+
     readonly Serializer _serializer;
     readonly int _thresholdBytes;
     readonly IEdictClaimCheckStore? _store;
@@ -59,6 +63,9 @@ public sealed class ClaimCheckPolicy
         var innerBytes = _serializer.SerializeToArray<EdictEvent>(evt);
         if (innerBytes.Length <= _thresholdBytes)
         {
+            PayloadSize.Record(innerBytes.Length,
+                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
+                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, false));
             return new ClaimCheckApplyResult(innerBytes, evt);
         }
 
@@ -87,6 +94,10 @@ public sealed class ClaimCheckPolicy
         }
 
         Activity.Current?.SetTag(SemanticConventions.Events.Tags.ClaimChecked, true);
+
+        PayloadSize.Record(innerBytes.Length,
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, true));
 
         return new ClaimCheckApplyResult(envelopeBytes, envelope);
     }

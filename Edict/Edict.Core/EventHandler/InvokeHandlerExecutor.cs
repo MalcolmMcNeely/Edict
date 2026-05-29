@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Outbox;
@@ -10,6 +13,9 @@ namespace Edict.Core.EventHandler;
 
 sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwrap, IEventTagWriters tagWriters) : IOutboxEffectExecutor
 {
+    static readonly Histogram<double> HandleDuration = EdictDiagnostics.Meter.CreateHistogram<double>(
+        SemanticConventions.Events.Meters.HandleDuration);
+
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
     public async Task ExecuteAsync(
@@ -38,6 +44,17 @@ sealed class InvokeHandlerExecutor(Serializer serializer, ClaimCheckUnwrap unwra
             write(materialised, span);
         }
 
-        await deferredDispatch(materialised);
+        var startTimestamp = Stopwatch.GetTimestamp();
+        try
+        {
+            await deferredDispatch(materialised);
+        }
+        finally
+        {
+            HandleDuration.Record(
+                Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds,
+                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, materialised.GetType().Name),
+                new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, (consumerType ?? typeof(object)).FullName));
+        }
     }
 }

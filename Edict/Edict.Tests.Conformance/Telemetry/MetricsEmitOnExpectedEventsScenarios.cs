@@ -1,0 +1,179 @@
+using System.Diagnostics.Metrics;
+
+using Edict.Contracts.DeadLetter;
+using Edict.Core.DeadLetter;
+using Edict.Telemetry;
+using Edict.Tests.Conformance.ClaimCheck;
+using Edict.Tests.Conformance.Outbox;
+
+using Xunit;
+
+namespace Edict.Tests.Conformance.Telemetry;
+
+/// <summary>
+/// Substrate-agnostic guarantee that two of the seven slice-1 instruments fire
+/// on their intended event sites when an Edict silo runs against a real
+/// substrate: <c>edict.claim_check.payload.size</c> records the inner-event
+/// byte length on a payload-spilled raise, and
+/// <c>edict.dead_letter.promotion.count</c> increments with the documented
+/// allowlist failure-reason on a poisoned outbox entry. Bound against any
+/// substrate's <see cref="ClaimCheckFixture"/> for the first scenario and any
+/// fixture wiring a <see cref="ControllableOutboxExecutor"/> at
+/// <c>OutboxMaxAttempts</c> = 2 for the second.
+/// </summary>
+public abstract class MetricsEmitOnExpectedEventsScenarios
+{
+}
+
+public abstract class ClaimCheckPayloadSizeMetricsScenarios<TFixture>
+    where TFixture : ClaimCheckFixture
+{
+    readonly TFixture _fixture;
+
+    protected ClaimCheckPayloadSizeMetricsScenarios(TFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task PayloadSizeMetric_ShouldFire_OnAPayloadSpilledRaise()
+    {
+        var counterId = Guid.NewGuid();
+        var payload = new string('x', 64);
+
+        var captures = new List<long>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (inst, l) =>
+            {
+                if (inst.Meter.Name == EdictDiagnostics.SourceName
+                    && inst.Name == SemanticConventions.ClaimCheck.Meters.PayloadSize)
+                {
+                    l.EnableMeasurementEvents(inst);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((inst, value, tags, _) =>
+        {
+            foreach (var t in tags)
+            {
+                if (t.Key == SemanticConventions.Events.Tags.ClaimChecked && (bool?)t.Value == true)
+                {
+                    lock (captures) { captures.Add(value); }
+                    return;
+                }
+            }
+        });
+        listener.Start();
+
+        await _fixture.Sender.Send(new IncrementClaimCheckCounterCommand(counterId, payload));
+
+        // The publisher-side recording is synchronous with Send, so by the time
+        // Send returns the histogram has already received the spilled-event
+        // observation.
+        long capturedValue;
+        lock (captures)
+        {
+            Assert.NotEmpty(captures);
+            capturedValue = captures[0];
+        }
+        Assert.True(capturedValue > 0, "spilled payload size must be > 0");
+    }
+}
+
+public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
+    where TFixture : ConformanceFixture
+{
+    readonly TFixture _fixture;
+
+    protected DeadLetterPromotionMetricsScenarios(TFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task PromotionCounter_ShouldFire_OnPoisonedOutboxEntry_WithAllowlistFailureReason()
+    {
+        var counterId = Guid.NewGuid();
+        ControllableOutboxExecutor.Reset();
+        ControllableOutboxExecutor.ShouldFail = true;
+
+        var captures = new List<Capture>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (inst, l) =>
+            {
+                if (inst.Meter.Name == EdictDiagnostics.SourceName
+                    && inst.Name == SemanticConventions.DeadLetter.Meters.PromotionCount)
+                {
+                    l.EnableMeasurementEvents(inst);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((inst, value, tags, _) =>
+        {
+            var dict = new Dictionary<string, object?>(tags.Length);
+            foreach (var t in tags) { dict[t.Key] = t.Value; }
+            // Multiple fixtures may share the test process — filter to this
+            // counter's grain-type-prefixed grain key so peer scenarios don't
+            // contaminate the capture.
+            if ((dict.GetValueOrDefault(SemanticConventions.Common.Tags.GrainType) as string)?
+                    .Contains("CounterAggregate") == true)
+            {
+                lock (captures) { captures.Add(new Capture(value, dict)); }
+            }
+        });
+        listener.Start();
+
+        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+
+        var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
+
+        await WaitUntilAsync(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+            await probe.ForceDrainViaReminderAsync();
+            return ControllableOutboxExecutor.FailedAttempts >= 2;
+        });
+
+        // Heal so the promotion goes through the rest of the outbox path.
+        ControllableOutboxExecutor.ShouldFail = false;
+
+        await WaitUntilAsync(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300));
+            await probe.ForceDrainViaReminderAsync();
+            lock (captures) { return captures.Count > 0; }
+        });
+
+        Capture capture;
+        lock (captures)
+        {
+            Assert.NotEmpty(captures);
+            capture = captures[0];
+        }
+        Assert.Equal(1L, capture.Value);
+        Assert.Equal("PublishEvent", capture.Tags[SemanticConventions.Outbox.Tags.EffectKind]);
+        // The classifier maps the controllable's InvalidOperationException to
+        // the Unhandled bucket (ADR-0039 explicitly notes raw InvalidOperationException
+        // always buckets to Unhandled).
+        Assert.Equal(
+            SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,
+            capture.Tags[SemanticConventions.DeadLetter.Tags.FailureReason]);
+    }
+
+    static async Task WaitUntilAsync(Func<Task<bool>> condition)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await condition())
+            {
+                return;
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(300));
+        }
+    }
+
+    sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags);
+}

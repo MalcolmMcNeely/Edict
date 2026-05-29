@@ -179,6 +179,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         if (Contains(envelope.EventId))
         {
             EmitDedupSpan(envelope);
+            IdempotencyDedupMetrics.EmitDedupHit(envelope, GetType().FullName ?? GetType().Name);
             return;
         }
 
@@ -248,6 +249,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         if (Contains(evt.EventId))
         {
             EmitDedupSpan(evt);
+            IdempotencyDedupMetrics.EmitDedupHit(evt, GetType().FullName ?? GetType().Name);
             return;
         }
 

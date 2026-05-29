@@ -79,6 +79,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IEmailNotifier, LoggingEmailNotifier>();
 
         services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics.AddMeter(EdictDiagnostics.SourceName))
             .WithTracing(tracing => tracing.AddSource(EdictDiagnostics.SourceName))
             .UseOtlpExporter();
     })

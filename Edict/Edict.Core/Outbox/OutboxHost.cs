@@ -1,14 +1,26 @@
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
+using Edict.Telemetry;
 
 using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Edict.Core.Outbox;
+
+static class OutboxDrainMetrics
+{
+    // Held in a non-generic class so the static initializer runs once per process
+    // instead of once per closed generic of OutboxHost<TPayload>.
+    public static readonly Counter<long> DrainCount = EdictDiagnostics.Meter.CreateCounter<long>(
+        SemanticConventions.Outbox.Meters.DrainCount);
+    public static readonly Histogram<int> DrainEntries = EdictDiagnostics.Meter.CreateHistogram<int>(
+        SemanticConventions.Outbox.Meters.DrainEntries);
+}
 
 sealed class OutboxHost<TPayload>
     where TPayload : new()
@@ -203,6 +215,11 @@ sealed class OutboxHost<TPayload>
             {
                 break;
             }
+
+            var grainTypeTag = new KeyValuePair<string, object?>(
+                SemanticConventions.Common.Tags.GrainType, _grainTypeName);
+            OutboxDrainMetrics.DrainCount.Add(1, grainTypeTag);
+            OutboxDrainMetrics.DrainEntries.Record(ready.Length, grainTypeTag);
 
             // Per-entry batch-key resolution. Entries that opt out (the
             // default for every non-PublishEvent executor) get a synthetic
