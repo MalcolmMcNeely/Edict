@@ -98,11 +98,11 @@ public sealed class KafkaClusterFixture : ConformanceFixture
         _contextKey = KafkaClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
-        // Slice-1 tracer: single silo matches the spike's known-working shape.
-        // Multi-silo correctness on top of manual partition Assign is a #139b
-        // concern — Orleans' queue balancer + Kafka's consumer-group
-        // coordination have to agree on partition ownership, which the
-        // adapter doesn't yet wire.
+        // Single silo matches the spike's known-working shape. Multi-silo
+        // correctness on top of manual partition Assign is unimplemented —
+        // Orleans' queue balancer + Kafka's consumer-group coordination
+        // have to agree on partition ownership, which the adapter doesn't
+        // yet wire.
         builder.Options.InitialSilosCount = 1;
         builder.Properties[KafkaClusterContextRegistry.ContextKeyProperty] = _contextKey;
         builder.AddSiloBuilderConfigurator<SiloConfigurator>();

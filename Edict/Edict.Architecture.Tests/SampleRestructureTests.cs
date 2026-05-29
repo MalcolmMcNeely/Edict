@@ -5,17 +5,15 @@ using Xunit;
 
 namespace Edict.Architecture.Tests;
 
-// The Sample restructure (issue #137) extracts substrate-agnostic silo
-// code into a Sample.Domain class library and substrate-agnostic web
-// code into a Sample.Web.Components Razor class library, so the Kafka/Postgres
+// The Sample restructure extracts substrate-agnostic silo code into a
+// Sample.Domain class library and substrate-agnostic web code into a
+// Sample.Web.Components Razor class library, so the Kafka/Postgres
 // sample can reuse both. The assertions here lock in that extraction:
 // handlers/sagas/projection builders/state must ship from Sample.Domain;
 // pages/layouts/simulator/state must ship from Sample.Web.Components. The
 // Sample.* host projects (Sample.Azure.Silo, Sample.Azure.Web,
 // Sample.KafkaPostgres.Silo, Sample.KafkaPostgres.Web) keep only their
-// substrate-specific Program.cs (issue #140 — the Kafka+Postgres sibling
-// sample reuses Sample.Domain + Sample.Web.Components against
-// Edict.Kafka + Edict.Postgres).
+// substrate-specific Program.cs.
 public class SampleRestructureTests
 {
     [Fact]
@@ -63,10 +61,9 @@ public class SampleRestructureTests
     public void SampleKafkaPostgresHost_ShouldReferenceProject(string projectName, string referencedProject)
     {
         // The KafkaPostgres host projects must consume the substrate-agnostic
-        // domain/UI libraries (proving the #137 extraction holds) and bind to
-        // the Kafka/Postgres provider packages (not Edict.Azure). The csproj
-        // string-match is the cheapest pin against a regression that copies
-        // Azure references into the new hosts.
+        // domain/UI libraries and bind to the Kafka/Postgres provider packages
+        // (not Edict.Azure). The csproj string-match is the cheapest pin against
+        // a regression that copies Azure references into the new hosts.
         var csprojPath = Path.Combine(SolutionRoot, "Sample", projectName, $"{projectName}.csproj");
         Assert.True(File.Exists(csprojPath), $"{projectName}.csproj missing");
 

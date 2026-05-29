@@ -33,7 +33,7 @@ namespace Edict.Kafka.Tests.Resilience;
 // dance against any cluster fixture sharing the broker — the shared-consumer
 // group offsets and Kafka client connections held by other tests would race.
 // Single-silo with InitialSilosCount = 1 mirrors the KafkaClusterFixture's
-// shape; the #139b multi-silo concern stays out of this test surface.
+// shape; multi-silo correctness stays out of this test surface.
 // PartitionCountByStream pins the silo-kill streams to one partition so the
 // Orleans queue balancer has exactly one QueueId to assign — restart is a
 // straight re-Assign() on the same partition, with no rebalance ambiguity.
