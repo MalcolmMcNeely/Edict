@@ -158,51 +158,49 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>
     /// Waits for the in-memory engine to quiesce: the inline outbox drain plus
     /// the asynchronous memory-stream fan-out to projection builders and sagas
-    /// (whose own dispatched Commands cascade). Settles on a stable timeline,
-    /// not a fixed delay, so it is as fast as the cluster allows.
+    /// (whose own dispatched Commands cascade). Settles on in-flight counters
+    /// going to zero, so it is as fast as the cluster allows.
     /// </summary>
     public async Task Drain()
     {
-        // Custom in-proc sync stream provider dispatches on publish; nothing
-        // truly asynchronous is left in the event hop, so the drain just polls
-        // for the in-silo SendCommand fan-out cascade to settle. On every
-        // stability window we flush the chaos-held queue and, if it released
-        // anything, re-poll until the cascade settles again — release is the
-        // load-bearing trigger, never a wall-clock wait.
-        // 500 ms gives a slow GitHub-hosted Linux runner enough headroom
-        // for chaos-released events to dispatch through a freshly-activated
-        // projection grain before drain calls the cascade stable. Outstanding
-        // fire-and-forget dispatches are tracked separately so this window
-        // is only ever consulted when nothing measurable is in-flight.
-        var stableWindow = TimeSpan.FromMilliseconds(500);
-        var timeout = TimeSpan.FromSeconds(20);
+        // Counters cover fire-and-forget cascades, but timer- and reminder-
+        // triggered grain methods can raise events without going through
+        // any tracked counter until they publish. A short recorder-count
+        // stability window catches that gap; the counters are otherwise
+        // the load-bearing settle signal.
+        var stableWindow = TimeSpan.FromMilliseconds(150);
+        var timeout = TimeSpan.FromSeconds(30);
         var start = DateTime.UtcNow;
+        var executor = _context.PublishExecutor;
         var lastCount = -1;
         var lastChange = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
+            var inflight = executor?.OutstandingDispatches ?? 0;
+            var held = executor?.HeldCount ?? 0;
             var count = _context.Recorder.Count;
-            var inflight = _context.PublishExecutor?.OutstandingDispatches ?? 0;
-            if (count != lastCount || inflight > 0)
+
+            if (count != lastCount)
             {
                 lastCount = count;
                 lastChange = DateTime.UtcNow;
             }
-            else if (DateTime.UtcNow - lastChange >= stableWindow)
+
+            if (inflight == 0 && held == 0 && DateTime.UtcNow - lastChange >= stableWindow)
             {
-                var flushed = _context.PublishExecutor is { } exec
-                    ? await exec.FlushHeldAsync()
-                    : 0;
-                if (flushed == 0)
-                {
-                    return;
-                }
-                // Released events trigger consumer invocations + cascades:
-                // reset the stability gate and keep polling.
+                return;
+            }
+
+            if (inflight == 0 && held > 0)
+            {
+                // Held events release on arrivals to the same subscriber.
+                // No arrivals are coming, so release them explicitly.
+                await executor!.FlushHeldAsync();
                 lastChange = DateTime.UtcNow;
             }
-            await Task.Delay(25);
+
+            await Task.Delay(10);
         }
     }
 

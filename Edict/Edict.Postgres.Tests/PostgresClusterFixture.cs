@@ -109,12 +109,10 @@ public sealed class PostgresClusterFixture : ConformanceFixture
     }
 
     // LocalReminderService caps its sanity-check wait at a hardcoded
-    // 20s `InitialReadMaxWaitTimeForUpdates`. On a slow CI runner the
+    // 20 s InitialReadMaxWaitTimeForUpdates. On a slow CI runner the
     // initial table read against a cold Postgres testcontainer can slip
     // past that, and the first command that triggers RegisterOrUpdateReminder
-    // throws `OrleansException("Reminder Service is still initializing…")`.
-    // Drive a no-op command through the outbox path until the service
-    // settles, then real tests start in a stable state.
+    // throws OrleansException("Reminder Service is still initializing…").
     async Task WarmReminderServiceAsync()
     {
         var deadline = DateTime.UtcNow.AddMinutes(2);

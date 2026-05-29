@@ -40,13 +40,18 @@ sealed class InProcPublishExecutor(
     readonly Lock _heldLock = new();
     int _outstandingDispatches;
 
-    /// <summary>
-    /// Count of fire-and-forget consumer dispatches that have not yet
-    /// run to completion. Drain stability needs more than recorder-count
-    /// quiescence on a slow runner — an UpsertRow projection effect can
-    /// still be in-flight after the publish-side recorder has gone quiet.
-    /// </summary>
     public int OutstandingDispatches => Volatile.Read(ref _outstandingDispatches);
+
+    public int HeldCount
+    {
+        get
+        {
+            lock (_heldLock)
+            {
+                return _held.Count;
+            }
+        }
+    }
 
     public Task ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
