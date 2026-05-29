@@ -35,13 +35,15 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
         var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
         try
         {
-            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-            await using var command = connection.CreateCommand();
+            var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            await using var connectionScope = connection.ConfigureAwait(false);
+            var command = connection.CreateCommand();
+            await using var commandScope = command.ConfigureAwait(false);
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
             command.Parameters.AddWithValue("pk", partitionKey);
             command.Parameters.AddWithValue("rk", rowKey);
-            var result = await command.ExecuteScalarAsync(cancellationToken);
+            var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             if (result is null || result is DBNull)
             {
                 return null;
@@ -66,13 +68,16 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
         var results = new List<T>();
         try
         {
-            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-            await using var command = connection.CreateCommand();
+            var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            await using var connectionScope = connection.ConfigureAwait(false);
+            var command = connection.CreateCommand();
+            await using var commandScope = command.ConfigureAwait(false);
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";
             command.Parameters.AddWithValue("pk", partitionKey);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using var readerScope = reader.ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var bytes = (byte[])reader["payload"];
                 results.Add(_serializer.Deserialize<T>(bytes));

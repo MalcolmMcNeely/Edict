@@ -34,7 +34,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
 
         try
         {
-            return await grain.DispatchAsync(command);
+            return await grain.DispatchAsync(command).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -79,7 +79,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
 
         try
         {
-            return await grain.DispatchAsync(command);
+            return await grain.DispatchAsync(command).ConfigureAwait(false);
         }
         catch (Exception exception)
         {

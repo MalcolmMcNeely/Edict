@@ -20,7 +20,7 @@ public sealed class AzureTableRepository<T>(TableServiceClient tableServiceClien
     {
         try
         {
-            var response = await _tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken);
+            var response = await _tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
             return AzureTablePocoMapper.FromTableEntity<T>(response.Value);
         }
         catch (RequestFailedException exception) when (exception.Status == 404)
@@ -36,7 +36,7 @@ public sealed class AzureTableRepository<T>(TableServiceClient tableServiceClien
         {
             await foreach (var entity in _tableClient.QueryAsync<TableEntity>(
                 filter: $"PartitionKey eq '{partitionKey}'",
-                cancellationToken: cancellationToken))
+                cancellationToken: cancellationToken).ConfigureAwait(false))
             {
                 results.Add(AzureTablePocoMapper.FromTableEntity<T>(entity));
             }

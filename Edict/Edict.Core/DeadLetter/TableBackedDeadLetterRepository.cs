@@ -14,7 +14,7 @@ sealed class TableBackedDeadLetterRepository(IEdictTableRepository<EdictDeadLett
         string grainKey, CancellationToken cancellationToken = default)
     {
         var all = await table.QueryPartitionAsync(
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition, cancellationToken);
+            EdictDeadLetterProjectionBuilder.DeadLetterPartition, cancellationToken).ConfigureAwait(false);
         return all.Where(e => e.SourceGrainKey == grainKey).ToList();
     }
 }
