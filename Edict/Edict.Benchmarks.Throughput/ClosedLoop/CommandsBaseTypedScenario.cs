@@ -7,8 +7,8 @@ using Edict.Contracts.Sending;
 namespace Edict.Benchmarks.Throughput.ClosedLoop;
 
 /// <summary>
-/// A/B counterpart to <see cref="CommandsScenario"/> (ADR-0034): the
-/// argument is typed as <see cref="EdictCommand"/> at the call site, which
+/// A/B counterpart to <see cref="CommandsScenario"/>: the argument is typed
+/// as <see cref="EdictCommand"/> at the call site, which
 /// gives this Send a different syntactic source location than the typed
 /// scenario's site. The generator's per-type <c>[InterceptsLocation]</c>
 /// only matches the typed location, so this scenario always pays the
@@ -30,7 +30,7 @@ public sealed class CommandsBaseTypedScenario : IClosedLoopScenario
 
     [SuppressMessage(
         "Edict", "EDICT015",
-        Justification = "ADR-0034 A/B counterpart — deliberately base-typed to force the slow path.")]
+        Justification = "Interceptor A/B counterpart — deliberately base-typed to force the slow path.")]
     public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
         EdictCommand command = new BenchIncrementCommand(aggregateId, filler);

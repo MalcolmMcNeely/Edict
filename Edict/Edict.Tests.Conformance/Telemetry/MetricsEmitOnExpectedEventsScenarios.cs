@@ -180,8 +180,8 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
 
 /// <summary>
 /// Substrate-agnostic guarantee that the silo-local
-/// <c>edict.outbox.pending.count</c> observable gauge (ADR-0040, Slice 2)
-/// reports the per-grain-type sum across multiple active aggregates. Bound
+/// <c>edict.outbox.pending.count</c> observable gauge reports the
+/// per-grain-type sum across multiple active aggregates. Bound
 /// against any fixture wiring a <see cref="ControllableOutboxExecutor"/> at
 /// <c>OutboxMaxAttempts</c> = 2: <c>ShouldFail</c> = true holds the published
 /// events as failed-with-backoff entries in <c>Pending</c>, the OutboxHost's

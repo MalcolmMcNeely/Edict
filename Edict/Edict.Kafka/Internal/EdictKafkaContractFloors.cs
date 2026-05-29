@@ -5,8 +5,8 @@ namespace Edict.Kafka.Internal;
 /// dictionaries on <see cref="EdictKafkaStreamsOptions"/>. The framework
 /// stamps a fixed set of broker-contract floors (producer <c>acks=all</c>
 /// and <c>enable.idempotence=true</c>, consumer <c>enable.auto.commit=false</c>)
-/// that callers must not downgrade — the at-least-once delivery + ADR-0002
-/// dedup-ring strategy depends on them. Throws
+/// that callers must not downgrade — the at-least-once delivery + dedup-ring
+/// strategy depends on them. Throws
 /// <see cref="InvalidOperationException"/> at <c>AddEdictKafkaStreams</c>
 /// time so misconfiguration surfaces at host build, not during the first
 /// produce or poll.
@@ -24,7 +24,7 @@ static class EdictKafkaContractFloors
         if (overrides.TryGetValue("enable.idempotence", out var idempotence) && !IsTrue(idempotence))
         {
             throw new InvalidOperationException(
-                $"EdictKafkaStreamsOptions.ProducerConfigOverrides[\"enable.idempotence\"] = \"{idempotence}\" downgrades the Edict broker contract. The producer must stay idempotent — the ADR-0002 dedup ring assumes no producer-side duplicates inside a single send retry sequence.");
+                $"EdictKafkaStreamsOptions.ProducerConfigOverrides[\"enable.idempotence\"] = \"{idempotence}\" downgrades the Edict broker contract. The producer must stay idempotent — Edict's dedup ring assumes no producer-side duplicates inside a single send retry sequence.");
         }
     }
 

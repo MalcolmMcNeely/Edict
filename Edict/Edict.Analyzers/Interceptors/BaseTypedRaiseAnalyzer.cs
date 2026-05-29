@@ -11,8 +11,8 @@ namespace Edict.Analyzers.Interceptors;
 /// <summary>
 /// EDICT016 — flags <see cref="EdictWellKnownNames.EdictCommandHandlerFqn"/>.Raise
 /// call sites whose argument has an abstract static type (e.g. an
-/// <c>EdictEvent</c>-typed variable). The Raise interceptor stub (ADR-0034)
-/// matches per-event-type; abstract arguments skip the typed call site.
+/// <c>EdictEvent</c>-typed variable). The Raise interceptor stub matches
+/// per-event-type; abstract arguments skip the typed call site.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class BaseTypedRaiseAnalyzer : DiagnosticAnalyzer
@@ -20,7 +20,7 @@ public sealed class BaseTypedRaiseAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT016",
         title: "EdictCommandHandler.Raise must be called with a concrete-typed event",
-        messageFormat: "'Raise' was called with base-typed argument '{0}' — call with a concrete event type so the interceptor fast path (ADR-0034) can intercept the site",
+        messageFormat: "'Raise' was called with base-typed argument '{0}' — call with a concrete event type so the interceptor fast path can intercept the site",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

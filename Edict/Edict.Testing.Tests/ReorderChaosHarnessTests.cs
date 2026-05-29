@@ -11,10 +11,10 @@ namespace Edict.Testing.Tests;
 
 /// <summary>
 /// End-to-end proof that the in-process harness applies bounded reorder chaos
-/// on every test run (ADR 0015 line 7: a redelivered older event can land
-/// behind a newer one of the same aggregate). A throwaway in-test consumer
-/// — one aggregate plus a "reset on Place" projection — surfaces the property
-/// without depending on any sample-app types.
+/// on every test run — a redelivered older event can land behind a newer one
+/// of the same aggregate, so consumers must tolerate it. A throwaway in-test
+/// consumer — one aggregate plus a "reset on Place" projection — surfaces
+/// the property without depending on any sample-app types.
 /// </summary>
 public sealed class ReorderChaosHarnessTests
 {

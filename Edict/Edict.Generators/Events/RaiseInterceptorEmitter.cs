@@ -8,7 +8,7 @@ using Edict.Generators.Commands;
 namespace Edict.Generators.Events;
 
 /// <summary>
-/// Per-event-type Raise interceptor emitter (ADR-0034). One typed
+/// Per-event-type Raise interceptor emitter. One typed
 /// specialisation method per discovered Event, with N
 /// <c>[InterceptsLocation]</c> attribute lines for every concrete-typed
 /// <c>Raise(...)</c> call site. The body forwards to

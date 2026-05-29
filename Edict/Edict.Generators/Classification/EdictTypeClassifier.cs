@@ -8,8 +8,8 @@ namespace Edict.Generators.Classification;
 /// <summary>
 /// Single source of truth for "what kind of Edict type is this declaration?".
 /// Replaces the per-generator <c>DerivesFromX</c> helpers that previously lived
-/// in each of the seven generators. ADR-0005 still holds — no assembly
-/// reference; base types are matched by fully-qualified name.
+/// in each of the seven generators. The no-assembly-reference invariant still
+/// holds — base types are matched by fully-qualified name.
 /// <para>
 /// Returns <see cref="EdictTypeKind.None"/> for any node that cannot host
 /// generated code (non-partial, missing base list, file-local, non-public /

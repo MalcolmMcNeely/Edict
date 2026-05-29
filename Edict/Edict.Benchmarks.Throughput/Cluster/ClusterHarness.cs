@@ -17,7 +17,7 @@ namespace Edict.Benchmarks.Throughput.Cluster;
 /// closed-loop sweep and the saturation pass — go through here so the
 /// substrate-bridge static and the Silo/Client configurators live in one
 /// place. The workload-specific repository registrations land on the client
-/// builder here too: the substrate seam (ADR-0030) stays workload-free, so
+/// builder here too: the substrate seam stays workload-free, so
 /// the harness is the layer that knows about <c>BenchEventRow</c> /
 /// <c>BenchCounterRow</c>.
 /// <para>

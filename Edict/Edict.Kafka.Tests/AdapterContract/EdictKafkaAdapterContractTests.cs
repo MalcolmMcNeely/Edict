@@ -18,12 +18,11 @@ using Xunit;
 namespace Edict.Kafka.Tests.AdapterContract;
 
 /// <summary>
-/// Adapter-contract layer for <see cref="EdictKafkaAdapter"/>: drives the
-/// producer side against a <see cref="FakeKafkaProducer"/> so per-stream topic
-/// routing is observable without a broker. ADR-0028 §2 records the
-/// per-<see cref="Contracts.Events.EdictStreamAttribute"/> topology — every
-/// domain stream maps to its own Kafka topic — and this layer is the
-/// deterministic guard against a regression to the slice-1 single-topic shape.
+/// Drives <see cref="EdictKafkaAdapter"/>'s producer side against a
+/// <see cref="FakeKafkaProducer"/> so per-stream topic routing is observable
+/// without a broker. The per-<see cref="Contracts.Events.EdictStreamAttribute"/>
+/// topology maps every domain stream to its own Kafka topic; this layer is
+/// the deterministic guard against a regression to a single-topic shape.
 /// </summary>
 public sealed class EdictKafkaAdapterContractTests
 {

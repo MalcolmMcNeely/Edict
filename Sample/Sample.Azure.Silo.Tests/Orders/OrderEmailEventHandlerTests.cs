@@ -13,8 +13,8 @@ namespace Sample.Azure.Silo.Tests.Orders;
 /// <see cref="PlaceOrderCommand"/> runs the real engine across command →
 /// raised event → <see cref="OrderEmailEventHandler"/> deferred invocation, and the
 /// resulting workflow surfaces on one Verify-shaped <see cref="EdictTestApp.Timeline"/>
-/// with the new <c>Invocation</c> kind alongside <c>Command</c> and
-/// <c>Event</c> entries (issue #67 /).
+/// with the <c>Invocation</c> kind alongside <c>Command</c> and
+/// <c>Event</c> entries.
 /// </summary>
 public sealed class OrderEmailEventHandlerTests
 {

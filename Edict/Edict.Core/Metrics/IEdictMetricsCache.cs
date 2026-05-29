@@ -4,8 +4,8 @@ namespace Edict.Core.Metrics;
 /// Silo-local cache fed by every <c>OutboxHost</c> commit and <c>EdictSaga</c>
 /// event-handle, scraped by the three observable gauges
 /// (<c>edict.outbox.pending.count</c>, <c>edict.outbox.oldest_entry.age</c>,
-/// <c>edict.saga.progress.age</c>). Replaces a per-scrape grain fan-out
-/// (ADR-0040): the push happens on the grain task scheduler as part of work
+/// <c>edict.saga.progress.age</c>). Replaces a per-scrape grain fan-out:
+/// the push happens on the grain task scheduler as part of work
 /// the host is already doing, the gauge callback reads a
 /// <c>ConcurrentDictionary</c> bounded by the number of currently-active grains
 /// on this silo. The cache instance is registered as a silo singleton by
@@ -38,8 +38,7 @@ public interface IEdictMetricsCache
     /// — both outbox and saga state. Called from the hosting grain's
     /// <c>OnDeactivateAsync</c> so a deactivated grain stops contributing to
     /// the per-type aggregate; without this hook a grain that deactivates with
-    /// <c>pendingCount = 5</c> would continue to contribute 5 forever
-    /// (ADR-0040's load-bearing cleanup).
+    /// <c>pendingCount = 5</c> would continue to contribute 5 forever.
     /// </summary>
     void Remove(string grainType, string grainKey);
 

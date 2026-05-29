@@ -14,13 +14,12 @@ namespace Edict.Kafka.Internal;
 /// Custom Orleans <see cref="IQueueAdapter"/> over <c>Confluent.Kafka</c>.
 /// One producer instance per silo. Every event is produced to the topic named
 /// after the <see cref="Contracts.Events.EdictStreamAttribute"/> domain stream
-/// it belongs to (ADR-0028 §2) — the producer reads the stream namespace off
-/// the Orleans <see cref="StreamId"/> the publish pipeline stamps, with no
-/// shared central topic. Partition selection inside that topic is the
+/// it belongs to — the producer reads the stream namespace off the Orleans
+/// <see cref="StreamId"/> the publish pipeline stamps, with no shared central
+/// topic. Partition selection inside that topic is the
 /// <see cref="EdictKafkaPartitionMapper"/>'s job so per-aggregate ordering is
 /// preserved. Producer floors are hardcoded: <c>acks=all</c>, idempotent
-/// producer on, lz4 compression — contract floors ADR-0028 records, not
-/// consumer-tunable.
+/// producer on, lz4 compression — contract floors, not consumer-tunable.
 /// </summary>
 sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
 {

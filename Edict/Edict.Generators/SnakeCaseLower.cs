@@ -6,7 +6,7 @@ namespace Edict.Generators;
 /// In-house port of <c>System.Text.Json.JsonNamingPolicy.SnakeCaseLower</c>,
 /// which isn't reachable from netstandard2.0 generators. Behaviour is pinned
 /// to the BCL output for the worked-examples table by
-/// <c>TelemeterizedTagNamingTests</c> (ADR-0037).
+/// <c>TelemeterizedTagNamingTests</c>.
 /// </summary>
 internal static class SnakeCaseLower
 {

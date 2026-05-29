@@ -85,7 +85,7 @@ public abstract class EdictCommandHandler<TState>
     /// Removes this grain's entry from the silo-local metrics cache so a
     /// deactivated aggregate stops contributing to the per-type
     /// <c>edict.outbox.pending.count</c> / <c>edict.outbox.oldest_entry.age</c>
-    /// gauges (ADR-0040's load-bearing cleanup).
+    /// gauges.
     /// </summary>
     public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
     {
@@ -114,8 +114,8 @@ public abstract class EdictCommandHandler<TState>
     }
 
     /// <summary>
-    /// Generator-only fast path called by the per-type Raise interceptor stubs
-    /// (ADR-0034). Identical semantics to <see cref="Raise"/> on the typed
+    /// Generator-only fast path called by the per-type Raise interceptor stubs.
+    /// Identical semantics to <see cref="Raise"/> on the typed
     /// argument — the win is a monomorphic typed call site so the JIT can
     /// devirtualize the record-<c>with</c> clone. Not a stable public API; the
     /// interceptor emitter is the only caller.

@@ -11,9 +11,8 @@ namespace Edict.Analyzers.Interceptors;
 /// <summary>
 /// EDICT017 — flags <see cref="EdictWellKnownNames.EdictSagaFqn"/>.Dispatch
 /// call sites whose argument has an abstract static type (e.g. an
-/// <c>EdictCommand</c>-typed variable). The Dispatch interceptor stub
-/// (ADR-0034) matches per-target-command-type; abstract arguments skip the
-/// typed call site.
+/// <c>EdictCommand</c>-typed variable). The Dispatch interceptor stub matches
+/// per-target-command-type; abstract arguments skip the typed call site.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class BaseTypedSagaDispatchAnalyzer : DiagnosticAnalyzer
@@ -21,7 +20,7 @@ public sealed class BaseTypedSagaDispatchAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT017",
         title: "EdictSaga.Dispatch must be called with a concrete-typed command",
-        messageFormat: "'Dispatch' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path (ADR-0034) can intercept the site",
+        messageFormat: "'Dispatch' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path can intercept the site",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

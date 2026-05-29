@@ -124,7 +124,7 @@ public sealed class EdictKafkaStreamsOptions
     /// Where a new consumer-group member starts when no committed offset
     /// exists for its assigned partition. Default
     /// <see cref="AutoOffsetReset.Latest"/> — Edict is event-driven, not
-    /// event-sourced (ADR-0001); a fresh consumer should pick up new events
+    /// event-sourced; a fresh consumer should pick up new events
     /// from the moment it joins, not replay the topic from the beginning.
     /// </summary>
     public AutoOffsetReset AutoOffsetReset { get; set; } = AutoOffsetReset.Latest;

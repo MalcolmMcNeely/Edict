@@ -6,8 +6,8 @@ namespace Edict.Kafka.Internal;
 /// <summary>
 /// Maps Orleans <see cref="StreamId"/> values to a (topic, partition) Kafka
 /// coordinate and exposes the full coordinate set as Orleans
-/// <see cref="QueueId"/> values. ADR-0028 §2 routes one Kafka topic per
-/// <c>[EdictStream]</c> domain, with the route key's stable hash selecting a
+/// <see cref="QueueId"/> values. One Kafka topic per <c>[EdictStream]</c>
+/// domain, with the route key's stable hash selecting a
 /// partition inside that topic's fan-out so per-aggregate ordering is
 /// preserved. The topic is encoded into the <see cref="QueueId"/>'s string
 /// prefix and decoded by <see cref="TopicFor"/> so the adapter's receiver

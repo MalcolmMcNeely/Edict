@@ -6,8 +6,8 @@ namespace Edict.Kafka.Internal;
 
 /// <summary>
 /// Discovers every <see cref="EdictStreamAttribute"/> name in scope at silo
-/// startup — the topology the per-stream Kafka topic layout rides on
-/// (ADR-0028 §2). Stream names emit in sorted-ordinal order so two silos that
+/// startup — the topology the per-stream Kafka topic layout rides on.
+/// Stream names emit in sorted-ordinal order so two silos that
 /// share an assembly set agree on the queue order Orleans' ring balancer
 /// assigns. The string-list ctor is the production seam used by
 /// <see cref="FromAppDomain"/>; tests construct it directly with hand-picked

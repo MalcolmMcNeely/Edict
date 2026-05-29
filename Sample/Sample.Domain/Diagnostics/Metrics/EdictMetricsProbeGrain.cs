@@ -8,8 +8,8 @@ namespace Sample.Domain.Diagnostics.Metrics;
 
 /// <summary>
 /// Singleton grain backing the Live Metrics spoke. Reads the gauge-shaped
-/// metrics from the silo-local <see cref="IEdictMetricsCache"/> (ADR-0040) and
-/// the histogram / counter aggregates from
+/// metrics from the silo-local <see cref="IEdictMetricsCache"/> and the
+/// histogram / counter aggregates from
 /// <see cref="EdictMetricsAggregator"/>. The grain itself is stateless — its
 /// activation is purely a routing hop into the silo process so the Web
 /// frontend can read silo-side telemetry without scraping <c>/metrics</c>.

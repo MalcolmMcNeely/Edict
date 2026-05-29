@@ -70,7 +70,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
     /// <summary>
     /// Generator-only fast path called by the per-type saga Dispatch
-    /// interceptor stubs (ADR-0034). Identical semantics to
+    /// interceptor stubs. Identical semantics to
     /// <see cref="Dispatch"/> on the typed argument — the win is a
     /// monomorphic typed call site. Not a stable public API; the interceptor
     /// emitter is the only caller. The single-command-per-event invariant

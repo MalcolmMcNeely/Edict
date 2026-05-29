@@ -3,7 +3,7 @@ using Xunit;
 namespace Edict.Testing.Tests;
 
 /// <summary>
-/// Acceptance probe for ADR-0040's silo-local metrics cache: the
+/// Acceptance probe for the silo-local metrics cache: the
 /// <see cref="EdictTestApp.GetOutboxState"/> and
 /// <see cref="EdictTestApp.GetSagaState"/> surfaces read the same cache the
 /// silo's <c>OutboxHost</c> + <c>EdictSaga</c> push to, so consumer tests can

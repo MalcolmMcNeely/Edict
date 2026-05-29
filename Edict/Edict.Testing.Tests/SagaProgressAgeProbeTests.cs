@@ -12,13 +12,13 @@ using Xunit;
 namespace Edict.Testing.Tests;
 
 /// <summary>
-/// ADR-0040 Slice-2 acceptance: <c>edict.saga.progress.age</c> grows as the
-/// <see cref="Microsoft.Extensions.Time.Testing.FakeTimeProvider"/> advances
-/// without a new saga event. The harness's <c>AdvanceClock</c> moves the
-/// silo's clock; <see cref="EdictTestApp.GetSagaState"/> reads the cache the
-/// saga's <c>DispatchEventAsync</c> pushed to at handle-completion, so the
-/// difference between <c>now</c> and the cached timestamp is the value the
-/// observable gauge would emit at scrape time.
+/// Acceptance probe for <c>edict.saga.progress.age</c>: the value grows as
+/// the <see cref="Microsoft.Extensions.Time.Testing.FakeTimeProvider"/>
+/// advances without a new saga event. The harness's <c>AdvanceClock</c>
+/// moves the silo's clock; <see cref="EdictTestApp.GetSagaState"/> reads
+/// the cache the saga's <c>DispatchEventAsync</c> pushed to at
+/// handle-completion, so the difference between <c>now</c> and the cached
+/// timestamp is the value the observable gauge would emit at scrape time.
 /// </summary>
 public sealed class SagaProgressAgeProbeTests
 {

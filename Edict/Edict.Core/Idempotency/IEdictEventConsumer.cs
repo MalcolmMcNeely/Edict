@@ -11,7 +11,7 @@ namespace Edict.Core.Idempotency;
 /// method, <see cref="OnEdictEventAsync"/>, is the unified delivery entry that
 /// the in-memory Test Framework's in-process stream-provider replacement
 /// invokes synchronously per publish — the production Orleans memory-stream
-/// pulling agent fails to deliver to referenced-assembly consumers (#53), so
+/// pulling agent fails to deliver to referenced-assembly consumers, so
 /// <c>Edict.Testing</c> routes through this seam instead.
 /// <para>
 /// <see cref="AlwaysInterleaveAttribute"/> mirrors Orleans's own stream

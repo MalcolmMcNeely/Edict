@@ -10,11 +10,11 @@ namespace Edict.Kafka.Tests.Mapper;
 
 /// <summary>
 /// Targeted unit tests for <see cref="EdictKafkaPartitionMapper"/> under the
-/// per-stream topology (ADR-0028 §2): every <c>[EdictStream]</c> name in the
-/// registry gets its own queue fan-out, the per-stream partition override is
-/// honoured, and the queue identity carries the topic + partition through
-/// Orleans' opaque <see cref="QueueId"/> so the receiver factory can decode
-/// where to subscribe.
+/// per-stream topology: every <c>[EdictStream]</c> name in the registry gets
+/// its own queue fan-out, the per-stream partition override is honoured, and
+/// the queue identity carries the topic + partition through Orleans' opaque
+/// <see cref="QueueId"/> so the receiver factory can decode where to
+/// subscribe.
 /// </summary>
 public sealed class EdictKafkaPartitionMapperTests
 {

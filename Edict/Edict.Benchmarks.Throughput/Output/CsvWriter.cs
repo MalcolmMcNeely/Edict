@@ -9,7 +9,7 @@ namespace Edict.Benchmarks.Throughput.Output;
 /// Writes a long-format raw-sample CSV per substrate to
 /// <c>docs/benchmarks/raw/&lt;date&gt;-&lt;substrate&gt;.csv</c>. One row per
 /// latency sample so a reader can re-plot percentiles or rebuild the curve
-/// without rerunning the harness (issue #126).
+/// without rerunning the harness.
 /// </summary>
 public static class CsvWriter
 {

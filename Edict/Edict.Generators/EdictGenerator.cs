@@ -24,9 +24,9 @@ namespace Edict.Generators;
 /// <c>Edict.Generators.Commands</c>, <c>.Events</c>, <c>.EventHandler</c>,
 /// <c>.EventStreamAccessors</c>, <c>.Projections</c>, and <c>.Sagas</c>.
 /// <para>
-/// Replaces the previous one-generator-per-concept layout. ADR-0005 still
-/// holds — no assembly reference; bases and annotations are matched purely by
-/// fully-qualified name. The per-concept Verify snapshots in
+/// Replaces the previous one-generator-per-concept layout. The
+/// no-assembly-reference invariant still holds — bases and annotations are
+/// matched purely by fully-qualified name. The per-concept Verify snapshots in
 /// <c>Edict.Generators.Tests</c> are the regression net.
 /// </para>
 /// </summary>

@@ -44,14 +44,14 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
     }
 
     /// <summary>
-    /// Generator-only fast path called by the per-type Send interceptor stubs
-    /// (ADR-0034). Skips the <see cref="CommandRouteResolver"/> dictionary
-    /// lookup and the route-key/tag delegate hops by accepting the typed
-    /// command, the already-extracted route key, the known command simple
-    /// name, and the grain class name (still needed for Orleans' shared
+    /// Generator-only fast path called by the per-type Send interceptor stubs.
+    /// Skips the <see cref="CommandRouteResolver"/> dictionary lookup and the
+    /// route-key/tag delegate hops by accepting the typed command, the
+    /// already-extracted route key, the known command simple name, and the
+    /// grain class name (still needed for Orleans' shared
     /// <see cref="IEdictCommandHandler"/> interface — the per-grain typed
     /// interface would force every consumer to ship a <c>[GrainType]</c>
-    /// binding, which ADR-0017 deliberately avoids).
+    /// binding, which the framework deliberately avoids).
     /// <paramref name="extraTags"/> is a non-capturing <c>static</c> lambda
     /// for telemeterized property writes — zero per-call allocation. Not a
     /// stable public API; the interceptor emitter is the only caller.

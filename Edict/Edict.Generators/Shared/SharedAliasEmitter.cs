@@ -3,8 +3,8 @@ namespace Edict.Generators.Shared;
 /// <summary>
 /// Emits the Orleans <c>[Alias]</c> + MessagePack <c>[MessagePackObject(true)]</c>
 /// partial declaration for either an Edict command or an Edict event — the
-/// template is identical (ADR-0007 round-trip relies on the simple type name),
-/// so one emitter serves both concepts.
+/// template is identical (the polymorphic round-trip relies on the simple
+/// type name), so one emitter serves both concepts.
 /// </summary>
 internal static class SharedAliasEmitter
 {

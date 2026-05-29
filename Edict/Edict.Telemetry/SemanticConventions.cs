@@ -15,8 +15,8 @@ public static class SemanticConventions
         public const string Edict = EdictDiagnostics.SourceName;
     }
 
-    /// <summary>Cross-cutting attribute keys reused across multiple metric categories
-    /// (ADR-0038). Any constant added here must appear on instruments in at least two
+    /// <summary>Cross-cutting attribute keys reused across multiple metric categories.
+    /// Any constant added here must appear on instruments in at least two
     /// categories; per-category attributes stay scoped to their owning category.</summary>
     public static class Common
     {
@@ -73,7 +73,7 @@ public static class SemanticConventions
 
             /// <summary>Histogram of producer-to-consumer event lag in seconds —
             /// <c>now − <see cref="Edict.Contracts.Events.EdictEvent.OccurredAt"/></c>
-            /// recorded at handle entry. ADR-0026 stamps <c>OccurredAt</c> at
+            /// recorded at handle entry. The framework stamps <c>OccurredAt</c> at
             /// <c>Raise</c> time so the value is true intent-to-handle lag, not
             /// wire-time lag.</summary>
             public const string HandleLag = "edict.event.handle.lag";
@@ -122,13 +122,13 @@ public static class SemanticConventions
 
             /// <summary>Observable gauge of pending outbox entries summed per grain type
             /// across every live host on this silo. Sourced from the silo-local
-            /// metrics cache (ADR-0040) so a scrape costs zero grain calls.</summary>
+            /// metrics cache so a scrape costs zero grain calls.</summary>
             public const string PendingCount = "edict.outbox.pending.count";
 
             /// <summary>Observable gauge of the oldest pending outbox entry's age in
             /// seconds, per grain type, taken as <c>max(now − enqueuedAt_i)</c> across
             /// every live host on this silo. Sourced from the silo-local metrics
-            /// cache (ADR-0040).</summary>
+            /// cache.</summary>
             public const string OldestEntryAge = "edict.outbox.oldest_entry.age";
         }
     }
@@ -139,8 +139,7 @@ public static class SemanticConventions
         {
             /// <summary>Observable gauge of seconds since the last event a saga handled,
             /// per saga type, taken as <c>max(now − lastHandledAt_i)</c> across every
-            /// live saga on this silo. Sourced from the silo-local metrics cache
-            /// (ADR-0040).</summary>
+            /// live saga on this silo. Sourced from the silo-local metrics cache.</summary>
             public const string ProgressAge = "edict.saga.progress.age";
         }
     }
@@ -149,7 +148,7 @@ public static class SemanticConventions
     {
         public static class Tags
         {
-            /// <summary>Closed allowlist (ADR-0039) classifying the exception that drove a promotion:
+            /// <summary>Closed allowlist classifying the exception that drove a promotion:
             /// <see cref="FailureReasonValues.Timeout"/>, <see cref="FailureReasonValues.Saturated"/>,
             /// <see cref="FailureReasonValues.Serialization"/>, <see cref="FailureReasonValues.Substrate"/>,
             /// or <see cref="FailureReasonValues.Unhandled"/>.</summary>

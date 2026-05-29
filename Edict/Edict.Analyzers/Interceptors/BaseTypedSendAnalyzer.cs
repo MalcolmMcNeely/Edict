@@ -11,9 +11,9 @@ namespace Edict.Analyzers.Interceptors;
 /// <summary>
 /// EDICT015 — flags <see cref="EdictWellKnownNames.IEdictSenderFqn"/>.Send
 /// call sites whose argument has an abstract static type (e.g. an
-/// <c>EdictCommand</c>-typed variable). The interceptor fast path (ADR-0034)
-/// requires concrete-typed call sites; an abstract argument forces the
-/// runtime down the registrar dictionary lookup and forfeits the win.
+/// <c>EdictCommand</c>-typed variable). The interceptor fast path requires
+/// concrete-typed call sites; an abstract argument forces the runtime down
+/// the registrar dictionary lookup and forfeits the win.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class BaseTypedSendAnalyzer : DiagnosticAnalyzer
@@ -21,7 +21,7 @@ public sealed class BaseTypedSendAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT015",
         title: "IEdictSender.Send must be called with a concrete-typed command",
-        messageFormat: "'IEdictSender.Send' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path (ADR-0034) can intercept the site",
+        messageFormat: "'IEdictSender.Send' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path can intercept the site",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

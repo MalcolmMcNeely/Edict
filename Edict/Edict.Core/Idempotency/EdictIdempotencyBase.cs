@@ -110,7 +110,9 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// Removes this consumer's entry from the silo-local metrics cache so a
     /// deactivated grain stops contributing to
     /// <c>edict.outbox.pending.count</c> / <c>edict.outbox.oldest_entry.age</c>
-    /// / <c>edict.saga.progress.age</c> (ADR-0040's load-bearing cleanup).
+    /// / <c>edict.saga.progress.age</c>. Without this hook a grain that
+    /// deactivates with pending work would contribute its last reported depth
+    /// to the per-type aggregate forever.
     /// </summary>
     public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
     {
@@ -145,7 +147,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// In-memory delivery seam (<see cref="IEdictEventConsumer.OnEdictEventAsync"/>):
     /// the Test Framework's in-process stream-provider replacement invokes this
     /// per publish, bypassing the Orleans memory-stream pulling agent that
-    /// stops delivering to referenced-assembly consumers (#53). Routes through
+    /// stops delivering to referenced-assembly consumers. Routes through
     /// the same bifurcation as Orleans's real delivery so the engine behaviour
     /// is identical under test and in production.
     /// </summary>

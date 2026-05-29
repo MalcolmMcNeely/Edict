@@ -11,11 +11,11 @@ namespace Edict.Testing.Internal;
 /// <list type="bullet">
 ///   <item><b>Duplicate redelivery</b> — gated by <see cref="DuplicateProbability"/>
 ///   with up to <see cref="MaxExtraDeliveries"/> extra deliveries per emission,
-///   so the dedup ring (ADR 0002) is exercised in every multi-step test.</item>
+///   so the consumer dedup ring is exercised in every multi-step test.</item>
 ///   <item><b>Bounded reorder</b> — gated by <see cref="ReorderProbability"/>
 ///   with held-queue depth capped at <see cref="MaxReorderDistance"/>,
 ///   per-subscriber and per-aggregate, so consumers exercise the
-///   reorder-tolerance contract from ADR 0015 line 7.</item>
+///   reorder-tolerance contract.</item>
 /// </list>
 /// </para>
 /// The single <see cref="Seed"/> seeds two independent RNG streams (duplicate,

@@ -6,7 +6,7 @@ namespace Edict.Benchmarks.Throughput.Tests;
 /// <summary>
 /// Test-side raw <see cref="MeterListener"/> over the <c>"Npgsql"</c> meter,
 /// capturing the instruments Npgsql 9.0.3 emits for the connection pool.
-/// Used by the issue #148 probe to verify or falsify connection-pool pressure
+/// Used by the diagnostic probe to verify or falsify connection-pool pressure
 /// as the cause of the kafkapostgres Commands-curve plateau.
 /// <para>
 /// Instrument names — the issue spec was drafted against the OpenTelemetry
@@ -26,7 +26,7 @@ namespace Edict.Benchmarks.Throughput.Tests;
 ///     <see cref="UpDownCounter{T}"/>. Npgsql only emits a delta when a
 ///     request actually has to wait; we sum deltas, watermark the running
 ///     total, and time the contiguous &gt;0 intervals so the verdict can
-///     speak to "sustained &gt;1 s" against ADR-0029's threshold.</item>
+///     speak to the "sustained &gt;1 s" threshold.</item>
 ///   <item><c>db.client.connection.npgsql.create_time</c> — histogram of
 ///     new-connection establishment cost in seconds. The closest signal to
 ///     the wait_time instrument the issue spec called for; we report p99

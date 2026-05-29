@@ -13,8 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Edict.Benchmarks.Throughput.Tests;
 
 /// <summary>
-/// Closes the doubled-projection bug ADR-0031 had aspirationally claimed away
-/// but the harness wasn't enforcing. Per-<see cref="SubstrateStartMode"/>
+/// Pins the per-mode projection-registration contract that closes the
+/// doubled-projection bug. Per-<see cref="SubstrateStartMode"/>
 /// projection registration means the saturation cluster never activates
 /// <see cref="BenchProjectionBuilder"/> and the closed-loop cluster never
 /// activates <see cref="BenchCounterProjectionBuilder"/>. Two facts, one per

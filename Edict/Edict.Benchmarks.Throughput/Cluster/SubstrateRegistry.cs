@@ -7,7 +7,7 @@ namespace Edict.Benchmarks.Throughput.Cluster;
 /// <summary>
 /// Single place that lists every <see cref="ISubstrate"/> the harness can run.
 /// Adding a future substrate is one line here — no runner / writer / dispatcher
-/// changes (issue #126).
+/// changes.
 /// </summary>
 public static class SubstrateRegistry
 {

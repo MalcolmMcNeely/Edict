@@ -127,7 +127,7 @@ sealed class OutboxHost<TPayload>
 
     /// <summary>Removes this grain's cache entry. Called by the hosting base's
     /// <c>OnDeactivateAsync</c> so a deactivated grain stops contributing to
-    /// the per-type aggregate (ADR-0040's load-bearing cleanup).</summary>
+    /// the per-type aggregate.</summary>
     public Task OnDeactivateAsync()
     {
         _metricsCache?.Remove(_grainTypeName, _grainKey);

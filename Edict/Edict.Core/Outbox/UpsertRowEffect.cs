@@ -8,9 +8,9 @@ namespace Edict.Core.Outbox;
 /// a pk/rk full-row replace, redelivery of the effect is idempotent — this is
 /// how the table-projection double-apply gap is <b>closed</b>, not merely accepted.
 /// <para>
-/// The row is encoded with the Orleans <c>Serializer</c> end-to-end (the row
-/// POCO carries <c>[GenerateSerializer]</c> via <c>IEdictPersistedState</c>, per
-/// ADR-0022). Its type identity travels as its frozen <c>[Alias]</c> literal,
+/// The row is encoded with the Orleans <c>Serializer</c> end-to-end — the row
+/// POCO carries <c>[GenerateSerializer]</c> via <c>IEdictPersistedState</c>.
+/// Its type identity travels as its frozen <c>[Alias]</c> literal,
 /// captured by the publisher via <c>Orleans.Serialization.TypeConverter.Format</c>
 /// and resolved by the drain via <c>TypeConverter.Parse</c>, so a consumer
 /// who renames the row POCO class — but preserves its <c>[Alias]</c> — has no

@@ -8,7 +8,7 @@ using Edict.Generators.Commands;
 namespace Edict.Generators.Sagas;
 
 /// <summary>
-/// Per-command-type Saga Dispatch interceptor emitter (ADR-0034). One typed
+/// Per-command-type Saga Dispatch interceptor emitter. One typed
 /// specialisation method per discovered saga target Command, with N
 /// <c>[InterceptsLocation]</c> attribute lines for every concrete-typed
 /// <c>Dispatch(...)</c> call site inside a saga. The body forwards to

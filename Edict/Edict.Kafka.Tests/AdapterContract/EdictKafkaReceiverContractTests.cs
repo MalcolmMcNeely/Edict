@@ -19,11 +19,11 @@ using Xunit;
 namespace Edict.Kafka.Tests.AdapterContract;
 
 /// <summary>
-/// Adapter-contract layer (ADR-0028, slice 3 of #142): drives
-/// <see cref="EdictKafkaReceiver"/> against a fake <see cref="IConsumer{TKey, TValue}"/>
-/// so the commit-watermark invariants are observable without standing up
-/// Kafka. These are deterministic properties of the receiver — no timing
-/// windows, no consumer-group rebalance simulation.
+/// Drives <see cref="EdictKafkaReceiver"/> against a fake
+/// <see cref="IConsumer{TKey, TValue}"/> so the commit-watermark invariants
+/// are observable without standing up Kafka. These are deterministic
+/// properties of the receiver — no timing windows, no consumer-group
+/// rebalance simulation.
 /// </summary>
 public sealed class EdictKafkaReceiverContractTests
 {

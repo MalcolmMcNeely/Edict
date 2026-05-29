@@ -13,8 +13,8 @@ namespace Edict.Benchmarks.Throughput.ClosedLoop;
 
 /// <summary>
 /// Drives the closed-loop methodology: per-substrate, brings up the
-/// <see cref="ClusterHarness"/> once and sweeps the parallelism axis
-/// (issue #126). For each (N, scenario) point the runner fans out N issuer
+/// <see cref="ClusterHarness"/> once and sweeps the parallelism axis.
+/// For each (N, scenario) point the runner fans out N issuer
 /// tasks calling <see cref="IClosedLoopScenario.IssueOnceAsync"/> in a
 /// tight loop, captures per-send latency into a per-issuer histogram, and
 /// emits a <see cref="ThroughputResults"/> with downsampled raw samples

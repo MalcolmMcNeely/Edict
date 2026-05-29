@@ -108,8 +108,8 @@ public sealed class EdictTestApp : IAsyncDisposable
     }
 
     /// <summary>
-    /// Per-grain-type probe over the silo-local metrics cache (ADR-0040):
-    /// returns the aggregate outbox state the
+    /// Per-grain-type probe over the silo-local metrics cache: returns the
+    /// aggregate outbox state the
     /// <c>edict.outbox.pending.count</c> +
     /// <c>edict.outbox.oldest_entry.age</c> observable gauges would read at
     /// scrape time. <c>TotalPending</c> is the sum across every live grain of

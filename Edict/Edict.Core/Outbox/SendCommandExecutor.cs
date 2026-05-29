@@ -23,7 +23,7 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
     // this attribute is documentary today and a future-proof guard.
     [SuppressMessage(
         "Edict", "EDICT015",
-        Justification = "Framework deferred dispatch from persisted state — base-typed by design (ADR-0034).")]
+        Justification = "Framework deferred dispatch from persisted state — base-typed by design.")]
     public async Task ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,

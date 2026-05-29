@@ -6,7 +6,7 @@ using System.Text;
 namespace Edict.Generators.Commands;
 
 /// <summary>
-/// Per-command-type Send interceptor emitter (ADR-0034). One specialisation
+/// Per-command-type Send interceptor emitter. One specialisation
 /// method per discovered Command, with N <c>[InterceptsLocation]</c> attribute
 /// lines for the N concrete-typed call sites that bind to that command. Keeps
 /// the generated diff small and gives "what does Send(OrderPlace) actually do"

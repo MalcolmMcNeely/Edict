@@ -38,7 +38,7 @@ public sealed class EdictPostgresPersistenceOptions
     public string DeadLetterTableName { get; set; } = "edict_dead_letter";
 
     /// <summary>
-    /// Table backing the append-only claim-check escape hatch (ADR-0020).
+    /// Table backing the append-only claim-check escape hatch.
     /// Postgres has no per-row cap (TOAST handles large payloads via lz4
     /// compression) — Edict still uses claim-check on the Postgres pairing
     /// because the wire substrate (Kafka or AQS) has its own per-message limit.
@@ -56,8 +56,8 @@ public sealed class EdictPostgresPersistenceOptions
 
     /// <summary>
     /// Upper bound on connections held by the shared <c>NpgsqlDataSource</c>
-    /// the silo wires at startup (ADR-0035). Default <c>200</c> gives a single
-    /// silo 2× headroom against the published <c>N = 256</c> closed-loop sweep
+    /// the silo wires at startup. Default <c>200</c> gives a single silo 2×
+    /// headroom against the published <c>N = 256</c> closed-loop sweep
     /// point and absorbs the projection/idempotency grain-turn demand that
     /// does not appear in the headline EPS number. Trade-off: each silo's
     /// <c>MaxPoolSize</c> is a multiplier against Postgres
@@ -73,9 +73,9 @@ public sealed class EdictPostgresPersistenceOptions
 
     /// <summary>
     /// Minimum number of connections the shared <c>NpgsqlDataSource</c>
-    /// pre-creates at startup (ADR-0035). Default <c>10</c> absorbs the slow
-    /// <c>create_time</c> tail observed by probe #148 at <c>N = 64</c>
-    /// (p99 1.31 s per new pooled connection) so first-burst traffic does
+    /// pre-creates at startup. Default <c>10</c> absorbs the slow
+    /// <c>create_time</c> tail observed at <c>N = 64</c> (p99 1.31 s per new
+    /// pooled connection) so first-burst traffic does
     /// not pay establishment latency. Trade-off: 10 idle TCP sessions per
     /// silo against the Postgres connection budget — cheap on the
     /// pooling axis, negligible on the substrate axis. Wins over any

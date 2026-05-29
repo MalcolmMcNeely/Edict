@@ -27,7 +27,7 @@ namespace Edict.Substrate.Azurite;
 /// and <see cref="EdictAzureSiloBuilderExtensions.AddEdictAzurePersistence"/> at
 /// the container endpoints. Workload-specific repositories (a harness's own
 /// projection row types) stay in the harness — this substrate only registers
-/// framework-level surfaces (ADR-0030).
+/// framework-level surfaces.
 /// </summary>
 public sealed class AzuriteSubstrate : ISubstrate
 {

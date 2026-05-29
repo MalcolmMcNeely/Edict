@@ -6,7 +6,7 @@ namespace Edict.Generators.Tests;
 
 /// <summary>
 /// Pins the snake-case algorithm used to derive <c>edict.{snake_case_prop}</c>
-/// tag keys (ADR-0037). The worked-examples table is the public convention
+/// tag keys. The worked-examples table is the public convention
 /// contract; both <see cref="JsonNamingPolicy.SnakeCaseLower"/> and the
 /// in-house netstandard2.0 port (<see cref="SnakeCaseLower"/>) must produce it.
 /// </summary>

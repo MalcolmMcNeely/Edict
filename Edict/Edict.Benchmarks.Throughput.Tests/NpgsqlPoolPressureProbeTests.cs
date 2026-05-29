@@ -15,7 +15,7 @@ using Xunit.Abstractions;
 namespace Edict.Benchmarks.Throughput.Tests;
 
 /// <summary>
-/// Issue #148 probe — falsify or confirm the Npgsql connection-pool-pressure
+/// Diagnostic probe — falsify or confirm the Npgsql connection-pool-pressure
 /// hypothesis behind the kafkapostgres Commands-curve plateau
 /// (1481 EPS @ N=64 → 1336 EPS @ N=256, see docs/benchmarks/throughput.md).
 /// Subscribes a raw <see cref="NpgsqlPoolListener"/> to the <c>"Npgsql"</c>
@@ -23,14 +23,14 @@ namespace Edict.Benchmarks.Throughput.Tests;
 /// from EPS, then runs the Commands scenario at N ∈ {64, 256} against the
 /// real Kafka + Postgres substrate.
 /// <para>
-/// Verdict thresholds against ADR-0029's hypothesis: pool-acquire queueing
-/// (<c>pending_requests &gt; 0</c>) sustained for &gt;1 s OR new-connection
-/// establishment p99 (<c>create_time</c>, the closest Npgsql 10 signal to
-/// the wait_time instrument the issue spec called for) &gt; 10 ms on any
-/// sweep point → pressure observed; ADR-0029's "Lean on Npgsql connection
-/// pooling" rejection of an <c>NpgsqlDataSource</c> singleton is now stale.
-/// Otherwise the plateau is something else (grain-turn serialisation, row
-/// contention, network floor) and the singleton refactor stays unmotivated.
+/// Verdict thresholds: pool-acquire queueing (<c>pending_requests &gt; 0</c>)
+/// sustained for &gt;1 s OR new-connection establishment p99
+/// (<c>create_time</c>, the closest Npgsql 10 signal to a wait_time
+/// instrument) &gt; 10 ms on any sweep point → pressure observed; the
+/// prior "lean on Npgsql pooling" position against an
+/// <c>NpgsqlDataSource</c> singleton is then stale. Otherwise the plateau is
+/// something else (grain-turn serialisation, row contention, network floor)
+/// and the singleton refactor stays unmotivated.
 /// </para>
 /// </summary>
 public sealed class NpgsqlPoolPressureProbeTests
@@ -42,7 +42,7 @@ public sealed class NpgsqlPoolPressureProbeTests
         _output = output;
     }
 
-    [Fact(Skip = "Issue #148 / #149 diagnostic probe — un-skip manually to run against live Kafka+Postgres containers (~1.5 min). Captures Npgsql connection-pool metrics during a Commands sweep at N ∈ {64, 256}; verdict against ADR-0029/ADR-0035 thresholds is printed to ITestOutputHelper.")]
+    [Fact(Skip = "Diagnostic probe — un-skip manually to run against live Kafka+Postgres containers (~1.5 min). Captures Npgsql connection-pool metrics during a Commands sweep at N ∈ {64, 256}; verdict is printed to ITestOutputHelper.")]
     public async Task Probe_CommandsSweep_OnKafkaPostgres_ReportsPoolPressureVerdict()
     {
         var warmup = TimeSpan.FromSeconds(3);
@@ -111,8 +111,8 @@ public sealed class NpgsqlPoolPressureProbeTests
                     "sustained > 1 s.");
                 _output.WriteLine("");
                 _output.WriteLine(anyPressure
-                    ? "VERDICT: PRESSURE OBSERVED — ADR-0029's evidence is stale; the NpgsqlDataSource singleton refactor is motivated."
-                    : "VERDICT: NO PRESSURE — ADR-0029 stands on stronger evidence than the original; the plateau is something else (grain-turn serialisation, row contention, network floor).");
+                    ? "VERDICT: PRESSURE OBSERVED — the prior pooling evidence is stale; the NpgsqlDataSource singleton refactor is motivated."
+                    : "VERDICT: NO PRESSURE — pooling is not the bottleneck; the plateau is something else (grain-turn serialisation, row contention, network floor).");
             }
             finally
             {

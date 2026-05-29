@@ -15,10 +15,9 @@ namespace Sample.Azure.Silo.Tests.Orders;
 /// <see cref="OrderStatusRow"/>. Each test drives the lifecycle up to its
 /// target transition and asserts the matching column is stamped with the
 /// FakeTimeProvider's value at the moment the event was raised — columns for
-/// transitions that have not yet fired remain null. ADR 0026 guarantees that
-/// <c>OccurredAt</c> is stamped at <c>Raise()</c> time via the harness's
-/// <c>FakeTimeProvider</c>, so the entire same-drain cascade lands at one
-/// known fake instant.
+/// transitions that have not yet fired remain null. The harness stamps
+/// <c>OccurredAt</c> at <c>Raise()</c> time via its <c>FakeTimeProvider</c>,
+/// so the entire same-drain cascade lands at one known fake instant.
 /// </summary>
 public sealed class OrdersByStatusProjectionBuilderTests
 {
