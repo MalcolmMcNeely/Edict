@@ -36,9 +36,11 @@ namespace Edict.Postgres;
 public static class EdictPostgresSiloBuilderExtensions
 {
     /// <summary>
-    /// Registers Orleans AdoNet grain storage for <c>edict-state</c>, the
-    /// Postgres reminder service, the table write-store factory, the
-    /// dead-letter table repository, the claim-check Postgres store, and the
+    /// Registers <see cref="EdictPostgresGrainStorage"/> for <c>edict-state</c>
+    /// (Orleans' shipped AdoNet provider stays on <c>PubSubStore</c> only —
+    /// see the workaround comment in the body), the Postgres reminder
+    /// service, the table write-store factory, the dead-letter table
+    /// repository, the claim-check Postgres store, and the
     /// <see cref="EdictPersistenceProviderMarker"/> the startup validator
     /// inspects. Idempotently runs the embedded DDL bootstrap unless the
     /// caller has disabled it via

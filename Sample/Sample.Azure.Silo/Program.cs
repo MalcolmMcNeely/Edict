@@ -39,9 +39,9 @@ var host = Host.CreateDefaultBuilder(args)
         var blobConnectionString = context.Configuration.GetConnectionString("blobs")
                                     ?? "UseDevelopmentStorage=true";
 
-        // three Action lambdas. Every option is on its own line at
-        // its literal default — the sample doubles as the config catalogue, so
-        // a consumer can compare and tune from this file.
+        // Every option is on its own line at its literal default — the
+        // sample doubles as the config catalogue, so a consumer can compare
+        // and tune from this file.
         silo.AddEdict(o =>
         {
             o.IdempotencyWindowSize     = 100;
