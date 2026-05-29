@@ -42,10 +42,25 @@ jobs:
       - name: Pack
         run: dotnet pack Edict/Edict.slnx --configuration Release --no-build --output ./artifacts
 
-      - name: Push to nuget.org
-        run: dotnet nuget push "./artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Push
+        shell: bash
+        env:
+          DRYRUN: ${{ contains(github.ref_name, 'dryrun') }}
+        run: |
+          if [ "$DRYRUN" = "true" ]; then
+            dotnet nuget push "./artifacts/*.nupkg" \
+              --api-key "${{ secrets.NUGET_INT_API_KEY }}" \
+              --source https://apiint.nugettest.org/v3/index.json \
+              --skip-duplicate
+          else
+            dotnet nuget push "./artifacts/*.nupkg" \
+              --api-key "${{ secrets.NUGET_API_KEY }}" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          fi
 
       - name: Create GitHub Release
+        if: ${{ !contains(github.ref_name, 'dryrun') }}
         uses: softprops/action-gh-release@v2
         with:
           files: |
