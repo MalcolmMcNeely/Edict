@@ -11,7 +11,7 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenProducerOverrideDowngradesAcks()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {
@@ -20,13 +20,13 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
                 }))
                 .Build());
 
-        Assert.Contains("acks", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("acks", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenProducerOverrideTurnsOffIdempotence()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {
@@ -35,13 +35,13 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
                 }))
                 .Build());
 
-        Assert.Contains("idempotence", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("idempotence", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenConsumerOverrideTurnsOnAutoCommit()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {
@@ -50,6 +50,6 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
                 }))
                 .Build());
 
-        Assert.Contains("auto.commit", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("auto.commit", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 }

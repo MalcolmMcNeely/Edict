@@ -30,15 +30,15 @@ public sealed class AzureRecoverableOrderRow : IEdictPersistedState
 
 public interface IAzureStreamPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(string streamName, EdictEvent evt);
+    Task PublishAsync(string streamName, EdictEvent edictEvent);
 }
 
 public sealed class AzureStreamPublisher : Grain, IAzureStreamPublisher
 {
-    public Task PublishAsync(string streamName, EdictEvent evt) =>
+    public Task PublishAsync(string streamName, EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create(streamName, this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }
 
 // Hand-written probe — Orleans codegen can see this, unlike the
@@ -57,14 +57,14 @@ public sealed partial class AzureRecoverableOrderTableProjectionBuilder
 
     protected override string TableName => "azurerecoverableorderprojection";
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             AzureRecoverableOrderPlacedEvent placed => placed.OrderId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureRecoverableOrderPlacedEvent evt)
+    public Task Handle(AzureRecoverableOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;

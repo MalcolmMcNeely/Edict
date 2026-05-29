@@ -26,7 +26,7 @@ public interface IEdictClaimCheckStore
     /// it. The store is append-only — once written, a blob is never
     /// rewritten or deleted by the framework.
     /// </summary>
-    Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct);
+    Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
 
     /// <summary>
     /// Fetch the payload previously written under <paramref name="key"/>.
@@ -34,5 +34,5 @@ public interface IEdictClaimCheckStore
     /// receiver pipeline treats as a transient delivery failure (retry +
     /// dead-letter on exhaustion).
     /// </summary>
-    Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct);
+    Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken);
 }

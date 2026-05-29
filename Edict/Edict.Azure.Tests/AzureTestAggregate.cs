@@ -135,14 +135,14 @@ public sealed partial class AzureOrderTableProjectionBuilder
 
     protected override string TableName => "azureorderprojection";
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             AzureOrderPlacedEvent placed => placed.OrderId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureOrderPlacedEvent evt)
+    public Task Handle(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -163,9 +163,9 @@ public sealed partial class AzureOrderSummaryTableProjectionBuilder : EdictTable
 
     protected override string TableName => "azureordersummary";
 
-    protected override string GetRowKey(EdictEvent evt) => "summary";
+    protected override string GetRowKey(EdictEvent edictEvent) => "summary";
 
-    public Task Handle(AzureOrderPlacedEvent evt)
+    public Task Handle(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -184,14 +184,14 @@ public sealed partial class AzureGlobalOrderTableProjectionBuilder : EdictTableP
 
     protected override string TableName => "azureglobalorderprojection";
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             AzureOrderPlacedEvent placed => placed.OrderId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureOrderPlacedEvent evt)
+    public Task Handle(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -209,7 +209,7 @@ public sealed partial class AzureOrderProjectionBuilder : EdictProjectionBuilder
 
     public Task<int> GetOrderCountAsync() => Task.FromResult(_orderCount);
 
-    public Task Handle(AzureOrderPlacedEvent evt)
+    public Task Handle(AzureOrderPlacedEvent edictEvent)
     {
         _orderCount++;
         return Task.CompletedTask;

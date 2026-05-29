@@ -63,9 +63,9 @@ internal static class EventHandlerGrainSpineEmitter
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
                     protected override bool HandlesType(
-                        global::Edict.Contracts.Events.EdictEvent evt)
+                        global::Edict.Contracts.Events.EdictEvent edictEvent)
                     {
-                        return evt switch
+                        return edictEvent switch
                         {
             {{handlesTypeArms.ToString().TrimEnd('\n')}}
                             _ => false,
@@ -73,9 +73,9 @@ internal static class EventHandlerGrainSpineEmitter
                     }
 
                     protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
-                        global::Edict.Contracts.Events.EdictEvent evt)
+                        global::Edict.Contracts.Events.EdictEvent edictEvent)
                     {
-                        switch (evt)
+                        switch (edictEvent)
                         {
             {{dispatchArms.ToString().TrimEnd('\n')}}
                             default:

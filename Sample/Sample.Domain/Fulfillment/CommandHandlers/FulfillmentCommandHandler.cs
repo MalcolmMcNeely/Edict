@@ -58,7 +58,7 @@ public partial class FulfillmentCommandHandler : EdictCommandHandler<Fulfillment
         });
     }
 
-    async Task OnTickAsync(CancellationToken ct)
+    async Task OnTickAsync(CancellationToken cancellationToken)
     {
         var pendingIndex = State.Lines.FindIndex(l => l.Status == LineItemFulfillmentStatus.Pending);
         if (pendingIndex < 0)

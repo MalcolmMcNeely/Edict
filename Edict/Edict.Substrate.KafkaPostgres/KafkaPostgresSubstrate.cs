@@ -38,7 +38,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
     public string Name => "kafkapostgres";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
+    public async Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
@@ -54,7 +54,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             .WithCommand("-c", "max_connections=1024")
             .Build();
         var kafkaContainer = new KafkaBuilder().Build();
-        await Task.WhenAll(postgresContainer.StartAsync(ct), kafkaContainer.StartAsync(ct));
+        await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));
 
         var postgresConnectionString = postgresContainer.GetConnectionString();
         var bootstrapAddress = kafkaContainer.GetBootstrapAddress();
@@ -64,7 +64,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             ? bootstrapAddress["PLAINTEXT://".Length..]
             : bootstrapAddress;
 
-        await WaitForKafkaReadyAsync(bootstrapServers, ct);
+        await WaitForKafkaReadyAsync(bootstrapServers, cancellationToken);
         var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
         // Saturation pass measures count-at-window-end on a fresh consumer
         // group; Latest avoids replaying warmup-window backlog into the
@@ -93,7 +93,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     // times out as "Local: Broker transport failure" and aborts silo
     // startup. Waiting for a single successful metadata round-trip here
     // proves the broker can serve the API surface before the silos race.
-    static async Task WaitForKafkaReadyAsync(string bootstrapServers, CancellationToken ct)
+    static async Task WaitForKafkaReadyAsync(string bootstrapServers, CancellationToken cancellationToken)
     {
         var deadline = TimeSpan.FromSeconds(60);
         var stopwatch = Stopwatch.StartNew();
@@ -106,7 +106,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         Exception? lastError = null;
         while (true)
         {
-            ct.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 using var admin = new AdminClientBuilder(adminConfig).Build();
@@ -118,9 +118,9 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
                 lastError = new InvalidOperationException(
                     "AdminClient.GetMetadata succeeded but returned zero brokers.");
             }
-            catch (KafkaException ex)
+            catch (KafkaException exception)
             {
-                lastError = ex;
+                lastError = exception;
             }
 
             if (stopwatch.Elapsed >= deadline)
@@ -129,7 +129,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
                     $"Kafka container reported ready, but the host could not complete an AdminClient.GetMetadata round-trip against '{bootstrapServers}' within {deadline.TotalSeconds:F0} s. The broker may be stuck in KRaft controller election or the host port-forwarder may not have published the mapping.",
                     lastError);
             }
-            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         }
     }
 }
@@ -184,11 +184,11 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
                 .AddEdictContractSerializer());
             client.Services.AddEdict();
             client.Services.AddSingleton(dataSource);
-            client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
+            client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    sp.GetRequiredService<NpgsqlDataSource>(),
+                    serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                     KafkaPostgresSubstrate.DeadLetterTableName,
-                    sp.GetRequiredService<Serializer>()));
+                    serviceProvider.GetRequiredService<Serializer>()));
         };
     }
 
@@ -211,15 +211,15 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
-    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new()
     {
-        ArgumentNullException.ThrowIfNull(sp);
+        ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
         return new PostgresTableRepository<TRow>(
             _dataSource,
             tableName,
-            sp.GetRequiredService<Serializer>());
+            serviceProvider.GetRequiredService<Serializer>());
     }
 
     public async ValueTask DisposeAsync()

@@ -21,7 +21,7 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
     [Fact]
     public async Task Promote_ShouldPopulateSourceEventTypeAndId_ForInvokeHandlerFailure()
     {
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
             Sku: "WIDGET")
         {
@@ -32,7 +32,7 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
         {
             EntryId = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
             Kind = OutboxEffectKind.InvokeHandler,
-            Payload = Serializer.SerializeToArray<EdictEvent>(evt),
+            Payload = Serializer.SerializeToArray<EdictEvent>(edictEvent),
             AttemptCount = 5,
             TraceParent = "00-0123456789abcdef0123456789abcdef-fedcba9876543210-01",
         };

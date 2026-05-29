@@ -12,16 +12,16 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
         var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
-        var evt = new DedupTestEvent(grainId, 1) with
+        var edictEvent = new DedupTestEvent(grainId, 1) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
         };
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var handled = await WaitForHandledAsync(grain);
         Assert.Single(handled);
-        Assert.Equal(evt.EventId, handled[0]);
+        Assert.Equal(edictEvent.EventId, handled[0]);
     }
 
     [Fact]
@@ -60,20 +60,20 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
-        var evt = new DedupTestEvent(grainId, 1) with
+        var edictEvent = new DedupTestEvent(grainId, 1) with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
         await grain.ArmThrowOnNextAsync();
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var handled = await WaitForHandledAsync(grain);
         Assert.Single(handled);
         Assert.Equal(eventId, handled[0]);
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
         await Task.Delay(TimeSpan.FromSeconds(3));
         Assert.Single(await grain.GetHandledEventIdsAsync());
     }
@@ -86,7 +86,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         var grain = fixture.Cluster.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var eventId = Guid.NewGuid();
-        var evt = new DedupTestEvent(grainId, 1) with
+        var edictEvent = new DedupTestEvent(grainId, 1) with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
@@ -95,7 +95,7 @@ public sealed class DedupAtLeastOnceTests(AzureClusterFixture fixture)
         // Throws on first delivery so the EventId is not committed; the Azure
         // Queue will redeliver the message after the 5s visibility timeout.
         await grain.ArmThrowOnNextAsync();
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var handled = await WaitForHandledAsync(grain, timeoutSeconds: 20);
 

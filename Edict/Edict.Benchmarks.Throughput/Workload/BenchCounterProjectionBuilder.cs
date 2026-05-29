@@ -21,9 +21,9 @@ public sealed partial class BenchCounterProjectionBuilder : EdictTableProjection
 
     protected override string TableName => TableNameLiteral;
 
-    protected override string GetRowKey(EdictEvent evt) => FixedRowKey;
+    protected override string GetRowKey(EdictEvent edictEvent) => FixedRowKey;
 
-    public Task Handle(BenchEvent evt)
+    public Task Handle(BenchEvent edictEvent)
     {
         CurrentRow.Count++;
         return Task.CompletedTask;

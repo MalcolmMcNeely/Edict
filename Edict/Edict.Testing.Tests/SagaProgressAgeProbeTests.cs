@@ -133,10 +133,10 @@ public partial class StickerAggregate : EdictCommandHandler<StickerState>
 
 public partial class StickerSaga : EdictSaga<StickerProgress>
 {
-    public Task Handle(StickerIssuedEvent evt)
+    public Task Handle(StickerIssuedEvent edictEvent)
     {
         Progress.Handled++;
-        Dispatch(new StickerAcknowledgedCommand(evt.StickerId));
+        Dispatch(new StickerAcknowledgedCommand(edictEvent.StickerId));
         return Task.CompletedTask;
     }
 }

@@ -36,9 +36,9 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
         {
             return await grain.DispatchAsync(command);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
             throw;
         }
     }
@@ -81,9 +81,9 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
         {
             return await grain.DispatchAsync(command);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
             throw;
         }
     }

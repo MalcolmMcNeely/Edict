@@ -12,7 +12,7 @@ public interface IEventStreamAccessors
 {
     /// <summary>
     /// Returns the domain stream name and route-key Guid for
-    /// <paramref name="evt"/>.
+    /// <paramref name="edictEvent"/>.
     /// </summary>
-    (string StreamName, Guid RouteKey) Resolve(EdictEvent evt);
+    (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent);
 }

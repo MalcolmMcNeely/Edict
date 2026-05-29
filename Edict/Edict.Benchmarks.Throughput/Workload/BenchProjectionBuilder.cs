@@ -20,11 +20,11 @@ public sealed partial class BenchProjectionBuilder : EdictTableProjectionBuilder
 
     protected override string TableName => TableNameLiteral;
 
-    protected override string GetRowKey(EdictEvent evt) => evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) => edictEvent switch
     {
         BenchEvent benchEvent => benchEvent.CorrelationId.ToString("D"),
-        _ => evt.EventId.ToString("D"),
+        _ => edictEvent.EventId.ToString("D"),
     };
 
-    public Task Handle(BenchEvent evt) => Task.CompletedTask;
+    public Task Handle(BenchEvent edictEvent) => Task.CompletedTask;
 }

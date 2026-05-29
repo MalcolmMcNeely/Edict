@@ -35,13 +35,13 @@ public sealed class HeldQueueTests
         // Arrange
         var queue = new HeldQueue();
         var subscriber = new object();
-        var evt = new E1();
+        var edictEvent = new E1();
 
         // Act
-        var released = queue.OnArrival(subscriber, evt, holdCount: 0);
+        var released = queue.OnArrival(subscriber, edictEvent, holdCount: 0);
 
         // Assert
-        Assert.Equal([evt], released);
+        Assert.Equal([edictEvent], released);
         Assert.Equal(0, queue.Count);
     }
 

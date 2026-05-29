@@ -36,7 +36,7 @@ public sealed class ClaimCheckUnwrap
         _shouldFetchForConsumer = shouldFetchForConsumer ?? (_ => true);
     }
 
-    public async Task<EdictEvent> ApplyAsync(EdictEvent incoming, Type consumerType, CancellationToken ct)
+    public async Task<EdictEvent> ApplyAsync(EdictEvent incoming, Type consumerType, CancellationToken cancellationToken)
     {
         if (incoming is not EdictEventEnvelope envelope)
         {
@@ -64,7 +64,7 @@ public sealed class ClaimCheckUnwrap
             SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
 
-        var bytes = await _store.GetAsync(key, ct);
+        var bytes = await _store.GetAsync(key, cancellationToken);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, bytes.Length);
 
         var inner = _serializer.Deserialize<EdictEvent>(bytes.ToArray());

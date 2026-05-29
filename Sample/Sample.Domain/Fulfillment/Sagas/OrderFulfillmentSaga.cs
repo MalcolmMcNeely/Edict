@@ -19,17 +19,17 @@ namespace Sample.Domain.Fulfillment.Sagas;
 /// </summary>
 public partial class OrderFulfillmentSaga : EdictSaga<OrderFulfillmentProgress>
 {
-    public Task Handle(OrderConfirmedEvent evt)
+    public Task Handle(OrderConfirmedEvent edictEvent)
     {
         Progress.Stage = OrderFulfillmentStage.FulfillmentRequested;
-        Dispatch(new StartFulfillmentCommand(evt.OrderId, evt.LineItemIds));
+        Dispatch(new StartFulfillmentCommand(edictEvent.OrderId, edictEvent.LineItemIds));
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderFullyFulfilledEvent evt)
+    public Task Handle(OrderFullyFulfilledEvent edictEvent)
     {
         Progress.Stage = OrderFulfillmentStage.Shipped;
-        Dispatch(new MarkOrderShippedCommand(evt.OrderId));
+        Dispatch(new MarkOrderShippedCommand(edictEvent.OrderId));
         return Task.CompletedTask;
     }
 }

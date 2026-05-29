@@ -13,16 +13,16 @@ internal static class EventStreamRegistrarEmitter
             .ToArray();
 
         var entries = new StringBuilder();
-        foreach (var evt in ordered)
+        foreach (var edictEvent in ordered)
         {
             entries.Append("            accessors[typeof(")
-                .Append(evt.Fqn)
+                .Append(edictEvent.Fqn)
                 .Append(")] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor(\"")
-                .Append(evt.StreamName)
-                .Append("\", static evt => ((")
-                .Append(evt.Fqn)
-                .Append(")evt).")
-                .Append(evt.RouteKeyProperty)
+                .Append(edictEvent.StreamName)
+                .Append("\", static edictEvent => ((")
+                .Append(edictEvent.Fqn)
+                .Append(")edictEvent).")
+                .Append(edictEvent.RouteKeyProperty)
                 .Append(");\n");
         }
 

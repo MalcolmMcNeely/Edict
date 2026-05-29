@@ -11,10 +11,10 @@ namespace Sample.Domain.Diagnostics.Sagas;
 // live in Diagnostics/.
 public partial class BadCommandSaga : EdictSaga<BadCommandSagaProgress>
 {
-    public Task Handle(TriggerSagaFailureEvent evt)
+    public Task Handle(TriggerSagaFailureEvent edictEvent)
     {
         Progress.Stage = BadCommandSagaStage.Dispatched;
-        Dispatch(new RejectingCommand(evt.SimulationId));
+        Dispatch(new RejectingCommand(edictEvent.SimulationId));
         return Task.CompletedTask;
     }
 }

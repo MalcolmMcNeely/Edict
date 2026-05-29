@@ -15,8 +15,8 @@ public sealed class ValidatorAutoDiscoveryTests
 
         services.AddEdict(typeof(ValidatorAutoDiscoveryTests).Assembly);
 
-        using var sp = services.BuildServiceProvider();
-        var validator = sp.GetService<IValidator<ValidateSkuCommand>>();
+        using var serviceProvider = services.BuildServiceProvider();
+        var validator = serviceProvider.GetService<IValidator<ValidateSkuCommand>>();
 
         Assert.IsType<ValidateSkuConsumerValidator>(validator);
     }

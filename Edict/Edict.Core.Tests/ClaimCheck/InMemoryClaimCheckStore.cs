@@ -27,14 +27,14 @@ public sealed class InMemoryClaimCheckStore : IEdictClaimCheckStore
     /// <summary>Removes the blob under <paramref name="key"/> to simulate a lifecycle reap.</summary>
     public void Reap(string key) => _blobs.TryRemove(key, out _);
 
-    public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+    public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var key = $"edict-claim-check/{Guid.NewGuid():N}";
         _blobs[key] = payload.ToArray();
         return Task.FromResult(key);
     }
 
-    public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+    public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
     {
         if (!_blobs.TryGetValue(key, out var bytes))
         {

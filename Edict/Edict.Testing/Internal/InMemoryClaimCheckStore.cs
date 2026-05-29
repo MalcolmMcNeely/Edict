@@ -13,14 +13,14 @@ sealed class InMemoryClaimCheckStore : IEdictClaimCheckStore
 {
     readonly ConcurrentDictionary<string, byte[]> _blobs = new();
 
-    public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+    public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var key = $"edict-claim-check/{Guid.NewGuid():N}";
         _blobs[key] = payload.ToArray();
         return Task.FromResult(key);
     }
 
-    public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+    public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
     {
         if (!_blobs.TryGetValue(key, out var bytes))
         {

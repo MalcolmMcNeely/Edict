@@ -20,15 +20,15 @@ public sealed partial class OrderOutcomeTableProjectionBuilder : EdictTableProje
 
     protected override string TableName => "orderoutcome";
 
-    protected override string GetRowKey(EdictEvent evt) => "outcome";
+    protected override string GetRowKey(EdictEvent edictEvent) => "outcome";
 
-    public Task Handle(OrderConfirmedEvent evt)
+    public Task Handle(OrderConfirmedEvent edictEvent)
     {
         CurrentRow.Outcome = "Confirmed";
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderCancelledEvent evt)
+    public Task Handle(OrderCancelledEvent edictEvent)
     {
         CurrentRow.Outcome = "Cancelled";
         return Task.CompletedTask;

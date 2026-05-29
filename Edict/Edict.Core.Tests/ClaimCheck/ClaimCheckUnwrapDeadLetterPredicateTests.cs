@@ -56,8 +56,8 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
     static ClaimCheckUnwrap BuildUnwrap(out RecordingStore store)
     {
         store = new RecordingStore();
-        var sp = BuildServices(store);
-        return sp.GetRequiredService<ClaimCheckUnwrap>();
+        var serviceProvider = BuildServices(store);
+        return serviceProvider.GetRequiredService<ClaimCheckUnwrap>();
     }
 
     static IServiceProvider BuildServices(RecordingStore store)
@@ -80,10 +80,10 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
         public List<GetCall> Gets { get; } = [];
         public Dictionary<string, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct) =>
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("predicate tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
         {
             Gets.Add(new GetCall(key));
             if (!Blobs.TryGetValue(key, out var bytes))

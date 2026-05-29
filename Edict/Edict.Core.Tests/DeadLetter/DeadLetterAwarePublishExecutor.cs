@@ -20,8 +20,8 @@ sealed class DeadLetterAwarePublishExecutor(Serializer serializer, IEventStreamA
     public Task ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
-        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-        if (evt is EdictDeadLetterRaised)
+        var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
+        if (edictEvent is EdictDeadLetterRaised)
         {
             return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType, liveWireEvent);
         }

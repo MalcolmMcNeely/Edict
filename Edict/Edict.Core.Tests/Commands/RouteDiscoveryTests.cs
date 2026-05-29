@@ -95,12 +95,12 @@ public class RouteDiscoveryTests
         var asmA = BuildAssemblyWithRoutes(typeof(PlaceOrderRegistrar), nameof(RouteDiscovery_ShouldThrow_WhenSameCommandTypeRegisteredInTwoAssemblies) + "A");
         var asmB = BuildAssemblyWithRoutes(typeof(DuplicatePlaceOrderRegistrar), nameof(RouteDiscovery_ShouldThrow_WhenSameCommandTypeRegisteredInTwoAssemblies) + "B");
 
-        var ex = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<InvalidOperationException>(
             () => RouteDiscovery.Discover([asmA, asmB], requireAttribute: false, NullLogger.Instance));
 
-        Assert.Contains(typeof(PlaceOrder).FullName!, ex.Message);
-        Assert.Contains(asmA.GetName().Name!, ex.Message);
-        Assert.Contains(asmB.GetName().Name!, ex.Message);
+        Assert.Contains(typeof(PlaceOrder).FullName!, exception.Message);
+        Assert.Contains(asmA.GetName().Name!, exception.Message);
+        Assert.Contains(asmB.GetName().Name!, exception.Message);
     }
 
     [Fact]
@@ -108,11 +108,11 @@ public class RouteDiscoveryTests
     {
         var asm = BuildAssemblyWithoutRoutes(nameof(RouteDiscovery_ShouldThrow_WhenExplicitAssemblyMissingRoutesAttribute));
 
-        var ex = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<InvalidOperationException>(
             () => RouteDiscovery.Discover([asm], requireAttribute: true, NullLogger.Instance));
 
-        Assert.Contains(asm.GetName().Name!, ex.Message);
-        Assert.Contains(nameof(EdictRoutesAttribute), ex.Message);
+        Assert.Contains(asm.GetName().Name!, exception.Message);
+        Assert.Contains(nameof(EdictRoutesAttribute), exception.Message);
     }
 
     [Fact]

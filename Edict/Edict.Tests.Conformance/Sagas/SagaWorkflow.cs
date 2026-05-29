@@ -57,10 +57,10 @@ public interface ISagaTrackerProbe : IGrainWithGuidKey
 
 public partial class WorkflowSaga : EdictSaga<WorkflowProgress>, ISagaProgressProbe
 {
-    public Task Handle(SagaTriggerEvent evt)
+    public Task Handle(SagaTriggerEvent edictEvent)
     {
         Progress.Handled++;
-        Dispatch(new SagaTrackerCommand(evt.WorkflowId));
+        Dispatch(new SagaTrackerCommand(edictEvent.WorkflowId));
         return Task.CompletedTask;
     }
 
@@ -85,16 +85,16 @@ public partial class SagaTrackerCommandHandler : EdictCommandHandler<TrackerStat
 // a SagaTriggerEvent with a known EventId without going through a command.
 public interface ISagaEventPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class SagaEventPublisher : Grain, ISagaEventPublisher
 {
-    public Task PublishAsync(EdictEvent evt)
+    public Task PublishAsync(EdictEvent edictEvent)
     {
         var stream = this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("ConformanceSagaWorkflow", this.GetPrimaryKey()));
-        return stream.OnNextAsync(evt);
+        return stream.OnNextAsync(edictEvent);
     }
 }
 

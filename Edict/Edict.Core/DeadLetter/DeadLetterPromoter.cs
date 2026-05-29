@@ -55,17 +55,17 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
     EdictDeadLetterRaised BuildFromPublishEvent(
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
-        var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
+        var edictEvent = serializer.Deserialize<EdictEvent>(failed.Payload);
         // An oversized event rides as a pointer-bearing envelope on the
         // wire. Lift the pointer onto the forensic row instead of trying
         // to JSON-serialise the body into a 32 KB Azure Table property —
         // the very failure mode claim-check exists to avoid.
-        if (evt is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } envelope)
+        if (edictEvent is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } envelope)
         {
             return DeadLetterPromotion.BuildForEnvelopeFailure(
                 failed, envelope, exception, sourceGrainKey, sourceGrainType, now);
         }
-        return DeadLetterPromotion.Build(failed, evt, accessors, exception, sourceGrainKey, sourceGrainType, now);
+        return DeadLetterPromotion.Build(failed, edictEvent, accessors, exception, sourceGrainKey, sourceGrainType, now);
     }
 
     EdictDeadLetterRaised BuildFromSendCommand(
@@ -89,13 +89,13 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
     EdictDeadLetterRaised BuildFromInvokeHandler(
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
-        var evt = serializer.Deserialize<EdictEvent>(failed.Payload);
+        var edictEvent = serializer.Deserialize<EdictEvent>(failed.Payload);
         // An InvokeHandler entry whose payload is a pointer-bearing envelope
         // represents a receiver-side missing-blob exhaustion — route through
         // the BlobMissing failure-kind mapping so the forensic row carries
         // the claim-check key and the inline-payload envelope path stays
         // unchanged.
-        if (evt is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } pointer)
+        if (edictEvent is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } pointer)
         {
             return DeadLetterPromotion.BuildForBlobMissing(
                 failed, pointer, exception, sourceGrainKey, sourceGrainType, now);
@@ -104,11 +104,11 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
         // executor's unwrap would have materialised it before deferredDispatch
         // ran, so a failure here is a Handle-side throw against the inner
         // event. Treat it the same as a concrete-event InvokeHandler failure.
-        if (evt is EdictEventEnvelope { InlinePayload: { Length: > 0 } innerBytes })
+        if (edictEvent is EdictEventEnvelope { InlinePayload: { Length: > 0 } innerBytes })
         {
             var inner = serializer.Deserialize<EdictEvent>(innerBytes);
             return DeadLetterPromotion.BuildForInvokeHandler(failed, inner, accessors, exception, sourceGrainKey, sourceGrainType, now);
         }
-        return DeadLetterPromotion.BuildForInvokeHandler(failed, evt, accessors, exception, sourceGrainKey, sourceGrainType, now);
+        return DeadLetterPromotion.BuildForInvokeHandler(failed, edictEvent, accessors, exception, sourceGrainKey, sourceGrainType, now);
     }
 }

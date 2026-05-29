@@ -49,28 +49,28 @@ public sealed class KafkaSiloKillTableRow : IEdictPersistedState
 
 public interface IKafkaSiloKillEventPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class KafkaSiloKillEventPublisher : Grain, IKafkaSiloKillEventPublisher
 {
-    public Task PublishAsync(EdictEvent evt) =>
+    public Task PublishAsync(EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create(KafkaSiloKillEvent.StreamName, this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }
 
 public interface IKafkaSiloKillBatchEventPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class KafkaSiloKillBatchEventPublisher : Grain, IKafkaSiloKillBatchEventPublisher
 {
-    public Task PublishAsync(EdictEvent evt) =>
+    public Task PublishAsync(EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create(KafkaSiloKillBatchEvent.StreamName, this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }
 
 // Slow projection — the first delivery of a KafkaSiloKillEvent blocks long
@@ -95,14 +95,14 @@ public sealed partial class KafkaSiloKillProjectionBuilder : EdictTableProjectio
 
     protected override string TableName => Table;
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             KafkaSiloKillEvent e => e.AggregateId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task Handle(KafkaSiloKillEvent evt)
+    public async Task Handle(KafkaSiloKillEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref KafkaSiloKillCoordinator.HandlerEntries);
         if (entry == 1)
@@ -141,17 +141,17 @@ public sealed partial class KafkaSiloKillBatchProjectionBuilder : EdictTableProj
 
     protected override string TableName => Table;
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             KafkaSiloKillBatchEvent e => e.AggregateId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task Handle(KafkaSiloKillBatchEvent evt)
+    public async Task Handle(KafkaSiloKillBatchEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref KafkaSiloKillBatchCoordinator.HandlerEntries);
-        if (evt.Sequence == 1 && entry == 1)
+        if (edictEvent.Sequence == 1 && entry == 1)
         {
             KafkaSiloKillBatchCoordinator.HandlerEntered.TrySetResult(_siloDetails.SiloAddress);
             await Task.Delay(TimeSpan.FromSeconds(20));

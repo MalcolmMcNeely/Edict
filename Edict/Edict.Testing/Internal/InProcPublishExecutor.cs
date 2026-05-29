@@ -42,20 +42,20 @@ sealed class InProcPublishExecutor(
     public Task ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
-        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
+        var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
 
         using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-            evt.GetType().Name, parentContext);
+            edictEvent.GetType().Name, parentContext);
 
-        if (publishActivity is not null && tagWriters.TryGet(evt.GetType(), out var write))
+        if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
         {
-            write(evt, publishActivity);
+            write(edictEvent, publishActivity);
         }
 
         var (fallbackTraceId, fallbackSpanId) = SplitTraceParent(entry.TraceParent);
 
-        var stamped = evt with
+        var stamped = edictEvent with
         {
             EventId = Guid.NewGuid(),
             TraceId = publishActivity?.TraceId.ToHexString() ?? fallbackTraceId,
@@ -123,22 +123,22 @@ sealed class InProcPublishExecutor(
             flushed = _held.FlushAll();
         }
 
-        foreach (var (key, evt) in flushed)
+        foreach (var (key, edictEvent) in flushed)
         {
             var (grainClass, routeKey) = (SubscriberKey)key;
-            Dispatch(grainClass, routeKey, evt);
+            Dispatch(grainClass, routeKey, edictEvent);
         }
 
         return Task.FromResult(flushed.Count);
     }
 
-    void Dispatch(Type grainClass, Guid routeKey, EdictEvent evt)
+    void Dispatch(Type grainClass, Guid routeKey, EdictEvent edictEvent)
     {
         var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
         var deliveries = 1 + _roller.ExtraDeliveries(grainClass);
         for (var i = 0; i < deliveries; i++)
         {
-            _ = grain.OnEdictEventAsync(evt);
+            _ = grain.OnEdictEventAsync(edictEvent);
         }
     }
 

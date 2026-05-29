@@ -38,14 +38,14 @@ public sealed partial class OrderTableProjectionBuilder
 
     protected override string TableName => "orderprojection";
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             OrderPlacedEvent placed => placed.OrderId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -66,9 +66,9 @@ public sealed partial class OrderSummaryTableProjectionBuilder : EdictTableProje
 
     protected override string TableName => "ordersummary";
 
-    protected override string GetRowKey(EdictEvent evt) => "summary";
+    protected override string GetRowKey(EdictEvent edictEvent) => "summary";
 
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -87,14 +87,14 @@ public sealed partial class GlobalOrderTableProjectionBuilder : EdictTableProjec
 
     protected override string TableName => "globalorderprojection";
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             OrderPlacedEvent placed => placed.OrderId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -112,7 +112,7 @@ public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder, IOr
 
     public Task<int> GetOrderCountAsync() => Task.FromResult(_orderCount);
 
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         _orderCount++;
         return Task.CompletedTask;
@@ -128,13 +128,13 @@ public sealed partial record UnknownOrderEvent(Guid AggregateId) : EdictEvent
 
 public interface IStreamPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(string streamName, EdictEvent evt);
+    Task PublishAsync(string streamName, EdictEvent edictEvent);
 }
 
 public sealed class StreamPublisher : Grain, IStreamPublisher
 {
-    public Task PublishAsync(string streamName, EdictEvent evt) =>
+    public Task PublishAsync(string streamName, EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create(streamName, this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }

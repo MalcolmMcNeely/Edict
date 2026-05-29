@@ -21,14 +21,14 @@ public sealed class ClaimCheckPolicyTests
     public async Task ApplyAsync_ShouldReturnInnerEventBytesAndSkipStore_WhenUnderThreshold()
     {
         var store = new RecordingStore();
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), "SKU-SMALL");
-        var expected = Serializer.SerializeToArray<EdictEvent>(evt);
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), "SKU-SMALL");
+        var expected = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store, new StubEdictEventStreamAccessors());
 
-        var result = await policy.ApplyAsync(evt, CancellationToken.None);
+        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
 
         Assert.Equal(expected, result.Payload);
-        Assert.Same(evt, result.WireEvent);
+        Assert.Same(edictEvent, result.WireEvent);
         Assert.Empty(store.Puts);
     }
 
@@ -38,11 +38,11 @@ public sealed class ClaimCheckPolicyTests
         var store = new RecordingStore();
         // SKU large enough that the serialized event crosses the threshold by a
         // healthy margin, so the size_bytes tag has a deterministic ballpark.
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
-        var innerBytes = Serializer.SerializeToArray<EdictEvent>(evt);
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
+        var innerBytes = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
-        var result = await policy.ApplyAsync(evt, CancellationToken.None);
+        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
 
         Assert.Single(store.Puts);
         Assert.Equal(innerBytes, store.Puts[0].Payload.ToArray());
@@ -61,15 +61,15 @@ public sealed class ClaimCheckPolicyTests
         // crosses the 32 KB framing cap even though the inner event is small.
         var store = new FixedKeyStore(new string('K', 40_000));
         var routeKey = Guid.NewGuid();
-        var evt = new OrderPlacedEvent(routeKey, "SKU-A");
+        var edictEvent = new OrderPlacedEvent(routeKey, "SKU-A");
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store, new StubEdictEventStreamAccessors());
 
-        var ex = await Assert.ThrowsAsync<EdictEnvelopeOverflowException>(
-            () => policy.ApplyAsync(evt, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<EdictEnvelopeOverflowException>(
+            () => policy.ApplyAsync(edictEvent, CancellationToken.None));
 
-        Assert.Equal(routeKey, ex.RouteKey);
-        Assert.Equal(typeof(OrderPlacedEvent).FullName, ex.EventType);
-        Assert.True(ex.MeasuredBytes > 32_768);
+        Assert.Equal(routeKey, exception.RouteKey);
+        Assert.Equal(typeof(OrderPlacedEvent).FullName, exception.EventType);
+        Assert.True(exception.MeasuredBytes > 32_768);
     }
 
     [Fact]
@@ -85,13 +85,13 @@ public sealed class ClaimCheckPolicyTests
         ActivitySource.AddActivityListener(listener);
 
         var store = new RecordingStore();
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256));
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
         using (var parent = EdictDiagnostics.ActivitySource.StartActivity($"{SemanticConventions.Events.Spans.Publish} OrderPlacedEvent"))
         {
             Assert.NotNull(parent);
-            await policy.ApplyAsync(evt, CancellationToken.None);
+            await policy.ApplyAsync(edictEvent, CancellationToken.None);
             Assert.Equal(true, parent.GetTagItem(SemanticConventions.Events.Tags.ClaimChecked));
         }
 
@@ -127,23 +127,23 @@ public sealed class ClaimCheckPolicyTests
     {
         public List<PutCall> Puts { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
         {
             var key = $"key-{Puts.Count + 1:D4}";
             Puts.Add(new PutCall(payload, key));
             return Task.FromResult(key);
         }
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException("publisher-side tests never fetch");
     }
 
     sealed class FixedKeyStore(string key) : IEdictClaimCheckStore
     {
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct) =>
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             Task.FromResult(key);
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string k, CancellationToken ct) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(string k, CancellationToken cancellationToken) =>
             throw new NotSupportedException("publisher-side tests never fetch");
     }
 }

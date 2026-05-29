@@ -42,8 +42,8 @@ public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory sto
     protected override string DefaultPartitionKey => DeadLetterPartition;
 
     /// <inheritdoc />
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             EdictDeadLetterRaised raised => raised.EntryId.ToString("N"),
             _ => this.GetPrimaryKey().ToString(),
@@ -73,13 +73,13 @@ public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory sto
     }
 
     /// <inheritdoc />
-    protected override async Task<bool> DispatchAsync(EdictEvent evt)
+    protected override async Task<bool> DispatchAsync(EdictEvent edictEvent)
     {
-        switch (evt)
+        switch (edictEvent)
         {
             case EdictDeadLetterRaised raised:
             {
-                var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
+                var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                 using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
                     nameof(EdictDeadLetterRaised), parentContext);
                 await DispatchEventAsync(raised, Handle);

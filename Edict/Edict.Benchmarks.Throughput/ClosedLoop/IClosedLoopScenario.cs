@@ -19,5 +19,5 @@ public interface IClosedLoopScenario
     /// </summary>
     string Name { get; }
 
-    Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken ct);
+    Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken);
 }

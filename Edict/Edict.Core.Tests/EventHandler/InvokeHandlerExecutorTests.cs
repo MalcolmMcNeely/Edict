@@ -24,13 +24,13 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldDispatchInnerEvent_WhenInlineEnvelopeEntry()
     {
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
             Sku: "WIDGET")
         {
             EventId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         };
-        var inlineBytes = Serializer.SerializeToArray<EdictEvent>(evt);
+        var inlineBytes = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var envelope = EnvelopeCodec.WrapInline(inlineBytes);
         var entry = new OutboxEntry
         {
@@ -101,13 +101,13 @@ public sealed class InvokeHandlerExecutorTests
         var capturedSpanId = "fedcba9876543210";
         var traceParent = ActivityExtensions.BuildTraceParent(capturedTraceId, capturedSpanId);
 
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("33333333-3333-3333-3333-333333333333"),
             Sku: "TRACED")
         {
             EventId = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
         };
-        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(evt));
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
         var entry = new OutboxEntry
         {
             EntryId = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
@@ -140,13 +140,13 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldSurfaceHostThrow_WhenHandleThrows()
     {
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("22222222-2222-2222-2222-222222222222"),
             Sku: "FAULT")
         {
             EventId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
         };
-        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(evt));
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
         var entry = new OutboxEntry
         {
             EntryId = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
@@ -182,10 +182,10 @@ public sealed class InvokeHandlerExecutorTests
     {
         public Dictionary<string, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct) =>
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("invoke-handler executor tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
         {
             if (!Blobs.TryGetValue(key, out var bytes))
             {

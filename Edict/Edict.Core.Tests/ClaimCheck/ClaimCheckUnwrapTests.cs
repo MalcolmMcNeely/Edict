@@ -20,12 +20,12 @@ public sealed class ClaimCheckUnwrapTests
     public async Task ApplyAsync_ShouldReturnSameEventAndSkipStore_WhenIncomingIsNotEnvelope()
     {
         var store = new RecordingStore();
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), "SKU-PLAIN");
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), "SKU-PLAIN");
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
-        var result = await unwrap.ApplyAsync(evt, consumerType: typeof(object), CancellationToken.None);
+        var result = await unwrap.ApplyAsync(edictEvent, consumerType: typeof(object), CancellationToken.None);
 
-        Assert.Same(evt, result);
+        Assert.Same(edictEvent, result);
         Assert.Empty(store.Gets);
     }
 
@@ -163,10 +163,10 @@ public sealed class ClaimCheckUnwrapTests
         var store = new RecordingStore();
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
-        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
             () => unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None));
 
-        Assert.Contains("blob-missing", ex.Message);
+        Assert.Contains("blob-missing", exception.Message);
     }
 
     static Serializer BuildSerializer()
@@ -187,10 +187,10 @@ public sealed class ClaimCheckUnwrapTests
         public List<GetCall> Gets { get; } = [];
         public Dictionary<string, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct) =>
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("receiver-side tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
         {
             Gets.Add(new GetCall(key));
             if (!Blobs.TryGetValue(key, out var bytes))

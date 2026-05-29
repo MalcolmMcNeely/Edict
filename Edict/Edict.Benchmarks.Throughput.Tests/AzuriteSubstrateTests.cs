@@ -36,10 +36,10 @@ public sealed class AzuriteSubstrateTests
 
         var services = new ServiceCollection();
         services.AddSingleton(runtime.TableClient);
-        await using var sp = services.BuildServiceProvider();
+        await using var serviceProvider = services.BuildServiceProvider();
 
         var repository = runtime.CreateRowRepository<BenchEventRow>(
-            sp, BenchProjectionBuilder.TableNameLiteral);
+            serviceProvider, BenchProjectionBuilder.TableNameLiteral);
 
         var row = await repository.GetAsync(partitionKey, rowKey);
 
@@ -187,8 +187,8 @@ public sealed class AzuriteSubstrateTests
                 // Mirrors the production ActiveRuntime.ClientConfigurator —
                 // workload row repo lives in the harness, picked through the
                 // runtime's CreateRowRepository<T> seam.
-                clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
-                    runtime.CreateRowRepository<BenchEventRow>(sp, BenchProjectionBuilder.TableNameLiteral));
+                clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(serviceProvider =>
+                    runtime.CreateRowRepository<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
             }
         }
     }

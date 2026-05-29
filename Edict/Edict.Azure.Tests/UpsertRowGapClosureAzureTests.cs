@@ -17,12 +17,12 @@ public sealed class UpsertRowGapClosureAzureTests(AzureUpsertRowRecoveryClusterF
         var repository = new AzureTableRepository<AzureRecoverableOrderRow>(
             fixture.TableServiceClient, "azurerecoverableorderprojection");
 
-        var evt = new AzureRecoverableOrderPlacedEvent(orderId) with
+        var edictEvent = new AzureRecoverableOrderPlacedEvent(orderId) with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
         };
-        await publisher.PublishAsync("AzureRecoverableOrders", evt);
+        await publisher.PublishAsync("AzureRecoverableOrders", edictEvent);
 
         await WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);
         var rowDuringCrashWindow = await repository.GetAsync(orderId.ToString(), orderId.ToString());
@@ -34,7 +34,7 @@ public sealed class UpsertRowGapClosureAzureTests(AzureUpsertRowRecoveryClusterF
 
         // At-least-once redelivery: the dedup ring (committed atomically with
         // the outbox) suppresses re-handling, so no second UpsertRow is staged.
-        await publisher.PublishAsync("AzureRecoverableOrders", evt);
+        await publisher.PublishAsync("AzureRecoverableOrders", edictEvent);
         await Task.Delay(TimeSpan.FromSeconds(3));
 
         var finalRow = await repository.GetAsync(orderId.ToString(), orderId.ToString());

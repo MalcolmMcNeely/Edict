@@ -12,7 +12,7 @@ public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fi
         var consumer = fixture.Cluster.GrainFactory.GetGrain<IResilienceTestConsumer>(aggregateId);
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IResilienceEventPublisher>(aggregateId);
 
-        var evt = new ResilienceTestEvent(aggregateId, 1) with
+        var edictEvent = new ResilienceTestEvent(aggregateId, 1) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
@@ -25,7 +25,7 @@ public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fi
 
         // Detached task so the test can unpause while PublishAsync is stuck
         // inside the grain's Azure Queue write.
-        var publishTask = Task.Run(() => publisher.PublishEventAsync(evt));
+        var publishTask = Task.Run(() => publisher.PublishEventAsync(edictEvent));
 
         await Task.Delay(TimeSpan.FromSeconds(2));
         Assert.False(publishTask.IsCompleted,
@@ -37,6 +37,6 @@ public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fi
 
         var handled = await ResilienceWaiters.WaitForHandledAsync(consumer);
         Assert.Single(handled);
-        Assert.Equal(evt.EventId, handled[0]);
+        Assert.Equal(edictEvent.EventId, handled[0]);
     }
 }

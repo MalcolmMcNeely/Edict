@@ -37,12 +37,12 @@ public static class ClusterHarness
         ISubstrate substrate,
         SubstrateStartMode mode,
         Func<TestCluster, Task<TResult>> body,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentNullException.ThrowIfNull(body);
 
-        await using var runtime = await substrate.StartAsync(ct, mode);
+        await using var runtime = await substrate.StartAsync(cancellationToken, mode);
 
         ActiveRuntime.Current = runtime;
         ActiveRuntime.Mode = mode;
@@ -132,12 +132,12 @@ public static class ClusterHarness
                 switch (Mode)
                 {
                     case SubstrateStartMode.ClosedLoop:
-                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(sp =>
-                            runtime.CreateRowRepository<BenchEventRow>(sp, BenchProjectionBuilder.TableNameLiteral));
+                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(serviceProvider =>
+                            runtime.CreateRowRepository<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
                         break;
                     case SubstrateStartMode.Saturation:
-                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchCounterRow>>(sp =>
-                            runtime.CreateRowRepository<BenchCounterRow>(sp, BenchCounterProjectionBuilder.TableNameLiteral));
+                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchCounterRow>>(serviceProvider =>
+                            runtime.CreateRowRepository<BenchCounterRow>(serviceProvider, BenchCounterProjectionBuilder.TableNameLiteral));
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode.");

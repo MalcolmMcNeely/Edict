@@ -95,9 +95,9 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
             grainState.ETag = version.ToString();
             grainState.RecordExists = true;
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"ReadStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
         }
     }
@@ -158,9 +158,9 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
             grainState.ETag = ((int)result).ToString();
             grainState.RecordExists = true;
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"WriteStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
         }
     }
@@ -188,9 +188,9 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
             grainState.ETag = null;
             grainState.RecordExists = false;
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"ClearStateAsync failed for grain {grainType}/{grainIdText} state '{stateName}'");
         }
     }

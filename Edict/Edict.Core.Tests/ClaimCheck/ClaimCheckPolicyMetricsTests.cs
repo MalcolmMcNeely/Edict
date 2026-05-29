@@ -25,15 +25,15 @@ public sealed class ClaimCheckPolicyMetricsTests
         // is distinguishable from any other test's payload size — the
         // ClaimCheckPolicy doesn't emit a grain-type tag we could otherwise key on.
         var sku = "SKU-MetricsUnder-" + Guid.NewGuid().ToString("N");
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), sku);
-        var expectedSize = Serializer.SerializeToArray<EdictEvent>(evt).Length;
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), sku);
+        var expectedSize = Serializer.SerializeToArray<EdictEvent>(edictEvent).Length;
 
         var captures = new List<Capture>();
         using var listener = StartListener(captures, expectedSize);
 
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store: null, new StubEdictEventStreamAccessors());
 
-        await policy.ApplyAsync(evt, CancellationToken.None);
+        await policy.ApplyAsync(edictEvent, CancellationToken.None);
 
         var capture = Assert.Single(captures);
         Assert.Equal(expectedSize, capture.Value);
@@ -46,15 +46,15 @@ public sealed class ClaimCheckPolicyMetricsTests
     {
         // Unique payload size per-test as above.
         var sku = "SKU-MetricsOver-" + Guid.NewGuid().ToString("N") + new string('x', 128);
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), sku);
-        var innerSize = Serializer.SerializeToArray<EdictEvent>(evt).Length;
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), sku);
+        var innerSize = Serializer.SerializeToArray<EdictEvent>(edictEvent).Length;
 
         var captures = new List<Capture>();
         using var listener = StartListener(captures, innerSize);
 
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, new InMemoryStore(), new StubEdictEventStreamAccessors());
 
-        await policy.ApplyAsync(evt, CancellationToken.None);
+        await policy.ApplyAsync(edictEvent, CancellationToken.None);
 
         var capture = Assert.Single(captures);
         Assert.Equal(innerSize, capture.Value);
@@ -104,10 +104,10 @@ public sealed class ClaimCheckPolicyMetricsTests
 
     sealed class InMemoryStore : IEdictClaimCheckStore
     {
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct) =>
+        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             Task.FromResult($"k-{Guid.NewGuid():N}");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 }

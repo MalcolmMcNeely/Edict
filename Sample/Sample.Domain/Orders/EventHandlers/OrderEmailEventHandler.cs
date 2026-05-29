@@ -18,17 +18,17 @@ namespace Sample.Domain.Orders.EventHandlers;
 /// </summary>
 public sealed partial class OrderEmailEventHandler(ILogger<OrderEmailEventHandler> logger) : EdictEventHandler
 {
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         if (ServiceProvider.GetService<IEmailNotifier>() is { } notifier)
         {
-            return notifier.SendOrderPlacedAsync(evt.OrderId, evt.EventId);
+            return notifier.SendOrderPlacedAsync(edictEvent.OrderId, edictEvent.EventId);
         }
 
         logger.LogInformation(
             "Simulated email send for order {OrderId} (idempotency key {EventId}).",
-            evt.OrderId,
-            evt.EventId);
+            edictEvent.OrderId,
+            edictEvent.EventId);
         return Task.CompletedTask;
     }
 }

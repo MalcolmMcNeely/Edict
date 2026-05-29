@@ -84,10 +84,10 @@ public sealed class EdictKafkaPartitionMapperTests
         var options = new EdictKafkaStreamsOptions { PartitionCount = 4 };
         var mapper = new EdictKafkaPartitionMapper(options, registry);
 
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<InvalidOperationException>(() =>
             mapper.GetQueueForStream(StreamId.Create("Ghost", "k")));
 
-        Assert.Contains("Ghost", ex.Message);
+        Assert.Contains("Ghost", exception.Message);
     }
 
     [Fact]

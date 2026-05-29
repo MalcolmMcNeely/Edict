@@ -14,7 +14,7 @@ public interface ISubstrate
 {
     string Name { get; }
 
-    Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop);
+    Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop);
 }
 
 /// <summary>
@@ -44,6 +44,6 @@ public interface ISubstrateRuntime : IAsyncDisposable
     /// Lets the throughput harness register one row repository per workload
     /// without branching on the active substrate.
     /// </summary>
-    IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+    IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new();
 }

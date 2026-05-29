@@ -33,9 +33,9 @@ public class BaseTypedSagaDispatchAnalyzerTests
             }
             public partial class OrderSaga : EdictSaga<OrderProgress>
             {
-                public Task Handle(OrderSubmitted evt)
+                public Task Handle(OrderSubmitted edictEvent)
                 {
-                    Dispatch(new AuthorizePayment(evt.OrderId));
+                    Dispatch(new AuthorizePayment(edictEvent.OrderId));
                     return Task.CompletedTask;
                 }
             }
@@ -73,10 +73,10 @@ public class BaseTypedSagaDispatchAnalyzerTests
             }
             public partial class OrderSaga : EdictSaga<OrderProgress>
             {
-                public Task Handle(OrderSubmitted evt)
+                public Task Handle(OrderSubmitted edictEvent)
                 {
-                    EdictCommand cmd = new AuthorizePayment(evt.OrderId);
-                    Dispatch(cmd);
+                    EdictCommand command = new AuthorizePayment(edictEvent.OrderId);
+                    Dispatch(command);
                     return Task.CompletedTask;
                 }
             }

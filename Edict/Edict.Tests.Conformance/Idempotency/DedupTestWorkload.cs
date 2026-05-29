@@ -35,16 +35,16 @@ public interface IDedupTestConsumer : IGrainWithGuidKey
 
 public interface IDedupPublisherGrain : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class DedupPublisherGrain : Grain, IDedupPublisherGrain
 {
-    public Task PublishAsync(EdictEvent evt)
+    public Task PublishAsync(EdictEvent edictEvent)
     {
         var stream = this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("ConformanceDedupTest", this.GetPrimaryKey()));
-        return stream.OnNextAsync(evt);
+        return stream.OnNextAsync(edictEvent);
     }
 }
 
@@ -56,9 +56,9 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
 
     protected override int WindowSize => 3;
 
-    protected override Task<bool> DispatchAsync(EdictEvent evt)
+    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
     {
-        if (evt is not DedupTestEvent dedupEvt)
+        if (edictEvent is not DedupTestEvent dedupEvt)
         {
             return Task.FromResult(false);
         }

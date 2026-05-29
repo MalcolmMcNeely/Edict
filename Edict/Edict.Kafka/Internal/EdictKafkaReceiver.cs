@@ -96,9 +96,9 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
             {
                 result = _consumer.Consume(remaining);
             }
-            catch (ConsumeException ex)
+            catch (ConsumeException exception)
             {
-                _logger.LogWarning(ex, "Edict.Kafka receiver consume error on partition {Partition}", _partition);
+                _logger.LogWarning(exception, "Edict.Kafka receiver consume error on partition {Partition}", _partition);
                 break;
             }
             if (result is null || result.Message is null)
@@ -111,9 +111,9 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
             {
                 envelope = _serializer.Deserialize<EdictKafkaWireEnvelope>(result.Message.Value);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex,
+                _logger.LogError(exception,
                     "Edict.Kafka deserialize failed at offset {Offset} partition {Partition}; skipping",
                     result.Offset.Value, _partition);
                 continue;
@@ -151,9 +151,9 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
                     new TopicPartitionOffset(_topic, new Partition(_partition), new Offset(maxOffset + 1)),
                 });
             }
-            catch (KafkaException ex)
+            catch (KafkaException exception)
             {
-                _logger.LogWarning(ex, "Edict.Kafka commit failed at offset {Offset}", maxOffset);
+                _logger.LogWarning(exception, "Edict.Kafka commit failed at offset {Offset}", maxOffset);
             }
         }
 
@@ -174,9 +174,9 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
                 {
                     _consumer?.Close();
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    _logger.LogWarning(ex, "Edict.Kafka receiver shutdown error");
+                    _logger.LogWarning(exception, "Edict.Kafka receiver shutdown error");
                 }
                 finally
                 {

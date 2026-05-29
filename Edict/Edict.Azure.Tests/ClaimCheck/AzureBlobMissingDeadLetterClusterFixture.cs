@@ -181,18 +181,18 @@ public sealed class AzureBlobMissingDeadLetterCollection
 // Orleans' in-memory reminder service flooring due-time at one minute.
 public interface IAzureBlobMissingConsumer : IGrainWithGuidKey
 {
-    Task DeliverAsync(EdictEvent evt);
+    Task DeliverAsync(EdictEvent edictEvent);
     Task ForceDrainViaReminderAsync();
 }
 
 [ImplicitStreamSubscription("AzureBlobMissingDeadLetter")]
 public sealed class AzureBlobMissingConsumer : EdictIdempotencyBase, IAzureBlobMissingConsumer
 {
-    public Task DeliverAsync(EdictEvent evt) => OnEdictEventAsync(evt);
+    public Task DeliverAsync(EdictEvent edictEvent) => OnEdictEventAsync(edictEvent);
 
     public Task ForceDrainViaReminderAsync() =>
         ReceiveReminder("edict-outbox-drain", new TickStatus());
 
-    protected override Task<bool> DispatchAsync(EdictEvent evt) =>
+    protected override Task<bool> DispatchAsync(EdictEvent edictEvent) =>
         Task.FromResult(false);
 }

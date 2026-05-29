@@ -22,5 +22,5 @@ namespace Edict.Core.Idempotency;
 public interface IEdictEventConsumer : IGrainWithGuidKey
 {
     [AlwaysInterleave]
-    Task OnEdictEventAsync(EdictEvent evt);
+    Task OnEdictEventAsync(EdictEvent edictEvent);
 }

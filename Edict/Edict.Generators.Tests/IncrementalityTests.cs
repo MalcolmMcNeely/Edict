@@ -106,7 +106,7 @@ public class IncrementalityTests
 
         public sealed partial class OrderEmailHandler : EdictEventHandler
         {
-            public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
+            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
         }
         """;
 
@@ -130,7 +130,7 @@ public class IncrementalityTests
 
         public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
         {
-            public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
+            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
         }
         """;
 
@@ -159,7 +159,7 @@ public class IncrementalityTests
 
         public sealed partial class OrderSaga : EdictSaga<OrderSagaProgress>
         {
-            public Task Handle(OrderPlacedEvent evt)
+            public Task Handle(OrderPlacedEvent edictEvent)
             {
                 Progress.Placed = true;
                 return Task.CompletedTask;

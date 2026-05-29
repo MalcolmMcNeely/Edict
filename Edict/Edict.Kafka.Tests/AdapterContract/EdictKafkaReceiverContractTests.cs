@@ -79,7 +79,7 @@ public sealed class EdictKafkaReceiverContractTests
     public async Task GetQueueMessagesAsync_ShouldYieldBatchContainerForEachConsumedRecord()
     {
         var consumer = new FakeKafkaConsumer();
-        consumer.EnqueueRecord(BuildRecord(streamNamespace: "orders", streamKey: "order-7", offset: 42, events: ["evt-a", 99]));
+        consumer.EnqueueRecord(BuildRecord(streamNamespace: "orders", streamKey: "order-7", offset: 42, events: ["edictEvent-a", 99]));
         var receiver = CreateReceiver(consumer);
         await receiver.Initialize(TimeSpan.FromSeconds(5));
 
@@ -91,7 +91,7 @@ public sealed class EdictKafkaReceiverContractTests
         Assert.Equal("orders", container.StreamId.GetNamespace());
         Assert.Equal("order-7", container.StreamId.GetKeyAsString());
         var events = container.GetEvents<object>().Select(t => t.Item1).ToArray();
-        Assert.Equal(new object[] { "evt-a", 99 }, events);
+        Assert.Equal(new object[] { "edictEvent-a", 99 }, events);
     }
 
     [Fact]

@@ -37,7 +37,7 @@ public sealed class AzuriteSubstrate : ISubstrate
 
     public string Name => "azure";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken ct, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
+    public async Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
         // Azure Queue streams poll on a timer; there is no Earliest/Latest
         // analogue. Saturation mode is accepted for harness uniformity.
@@ -50,8 +50,8 @@ public sealed class AzuriteSubstrate : ISubstrate
                 p.Cmd.Add("--skipApiVersionCheck");
             })
             .Build();
-        await container.StartAsync(ct);
-        await WaitForHostEndpointsAsync(container, ct);
+        await container.StartAsync(cancellationToken);
+        await WaitForHostEndpointsAsync(container, cancellationToken);
 
         var connectionString = container.GetConnectionString();
         var tableClient = new TableServiceClient(connectionString);
@@ -77,7 +77,7 @@ public sealed class AzuriteSubstrate : ISubstrate
     // This probe makes the substrate wait for host-side TCP connectivity on
     // every endpoint before handing the runtime back, so the silo configurator
     // never races the forwarder.
-    static async Task WaitForHostEndpointsAsync(AzuriteContainer container, CancellationToken ct)
+    static async Task WaitForHostEndpointsAsync(AzuriteContainer container, CancellationToken cancellationToken)
     {
         Uri[] endpoints =
         [
@@ -94,22 +94,22 @@ public sealed class AzuriteSubstrate : ISubstrate
             SocketException? lastError = null;
             while (true)
             {
-                ct.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     using var probe = new TcpClient();
-                    await probe.ConnectAsync(endpoint.Host, endpoint.Port, ct);
+                    await probe.ConnectAsync(endpoint.Host, endpoint.Port, cancellationToken);
                     lastError = null;
                     break;
                 }
-                catch (SocketException ex)
+                catch (SocketException exception)
                 {
-                    lastError = ex;
+                    lastError = exception;
                     if (stopwatch.Elapsed >= deadline)
                     {
                         break;
                     }
-                    await Task.Delay(TimeSpan.FromMilliseconds(250), ct);
+                    await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
                 }
             }
 
@@ -191,12 +191,12 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
-    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider sp, string tableName)
+    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new()
     {
-        ArgumentNullException.ThrowIfNull(sp);
+        ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
-        return new AzureTableRepository<TRow>(sp.GetRequiredService<TableServiceClient>(), tableName);
+        return new AzureTableRepository<TRow>(serviceProvider.GetRequiredService<TableServiceClient>(), tableName);
     }
 
     public async ValueTask DisposeAsync()

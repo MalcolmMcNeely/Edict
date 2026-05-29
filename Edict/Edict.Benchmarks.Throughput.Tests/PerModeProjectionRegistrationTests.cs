@@ -94,10 +94,10 @@ public sealed class PerModeProjectionRegistrationTests
         IEdictTableRepository<TRow> repository,
         string partitionKey,
         string rowKey,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
         where TRow : class, new()
     {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(DrainTimeout);
         while (!cts.IsCancellationRequested)
         {
@@ -115,9 +115,9 @@ public sealed class PerModeProjectionRegistrationTests
     static async Task WaitForCounterAsync(
         IEdictTableRepository<BenchCounterRow> repository,
         Guid aggregateId,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(DrainTimeout);
         while (!cts.IsCancellationRequested)
         {
@@ -147,7 +147,7 @@ public sealed class PerModeProjectionRegistrationTests
                     $"Expected no rows in {table.Name} for aggregate {aggregateId} (wrong-mode projection should not have activated). Found row with RowKey={entity.RowKey}.");
             }
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (RequestFailedException exception) when (exception.Status == 404)
         {
             // Table never created — the wrong-mode projection genuinely never ran. Empty by construction.
         }

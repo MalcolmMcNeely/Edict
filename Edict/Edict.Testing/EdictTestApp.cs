@@ -240,8 +240,8 @@ public sealed class EdictTestApp : IAsyncDisposable
     // so a saga's in-silo dispatched Command and a test's client Command share
     // one timeline. Last AddSingleton wins in MS DI.
     static void DecorateSender(IServiceCollection services, TimelineRecorder recorder) =>
-        services.AddSingleton<IEdictSender>(sp =>
-            new RecordingSender(ActivatorUtilities.CreateInstance<EdictSender>(sp), recorder));
+        services.AddSingleton<IEdictSender>(serviceProvider =>
+            new RecordingSender(ActivatorUtilities.CreateInstance<EdictSender>(serviceProvider), recorder));
 
     sealed class SiloConfigurator : ISiloConfigurator
     {
@@ -258,11 +258,11 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton<TimeProvider>(ctx.Clock);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(ctx.TableStoreFactory);
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore);
-            siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
-                sp.GetRequiredService<Serializer>(),
+            siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                serviceProvider.GetRequiredService<Serializer>(),
                 ctx.ClaimCheckThresholdBytes,
-                sp.GetRequiredService<IEdictClaimCheckStore>(),
-                sp.GetRequiredService<IEventStreamAccessors>()));
+                serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                serviceProvider.GetRequiredService<IEventStreamAccessors>()));
 
             InvokeAddEdict(siloBuilder.Services);
             RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);
@@ -288,9 +288,9 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.Remove(original);
             siloBuilder.Services.AddSingleton(ctx.SubscriberMap);
             siloBuilder.Services.AddSingleton(ctx.Chaos);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
             {
-                var inst = ActivatorUtilities.CreateInstance<InProcPublishExecutor>(sp, ctx.Recorder);
+                var inst = ActivatorUtilities.CreateInstance<InProcPublishExecutor>(serviceProvider, ctx.Recorder);
                 ctx.PublishExecutor = inst;
                 return inst;
             });
@@ -301,8 +301,8 @@ public sealed class EdictTestApp : IAsyncDisposable
                 d.ServiceType == typeof(IOutboxEffectExecutor)
                 && d.ImplementationType == typeof(InvokeHandlerExecutor));
             siloBuilder.Services.Remove(originalInvoke);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(sp =>
-                ActivatorUtilities.CreateInstance<InProcInvokeHandlerExecutor>(sp, ctx.Recorder));
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
+                ActivatorUtilities.CreateInstance<InProcInvokeHandlerExecutor>(serviceProvider, ctx.Recorder));
 
             DecorateSender(siloBuilder.Services, ctx.Recorder);
 

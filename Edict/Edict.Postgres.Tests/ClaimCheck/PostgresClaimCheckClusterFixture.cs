@@ -70,10 +70,10 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
             return false;
         }
         await using var connection = await _dataSource.OpenConnectionAsync();
-        await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT 1 FROM edict_claim_check WHERE id = @id;";
-        cmd.Parameters.AddWithValue("id", id);
-        var result = await cmd.ExecuteScalarAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM edict_claim_check WHERE id = @id;";
+        command.Parameters.AddWithValue("id", id);
+        var result = await command.ExecuteScalarAsync();
         return result is not null && result is not DBNull;
     }
 
@@ -165,11 +165,11 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
             // the 1-byte threshold has a store to write to (AddEdictAzureStreams
             // resolves it lazily and the registration is TryAddSingleton, so
             // doing this AFTER persistence binds the Postgres store).
-            siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
-                sp.GetRequiredService<Serializer>(),
+            siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                serviceProvider.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
-                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
+                store: serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
         }
     }
 

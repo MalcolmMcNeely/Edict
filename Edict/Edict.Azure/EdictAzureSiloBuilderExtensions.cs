@@ -82,11 +82,11 @@ public static class EdictAzureSiloBuilderExtensions
         // ClaimCheckPolicy with the configured threshold; binds against whatever
         // IEdictClaimCheckStore the persistence provider registers (or null —
         // in which case the policy never trips into the pointer branch).
-        silo.Services.AddSingleton(sp => new ClaimCheckPolicy(
-            sp.GetRequiredService<Serializer>(),
+        silo.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+            serviceProvider.GetRequiredService<Serializer>(),
             options.ClaimCheckThresholdBytes,
-            sp.GetService<IEdictClaimCheckStore>(),
-            sp.GetRequiredService<IEventStreamAccessors>()));
+            serviceProvider.GetService<IEdictClaimCheckStore>(),
+            serviceProvider.GetRequiredService<IEventStreamAccessors>()));
 
         return silo;
     }

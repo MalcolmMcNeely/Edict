@@ -53,16 +53,16 @@ public partial class CustomerNotificationCommandHandler : EdictCommandHandler
 
 public interface IEmailEventPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class EmailEventPublisher : Grain, IEmailEventPublisher
 {
-    public Task PublishAsync(EdictEvent evt)
+    public Task PublishAsync(EdictEvent edictEvent)
     {
         var stream = this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("ConformanceEmailEvents", this.GetPrimaryKey()));
-        return stream.OnNextAsync(evt);
+        return stream.OnNextAsync(edictEvent);
     }
 }
 
@@ -76,9 +76,9 @@ public sealed partial class EmailEventHandler : EdictEventHandler, IEmailHandler
 {
     readonly List<Guid> _handled = [];
 
-    public Task Handle(CustomerNotifiedEvent evt)
+    public Task Handle(CustomerNotifiedEvent edictEvent)
     {
-        _handled.Add(evt.EventId);
+        _handled.Add(edictEvent.EventId);
         return Task.CompletedTask;
     }
 

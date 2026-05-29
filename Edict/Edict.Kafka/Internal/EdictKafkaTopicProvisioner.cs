@@ -98,7 +98,7 @@ sealed class EdictKafkaTopicProvisioner : IHostedService
                 "Edict.Kafka provisioned topic {Topic} with {Partitions} partitions, rf={Rf}",
                 spec.Name, spec.NumPartitions, effectiveReplicationFactor);
         }
-        catch (CreateTopicsException ex) when (ex.Results.All(r => r.Error.Code == KafkaErrorCode.TopicAlreadyExists))
+        catch (CreateTopicsException exception) when (exception.Results.All(r => r.Error.Code == KafkaErrorCode.TopicAlreadyExists))
         {
             logger.LogInformation("Edict.Kafka topic {Topic} already exists", spec.Name);
         }

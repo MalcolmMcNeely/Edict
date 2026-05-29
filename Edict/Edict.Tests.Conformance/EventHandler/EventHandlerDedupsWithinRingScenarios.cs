@@ -31,7 +31,7 @@ public abstract class EventHandlerDedupsWithinRingScenarios<TFixture>
         var handler = _fixture.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
 
         var eventId = Guid.NewGuid();
-        var evt = new CustomerNotifiedEvent(customerId, "first") with
+        var edictEvent = new CustomerNotifiedEvent(customerId, "first") with
         {
             EventId = eventId,
             OccurredAt = DateTimeOffset.UtcNow,
@@ -42,7 +42,7 @@ public abstract class EventHandlerDedupsWithinRingScenarios<TFixture>
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
         await EmailHandlerWaiters.WaitForHandledAsync(handler);
 
         await publisher.PublishAsync(duplicate);

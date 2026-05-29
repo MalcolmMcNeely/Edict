@@ -32,7 +32,7 @@ internal static class ProjectionGrainSpineEmitter
                 .Append("                {\n")
                 .Append("                    var parentContext = ")
                 .Append(EdictWellKnownNames.ActivityExtensionsFqn)
-                .Append(".RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);\n")
+                .Append(".RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);\n")
                 .Append("                    using var span = ")
                 .Append(EdictWellKnownNames.ActivitySourceExtensionsFqn)
                 .Append(".StartEdictEventHandle(")
@@ -65,9 +65,9 @@ internal static class ProjectionGrainSpineEmitter
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
                     protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
-                        global::Edict.Contracts.Events.EdictEvent evt)
+                        global::Edict.Contracts.Events.EdictEvent edictEvent)
                     {
-                        switch (evt)
+                        switch (edictEvent)
                         {
             {{dispatchArms.ToString().TrimEnd('\n')}}
                             default:

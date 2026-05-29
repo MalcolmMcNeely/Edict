@@ -21,9 +21,9 @@ public sealed class DeadLetterFailureClassifierTests
     [InlineData(typeof(InvalidOperationException), nameof(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled))]
     public void Classify_ShouldMapKnownExceptionType_ToAllowlistBucket(Type exceptionType, string expected)
     {
-        var ex = (Exception)Activator.CreateInstance(exceptionType, "boom")!;
+        var exception = (Exception)Activator.CreateInstance(exceptionType, "boom")!;
 
-        var bucket = DeadLetterFailureClassifier.Classify(ex);
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
 
         Assert.Equal(expected, bucket);
     }
@@ -31,9 +31,9 @@ public sealed class DeadLetterFailureClassifierTests
     [Fact]
     public void Classify_ShouldMapSocketException_ToSubstrate()
     {
-        var ex = new SocketException();
+        var exception = new SocketException();
 
-        var bucket = DeadLetterFailureClassifier.Classify(ex);
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
 
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate, bucket);
     }
@@ -41,9 +41,9 @@ public sealed class DeadLetterFailureClassifierTests
     [Fact]
     public void Classify_ShouldMapEdictEnvelopeOverflowException_ToSerialization()
     {
-        var ex = new EdictEnvelopeOverflowException(Guid.NewGuid(), "FooEvent", 99_000);
+        var exception = new EdictEnvelopeOverflowException(Guid.NewGuid(), "FooEvent", 99_000);
 
-        var bucket = DeadLetterFailureClassifier.Classify(ex);
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
 
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Serialization, bucket);
     }
@@ -52,9 +52,9 @@ public sealed class DeadLetterFailureClassifierTests
     public void Classify_ShouldMapAnyExceptionWhoseTypeNameContainsSaturated_ToSaturated()
     {
         // Forward-compat with EdictOutboxSaturatedException (memory: dead-letter-grain-backed-design).
-        var ex = new SyntheticSaturatedException();
+        var exception = new SyntheticSaturatedException();
 
-        var bucket = DeadLetterFailureClassifier.Classify(ex);
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
 
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated, bucket);
     }
@@ -62,9 +62,9 @@ public sealed class DeadLetterFailureClassifierTests
     [Fact]
     public void Classify_ShouldMapUnknownExceptionType_ToUnhandled()
     {
-        var ex = new ApplicationException("nope");
+        var exception = new ApplicationException("nope");
 
-        var bucket = DeadLetterFailureClassifier.Classify(ex);
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
 
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled, bucket);
     }

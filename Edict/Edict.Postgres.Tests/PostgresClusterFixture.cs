@@ -184,11 +184,11 @@ public sealed class PostgresClusterFixture : ConformanceFixture
             // tuning is fine; the client read path isn't load-bearing.
             clientBuilder.Services.AddSingleton(
                 new NpgsqlDataSourceBuilder(ctx.PostgresConnectionString).Build());
-            clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
+            clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
                 new PostgresTableRepository<EdictDeadLetterEntry>(
-                    sp.GetRequiredService<NpgsqlDataSource>(),
+                    serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                     ctx.DeadLetterTableName,
-                    sp.GetRequiredService<Serializer>()));
+                    serviceProvider.GetRequiredService<Serializer>()));
         }
     }
 }

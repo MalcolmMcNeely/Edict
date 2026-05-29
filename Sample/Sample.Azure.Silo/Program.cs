@@ -83,7 +83,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Same singleton resolved as IHostedService (starts/stops the listener
         // with the silo) and as itself (read by EdictMetricsProbeGrain).
         services.AddSingleton<EdictMetricsAggregator>();
-        services.AddHostedService(sp => sp.GetRequiredService<EdictMetricsAggregator>());
+        services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<EdictMetricsAggregator>());
 
         services.AddOpenTelemetry()
             .WithMetrics(metrics => metrics.AddMeter(EdictDiagnostics.SourceName))

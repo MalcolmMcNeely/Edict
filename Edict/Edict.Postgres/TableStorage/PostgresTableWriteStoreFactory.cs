@@ -74,9 +74,9 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
             command.Parameters.AddWithValue("etag", etag);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"UpsertRowAsync failed for {tableName} ({partitionKey}/{rowKey})");
         }
     }

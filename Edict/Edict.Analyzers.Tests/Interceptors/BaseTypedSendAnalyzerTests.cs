@@ -50,8 +50,8 @@ public class BaseTypedSendAnalyzerTests
             {
                 public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
                 {
-                    EdictCommand cmd = new PlaceOrder(orderId);
-                    return sender.Send(cmd);
+                    EdictCommand command = new PlaceOrder(orderId);
+                    return sender.Send(command);
                 }
             }
             """;
@@ -82,8 +82,8 @@ public class BaseTypedSendAnalyzerTests
             {
                 public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
                 {
-                    OrderCommandBase cmd = new PlaceOrder(orderId);
-                    return sender.Send(cmd);
+                    OrderCommandBase command = new PlaceOrder(orderId);
+                    return sender.Send(command);
                 }
             }
             """;

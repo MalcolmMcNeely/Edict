@@ -48,9 +48,9 @@ public sealed class EdictPostgresStorageException : Exception
     [Id(1)]
     public string NativeMessage { get; set; } = string.Empty;
 
-    internal static EdictPostgresStorageException From(NpgsqlException ex, string contextMessage) =>
+    internal static EdictPostgresStorageException From(NpgsqlException exception, string contextMessage) =>
         new(
-            message: $"{contextMessage}: {ex.Message}",
-            nativeType: ex.GetType().FullName ?? ex.GetType().Name,
-            nativeMessage: ex.Message);
+            message: $"{contextMessage}: {exception.Message}",
+            nativeType: exception.GetType().FullName ?? exception.GetType().Name,
+            nativeMessage: exception.Message);
 }

@@ -170,9 +170,9 @@ public sealed class PostgresProviderUnitTests
         var tables = new List<string>();
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync();
-        await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";
-        await using var reader = await cmd.ExecuteReaderAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";
+        await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             tables.Add(reader.GetString(0));

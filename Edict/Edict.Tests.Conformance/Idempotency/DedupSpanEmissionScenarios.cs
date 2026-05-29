@@ -33,16 +33,16 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
         ActivitySource.AddActivityListener(listener);
 
         var sharedEventId = Guid.NewGuid();
-        var evt = new DedupTestEvent(grainId, 1) with
+        var edictEvent = new DedupTestEvent(grainId, 1) with
         {
             EventId = sharedEventId,
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
         await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 1);
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
         Activity? dedupSpan = null;

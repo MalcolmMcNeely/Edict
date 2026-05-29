@@ -60,12 +60,12 @@ public sealed class OrderSimulatorService : IHostedService, IDisposable
         _runCts = null;
     }
 
-    async Task RunAsync(CancellationToken ct)
+    async Task RunAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TickInterval);
         try
         {
-            while (await timer.WaitForNextTickAsync(ct))
+            while (await timer.WaitForNextTickAsync(cancellationToken))
             {
                 await PlaceOneRandomOrderAsync();
             }
@@ -73,9 +73,9 @@ public sealed class OrderSimulatorService : IHostedService, IDisposable
         catch (OperationCanceledException)
         {
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            _logger.LogError(ex, "OrderSimulator tick failed; the simulator will keep ticking.");
+            _logger.LogError(exception, "OrderSimulator tick failed; the simulator will keep ticking.");
         }
     }
 

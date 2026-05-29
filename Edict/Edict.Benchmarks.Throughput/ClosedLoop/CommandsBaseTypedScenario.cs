@@ -29,9 +29,9 @@ public sealed class CommandsBaseTypedScenario : IClosedLoopScenario
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
         "Edict", "EDICT015",
         Justification = "ADR-0034 A/B counterpart — deliberately base-typed to force the slow path.")]
-    public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken ct)
+    public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
-        EdictCommand cmd = new BenchIncrementCommand(aggregateId, filler);
-        return _sender.Send(cmd);
+        EdictCommand command = new BenchIncrementCommand(aggregateId, filler);
+        return _sender.Send(command);
     }
 }

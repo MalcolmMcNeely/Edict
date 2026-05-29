@@ -52,7 +52,7 @@ public sealed class PersistedStateContractCodeFixProvider : CodeFixProvider
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: "Apply persisted-state attributes (EDICT011)",
-                createChangedDocument: ct => ApplyAsync(context.Document, typeDecl, ct),
+                createChangedDocument: cancellationToken => ApplyAsync(context.Document, typeDecl, cancellationToken),
                 equivalenceKey: "Edict.EDICT011.Apply"),
             context.Diagnostics);
     }

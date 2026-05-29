@@ -73,10 +73,10 @@ public interface IResilienceSagaTrackerProbe : IGrainWithGuidKey
 
 public partial class ResilienceWorkflowSaga : EdictSaga<ResilienceWorkflowProgress>, IResilienceSagaProgressProbe
 {
-    public Task Handle(ResilienceSagaTriggerEvent evt)
+    public Task Handle(ResilienceSagaTriggerEvent edictEvent)
     {
         Progress.Handled++;
-        Dispatch(new ResilienceSagaTrackerCommand(evt.WorkflowId));
+        Dispatch(new ResilienceSagaTrackerCommand(edictEvent.WorkflowId));
         return Task.CompletedTask;
     }
 
@@ -99,24 +99,24 @@ public partial class ResilienceSagaTrackerCommandHandler : EdictCommandHandler<R
 
 public interface IResilienceEventPublisher : IGrainWithGuidKey
 {
-    Task PublishEventAsync(EdictEvent evt);
-    Task PublishSagaTriggerAsync(EdictEvent evt);
+    Task PublishEventAsync(EdictEvent edictEvent);
+    Task PublishSagaTriggerAsync(EdictEvent edictEvent);
 }
 
 public sealed class ResilienceEventPublisher : Grain, IResilienceEventPublisher
 {
-    public Task PublishEventAsync(EdictEvent evt)
+    public Task PublishEventAsync(EdictEvent edictEvent)
     {
         var stream = this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("ResilienceEvents", this.GetPrimaryKey()));
-        return stream.OnNextAsync(evt);
+        return stream.OnNextAsync(edictEvent);
     }
 
-    public Task PublishSagaTriggerAsync(EdictEvent evt)
+    public Task PublishSagaTriggerAsync(EdictEvent edictEvent)
     {
         var stream = this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("ResilienceSaga", this.GetPrimaryKey()));
-        return stream.OnNextAsync(evt);
+        return stream.OnNextAsync(edictEvent);
     }
 }
 
@@ -132,9 +132,9 @@ public sealed class ResilienceTestConsumer : EdictIdempotencyBase, IResilienceTe
 
     protected override int WindowSize => 16;
 
-    protected override Task<bool> DispatchAsync(EdictEvent evt)
+    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
     {
-        if (evt is not ResilienceTestEvent rEvt)
+        if (edictEvent is not ResilienceTestEvent rEvt)
         {
             return Task.FromResult(false);
         }
@@ -168,15 +168,15 @@ public sealed class SiloKillTableRow : IEdictPersistedState
 
 public interface ISiloKillEventPublisher : IGrainWithGuidKey
 {
-    Task PublishAsync(EdictEvent evt);
+    Task PublishAsync(EdictEvent edictEvent);
 }
 
 public sealed class SiloKillEventPublisher : Grain, ISiloKillEventPublisher
 {
-    public Task PublishAsync(EdictEvent evt) =>
+    public Task PublishAsync(EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("SiloKillProjection", this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }
 
 public sealed partial class SiloKillProjectionBuilder : EdictTableProjectionBuilder<SiloKillTableRow>
@@ -195,14 +195,14 @@ public sealed partial class SiloKillProjectionBuilder : EdictTableProjectionBuil
 
     protected override string TableName => Table;
 
-    protected override string GetRowKey(EdictEvent evt) =>
-        evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) =>
+        edictEvent switch
         {
             SiloKillProjectionEvent e => e.AggregateId.ToString(),
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task Handle(SiloKillProjectionEvent evt)
+    public async Task Handle(SiloKillProjectionEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref SiloKillCoordinator.HandlerEntries);
         if (entry == 1)

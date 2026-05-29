@@ -67,8 +67,8 @@ public class BaseTypedRaiseAnalyzerTests
             {
                 public Task<EdictCommandResult> Handle(PlaceOrder c)
                 {
-                    EdictEvent evt = new OrderPlaced(c.OrderId);
-                    Raise(evt);
+                    EdictEvent edictEvent = new OrderPlaced(c.OrderId);
+                    Raise(edictEvent);
                     return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
                 }
             }

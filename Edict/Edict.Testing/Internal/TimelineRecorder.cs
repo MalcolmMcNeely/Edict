@@ -25,8 +25,8 @@ sealed class TimelineRecorder
     public void RecordCommand(EdictCommand command) =>
         _entries.Enqueue(new TimelineEntry("Command", command.GetType().Name, Payload(command)));
 
-    public void RecordEvent(EdictEvent evt) =>
-        _entries.Enqueue(new TimelineEntry("Event", evt.GetType().Name, Payload(evt)));
+    public void RecordEvent(EdictEvent edictEvent) =>
+        _entries.Enqueue(new TimelineEntry("Event", edictEvent.GetType().Name, Payload(edictEvent)));
 
     public void RecordInvocation(string sourceEventType, Guid sourceEventId, string outcome) =>
         _entries.Enqueue(new TimelineEntry(

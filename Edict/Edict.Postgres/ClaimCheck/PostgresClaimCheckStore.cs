@@ -26,12 +26,12 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
         _tableName = tableName;
     }
 
-    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
         try
         {
-            await using var connection = await _dataSource.OpenConnectionAsync(ct);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"INSERT INTO {_tableName} (id, payload, created_at) VALUES (@id, @payload, now());";
@@ -40,17 +40,17 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
             {
                 Value = payload.ToArray(),
             });
-            await command.ExecuteNonQueryAsync(ct);
+            await command.ExecuteNonQueryAsync(cancellationToken);
             return id.ToString("N");
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"PutAsync failed for claim-check table {_tableName}");
         }
     }
 
-    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
     {
         if (!Guid.TryParseExact(key, "N", out var id))
         {
@@ -60,11 +60,11 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
 
         try
         {
-            await using var connection = await _dataSource.OpenConnectionAsync(ct);
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = $"SELECT payload FROM {_tableName} WHERE id = @id;";
             command.Parameters.AddWithValue("id", id);
-            var result = await command.ExecuteScalarAsync(ct);
+            var result = await command.ExecuteScalarAsync(cancellationToken);
             if (result is null || result is DBNull)
             {
                 throw new InvalidOperationException(
@@ -72,9 +72,9 @@ public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
             }
             return (byte[])result;
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"GetAsync failed for claim-check table {_tableName} (key {key})");
         }
     }

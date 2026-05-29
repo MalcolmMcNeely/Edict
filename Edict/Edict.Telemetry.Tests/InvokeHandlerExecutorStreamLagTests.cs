@@ -28,14 +28,14 @@ public sealed class InvokeHandlerExecutorStreamLagTests
         var captures = new List<Capture>();
         using var listener = StartListener(captures, typeof(LagSampleConsumer).FullName!);
 
-        var evt = new TelOrderPlacedEvent(
+        var edictEvent = new TelOrderPlacedEvent(
             OrderId: new Guid("22222222-2222-2222-2222-222222222222"),
             Sku: "LAG-WIDGET")
         {
             EventId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
             OccurredAt = occurredAt,
         };
-        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(evt));
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
         var entry = new OutboxEntry
         {
             EntryId = Guid.NewGuid(),

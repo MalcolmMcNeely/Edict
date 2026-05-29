@@ -19,14 +19,14 @@ sealed class HeldQueue
 
     public int Count { get; private set; }
 
-    public IReadOnlyList<EdictEvent> OnArrival(object subscriberKey, EdictEvent evt, int holdCount)
+    public IReadOnlyList<EdictEvent> OnArrival(object subscriberKey, EdictEvent edictEvent, int holdCount)
     {
         var arrivalOrder = _arrivalOrder++;
         var released = DecrementAndCollect(subscriberKey);
 
         if (holdCount <= 0)
         {
-            released.Add(evt);
+            released.Add(edictEvent);
             return released;
         }
 
@@ -35,7 +35,7 @@ sealed class HeldQueue
             queue = new Queue<Held>();
             _bySubscriber[subscriberKey] = queue;
         }
-        queue.Enqueue(new Held(evt, holdCount, arrivalOrder));
+        queue.Enqueue(new Held(edictEvent, holdCount, arrivalOrder));
         Count++;
         return released;
     }

@@ -139,7 +139,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     public Task OnCompletedAsync() => Task.CompletedTask;
 
     /// <inheritdoc />
-    public Task OnErrorAsync(Exception ex) => Task.CompletedTask;
+    public Task OnErrorAsync(Exception exception) => Task.CompletedTask;
 
     /// <summary>
     /// In-memory delivery seam (<see cref="IEdictEventConsumer.OnEdictEventAsync"/>):
@@ -149,7 +149,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// the same bifurcation as Orleans's real delivery so the engine behaviour
     /// is identical under test and in production.
     /// </summary>
-    public Task OnEdictEventAsync(EdictEvent evt) => UnwrapAndDispatchAsync(evt, null);
+    public Task OnEdictEventAsync(EdictEvent edictEvent) => UnwrapAndDispatchAsync(edictEvent, null);
 
     /// <summary>
     /// Receiver-side bifurcation: non-envelope payloads and inline-payload
@@ -207,9 +207,9 @@ public abstract class EdictIdempotencyBase<TPayload>
         // still nests as parent-child.
         string? traceParent;
         string? traceState;
-        if (envelope.TraceId is { Length: 32 } evtTraceId && envelope.SpanId is { Length: 16 } evtSpanId)
+        if (envelope.TraceId is { Length: 32 } eventTraceId && envelope.SpanId is { Length: 16 } eventSpanId)
         {
-            traceParent = ActivityExtensions.BuildTraceParent(evtTraceId, evtSpanId);
+            traceParent = ActivityExtensions.BuildTraceParent(eventTraceId, eventSpanId);
             traceState = envelope.TraceState;
         }
         else if (Activity.Current is { } current)
@@ -243,7 +243,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// A thrown exception leaves the <see cref="EdictEvent.EventId"/> uncommitted so
     /// Orleans redelivers.
     /// </summary>
-    protected abstract Task<bool> DispatchAsync(EdictEvent evt);
+    protected abstract Task<bool> DispatchAsync(EdictEvent edictEvent);
 
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by the bifurcation for the
@@ -255,22 +255,22 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
     /// retry/backoff/dead-letter wrapping.
     /// </summary>
-    protected virtual async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
+    protected virtual async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
     {
         EnsureWindowInitialized();
 
-        if (Contains(evt.EventId))
+        if (Contains(edictEvent.EventId))
         {
-            EmitDedupSpan(evt);
-            IdempotencyDedupMetrics.EmitDedupHit(evt, GetType().FullName ?? GetType().Name);
+            EmitDedupSpan(edictEvent);
+            IdempotencyDedupMetrics.EmitDedupHit(edictEvent, GetType().FullName ?? GetType().Name);
             return;
         }
 
-        var handled = await DispatchAsync(evt);
+        var handled = await DispatchAsync(edictEvent);
 
         if (handled)
         {
-            Commit(evt.EventId);
+            Commit(edictEvent.EventId);
 
             // The ring slot and any outbox effect the subclass staged commit
             // in the SAME one WriteStateAsync: a Table Projection Builder's
@@ -310,9 +310,9 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// Lives on the shared idempotency root so every consumer role — handler,
     /// projection builder, saga — shares one dispatch seam.
     /// </summary>
-    protected virtual Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
+    protected virtual Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
         where TEvent : EdictEvent
-        => handler(evt);
+        => handler(edictEvent);
 
     private protected void EnsureWindowInitialized()
     {
@@ -350,10 +350,10 @@ public abstract class EdictIdempotencyBase<TPayload>
         _dedupMirror!.Commit(eventId);
     }
 
-    private protected static void EmitDedupSpan(EdictEvent evt)
+    private protected static void EmitDedupSpan(EdictEvent edictEvent)
     {
-        var parentContext = ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
-        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(evt.GetType().Name, parentContext);
+        var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
+        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(edictEvent.GetType().Name, parentContext);
         span?.SetTag(SemanticConventions.Events.Tags.Deduplicated, true);
     }
 
@@ -371,7 +371,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
-            deferredDispatch: evt => DispatchAsync(evt),
+            deferredDispatch: edictEvent => DispatchAsync(edictEvent),
             consumerType: GetType(),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
 }

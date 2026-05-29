@@ -47,24 +47,24 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
     /// <summary>
     /// Synchronous pre-flight emitted by the generator: <c>true</c> if the
     /// concrete subclass has a matching <c>Handle(TEvent)</c> overload for
-    /// <paramref name="evt"/>. The stream-callback path checks this before
+    /// <paramref name="edictEvent"/>. The stream-callback path checks this before
     /// staging an Outbox entry so an unhandled event type is a pure no-op and
     /// does not consume a dedup ring slot.
     /// </summary>
-    protected abstract bool HandlesType(EdictEvent evt);
+    protected abstract bool HandlesType(EdictEvent edictEvent);
 
     /// <inheritdoc />
-    protected override async Task OnStreamEventAsync(EdictEvent evt, StreamSequenceToken? _)
+    protected override async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
     {
         EnsureWindowInitialized();
 
-        if (Contains(evt.EventId))
+        if (Contains(edictEvent.EventId))
         {
-            EmitDedupSpan(evt);
+            EmitDedupSpan(edictEvent);
             return;
         }
 
-        if (!HandlesType(evt))
+        if (!HandlesType(edictEvent))
         {
             // Unhandled types are a pure no-op: no ring slot consumed,
             // no Outbox entry staged. Keeps the dedup window for events
@@ -72,13 +72,13 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
             return;
         }
 
-        Commit(evt.EventId);
+        Commit(edictEvent.EventId);
 
-        var entry = BuildInvokeHandlerEntry(evt);
+        var entry = BuildInvokeHandlerEntry(edictEvent);
         await Host.EnqueueAndDrainAsync([entry]);
     }
 
-    OutboxEntry BuildInvokeHandlerEntry(EdictEvent evt)
+    OutboxEntry BuildInvokeHandlerEntry(EdictEvent edictEvent)
     {
         // The deferred-invocation span — opened later by InvokeHandlerExecutor —
         // must nest under the publish span as parent-child even when backoff
@@ -91,10 +91,10 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
         // only when the event carries no embedded trace context.
         string? traceParent;
         string? traceState;
-        if (evt.TraceId is { Length: 32 } eventTraceId && evt.SpanId is { Length: 16 } eventSpanId)
+        if (edictEvent.TraceId is { Length: 32 } eventTraceId && edictEvent.SpanId is { Length: 16 } eventSpanId)
         {
             traceParent = ActivityExtensions.BuildTraceParent(eventTraceId, eventSpanId);
-            traceState = evt.TraceState;
+            traceState = edictEvent.TraceState;
         }
         else if (Activity.Current is { } current)
         {
@@ -120,7 +120,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.InvokeHandler,
-            Payload = serializer.SerializeToArray<EdictEvent>(evt),
+            Payload = serializer.SerializeToArray<EdictEvent>(edictEvent),
             TraceParent = traceParent,
             TraceState = traceState,
         };

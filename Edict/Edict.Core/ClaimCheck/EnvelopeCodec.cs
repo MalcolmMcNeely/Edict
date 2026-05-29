@@ -18,7 +18,7 @@ static class EnvelopeCodec
         return new EdictEventEnvelope(null, key);
     }
 
-    public static bool IsEnvelope(EdictEvent evt) => evt is EdictEventEnvelope;
+    public static bool IsEnvelope(EdictEvent edictEvent) => edictEvent is EdictEventEnvelope;
 
     public static byte[]? TryGetInline(EdictEventEnvelope envelope) => envelope.InlinePayload;
 

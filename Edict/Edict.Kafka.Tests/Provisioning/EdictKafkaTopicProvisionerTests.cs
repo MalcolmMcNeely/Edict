@@ -56,14 +56,14 @@ public sealed class EdictKafkaTopicProvisionerTests
         using var admin = await CreateAdminAsync();
         var topic = UniqueTopicName();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             EdictKafkaTopicProvisioner.EnsureTopicAsync(
                 admin, topic, partitionCount: 1, requestedReplicationFactor: 3,
                 replicationFactorIsExplicit: true,
                 NullLogger<EdictKafkaTopicProvisioner>.Instance, CancellationToken.None));
 
-        Assert.Contains(topic, ex.Message);
-        Assert.Contains("replication factor 3", ex.Message);
+        Assert.Contains(topic, exception.Message);
+        Assert.Contains("replication factor 3", exception.Message);
         var metadata = admin.GetMetadata(topic, TimeSpan.FromSeconds(10));
         // Refusal must be pre-create — no orphan topic left behind on the broker.
         Assert.Empty(metadata.Topics.Single().Partitions);

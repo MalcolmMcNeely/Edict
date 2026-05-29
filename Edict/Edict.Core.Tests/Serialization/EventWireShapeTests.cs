@@ -15,7 +15,7 @@ public sealed class EventWireShapeTests
     [Fact]
     public Task OrderPlacedEvent_ShouldHaveStableWireShape()
     {
-        var evt = new OrderPlacedEvent(FixedAggregateId, "ITEM-1")
+        var edictEvent = new OrderPlacedEvent(FixedAggregateId, "ITEM-1")
         {
             EventId = FixedEventId,
             OccurredAt = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero),
@@ -24,12 +24,12 @@ public sealed class EventWireShapeTests
             TraceState = null,
         };
 
-        return VerifyWireShape(evt);
+        return VerifyWireShape(edictEvent);
     }
 
-    private static Task VerifyWireShape<T>(T evt) where T : EdictEvent
+    private static Task VerifyWireShape<T>(T edictEvent) where T : EdictEvent
     {
-        var bytes = MessagePackSerializer.Serialize(evt);
+        var bytes = MessagePackSerializer.Serialize(edictEvent);
         var json = MessagePackSerializer.ConvertToJson(bytes);
         return Verify(json);
     }

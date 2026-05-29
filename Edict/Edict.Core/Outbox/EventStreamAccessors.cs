@@ -12,18 +12,18 @@ namespace Edict.Core.Outbox;
 public sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventStreamAccessor> accessors)
     : IEventStreamAccessors
 {
-    public (string StreamName, Guid RouteKey) Resolve(EdictEvent evt)
+    public (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent)
     {
-        ArgumentNullException.ThrowIfNull(evt);
+        ArgumentNullException.ThrowIfNull(edictEvent);
 
-        if (!accessors.TryGetValue(evt.GetType(), out var accessor))
+        if (!accessors.TryGetValue(edictEvent.GetType(), out var accessor))
         {
             throw new InvalidOperationException(
-                $"Event '{evt.GetType().FullName}' has no registered EdictEventStreamAccessor. "
+                $"Event '{edictEvent.GetType().FullName}' has no registered EdictEventStreamAccessor. "
                 + "Ensure the concrete EdictEvent carries [EdictStream] and exactly one [EdictRouteKey] Guid property, "
                 + "and that its declaring assembly is scanned by AddEdict().");
         }
 
-        return (accessor.StreamName, accessor.RouteKeyGetter(evt));
+        return (accessor.StreamName, accessor.RouteKeyGetter(edictEvent));
     }
 }

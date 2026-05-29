@@ -45,9 +45,9 @@ sealed class EdictKafkaStreamRegistry
             {
                 types = asm.GetTypes();
             }
-            catch (ReflectionTypeLoadException ex)
+            catch (ReflectionTypeLoadException exception)
             {
-                types = ex.Types.Where(static t => t is not null).ToArray()!;
+                types = exception.Types.Where(static t => t is not null).ToArray()!;
             }
 
             foreach (var type in types)

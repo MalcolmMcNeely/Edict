@@ -15,12 +15,12 @@ public sealed class IdempotencyDuplicateCounterTests
         var captures = new List<Capture>();
         using var listener = StartListener(captures, marker);
 
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), "SKU")
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), "SKU")
         {
             EventId = Guid.NewGuid(),
         };
 
-        IdempotencyDedupMetrics.EmitDedupHit(evt, grainTypeName: marker);
+        IdempotencyDedupMetrics.EmitDedupHit(edictEvent, grainTypeName: marker);
 
         var capture = Assert.Single(captures);
         Assert.Equal(1L, capture.Value);

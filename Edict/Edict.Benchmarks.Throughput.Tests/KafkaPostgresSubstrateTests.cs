@@ -38,8 +38,8 @@ public sealed class KafkaPostgresSubstrateTests
         services.AddSerializer(s => s
             .AddAssembly(typeof(BenchEventRow).Assembly)
             .AddEdictContractSerializer());
-        await using var sp = services.BuildServiceProvider();
-        var serializer = sp.GetRequiredService<Serializer>();
+        await using var serviceProvider = services.BuildServiceProvider();
+        var serializer = serviceProvider.GetRequiredService<Serializer>();
 
         await using var dataSource = new NpgsqlDataSourceBuilder(runtime.PostgresConnectionString).Build();
         var factory = new PostgresTableWriteStoreFactory(dataSource, serializer);
@@ -49,7 +49,7 @@ public sealed class KafkaPostgresSubstrateTests
         await store.UpsertAsync(partitionKey, rowKey, new BenchEventRow());
 
         var repository = runtime.CreateRowRepository<BenchEventRow>(
-            sp, BenchProjectionBuilder.TableNameLiteral);
+            serviceProvider, BenchProjectionBuilder.TableNameLiteral);
 
         var row = await repository.GetAsync(partitionKey, rowKey);
 

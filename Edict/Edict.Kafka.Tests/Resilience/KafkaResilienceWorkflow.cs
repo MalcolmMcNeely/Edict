@@ -22,15 +22,15 @@ public sealed partial record KafkaResilienceTestEvent(Guid AggregateId, int Sequ
 
 public interface IKafkaResilienceEventPublisher : IGrainWithGuidKey
 {
-    Task PublishEventAsync(EdictEvent evt);
+    Task PublishEventAsync(EdictEvent edictEvent);
 }
 
 public sealed class KafkaResilienceEventPublisher : Grain, IKafkaResilienceEventPublisher
 {
-    public Task PublishEventAsync(EdictEvent evt) =>
+    public Task PublishEventAsync(EdictEvent edictEvent) =>
         this.GetStreamProvider("edict")
             .GetStream<EdictEvent>(StreamId.Create("KafkaResilienceEvents", this.GetPrimaryKey()))
-            .OnNextAsync(evt);
+            .OnNextAsync(edictEvent);
 }
 
 public interface IKafkaResilienceTestConsumer : IGrainWithGuidKey
@@ -45,9 +45,9 @@ public sealed class KafkaResilienceTestConsumer : EdictIdempotencyBase, IKafkaRe
 
     protected override int WindowSize => 64;
 
-    protected override Task<bool> DispatchAsync(EdictEvent evt)
+    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
     {
-        if (evt is not KafkaResilienceTestEvent rEvt)
+        if (edictEvent is not KafkaResilienceTestEvent rEvt)
         {
             return Task.FromResult(false);
         }

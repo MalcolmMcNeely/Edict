@@ -35,10 +35,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldPopulateEffectTarget_WhenPublishEvent()
     {
         var entry = PublishEventEntry();
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("nope"),
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal("Orders/OrderPlacedEvent", raised.EffectTarget);
@@ -98,10 +98,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldSerialisePayloadAsJson_WhenPublishEvent()
     {
         var entry = PublishEventEntry();
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("nope"),
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.NotNull(raised.PayloadJson);
@@ -115,10 +115,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldPropagateTraceParent_WhenPresentOnOutboxEntry()
     {
         var entry = PublishEventEntry(traceParent: TraceParent);
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("nope"),
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(TraceParent, raised.TraceParent);
@@ -128,10 +128,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldOmitTraceParent_WhenAbsentOnOutboxEntry()
     {
         var entry = PublishEventEntry(traceParent: null);
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("nope"),
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Null(raised.TraceParent);
@@ -141,10 +141,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldCaptureExceptionTypeAndMessage_WhenExceptionProvided()
     {
         var entry = PublishEventEntry();
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("downstream unavailable"),
+            entry, edictEvent, Accessors, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal("System.InvalidOperationException", raised.ExceptionType);
@@ -155,10 +155,10 @@ public sealed class DeadLetterPromotionTests
     public void Build_ShouldPreserveOriginalEntryId_AsDeadLetterEntryId()
     {
         var entry = PublishEventEntry();
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("nope"),
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(FixedEntryId, raised.EntryId);
@@ -168,10 +168,10 @@ public sealed class DeadLetterPromotionTests
     public Task Build_ShouldProduceFullyPopulatedRaisedEvent_WhenPublishEvent()
     {
         var entry = PublishEventEntry();
-        var evt = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, evt, Accessors, new InvalidOperationException("downstream unavailable"),
+            entry, edictEvent, Accessors, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();

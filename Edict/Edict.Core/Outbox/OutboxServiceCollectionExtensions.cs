@@ -46,19 +46,19 @@ public static class OutboxServiceCollectionExtensions
         // IEdictClaimCheckStore is never queried. The Azure provider and the
         // shipped Test Framework each replace this with their own policy +
         // store registration.
-        services.TryAddSingleton(sp => new ClaimCheckPolicy(
-            sp.GetRequiredService<Serializer>(),
+        services.TryAddSingleton(serviceProvider => new ClaimCheckPolicy(
+            serviceProvider.GetRequiredService<Serializer>(),
             thresholdBytes: int.MaxValue,
-            store: sp.GetService<IEdictClaimCheckStore>(),
-            accessors: sp.GetRequiredService<IEventStreamAccessors>()));
+            store: serviceProvider.GetService<IEdictClaimCheckStore>(),
+            accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
         // InvokeHandlerExecutor calls ClaimCheckUnwrap.ApplyAsync before
         // dispatch. Re-registering with TryAddSingleton means the
         // dead-letter-projection-aware variant from AddEdict() wins when both
         // are wired; hosts that opt into AddEdictOutbox alone (the Telemetry
         // tests, for example) get a default that fetches for every consumer.
-        services.TryAddSingleton(sp => new ClaimCheckUnwrap(
-            sp.GetRequiredService<Serializer>(),
-            sp.GetService<IEdictClaimCheckStore>()));
+        services.TryAddSingleton(serviceProvider => new ClaimCheckUnwrap(
+            serviceProvider.GetRequiredService<Serializer>(),
+            serviceProvider.GetService<IEdictClaimCheckStore>()));
         return services;
     }
 }

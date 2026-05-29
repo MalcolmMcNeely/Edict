@@ -25,13 +25,13 @@ public sealed class InvokeHandlerExecutorMetricsTests
         var captures = new List<Capture>();
         using var listener = StartListener(captures, typeof(SampleConsumer).FullName!);
 
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
             Sku: "WIDGET")
         {
             EventId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         };
-        var inlineBytes = Serializer.SerializeToArray<EdictEvent>(evt);
+        var inlineBytes = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var envelope = EnvelopeCodec.WrapInline(inlineBytes);
         var entry = new OutboxEntry
         {
@@ -60,10 +60,10 @@ public sealed class InvokeHandlerExecutorMetricsTests
         var captures = new List<Capture>();
         using var listener = StartListener(captures, typeof(SampleConsumerBoom).FullName!);
 
-        var evt = new OrderPlacedEvent(
+        var edictEvent = new OrderPlacedEvent(
             OrderId: new Guid("33333333-3333-3333-3333-333333333333"),
             Sku: "BOOM");
-        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(evt));
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
         var entry = new OutboxEntry
         {
             EntryId = Guid.NewGuid(),

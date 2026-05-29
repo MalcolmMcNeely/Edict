@@ -86,12 +86,12 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// handler. The buffered command is collected by
     /// <see cref="CollectPendingOutboxEntries"/> after the handler succeeds.
     /// </summary>
-    protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
+    protected override async Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
     {
         _dispatchBuffer.Reset();
         _stagedEntry = null;
 
-        await handler(evt);
+        await handler(edictEvent);
 
         // Build the SendCommand entry here, while the handle span is still
         // Activity.Current, so its captured traceparent makes the dispatched

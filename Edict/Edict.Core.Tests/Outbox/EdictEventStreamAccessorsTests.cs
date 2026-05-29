@@ -37,7 +37,7 @@ public class EventStreamAccessorsTests
         var orderId = Guid.NewGuid();
         var accessors = AccessorsFor(
             (typeof(OrderPlacedEvent),
-                new EdictEventStreamAccessor("Orders", static evt => ((OrderPlacedEvent)evt).OrderId)));
+                new EdictEventStreamAccessor("Orders", static edictEvent => ((OrderPlacedEvent)edictEvent).OrderId)));
 
         var (streamName, routeKey) = accessors.Resolve(new OrderPlacedEvent(orderId));
 
@@ -51,9 +51,9 @@ public class EventStreamAccessorsTests
         var paymentId = Guid.NewGuid();
         var accessors = AccessorsFor(
             (typeof(OrderPlacedEvent),
-                new EdictEventStreamAccessor("Orders", static evt => ((OrderPlacedEvent)evt).OrderId)),
+                new EdictEventStreamAccessor("Orders", static edictEvent => ((OrderPlacedEvent)edictEvent).OrderId)),
             (typeof(PaymentAuthorizedEvent),
-                new EdictEventStreamAccessor("Payments", static evt => ((PaymentAuthorizedEvent)evt).PaymentId)));
+                new EdictEventStreamAccessor("Payments", static edictEvent => ((PaymentAuthorizedEvent)edictEvent).PaymentId)));
 
         var (streamName, routeKey) = accessors.Resolve(new PaymentAuthorizedEvent(paymentId));
 

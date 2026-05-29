@@ -21,23 +21,23 @@ public sealed partial class LineItemFulfillmentTableProjectionBuilder : EdictTab
 
     protected override string TableName => "lineitemfulfillment";
 
-    protected override string GetRowKey(EdictEvent evt) => evt switch
+    protected override string GetRowKey(EdictEvent edictEvent) => edictEvent switch
     {
         LineItemAddedEvent added => added.LineItemId.ToString(),
         LineItemFulfilledEvent fulfilled => fulfilled.LineItemId.ToString(),
         _ => "",
     };
 
-    public Task Handle(LineItemAddedEvent evt)
+    public Task Handle(LineItemAddedEvent edictEvent)
     {
-        CurrentRow.LineItemId = evt.LineItemId;
+        CurrentRow.LineItemId = edictEvent.LineItemId;
         CurrentRow.Status = LineItemFulfillmentStatus.Pending;
         return Task.CompletedTask;
     }
 
-    public Task Handle(LineItemFulfilledEvent evt)
+    public Task Handle(LineItemFulfilledEvent edictEvent)
     {
-        CurrentRow.LineItemId = evt.LineItemId;
+        CurrentRow.LineItemId = edictEvent.LineItemId;
         CurrentRow.Status = LineItemFulfillmentStatus.Fulfilled;
         return Task.CompletedTask;
     }

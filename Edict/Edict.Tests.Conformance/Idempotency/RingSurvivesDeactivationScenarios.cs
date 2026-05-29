@@ -20,25 +20,25 @@ public abstract class RingSurvivesDeactivationScenarios<TFixture>
         var consumer = _fixture.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
 
         var idX = Guid.NewGuid();
-        var evtX = new DedupTestEvent(grainId, 1) with
+        var firstEvent = new DedupTestEvent(grainId, 1) with
         {
             EventId = idX,
             OccurredAt = DateTimeOffset.UtcNow,
         };
-        await publisher.PublishAsync(evtX);
+        await publisher.PublishAsync(firstEvent);
         await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 1);
 
         await consumer.DeactivateSelfAsync();
         await Task.Delay(TimeSpan.FromSeconds(2));
 
         var idY = Guid.NewGuid();
-        var evtY = new DedupTestEvent(grainId, 2) with
+        var secondEvent = new DedupTestEvent(grainId, 2) with
         {
             EventId = idY,
             OccurredAt = DateTimeOffset.UtcNow,
         };
-        await publisher.PublishAsync(evtX);
-        await publisher.PublishAsync(evtY);
+        await publisher.PublishAsync(firstEvent);
+        await publisher.PublishAsync(secondEvent);
 
         var reactivated = _fixture.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
         var deadline = DateTimeOffset.UtcNow.AddSeconds(20);

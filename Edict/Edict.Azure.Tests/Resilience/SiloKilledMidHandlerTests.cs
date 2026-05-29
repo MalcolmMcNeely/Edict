@@ -16,13 +16,13 @@ public sealed class SiloKilledMidHandlerTests(SiloKillClusterFixture fixture)
         var aggregateId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<ISiloKillEventPublisher>(aggregateId);
 
-        var evt = new SiloKillProjectionEvent(aggregateId) with
+        var edictEvent = new SiloKillProjectionEvent(aggregateId) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var hostingAddress = await SiloKillCoordinator.WaitForHandlerEnteredAsync(
             TimeSpan.FromSeconds(60));

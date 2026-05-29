@@ -12,16 +12,16 @@ static class DeadLetterPromotion
 {
     public static EdictDeadLetterRaised Build(
         OutboxEntry entry,
-        EdictEvent evt,
+        EdictEvent edictEvent,
         IEventStreamAccessors accessors,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var (streamName, _) = accessors.Resolve(evt);
-        var effectTarget = $"{streamName}/{evt.GetType().Name}";
-        var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
+        var (streamName, _) = accessors.Resolve(edictEvent);
+        var effectTarget = $"{streamName}/{edictEvent.GetType().Name}";
+        var payloadJson = JsonSerializer.Serialize(edictEvent, edictEvent.GetType());
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
     }
 
@@ -42,21 +42,21 @@ static class DeadLetterPromotion
 
     public static EdictDeadLetterRaised BuildForInvokeHandler(
         OutboxEntry entry,
-        EdictEvent evt,
+        EdictEvent edictEvent,
         IEventStreamAccessors accessors,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var (streamName, _) = accessors.Resolve(evt);
-        var effectTarget = $"{streamName}/{evt.GetType().Name}";
-        var payloadJson = JsonSerializer.Serialize(evt, evt.GetType());
+        var (streamName, _) = accessors.Resolve(edictEvent);
+        var effectTarget = $"{streamName}/{edictEvent.GetType().Name}";
+        var payloadJson = JsonSerializer.Serialize(edictEvent, edictEvent.GetType());
         var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
         return raised with
         {
-            SourceEventType = evt.GetType().FullName,
-            SourceEventId = evt.EventId,
+            SourceEventType = edictEvent.GetType().FullName,
+            SourceEventId = edictEvent.EventId,
         };
     }
 

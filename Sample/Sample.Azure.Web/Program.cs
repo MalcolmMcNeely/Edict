@@ -65,7 +65,7 @@ builder.Services.AddSingleton<CurrentOrderTracker>();
 builder.Services.AddSingleton<KnownOrdersRegistry>();
 builder.Services.AddSingleton<IDeterministicOrderPlacer, FireOneOrderHelper>();
 builder.Services.AddSingleton<OrderSimulatorService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSimulatorService>());
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<OrderSimulatorService>());
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

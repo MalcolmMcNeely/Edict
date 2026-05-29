@@ -55,12 +55,12 @@ public sealed class DeadLetterPromotionCounterTests
 
     static OutboxEntry PublishEventEntry()
     {
-        var evt = new OrderPlacedEvent(Guid.NewGuid(), "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), "ITEM-1");
         return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.PublishEvent,
-            Payload = Serializer.SerializeToArray<EdictEvent>(evt),
+            Payload = Serializer.SerializeToArray<EdictEvent>(edictEvent),
             AttemptCount = 3,
         };
     }

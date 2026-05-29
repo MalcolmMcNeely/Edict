@@ -14,13 +14,13 @@ namespace Sample
     public partial class OrderProjectionBuilder : IOrderProjectionBuilder
     {
         protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
-            global::Edict.Contracts.Events.EdictEvent evt)
+            global::Edict.Contracts.Events.EdictEvent edictEvent)
         {
-            switch (evt)
+            switch (edictEvent)
             {
                 case global::Sample.OrderCancelledEvent typed:
                 {
-                    var parentContext = global::Edict.Telemetry.ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
+                    var parentContext = global::Edict.Telemetry.ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                     using var span = global::Edict.Telemetry.ActivitySourceExtensions.StartEdictEventHandle(global::Edict.Telemetry.EdictDiagnostics.ActivitySource, "OrderCancelledEvent", parentContext);
                     if (span is not null && this.ServiceProvider.GetService(typeof(global::Edict.Telemetry.IEventTagWriters)) is global::Edict.Telemetry.IEventTagWriters __writers && __writers.TryGet(typeof(global::Sample.OrderCancelledEvent), out var __write)) { __write(typed, span); }
                     await DispatchEventAsync(typed, Handle);
@@ -28,7 +28,7 @@ namespace Sample
                 }
                 case global::Sample.OrderPlacedEvent typed:
                 {
-                    var parentContext = global::Edict.Telemetry.ActivityExtensions.RestoreFromStrings(evt.TraceId, evt.SpanId, evt.TraceState);
+                    var parentContext = global::Edict.Telemetry.ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                     using var span = global::Edict.Telemetry.ActivitySourceExtensions.StartEdictEventHandle(global::Edict.Telemetry.EdictDiagnostics.ActivitySource, "OrderPlacedEvent", parentContext);
                     if (span is not null && this.ServiceProvider.GetService(typeof(global::Edict.Telemetry.IEventTagWriters)) is global::Edict.Telemetry.IEventTagWriters __writers && __writers.TryGet(typeof(global::Sample.OrderPlacedEvent), out var __write)) { __write(typed, span); }
                     await DispatchEventAsync(typed, Handle);

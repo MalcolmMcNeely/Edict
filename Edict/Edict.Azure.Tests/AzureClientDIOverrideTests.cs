@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Edict.Azure.Tests;
 
-// AddEdictAzurePersistence resolves clients as `sp.GetService<T>() ??
+// AddEdictAzurePersistence resolves clients as `serviceProvider.GetService<T>() ??
 // options.T` — these tests reproduce the chain in isolation via a keyed
 // factory so the precedence can be asserted without spinning up a silo.
 public sealed class AzureClientDIOverrideTests
@@ -19,8 +19,8 @@ public sealed class AzureClientDIOverrideTests
 
         var services = new ServiceCollection();
         services.AddSingleton(diClient);
-        services.AddKeyedSingleton<TableServiceClient>(ResolvedKey, (sp, _) =>
-            sp.GetService<TableServiceClient>()
+        services.AddKeyedSingleton<TableServiceClient>(ResolvedKey, (serviceProvider, _) =>
+            serviceProvider.GetService<TableServiceClient>()
                 ?? bagClient
                 ?? throw new InvalidOperationException("unreachable"));
 
@@ -35,8 +35,8 @@ public sealed class AzureClientDIOverrideTests
         var bagClient = new TableServiceClient("UseDevelopmentStorage=true");
 
         var services = new ServiceCollection();
-        services.AddKeyedSingleton<TableServiceClient>(ResolvedKey, (sp, _) =>
-            sp.GetService<TableServiceClient>()
+        services.AddKeyedSingleton<TableServiceClient>(ResolvedKey, (serviceProvider, _) =>
+            serviceProvider.GetService<TableServiceClient>()
                 ?? bagClient
                 ?? throw new InvalidOperationException("unreachable"));
 

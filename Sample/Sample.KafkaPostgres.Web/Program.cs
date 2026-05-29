@@ -49,26 +49,26 @@ var postgresConnectionString = builder.Configuration.GetConnectionString("appdb"
 // fine because the Web read path is not the throughput-sensitive surface.
 builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(postgresConnectionString).Build());
 
-builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(sp =>
+builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(serviceProvider =>
     new PostgresTableRepository<OrderStatusRow>(
-        sp.GetRequiredService<NpgsqlDataSource>(), "ordersbystatus", sp.GetRequiredService<Serializer>()));
-builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(sp =>
+        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "ordersbystatus", serviceProvider.GetRequiredService<Serializer>()));
+builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(serviceProvider =>
     new PostgresTableRepository<OrderOutcomeRow>(
-        sp.GetRequiredService<NpgsqlDataSource>(), "orderoutcome", sp.GetRequiredService<Serializer>()));
-builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(sp =>
+        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "orderoutcome", serviceProvider.GetRequiredService<Serializer>()));
+builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(serviceProvider =>
     new PostgresTableRepository<LineItemFulfillmentRow>(
-        sp.GetRequiredService<NpgsqlDataSource>(), "lineitemfulfillment", sp.GetRequiredService<Serializer>()));
+        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "lineitemfulfillment", serviceProvider.GetRequiredService<Serializer>()));
 
 // The framework projection writes to the literal table named by
 // EdictDeadLetterProjectionBuilder.DeadLetterPartition; AddEdictPostgresPersistence's
 // DeadLetterTableName option configures the operator-facing repository facade but
 // not the projection itself, so the consumer-side read must target the literal
 // table to see what the projection actually wrote.
-builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
+builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
     new PostgresTableRepository<EdictDeadLetterEntry>(
-        sp.GetRequiredService<NpgsqlDataSource>(),
+        serviceProvider.GetRequiredService<NpgsqlDataSource>(),
         EdictDeadLetterProjectionBuilder.DeadLetterPartition,
-        sp.GetRequiredService<Serializer>()));
+        serviceProvider.GetRequiredService<Serializer>()));
 
 builder.Services.AddEdict();
 
@@ -76,7 +76,7 @@ builder.Services.AddSingleton<CurrentOrderTracker>();
 builder.Services.AddSingleton<KnownOrdersRegistry>();
 builder.Services.AddSingleton<IDeterministicOrderPlacer, FireOneOrderHelper>();
 builder.Services.AddSingleton<OrderSimulatorService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderSimulatorService>());
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<OrderSimulatorService>());
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

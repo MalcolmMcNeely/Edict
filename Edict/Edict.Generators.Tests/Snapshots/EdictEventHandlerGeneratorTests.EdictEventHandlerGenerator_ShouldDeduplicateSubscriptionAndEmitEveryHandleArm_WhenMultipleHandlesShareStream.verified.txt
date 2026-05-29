@@ -14,9 +14,9 @@ namespace Sample
     public partial class OrderNotificationHandler : IOrderNotificationHandler
     {
         protected override bool HandlesType(
-            global::Edict.Contracts.Events.EdictEvent evt)
+            global::Edict.Contracts.Events.EdictEvent edictEvent)
         {
-            return evt switch
+            return edictEvent switch
             {
                 global::Sample.OrderCancelledEvent => true,
                 global::Sample.OrderPlacedEvent => true,
@@ -25,9 +25,9 @@ namespace Sample
         }
 
         protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
-            global::Edict.Contracts.Events.EdictEvent evt)
+            global::Edict.Contracts.Events.EdictEvent edictEvent)
         {
-            switch (evt)
+            switch (edictEvent)
             {
                 case global::Sample.OrderCancelledEvent typed:
                 {

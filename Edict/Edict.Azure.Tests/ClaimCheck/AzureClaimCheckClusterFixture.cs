@@ -140,11 +140,11 @@ public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
             // 1-byte threshold forces every raised event onto the pointer
             // branch, exercising publish-via-blob + receiver-unwrap without
             // inflating payload size.
-            siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
-                sp.GetRequiredService<Serializer>(),
+            siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                serviceProvider.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
-                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
+                store: serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
 
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();

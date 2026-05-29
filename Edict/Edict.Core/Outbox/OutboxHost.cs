@@ -175,7 +175,7 @@ sealed class OutboxHost<TPayload>
         IReadOnlyList<EdictEvent> events,
         string? traceParent,
         string? traceState,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         if (events.Count == 0)
         {
@@ -189,7 +189,7 @@ sealed class OutboxHost<TPayload>
         }
 
         var policy = _claimCheckPolicy;
-        var results = await Task.WhenAll(events.Select(evt => policy.ApplyAsync(evt, ct)));
+        var results = await Task.WhenAll(events.Select(edictEvent => policy.ApplyAsync(edictEvent, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);
@@ -397,9 +397,9 @@ sealed class OutboxHost<TPayload>
                 entries, _streamProvider, _deferredDispatch, _consumerType, liveBatch);
             return null;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            return ex;
+            return exception;
         }
     }
 

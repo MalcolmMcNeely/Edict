@@ -13,14 +13,14 @@ internal static class EventTagWritersRegistrarEmitter
             .ToArray();
 
         var entries = new StringBuilder();
-        foreach (var evt in ordered)
+        foreach (var edictEvent in ordered)
         {
             entries.Append("            writers[typeof(")
-                .Append(evt.Fqn)
+                .Append(edictEvent.Fqn)
                 .Append(")] = static (e, a) =>\n")
                 .Append("            {\n")
-                .Append("                var typed = (").Append(evt.Fqn).Append(")e;\n");
-            foreach (var property in evt.TelemeterizedProperties)
+                .Append("                var typed = (").Append(edictEvent.Fqn).Append(")e;\n");
+            foreach (var property in edictEvent.TelemeterizedProperties)
             {
                 var tagName = $"{EdictWellKnownNames.TelemeterizedTagPrefix}{SnakeCaseLower.Convert(property.PropertyName)}";
                 entries.Append("                a.SetTag(\"")

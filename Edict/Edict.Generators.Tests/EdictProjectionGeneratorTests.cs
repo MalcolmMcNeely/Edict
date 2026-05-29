@@ -25,7 +25,7 @@ public class EdictProjectionGeneratorTests
 
         public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
         {
-            public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
+            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
         }
         """;
 
@@ -57,8 +57,8 @@ public class EdictProjectionGeneratorTests
 
         public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
         {
-            public Task Handle(OrderPlacedEvent evt) => Task.CompletedTask;
-            public Task Handle(OrderCancelledEvent evt) => Task.CompletedTask;
+            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+            public Task Handle(OrderCancelledEvent edictEvent) => Task.CompletedTask;
         }
         """;
 

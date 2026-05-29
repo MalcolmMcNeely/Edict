@@ -22,7 +22,7 @@ internal sealed class AzureTableWriteStore<T> : IEdictTableWriteStore<T>
             var response = await _tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken);
             return AzureTablePocoMapper.FromTableEntity<T>(response.Value);
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (RequestFailedException exception) when (exception.Status == 404)
         {
             return null;
         }

@@ -153,11 +153,11 @@ public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
             // branch — exercises publish-via-blob + receiver-unwrap without
             // inflating payload size. Re-binds after the persistence-half
             // store registration so the policy resolves the real store.
-            siloBuilder.Services.AddSingleton(sp => new ClaimCheckPolicy(
-                sp.GetRequiredService<Serializer>(),
+            siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                serviceProvider.GetRequiredService<Serializer>(),
                 thresholdBytes: 1,
-                store: sp.GetRequiredService<IEdictClaimCheckStore>(),
-                accessors: sp.GetRequiredService<IEventStreamAccessors>()));
+                store: serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
             siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();

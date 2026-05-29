@@ -222,13 +222,13 @@ public abstract class EdictCommandHandler<TState>
             claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
 
-    static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider sp) =>
+    static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test
         // fixtures that hand-wire individual services pre-date that
         // registration. Fall back to a never-trip policy so consumer code
         // works either way.
-        sp.GetService<ClaimCheckPolicy>()
-        ?? new ClaimCheckPolicy(sp.GetRequiredService<Serializer>(), int.MaxValue, null, sp.GetRequiredService<IEventStreamAccessors>());
+        serviceProvider.GetService<ClaimCheckPolicy>()
+        ?? new ClaimCheckPolicy(serviceProvider.GetRequiredService<Serializer>(), int.MaxValue, null, serviceProvider.GetRequiredService<IEventStreamAccessors>());
 }
 
 /// <summary>

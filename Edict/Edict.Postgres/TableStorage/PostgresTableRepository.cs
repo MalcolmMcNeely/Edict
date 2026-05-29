@@ -48,14 +48,14 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
             }
             return _serializer.Deserialize<T>((byte[])result);
         }
-        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        catch (PostgresException exception) when (exception.SqlState == "42P01")
         {
             // Table does not exist yet — projection hasn't run, return null.
             return null;
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"GetAsync failed for {_tableName} ({partitionKey}/{rowKey})");
         }
     }
@@ -78,13 +78,13 @@ public sealed class PostgresTableRepository<T> : IEdictTableRepository<T>
                 results.Add(_serializer.Deserialize<T>(bytes));
             }
         }
-        catch (PostgresException ex) when (ex.SqlState == "42P01")
+        catch (PostgresException exception) when (exception.SqlState == "42P01")
         {
             // Table does not exist yet — return empty.
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"QueryPartitionAsync failed for {_tableName} ({partitionKey})");
         }
         return results;

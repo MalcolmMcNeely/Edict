@@ -33,7 +33,7 @@ public sealed class SaturationRunner
         int parallelism,
         TimeSpan warmup,
         TimeSpan window,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
@@ -55,18 +55,18 @@ public sealed class SaturationRunner
             await FireAndForgetAsync(
                 sender, aggregatePool, parallelism, warmup,
                 new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism} warmup"),
-                ct);
+                cancellationToken);
 
             // Subtracting the warmup-end snapshot from the window-end
             // snapshot leaves only window contributions in the count — the
             // honest steady-state delta the saturation EPS formula needs.
-            var preWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
+            var preWindow = await SumCountersAsync(counterRepository, aggregatePool, cancellationToken);
 
             var windowTracker = new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism}");
             await FireAndForgetAsync(
-                sender, aggregatePool, parallelism, window, windowTracker, ct);
+                sender, aggregatePool, parallelism, window, windowTracker, cancellationToken);
 
-            var postWindow = await SumCountersAsync(counterRepository, aggregatePool, ct);
+            var postWindow = await SumCountersAsync(counterRepository, aggregatePool, cancellationToken);
             var windowEvents = postWindow - preWindow;
             var eps = window.TotalSeconds > 0
                 ? windowEvents / window.TotalSeconds
@@ -79,7 +79,7 @@ public sealed class SaturationRunner
                 ProducerConcurrency: parallelism,
                 AggregateCount: aggregatePool.Length,
                 Health: windowTracker.Build());
-        }, ct);
+        }, cancellationToken);
     }
 
     static async Task FireAndForgetAsync(
@@ -113,7 +113,7 @@ public sealed class SaturationRunner
                         // Window-end cancellation — not a failure.
                         break;
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
                         // Any other escape is counted: TimeoutException from
                         // Orleans' grain-call backpressure, OrleansException
@@ -122,7 +122,7 @@ public sealed class SaturationRunner
                         // measures consumer-side throughput; the producer-side
                         // failure breakdown lives in the RunHealth so the EPS
                         // is read against the offered load actually achieved.
-                        tracker.RecordFailure(ex);
+                        tracker.RecordFailure(exception);
                     }
                     index += parallelism;
                 }
@@ -141,7 +141,7 @@ public sealed class SaturationRunner
     static async Task<long> SumCountersAsync(
         IEdictTableRepository<BenchCounterRow> repository,
         Guid[] aggregatePool,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var total = 0L;
         foreach (var aggregateId in aggregatePool)
@@ -149,7 +149,7 @@ public sealed class SaturationRunner
             var row = await repository.GetAsync(
                 aggregateId.ToString(),
                 BenchCounterProjectionBuilder.FixedRowKey,
-                ct);
+                cancellationToken);
             if (row is not null)
             {
                 total += row.Count;

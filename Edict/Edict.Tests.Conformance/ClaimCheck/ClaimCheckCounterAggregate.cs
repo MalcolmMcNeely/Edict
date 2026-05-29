@@ -86,9 +86,9 @@ public sealed partial class ClaimCheckCounterEventHandler : EdictEventHandler, I
 {
     readonly List<ClaimCheckCounterIncrementedEvent> _handled = [];
 
-    public Task Handle(ClaimCheckCounterIncrementedEvent evt)
+    public Task Handle(ClaimCheckCounterIncrementedEvent edictEvent)
     {
-        _handled.Add(evt);
+        _handled.Add(edictEvent);
         return Task.CompletedTask;
     }
 

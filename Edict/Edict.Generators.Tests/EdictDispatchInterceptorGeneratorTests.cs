@@ -47,15 +47,15 @@ public class EdictDispatchInterceptorGeneratorTests
 
         public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
         {
-            public Task Handle(OrderSubmitted evt)
+            public Task Handle(OrderSubmitted edictEvent)
             {
-                Dispatch(new AuthorizePayment(evt.OrderId, evt.Amount));
+                Dispatch(new AuthorizePayment(edictEvent.OrderId, edictEvent.Amount));
                 return Task.CompletedTask;
             }
 
-            public Task Handle(PaymentDeclined evt)
+            public Task Handle(PaymentDeclined edictEvent)
             {
-                Dispatch(new CancelOrder(evt.OrderId));
+                Dispatch(new CancelOrder(edictEvent.OrderId));
                 return Task.CompletedTask;
             }
         }

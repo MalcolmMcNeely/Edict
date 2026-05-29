@@ -44,7 +44,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// <see cref="DefaultPartitionKey"/> (the grain's primary key, which equals the
     /// event's <c>[EdictRouteKey]</c> value for per-aggregate projections).
     /// </summary>
-    protected abstract string GetRowKey(EdictEvent evt);
+    protected abstract string GetRowKey(EdictEvent edictEvent);
 
     /// <summary>
     /// The grain's primary key as a string. For per-aggregate projections this equals
@@ -83,14 +83,14 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// effect (the actual store write happens in the engine drain, atomic with
     /// the dedup-ring commit).
     /// </summary>
-    protected override async Task DispatchEventAsync<TEvent>(TEvent evt, Func<TEvent, Task> handler)
+    protected override async Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
     {
         var partitionKey = DefaultPartitionKey;
-        var rowKey = GetRowKey(evt);
+        var rowKey = GetRowKey(edictEvent);
 
         await _rowSlot.EnsureLoadedAsync(_writeStore!, partitionKey, rowKey);
 
-        await handler(evt);
+        await handler(edictEvent);
 
         _pendingUpsert = BuildUpsertEntry(partitionKey, rowKey, CurrentRow);
     }

@@ -48,9 +48,9 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
             }
             return _serializer.Deserialize<T>((byte[])result);
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"GetAsync failed for {_tableName} ({partitionKey}/{rowKey})");
         }
     }
@@ -76,9 +76,9 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
             command.Parameters.AddWithValue("etag", etag);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"UpsertAsync failed for {_tableName} ({partitionKey}/{rowKey})");
         }
     }

@@ -14,11 +14,11 @@ internal static class PostgresTableSchema
     internal static async Task EnsureProjectionTableAsync(
         NpgsqlDataSource dataSource,
         string tableName,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         try
         {
-            await using var connection = await dataSource.OpenConnectionAsync(ct);
+            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(tableName)} (" +
@@ -28,11 +28,11 @@ internal static class PostgresTableSchema
                 "etag TEXT NOT NULL, " +
                 "PRIMARY KEY (partition_key, row_key)" +
                 ");";
-            await command.ExecuteNonQueryAsync(ct);
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch (NpgsqlException ex)
+        catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(ex,
+            throw EdictPostgresStorageException.From(exception,
                 $"EnsureProjectionTableAsync failed for {tableName}");
         }
     }

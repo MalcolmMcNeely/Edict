@@ -89,15 +89,15 @@ public static class EdictPostgresSiloBuilderExtensions
         // concept-level grains stay distinct. Do not swap this for
         // AddAdoNetGrainStorage until the upstream issue is resolved.
         var grainStorageProviderName = options.GrainStorageProviderName;
-        silo.Services.AddKeyedSingleton<IGrainStorage>(grainStorageProviderName, (sp, _) =>
+        silo.Services.AddKeyedSingleton<IGrainStorage>(grainStorageProviderName, (serviceProvider, _) =>
         {
-            var clusterOptions = sp.GetRequiredService<IOptions<ClusterOptions>>().Value;
+            var clusterOptions = serviceProvider.GetRequiredService<IOptions<ClusterOptions>>().Value;
             return new EdictPostgresGrainStorage(
-                sp.GetRequiredService<NpgsqlDataSource>(),
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                 clusterOptions.ServiceId,
-                sp.GetRequiredService<Serializer>(),
-                sp,
-                sp.GetRequiredService<ILogger<EdictPostgresGrainStorage>>());
+                serviceProvider.GetRequiredService<Serializer>(),
+                serviceProvider,
+                serviceProvider.GetRequiredService<ILogger<EdictPostgresGrainStorage>>());
         });
         // PubSubStore stays on Orleans' shipped AdoNet provider — its grain
         // type is Orleans-internal (PubSubRendezvousGrain) and no other
@@ -123,21 +123,21 @@ public static class EdictPostgresSiloBuilderExtensions
         var deadLetterTable = options.DeadLetterTableName;
         var claimCheckTable = options.ClaimCheckTableName;
 
-        silo.Services.AddSingleton<IEdictTableStoreFactory>(sp =>
+        silo.Services.AddSingleton<IEdictTableStoreFactory>(serviceProvider =>
             new PostgresTableWriteStoreFactory(
-                sp.GetRequiredService<NpgsqlDataSource>(),
-                sp.GetRequiredService<Serializer>(),
-                sp));
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
+                serviceProvider.GetRequiredService<Serializer>(),
+                serviceProvider));
 
-        silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(sp =>
+        silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
             new PostgresTableRepository<EdictDeadLetterEntry>(
-                sp.GetRequiredService<NpgsqlDataSource>(),
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                 deadLetterTable,
-                sp.GetRequiredService<Serializer>()));
+                serviceProvider.GetRequiredService<Serializer>()));
 
-        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(sp =>
+        silo.Services.TryAddSingleton<IEdictClaimCheckStore>(serviceProvider =>
             new PostgresClaimCheckStore(
-                sp.GetRequiredService<NpgsqlDataSource>(),
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                 claimCheckTable));
 
         return silo;

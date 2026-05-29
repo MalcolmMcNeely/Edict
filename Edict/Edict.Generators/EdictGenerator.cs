@@ -82,9 +82,9 @@ public sealed class EdictGenerator : IIncrementalGenerator
             .Where(static model => model is not null)
             .Select(static (model, _) => model!);
 
-        context.RegisterSourceOutput(eventRecords, static (spc, evt) =>
-            spc.AddSource($"{evt.Namespace}.{evt.SimpleName}.Alias.g.cs",
-                SourceText.From(SharedAliasEmitter.Emit(evt.Namespace, evt.SimpleName), Encoding.UTF8)));
+        context.RegisterSourceOutput(eventRecords, static (spc, edictEvent) =>
+            spc.AddSource($"{edictEvent.Namespace}.{edictEvent.SimpleName}.Alias.g.cs",
+                SourceText.From(SharedAliasEmitter.Emit(edictEvent.Namespace, edictEvent.SimpleName), Encoding.UTF8)));
 
         // EventStreamAccessors ────────────────────────────────────────────────
         var eventAccessors = context.SyntaxProvider
@@ -180,8 +180,8 @@ public sealed class EdictGenerator : IIncrementalGenerator
         var sendInvocations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 static (node, _) => SendInterceptorDiscovery.IsCandidate(node),
-                static (ctx, ct) => SendInterceptorDiscovery.MapInvocation(
-                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+                static (ctx, cancellationToken) => SendInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, cancellationToken))
             .Where(static model => model is not null)
             .Select(static (model, _) => model!);
 
@@ -212,8 +212,8 @@ public sealed class EdictGenerator : IIncrementalGenerator
         var raiseInvocations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 static (node, _) => RaiseInterceptorDiscovery.IsCandidate(node),
-                static (ctx, ct) => RaiseInterceptorDiscovery.MapInvocation(
-                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+                static (ctx, cancellationToken) => RaiseInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, cancellationToken))
             .Where(static model => model is not null)
             .Select(static (model, _) => model!);
 
@@ -240,8 +240,8 @@ public sealed class EdictGenerator : IIncrementalGenerator
         var dispatchInvocations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 static (node, _) => DispatchInterceptorDiscovery.IsCandidate(node),
-                static (ctx, ct) => DispatchInterceptorDiscovery.MapInvocation(
-                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, ct))
+                static (ctx, cancellationToken) => DispatchInterceptorDiscovery.MapInvocation(
+                    (InvocationExpressionSyntax)ctx.Node, ctx.SemanticModel, cancellationToken))
             .Where(static model => model is not null)
             .Select(static (model, _) => model!);
 

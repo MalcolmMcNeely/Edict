@@ -41,9 +41,9 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
         // pipeline — this asserts the exception shape that path recognises.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
 
-        var ex = await Assert.ThrowsAsync<RequestFailedException>(
+        var exception = await Assert.ThrowsAsync<RequestFailedException>(
             () => store.GetAsync("missing-blob-key", CancellationToken.None));
-        Assert.Equal(404, ex.Status);
+        Assert.Equal(404, exception.Status);
     }
 
     [Fact]

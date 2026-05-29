@@ -35,25 +35,25 @@ public sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore
     public static async Task<AzureBlobClaimCheckStore> CreateAsync(
         BlobServiceClient blobServiceClient,
         string containerName,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         var container = blobServiceClient.GetBlobContainerClient(containerName);
-        await container.CreateIfNotExistsAsync(cancellationToken: ct);
+        await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
         return new AzureBlobClaimCheckStore(container);
     }
 
-    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken ct)
+    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
         var key = $"{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid():N}";
         var blob = _container.GetBlobClient(key);
-        await blob.UploadAsync(BinaryData.FromBytes(payload), overwrite: false, cancellationToken: ct);
+        await blob.UploadAsync(BinaryData.FromBytes(payload), overwrite: false, cancellationToken: cancellationToken);
         return key;
     }
 
-    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken ct)
+    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
     {
         var blob = _container.GetBlobClient(key);
-        var response = await blob.DownloadContentAsync(ct);
+        var response = await blob.DownloadContentAsync(cancellationToken);
         return response.Value.Content.ToMemory();
     }
 }

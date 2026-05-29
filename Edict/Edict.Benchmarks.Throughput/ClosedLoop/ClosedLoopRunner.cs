@@ -40,9 +40,9 @@ public sealed class ClosedLoopRunner
         int parallelism,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
-        var results = await RunCommandsSweepAsync(substrate, [parallelism], warmup, measurement, ct);
+        var results = await RunCommandsSweepAsync(substrate, [parallelism], warmup, measurement, cancellationToken);
         return results[0];
     }
 
@@ -51,35 +51,35 @@ public sealed class ClosedLoopRunner
         IReadOnlyList<int> parallelisms,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct = default) =>
+        CancellationToken cancellationToken = default) =>
         RunSweepAsync(
             substrate,
-            sp => new CommandsScenario(sp.GetRequiredService<IEdictSender>()),
-            parallelisms, warmup, measurement, ct);
+            serviceProvider => new CommandsScenario(serviceProvider.GetRequiredService<IEdictSender>()),
+            parallelisms, warmup, measurement, cancellationToken);
 
     public Task<IReadOnlyList<ThroughputResults>> RunCommandsBaseTypedSweepAsync(
         ISubstrate substrate,
         IReadOnlyList<int> parallelisms,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct = default) =>
+        CancellationToken cancellationToken = default) =>
         RunSweepAsync(
             substrate,
-            sp => new CommandsBaseTypedScenario(sp.GetRequiredService<IEdictSender>()),
-            parallelisms, warmup, measurement, ct);
+            serviceProvider => new CommandsBaseTypedScenario(serviceProvider.GetRequiredService<IEdictSender>()),
+            parallelisms, warmup, measurement, cancellationToken);
 
     public Task<IReadOnlyList<ThroughputResults>> RunEventsSweepAsync(
         ISubstrate substrate,
         IReadOnlyList<int> parallelisms,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct = default) =>
+        CancellationToken cancellationToken = default) =>
         RunSweepAsync(
             substrate,
-            sp => new EventsScenario(
-                sp.GetRequiredService<IEdictSender>(),
-                sp.GetRequiredService<IEdictTableRepository<BenchEventRow>>()),
-            parallelisms, warmup, measurement, ct);
+            serviceProvider => new EventsScenario(
+                serviceProvider.GetRequiredService<IEdictSender>(),
+                serviceProvider.GetRequiredService<IEdictTableRepository<BenchEventRow>>()),
+            parallelisms, warmup, measurement, cancellationToken);
 
     Task<IReadOnlyList<ThroughputResults>> RunSweepAsync(
         ISubstrate substrate,
@@ -87,7 +87,7 @@ public sealed class ClosedLoopRunner
         IReadOnlyList<int> parallelisms,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentNullException.ThrowIfNull(parallelisms);
@@ -111,10 +111,10 @@ public sealed class ClosedLoopRunner
             foreach (var parallelism in parallelisms)
             {
                 results.Add(await RunSinglePointAsync(
-                    substrate.Name, scenario, aggregatePool, parallelism, warmup, measurement, ct));
+                    substrate.Name, scenario, aggregatePool, parallelism, warmup, measurement, cancellationToken));
             }
             return (IReadOnlyList<ThroughputResults>)results;
-        }, ct);
+        }, cancellationToken);
     }
 
     static async Task<ThroughputResults> RunSinglePointAsync(
@@ -124,7 +124,7 @@ public sealed class ClosedLoopRunner
         int parallelism,
         TimeSpan warmup,
         TimeSpan measurement,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var warmupLabel = $"{substrateName} {scenario.Name} N={parallelism} warmup";
         var windowLabel = $"{substrateName} {scenario.Name} N={parallelism}";
@@ -134,12 +134,12 @@ public sealed class ClosedLoopRunner
         // is wasted to burn the measurement window on a doomed point.
         await RunIssuersAsync(
             scenario, aggregatePool, parallelism, warmup, histograms: null,
-            new IssuerOutcomeTracker(warmupLabel), ct);
+            new IssuerOutcomeTracker(warmupLabel), cancellationToken);
 
         var histograms = LatencyCapture.CreateForIssuers(measurement, parallelism);
         var tracker = new IssuerOutcomeTracker(windowLabel);
         var (completed, elapsed) = await RunIssuersAsync(
-            scenario, aggregatePool, parallelism, measurement, histograms, tracker, ct);
+            scenario, aggregatePool, parallelism, measurement, histograms, tracker, cancellationToken);
 
         return new ThroughputResults(
             Substrate: substrateName,
@@ -190,7 +190,7 @@ public sealed class ClosedLoopRunner
                         // Window-end cancellation — not a failure.
                         break;
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
                         // Any other escape is recorded: TimeoutException from
                         // Orleans' default grain-call timeout, OrleansException
@@ -198,7 +198,7 @@ public sealed class ClosedLoopRunner
                         // Captured into the per-point tracker so the EPS row is
                         // read against an honest failure breakdown rather than
                         // a silent low number.
-                        tracker.RecordFailure(ex);
+                        tracker.RecordFailure(exception);
                         index += parallelism;
                         continue;
                     }

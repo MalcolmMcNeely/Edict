@@ -33,11 +33,11 @@ internal static class SendInterceptorEmitter
         foreach (var grain in grains)
         {
             var grainInterfaceFqn = $"global::{grain.Namespace}.I{grain.GrainName}";
-            foreach (var cmd in grain.Commands)
+            foreach (var command in grain.Commands)
             {
-                if (!commandToBundle.ContainsKey(cmd.Fqn))
+                if (!commandToBundle.ContainsKey(command.Fqn))
                 {
-                    commandToBundle[cmd.Fqn] = (cmd, grainInterfaceFqn, grain.GrainTypeName);
+                    commandToBundle[command.Fqn] = (command, grainInterfaceFqn, grain.GrainTypeName);
                 }
             }
         }

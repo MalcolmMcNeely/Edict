@@ -23,21 +23,21 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         // Inline drain after Raise hands us the live reference — skip the
         // deserialise. Reminder / activation drains have no live ref and pay
         // the deserialise to rehydrate from the durable payload.
-        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-        var (streamName, routeKey) = ResolveStreamAddress(evt);
+        var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
+        var (streamName, routeKey) = ResolveStreamAddress(edictEvent);
         var stream = streamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
 
         using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-            evt.GetType().Name, parentContext);
+            edictEvent.GetType().Name, parentContext);
 
-        if (publishActivity is not null && tagWriters.TryGet(evt.GetType(), out var write))
+        if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
         {
-            write(evt, publishActivity);
+            write(edictEvent, publishActivity);
         }
 
-        var stamped = Stamp(evt, entry, publishActivity);
+        var stamped = Stamp(edictEvent, entry, publishActivity);
 
         await stream.OnNextAsync(stamped);
     }
@@ -45,9 +45,9 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
     public (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
         OutboxEntry entry, EdictEvent? liveWireEvent)
     {
-        var evt = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-        var (streamName, routeKey) = ResolveStreamAddress(evt);
-        return (streamName, routeKey, evt);
+        var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
+        var (streamName, routeKey) = ResolveStreamAddress(edictEvent);
+        return (streamName, routeKey, edictEvent);
     }
 
     public async Task ExecuteBatchAsync(
@@ -75,15 +75,15 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
             for (var i = 0; i < entries.Count; i++)
             {
                 var entry = entries[i];
-                var evt = liveWireEvents[i] ?? serializer.Deserialize<EdictEvent>(entry.Payload);
+                var edictEvent = liveWireEvents[i] ?? serializer.Deserialize<EdictEvent>(entry.Payload);
                 var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
                 activities[i] = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-                    evt.GetType().Name, parentContext);
-                if (activities[i] is { } a && tagWriters.TryGet(evt.GetType(), out var write))
+                    edictEvent.GetType().Name, parentContext);
+                if (activities[i] is { } a && tagWriters.TryGet(edictEvent.GetType(), out var write))
                 {
-                    write(evt, a);
+                    write(edictEvent, a);
                 }
-                stamped[i] = Stamp(evt, entry, activities[i]);
+                stamped[i] = Stamp(edictEvent, entry, activities[i]);
             }
 
             await stream.OnNextBatchAsync(stamped);
@@ -97,14 +97,14 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         }
     }
 
-    static EdictEvent Stamp(EdictEvent evt, OutboxEntry entry, Activity? publishActivity)
+    static EdictEvent Stamp(EdictEvent edictEvent, OutboxEntry entry, Activity? publishActivity)
     {
         // Fall back to the entry's captured ids (null when the command ran with
         // no trace) — never a synthesised all-zero trace id, which a consumer's
         // ActivityTraceId.CreateFromString rejects.
         var (fallbackTraceId, fallbackSpanId) = SplitTraceParent(entry.TraceParent);
 
-        return evt with
+        return edictEvent with
         {
             EventId = Guid.NewGuid(),
             TraceId = publishActivity?.TraceId.ToHexString() ?? fallbackTraceId,
@@ -118,10 +118,10 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
     // ridden. The envelope itself carries no [EdictStream] because the
     // stream choice is data, not metadata. The receiver-side unwrap picks
     // the envelope off this stream and rehydrates the inner event.
-    (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent evt) =>
-        evt is EdictEventEnvelope envelope && envelope.InnerEventStreamName is { } streamName
+    (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent edictEvent) =>
+        edictEvent is EdictEventEnvelope envelope && envelope.InnerEventStreamName is { } streamName
             ? (streamName, envelope.InnerEventRouteKey)
-            : accessors.Resolve(evt);
+            : accessors.Resolve(edictEvent);
 
     static (string? TraceId, string? SpanId) SplitTraceParent(string? traceParent)
     {

@@ -152,11 +152,11 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
         var events = await WaitForEventsAsync(orderId);
-        var evt = Assert.Single(events);
-        Assert.NotEqual(Guid.Empty, evt.EventId);
-        Assert.NotEqual(default, evt.OccurredAt);
-        Assert.NotNull(evt.TraceId);
-        Assert.NotNull(evt.SpanId);
+        var edictEvent = Assert.Single(events);
+        Assert.NotEqual(Guid.Empty, edictEvent.EventId);
+        Assert.NotEqual(default, edictEvent.OccurredAt);
+        Assert.NotNull(edictEvent.TraceId);
+        Assert.NotNull(edictEvent.SpanId);
     }
 
     private async Task<IReadOnlyList<Edict.Contracts.Events.EdictEvent>> WaitForEventsAsync(

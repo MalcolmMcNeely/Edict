@@ -28,26 +28,26 @@ public sealed class EventsScenario : IClosedLoopScenario
 
     public string Name => "Command → Event delivery";
 
-    public async Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken ct)
+    public async Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
         var correlationId = Guid.NewGuid();
         await _sender.Send(new BenchPublishCommand(aggregateId, correlationId, filler));
-        await WaitForEventRowAsync(aggregateId, correlationId.ToString("D"), ct);
+        await WaitForEventRowAsync(aggregateId, correlationId.ToString("D"), cancellationToken);
     }
 
-    async Task WaitForEventRowAsync(Guid aggregateId, string rowKey, CancellationToken ct)
+    async Task WaitForEventRowAsync(Guid aggregateId, string rowKey, CancellationToken cancellationToken)
     {
         var partitionKey = aggregateId.ToString();
-        while (!ct.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            var row = await _rowRepository.GetAsync(partitionKey, rowKey, ct);
+            var row = await _rowRepository.GetAsync(partitionKey, rowKey, cancellationToken);
             if (row is not null)
             {
                 return;
             }
             try
             {
-                await Task.Delay(PollInterval, ct);
+                await Task.Delay(PollInterval, cancellationToken);
             }
             catch (OperationCanceledException)
             {

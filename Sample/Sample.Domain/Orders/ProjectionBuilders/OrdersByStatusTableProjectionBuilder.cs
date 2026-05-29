@@ -16,50 +16,50 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
 
     protected override string TableName => "ordersbystatus";
 
-    protected override string GetRowKey(EdictEvent evt) => "status";
+    protected override string GetRowKey(EdictEvent edictEvent) => "status";
 
-    public Task Handle(OrderPlacedEvent evt)
+    public Task Handle(OrderPlacedEvent edictEvent)
     {
         CurrentRow.Status = "Open";
-        CurrentRow.PlacedAt = evt.OccurredAt;
+        CurrentRow.PlacedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task Handle(LineItemAddedEvent evt)
+    public Task Handle(LineItemAddedEvent edictEvent)
     {
         CurrentRow.ItemCount++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderSubmittedEvent evt)
+    public Task Handle(OrderSubmittedEvent edictEvent)
     {
         CurrentRow.Status = "Submitted";
-        CurrentRow.SubmittedAt = evt.OccurredAt;
+        CurrentRow.SubmittedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderCancelledEvent evt)
+    public Task Handle(OrderCancelledEvent edictEvent)
     {
         CurrentRow.Status = "Cancelled";
         return Task.CompletedTask;
     }
 
-    public Task Handle(PaymentAuthorizedEvent evt)
+    public Task Handle(PaymentAuthorizedEvent edictEvent)
     {
-        CurrentRow.AuthorizedAt = evt.OccurredAt;
+        CurrentRow.AuthorizedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderFullyFulfilledEvent evt)
+    public Task Handle(OrderFullyFulfilledEvent edictEvent)
     {
-        CurrentRow.FulfilledAt = evt.OccurredAt;
+        CurrentRow.FulfilledAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task Handle(OrderShippedEvent evt)
+    public Task Handle(OrderShippedEvent edictEvent)
     {
         CurrentRow.Status = "Shipped";
-        CurrentRow.ShippedAt = evt.OccurredAt;
+        CurrentRow.ShippedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 }

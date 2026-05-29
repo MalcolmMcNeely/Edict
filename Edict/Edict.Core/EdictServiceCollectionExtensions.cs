@@ -72,7 +72,7 @@ public static class EdictServiceCollectionExtensions
         // owns this event and its stream + route key are statically known.
         accessors[typeof(EdictDeadLetterRaised)] = new EdictEventStreamAccessor(
             "edict-dead-letter",
-            static evt => ((EdictDeadLetterRaised)evt).SingletonKey);
+            static edictEvent => ((EdictDeadLetterRaised)edictEvent).SingletonKey);
 
         services.AddValidatorsFromAssemblies(materialised);
 
@@ -89,8 +89,8 @@ public static class EdictServiceCollectionExtensions
         // IEdictSender. The concrete EdictMetricsCache requires a TimeProvider
         // — TryAddSingleton(TimeProvider.System) inside AddEdictOutbox or the
         // test harness's FakeTimeProvider registration covers both cases.
-        services.TryAddSingleton<IEdictMetricsCache>(sp =>
-            new EdictMetricsCache(sp.GetRequiredService<TimeProvider>()));
+        services.TryAddSingleton<IEdictMetricsCache>(serviceProvider =>
+            new EdictMetricsCache(serviceProvider.GetRequiredService<TimeProvider>()));
 
         // Forensic dead-letter repository is auto-wired so the framework's
         // no-silent-loss guarantee holds without consumer configuration.
@@ -104,9 +104,9 @@ public static class EdictServiceCollectionExtensions
         // the dependency is only resolved when an operator actually queries
         // the repository (mirrors UpsertRowExecutor / DeadLetterPromoter's lazy
         // service-provider lookup).
-        services.AddSingleton<IEdictDeadLetterRepository>(sp =>
+        services.AddSingleton<IEdictDeadLetterRepository>(serviceProvider =>
             new TableBackedDeadLetterRepository(
-                sp.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
+                serviceProvider.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
 
         // Receiver-side claim-check unwrap. Every
         // EdictIdempotencyBase consumer resolves this on the stream-observer
@@ -118,9 +118,9 @@ public static class EdictServiceCollectionExtensions
         // for which the fetch is suppressed — the dead-letter row stores
         // the pointer instead of inflating a >32 KB body into a 32 KB
         // Azure Table property. Every other consumer fetches by default.
-        services.TryAddSingleton(sp => new ClaimCheckUnwrap(
-            sp.GetRequiredService<Serializer>(),
-            sp.GetService<IEdictClaimCheckStore>(),
+        services.TryAddSingleton(serviceProvider => new ClaimCheckUnwrap(
+            serviceProvider.GetRequiredService<Serializer>(),
+            serviceProvider.GetService<IEdictClaimCheckStore>(),
             shouldFetchForConsumer: static t => t != typeof(EdictDeadLetterProjectionBuilder)));
 
         return services;

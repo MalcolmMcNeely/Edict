@@ -12,13 +12,13 @@ public sealed class AzuriteStoppedMidPublishTests(ResilienceClusterFixture fixtu
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IResilienceEventPublisher>(aggregateId);
         var consumer = fixture.Cluster.GrainFactory.GetGrain<IResilienceTestConsumer>(aggregateId);
 
-        var evt = new ResilienceTestEvent(aggregateId, 1) with
+        var edictEvent = new ResilienceTestEvent(aggregateId, 1) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        await publisher.PublishEventAsync(evt);
+        await publisher.PublishEventAsync(edictEvent);
 
         await fixture.PauseAzuriteAsync();
         await Task.Delay(TimeSpan.FromSeconds(3));
@@ -27,6 +27,6 @@ public sealed class AzuriteStoppedMidPublishTests(ResilienceClusterFixture fixtu
 
         var handled = await ResilienceWaiters.WaitForHandledAsync(consumer);
         Assert.Single(handled);
-        Assert.Equal(evt.EventId, handled[0]);
+        Assert.Equal(edictEvent.EventId, handled[0]);
     }
 }

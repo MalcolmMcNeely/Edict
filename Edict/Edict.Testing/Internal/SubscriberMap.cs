@@ -55,8 +55,8 @@ sealed class SubscriberMap
     }
 
     /// <summary>Subscriber grain classes for the supplied event's stream.</summary>
-    public IReadOnlyList<Type> SubscribersFor(EdictEvent evt) =>
-        _byEventType.GetOrAdd(evt.GetType(), eventType =>
+    public IReadOnlyList<Type> SubscribersFor(EdictEvent edictEvent) =>
+        _byEventType.GetOrAdd(edictEvent.GetType(), eventType =>
         {
             var attr = eventType.GetCustomAttribute<EdictStreamAttribute>(inherit: true);
             if (attr is null)

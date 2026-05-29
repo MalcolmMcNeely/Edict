@@ -10,12 +10,12 @@ namespace Sample.Domain.Diagnostics.EventHandlers;
 // not live in Diagnostics/.
 public sealed partial class PoisonAuditEventHandler : EdictEventHandler
 {
-    public Task Handle(OrderCancelledEvent evt)
+    public Task Handle(OrderCancelledEvent edictEvent)
     {
-        if (evt.Reason.StartsWith("POISON:", StringComparison.Ordinal))
+        if (edictEvent.Reason.StartsWith("POISON:", StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"PoisonAuditEventHandler refused to audit cancel reason '{evt.Reason}'.");
+                $"PoisonAuditEventHandler refused to audit cancel reason '{edictEvent.Reason}'.");
         }
 
         return Task.CompletedTask;

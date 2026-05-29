@@ -26,13 +26,13 @@ public sealed class KafkaSiloKilledMidHandlerTests(KafkaSiloKillClusterFixture f
         var aggregateId = Guid.NewGuid();
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IKafkaSiloKillEventPublisher>(aggregateId);
 
-        var evt = new KafkaSiloKillEvent(aggregateId) with
+        var edictEvent = new KafkaSiloKillEvent(aggregateId) with
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        await publisher.PublishAsync(evt);
+        await publisher.PublishAsync(edictEvent);
 
         var hostingAddress = await KafkaSiloKillCoordinator.WaitForHandlerEnteredAsync(
             TimeSpan.FromSeconds(60));

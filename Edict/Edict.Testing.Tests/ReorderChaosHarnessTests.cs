@@ -112,15 +112,15 @@ public sealed partial class DecoyWidgetProjectionBuilder : EdictTableProjectionB
 
     protected override string TableName => "widgetdecoy";
 
-    protected override string GetRowKey(EdictEvent evt) => "decoy";
+    protected override string GetRowKey(EdictEvent edictEvent) => "decoy";
 
-    public Task Handle(WidgetPlacedEvent evt)
+    public Task Handle(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(WidgetIncrementedEvent evt)
+    public Task Handle(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
@@ -145,15 +145,15 @@ public sealed partial class WidgetCounterProjectionBuilder : EdictTableProjectio
 
     protected override string TableName => "widgetcounter";
 
-    protected override string GetRowKey(EdictEvent evt) => "counter";
+    protected override string GetRowKey(EdictEvent edictEvent) => "counter";
 
-    public Task Handle(WidgetPlacedEvent evt)
+    public Task Handle(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Count = 0;
         return Task.CompletedTask;
     }
 
-    public Task Handle(WidgetIncrementedEvent evt)
+    public Task Handle(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Count++;
         return Task.CompletedTask;

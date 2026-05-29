@@ -64,29 +64,29 @@ public sealed class ClaimCheckPolicy
     /// stored payload as before. Throws <see cref="EdictEnvelopeOverflowException"/>
     /// when the wrapped envelope still exceeds <see cref="MaxEnvelopeBytes"/>.
     /// </summary>
-    public async Task<ClaimCheckApplyResult> ApplyAsync(EdictEvent evt, CancellationToken ct)
+    public async Task<ClaimCheckApplyResult> ApplyAsync(EdictEvent edictEvent, CancellationToken cancellationToken)
     {
-        var innerBytes = _serializer.SerializeToArray<EdictEvent>(evt);
+        var innerBytes = _serializer.SerializeToArray<EdictEvent>(edictEvent);
         if (innerBytes.Length <= _thresholdBytes)
         {
             PayloadSize.Record(innerBytes.Length,
-                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
+                new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name),
                 new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedFalse));
-            return new ClaimCheckApplyResult(innerBytes, evt);
+            return new ClaimCheckApplyResult(innerBytes, edictEvent);
         }
 
         if (_store is null)
         {
             throw new InvalidOperationException(
-                $"Event '{evt.GetType().FullName}' serialised to {innerBytes.Length} bytes, exceeding the claim-check threshold "
+                $"Event '{edictEvent.GetType().FullName}' serialised to {innerBytes.Length} bytes, exceeding the claim-check threshold "
                 + $"of {_thresholdBytes}, but no IEdictClaimCheckStore is registered. "
                 + "Register the Azure provider's AzureBlobClaimCheckStore (or the in-memory store in Edict.Testing) "
                 + "via DI so oversized events can be uploaded.");
         }
 
-        var key = await PutAsync(evt, innerBytes, ct);
+        var key = await PutAsync(edictEvent, innerBytes, cancellationToken);
 
-        var (innerStreamName, innerRouteKey) = _accessors.Resolve(evt);
+        var (innerStreamName, innerRouteKey) = _accessors.Resolve(edictEvent);
         var envelope = EnvelopeCodec.WrapPointer(key) with
         {
             InnerEventStreamName = innerStreamName,
@@ -96,13 +96,13 @@ public sealed class ClaimCheckPolicy
         if (envelopeBytes.Length > MaxEnvelopeBytes)
         {
             throw new EdictEnvelopeOverflowException(
-                innerRouteKey, evt.GetType().FullName!, envelopeBytes.Length);
+                innerRouteKey, edictEvent.GetType().FullName!, envelopeBytes.Length);
         }
 
         Activity.Current?.SetTag(SemanticConventions.Events.Tags.ClaimChecked, true);
 
         PayloadSize.Record(innerBytes.Length,
-            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, evt.GetType().Name),
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name),
             new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedTrue));
 
         return new ClaimCheckApplyResult(envelopeBytes, envelope);
@@ -116,14 +116,14 @@ public sealed class ClaimCheckPolicy
     /// </summary>
     public readonly record struct ClaimCheckApplyResult(byte[] Payload, EdictEvent WireEvent);
 
-    async Task<string> PutAsync(EdictEvent evt, byte[] innerBytes, CancellationToken ct)
+    async Task<string> PutAsync(EdictEvent edictEvent, byte[] innerBytes, CancellationToken cancellationToken)
     {
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
             SemanticConventions.ClaimCheck.Spans.Put, ActivityKind.Client);
-        span?.SetTag(SemanticConventions.Events.Tags.Type, evt.GetType().Name);
+        span?.SetTag(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, innerBytes.Length);
 
-        var key = await _store!.PutAsync(innerBytes, ct);
+        var key = await _store!.PutAsync(innerBytes, cancellationToken);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
         return key;
     }

@@ -14,10 +14,10 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var ex = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<InvalidOperationException>(
             () => EdictKafkaContractFloors.ValidateProducerOverrides(overrides));
 
-        Assert.Contains("acks", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("acks", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -28,10 +28,10 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var ex = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<InvalidOperationException>(
             () => EdictKafkaContractFloors.ValidateProducerOverrides(overrides));
 
-        Assert.Contains("idempotence", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("idempotence", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -62,10 +62,10 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var ex = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<InvalidOperationException>(
             () => EdictKafkaContractFloors.ValidateConsumerOverrides(overrides));
 
-        Assert.Contains("auto.commit", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("auto.commit", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

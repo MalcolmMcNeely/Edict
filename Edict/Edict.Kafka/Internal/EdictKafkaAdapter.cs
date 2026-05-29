@@ -149,9 +149,9 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
                         drainTimeout);
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogWarning(ex, "Edict.Kafka receiver shutdown threw during adapter dispose.");
+                _logger.LogWarning(exception, "Edict.Kafka receiver shutdown threw during adapter dispose.");
             }
         }
         _producer.Flush(TimeSpan.FromSeconds(5));

@@ -77,7 +77,7 @@ public sealed class EdictKafkaAdapterContractTests
         var adapter = CreateAdapter(producer);
         var streamId = StreamId.Create("OrdersStream", "order-7");
 
-        await adapter.QueueMessageBatchAsync(streamId, new object[] { "evt-a" }, token: null!, requestContext: new());
+        await adapter.QueueMessageBatchAsync(streamId, new object[] { "edictEvent-a" }, token: null!, requestContext: new());
 
         var call = Assert.Single(producer.ProduceCalls);
         Assert.Equal("OrdersStream", call.Partition.Topic);
@@ -91,9 +91,9 @@ public sealed class EdictKafkaAdapterContractTests
         var adapter = CreateAdapter(producer);
 
         await adapter.QueueMessageBatchAsync(
-            StreamId.Create("OrdersStream", "k-a"), new object[] { "evt-1" }, null!, new());
+            StreamId.Create("OrdersStream", "k-a"), new object[] { "edictEvent-1" }, null!, new());
         await adapter.QueueMessageBatchAsync(
-            StreamId.Create("InventoryStream", "k-b"), new object[] { "evt-2" }, null!, new());
+            StreamId.Create("InventoryStream", "k-b"), new object[] { "edictEvent-2" }, null!, new());
 
         Assert.Equal(2, producer.ProduceCalls.Count);
         Assert.Equal("OrdersStream", producer.ProduceCalls[0].Partition.Topic);
