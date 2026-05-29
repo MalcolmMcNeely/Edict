@@ -1,0 +1,37 @@
+﻿{
+  ClosedLoop: [
+    {
+      Substrate: azure,
+      Scenario: Command acceptance,
+      Parallelism: 2,
+      Latency: {
+        P50: 00:00:00.0119500,
+        P95: 00:00:00.0185600,
+        P99: 00:00:00.0255200
+      },
+      Health: {
+        Succeeded: 100,
+        Attempted: 100,
+        IsHealthy: true
+      }
+    }
+  ],
+  Saturation: [
+    {
+      Substrate: azure,
+      EventsPerSecond: 70.0,
+      WindowSeconds: 30.0,
+      ProducerConcurrency: 256,
+      AggregateCount: 1024,
+      Health: {
+        Succeeded: 2100,
+        Attempted: 2100,
+        IsHealthy: true
+      }
+    }
+  ],
+  RunDates: {
+    azure: 2026-05-28 +0,
+    kafkapostgres: 2026-05-29 +0
+  }
+}

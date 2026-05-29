@@ -1,0 +1,9 @@
+﻿azure=2026-05-28 kafka=2026-05-29
+| Substrate | Events / sec (end-to-end) | Health |
+| --- | ---: | :---: |
+| azure | 70 | OK (0.00 %) |
+| kafkapostgres | 373 | OK (0.00 %) |
+| Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
+| --- | --- | --- | ---: | ---: | ---: | :---: |
+| azure | Command acceptance | 2 | 11.95 | 18.56 | 25.52 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 2 | 1.84 | 4.66 | 7.46 | OK (0.00 %) |

@@ -5,6 +5,8 @@ using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Output;
 using Edict.Benchmarks.Throughput.Saturation;
 
+using static VerifyXunit.Verifier;
+
 namespace Edict.Benchmarks.Throughput.Tests;
 
 public sealed class SubstrateSummaryStoreTests
@@ -50,24 +52,7 @@ public sealed class SubstrateSummaryStoreTests
             await SubstrateSummaryStore.WriteAsync(path, summary);
             var read = await SubstrateSummaryStore.ReadAsync(path);
 
-            Assert.NotNull(read);
-            Assert.Equal("kafkapostgres", read!.Substrate);
-            Assert.Equal(runDate, read.RunDate);
-
-            var row = Assert.Single(read.ClosedLoop);
-            Assert.Equal("Command acceptance", row.Scenario);
-            Assert.Equal(16, row.Parallelism);
-            Assert.Equal(67_412, row.CompletedCount);
-            Assert.Equal(30, row.ElapsedSeconds, precision: 2);
-            Assert.Equal(2.94, row.P50Ms, precision: 2);
-            Assert.Equal(4.27, row.P95Ms, precision: 2);
-            Assert.Equal(5.82, row.P99Ms, precision: 2);
-            Assert.Equal(67_412, row.Health.Succeeded);
-
-            Assert.NotNull(read.Saturation);
-            Assert.Equal(373.13, read.Saturation!.EventsPerSecond, precision: 2);
-            Assert.Equal(256, read.Saturation.ProducerConcurrency);
-            Assert.Equal(11_188, read.Saturation.Health.Succeeded);
+            await Verify(read);
         }
         finally
         {
@@ -124,7 +109,7 @@ public sealed class SubstrateSummaryStoreTests
     }
 
     [Fact]
-    public void Hydrate_RebuildsResultsAndRunDates_FromSummaries()
+    public Task Hydrate_RebuildsResultsAndRunDates_FromSummaries()
     {
         var summaries = new[]
         {
@@ -162,18 +147,7 @@ public sealed class SubstrateSummaryStoreTests
 
         var hydrated = SubstrateSummaryStore.Hydrate(summaries);
 
-        Assert.Equal(2, hydrated.RunDates.Count);
-        Assert.Equal(new DateTimeOffset(2026, 5, 28, 0, 0, 0, TimeSpan.Zero), hydrated.RunDates["azure"]);
-        Assert.Equal(new DateTimeOffset(2026, 5, 29, 0, 0, 0, TimeSpan.Zero), hydrated.RunDates["kafkapostgres"]);
-
-        var row = Assert.Single(hydrated.ClosedLoop);
-        Assert.Equal("azure", row.Substrate);
-        Assert.Equal("Command acceptance", row.Scenario);
-        Assert.Equal(TimeSpan.FromMilliseconds(11.95), row.Latency.P50);
-
-        var sat = Assert.Single(hydrated.Saturation);
-        Assert.Equal("azure", sat.Substrate);
-        Assert.Equal(70, sat.EventsPerSecond);
+        return Verify(hydrated);
     }
 
     [Fact]
@@ -296,12 +270,7 @@ public sealed class SubstrateSummaryStoreTests
                 "{{table:closed_loop}}\n";
             var output = MarkdownWriter.Render(template, tokens, hydrated.ClosedLoop, hydrated.Saturation);
 
-            Assert.Contains("azure=2026-05-28", output);
-            Assert.Contains("kafka=2026-05-29", output);
-            Assert.Contains("| azure | 70 |", output);
-            Assert.Contains("| kafkapostgres | 373 |", output);
-            Assert.Contains("| azure | Command acceptance | 2 |", output);
-            Assert.Contains("| kafkapostgres | Command acceptance | 2 |", output);
+            await Verify(output);
         }
         finally
         {

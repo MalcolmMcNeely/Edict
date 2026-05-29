@@ -1,0 +1,27 @@
+﻿{
+  Substrate: kafkapostgres,
+  RunDate: 2026-05-29 11:22:33 +0,
+  ClosedLoop: [
+    {
+      Scenario: Command acceptance,
+      Parallelism: 16,
+      CompletedCount: 67412,
+      ElapsedSeconds: 30.0,
+      P50Ms: 2.94,
+      P95Ms: 4.2699,
+      P99Ms: 5.82,
+      Health: {
+        Succeeded: 67412
+      }
+    }
+  ],
+  Saturation: {
+    EventsPerSecond: 373.13,
+    WindowSeconds: 30.0,
+    ProducerConcurrency: 256,
+    AggregateCount: 1024,
+    Health: {
+      Succeeded: 11188
+    }
+  }
+}
