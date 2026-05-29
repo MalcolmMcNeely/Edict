@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Sample.ServiceDefaults</RootNamespace>
         <IsAspireSharedProject>true</IsAspireSharedProject>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>

@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Telemetry</PackageId>
+        <Description>OpenTelemetry types and tag-key constants for the Edict CQRS framework. Covers the edict.* tag taxonomy and the [Telemeterized] attribute consumed by Edict's analyzers and generators.</Description>
+        <PackageTags>edict;cqrs;orleans;opentelemetry;telemetry</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,6 +19,10 @@
         -->
         <PackageReference Include="Microsoft.Orleans.Core" Version="10.1.0" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

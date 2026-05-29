@@ -6,6 +6,10 @@
         <Nullable>enable</Nullable>
         <!-- Shipped to consumers as the in-memory Test Framework (ADR 0016). -->
         <IsPackable>true</IsPackable>
+        <PackageId>Edict.Testing</PackageId>
+        <Description>In-memory TestCluster fixtures, probes, and chaos controls for testing applications built on the Edict CQRS framework. Install this in your test project alongside one streaming and one persistence Edict package.</Description>
+        <PackageTags>edict;cqrs;orleans;testing;testcluster</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,6 +25,10 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Edict.Testing.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

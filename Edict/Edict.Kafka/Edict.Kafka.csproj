@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Kafka</PackageId>
+        <Description>Apache Kafka stream provider for the Edict CQRS framework. Pair with any Edict persistence package.</Description>
+        <PackageTags>edict;cqrs;orleans;kafka;streaming</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,6 +25,10 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Edict.Kafka.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Contracts</PackageId>
+        <Description>Consumer-facing contracts for the Edict CQRS framework: command and event base types, route-key attributes, and rejection model. Reference this from your domain assembly to share contracts with your handlers and tests.</Description>
+        <PackageTags>edict;cqrs;orleans;contracts</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +18,10 @@
           runtime that Microsoft.Orleans.Serialization.MessagePack 9.2.1 pulls.
         -->
         <PackageReference Include="MessagePack.Annotations" Version="3.1.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

@@ -26,4 +26,16 @@
     <CompilerVisibleProperty Include="EdictInterceptorsEnabled" />
   </ItemGroup>
 
+  <!--
+    ADR-0043: Lockstep prerelease packaging. The eight shipping packages opt in
+    via <IsPackable>true</IsPackable> in their own csproj; every other csproj
+    inherits the default-false here so dotnet pack only touches the shipping
+    surface. Shipping-package metadata + MinVer/SourceLink wiring live in
+    Directory.Build.targets so they evaluate after the csproj's own
+    PropertyGroup sets IsPackable.
+  -->
+  <PropertyGroup>
+    <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
+  </PropertyGroup>
+
 </Project>

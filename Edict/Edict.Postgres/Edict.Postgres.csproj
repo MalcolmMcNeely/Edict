@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Postgres</PackageId>
+        <Description>PostgreSQL projection store, Orleans grain persistence, and reminders for the Edict CQRS framework. Pair with any Edict streaming package.</Description>
+        <PackageTags>edict;cqrs;orleans;postgres;persistence</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,6 +29,10 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Sql\*.sql" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

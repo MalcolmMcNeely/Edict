@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Core</PackageId>
+        <Description>Core engine for the Edict CQRS framework on Microsoft Orleans: command handlers, sagas, event handlers, projection builders, idempotency, and the outbox engine. Includes the Edict source generators and analyzers, so one reference wires up the full consumer surface.</Description>
+        <PackageTags>edict;cqrs;orleans;event-driven;outbox;saga;projection</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -52,6 +57,17 @@
     <ItemGroup>
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
+        <!-- Build-order dependency only: the generator + analyzer DLLs are
+             packed inside the Core nupkg under analyzers/dotnet/cs/ (see
+             the pack target below). ReferenceOutputAssembly=false keeps them
+             out of Edict.Core's compile output; we don't want the generators
+             running over framework code itself. -->
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          PrivateAssets="all" />
+        <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj"
+                          ReferenceOutputAssembly="false"
+                          PrivateAssets="all" />
     </ItemGroup>
 
     <!-- ADR-0034: ships Edict.Core.targets so consumers that PackageReference
@@ -59,5 +75,25 @@
     <ItemGroup>
         <None Include="build\Edict.Core.targets" Pack="true" PackagePath="build" />
     </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <!-- ADR-0043: pack the generator + analyzer assemblies inside the Core
+         nupkg under analyzers/dotnet/cs/ so one Edict.Core PackageReference
+         pulls them in transparently for consumers. -->
+    <Target Name="PackEdictRoslynAssemblies" BeforeTargets="_GetPackageFiles" DependsOnTargets="ResolveProjectReferences">
+        <ItemGroup>
+            <_PackageFiles Include="..\Edict.Generators\bin\$(Configuration)\netstandard2.0\Edict.Generators.dll"
+                           PackagePath="analyzers/dotnet/cs"
+                           Visible="false"
+                           BuildAction="None" />
+            <_PackageFiles Include="..\Edict.Analyzers\bin\$(Configuration)\netstandard2.0\Edict.Analyzers.dll"
+                           PackagePath="analyzers/dotnet/cs"
+                           Visible="false"
+                           BuildAction="None" />
+        </ItemGroup>
+    </Target>
 
 </Project>

@@ -7,6 +7,7 @@
         <Nullable>enable</Nullable>
         <IsAspireHost>true</IsAspireHost>
         <UserSecretsId>sample-apphost-kafkapostgres-edict</UserSecretsId>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <Sdk Name="Aspire.AppHost.Sdk" Version="13.3.1" />

@@ -4,6 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>Edict.Azure.Persistence</PackageId>
+        <Description>Azure Table Storage projection store, Orleans grain persistence, and reminders for the Edict CQRS framework. Pair with any Edict streaming package.</Description>
+        <PackageTags>edict;cqrs;orleans;azure;tables;persistence</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,6 +24,10 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>
