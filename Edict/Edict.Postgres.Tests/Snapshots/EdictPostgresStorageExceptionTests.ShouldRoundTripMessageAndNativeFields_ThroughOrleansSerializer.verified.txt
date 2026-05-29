@@ -1,0 +1,5 @@
+﻿{
+  Message: WriteStateAsync failed for grain agg/abc state 'state': boom,
+  NativeType: Npgsql.NpgsqlException,
+  NativeMessage: boom
+}

@@ -10,6 +10,8 @@ using Orleans.Serialization;
 
 using Xunit;
 
+using static VerifyXunit.Verifier;
+
 namespace Edict.Postgres.Tests;
 
 /// <summary>
@@ -28,7 +30,7 @@ public sealed class EdictPostgresStorageExceptionTests
     }
 
     [Fact]
-    public void ShouldRoundTripMessageAndNativeFields_ThroughOrleansSerializer()
+    public Task ShouldRoundTripMessageAndNativeFields_ThroughOrleansSerializer()
     {
         var serializer = BuildSerializer();
         var original = new EdictPostgresStorageException(
@@ -39,13 +41,11 @@ public sealed class EdictPostgresStorageExceptionTests
         var bytes = serializer.SerializeToArray(original);
         var roundTripped = serializer.Deserialize<EdictPostgresStorageException>(bytes);
 
-        Assert.Equal(original.Message, roundTripped.Message);
-        Assert.Equal("Npgsql.NpgsqlException", roundTripped.NativeType);
-        Assert.Equal("boom", roundTripped.NativeMessage);
+        return Verify(new { roundTripped.Message, roundTripped.NativeType, roundTripped.NativeMessage });
     }
 
     [Fact]
-    public void FromNpgsqlException_ShouldCaptureRuntimeTypeAndMessageVerbatim()
+    public Task FromNpgsqlException_ShouldCaptureRuntimeTypeAndMessageVerbatim()
     {
         // NpgsqlException is constructable directly with a message string —
         // good enough to assert the static factory's shape without forcing a
@@ -54,11 +54,7 @@ public sealed class EdictPostgresStorageExceptionTests
 
         var translated = EdictPostgresStorageException.From(native, "WriteStateAsync failed for grain X");
 
-        Assert.Equal(
-            "WriteStateAsync failed for grain X: connection pool exhausted",
-            translated.Message);
-        Assert.Equal(typeof(NpgsqlException).FullName, translated.NativeType);
-        Assert.Equal("connection pool exhausted", translated.NativeMessage);
+        return Verify(new { translated.Message, translated.NativeType, translated.NativeMessage });
     }
 
     [Fact]

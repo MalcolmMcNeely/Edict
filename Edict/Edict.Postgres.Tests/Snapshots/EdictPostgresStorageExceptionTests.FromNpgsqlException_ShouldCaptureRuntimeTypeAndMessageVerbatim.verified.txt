@@ -1,0 +1,5 @@
+﻿{
+  Message: WriteStateAsync failed for grain X: connection pool exhausted,
+  NativeType: Npgsql.NpgsqlException,
+  NativeMessage: connection pool exhausted
+}
