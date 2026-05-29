@@ -288,8 +288,6 @@ sealed class OutboxHost<TPayload>
                 }
                 else
                 {
-                    // Synthetic key — entry.EntryId is unique so a non-batchable
-                    // entry never coalesces with anything.
                     keyByEntry[entry.EntryId] = (string.Empty, entry.EntryId);
                     liveByEntry[entry.EntryId] = live;
                 }

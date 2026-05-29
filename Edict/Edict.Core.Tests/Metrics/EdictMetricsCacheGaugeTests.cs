@@ -44,7 +44,6 @@ public sealed class EdictMetricsCacheGaugeTests
         using var listener = StartIntListener(SemanticConventions.Outbox.Meters.PendingCount, marker, captures);
         listener.RecordObservableInstruments();
 
-        // Fully drained: no observation for this grain type.
         Assert.Empty(captures);
     }
 

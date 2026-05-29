@@ -83,43 +83,27 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
-        // Silo-local metrics cache: fed by every OutboxHost commit and
-        // EdictSaga event-handle, scraped by the three observable gauges.
-        // TryAdd so a host with its own assertable variant (the
-        // Edict.Testing rig) wins via the same swap-seam pattern as
-        // IEdictSender. The concrete EdictMetricsCache requires a
-        // TimeProvider — TryAddSingleton(TimeProvider.System) inside
-        // AddEdictOutbox or the test harness's FakeTimeProvider
-        // registration covers both cases.
+        // TryAdd so an assertable variant (the Edict.Testing rig) wins via
+        // the same swap-seam pattern as IEdictSender.
         services.TryAddSingleton<IEdictMetricsCache>(serviceProvider =>
             new EdictMetricsCache(serviceProvider.GetRequiredService<TimeProvider>()));
 
-        // Forensic dead-letter repository is auto-wired so the framework's
-        // no-silent-loss guarantee holds without consumer configuration.
-        // The provider plugs IEdictTableRepository<EdictDeadLetterEntry>:
-        // Edict.Testing's in-memory store factory in tests, Edict.Azure's table
-        // repository in production. The framework-shipped projection grain
-        // (EdictDeadLetterProjectionBuilder) is discovered by Orleans via the
-        // Edict.Core assembly reference; no further registration is required.
-        // Factory-delegate registration so a host that wires the framework but
-        // has no dead-letter table seam still constructs its DI container —
-        // the dependency is only resolved when an operator actually queries
-        // the repository (mirrors UpsertRowExecutor / DeadLetterPromoter's lazy
-        // service-provider lookup).
+        // Factory-delegate registration so a host that wires the framework
+        // but has no dead-letter table seam still constructs its DI
+        // container — the IEdictTableRepository<EdictDeadLetterEntry>
+        // dependency only resolves when an operator queries the repository.
         services.AddSingleton<IEdictDeadLetterRepository>(serviceProvider =>
             new TableBackedDeadLetterRepository(
                 serviceProvider.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
 
-        // Receiver-side claim-check unwrap. Every
-        // EdictIdempotencyBase consumer resolves this on the stream-observer
-        // path, so the framework's front door is the right home — independent
-        // of whether the host opted into AddEdictOutbox for publisher-side
-        // policy. The IEdictClaimCheckStore is optional: a host with no store
-        // still passes non-envelope and inline-payload events through.
-        // EdictDeadLetterProjectionBuilder is the one framework consumer
-        // for which the fetch is suppressed — the dead-letter row stores
-        // the pointer instead of inflating a >32 KB body into a 32 KB
-        // Azure Table property. Every other consumer fetches by default.
+        // Receiver-side wiring lives on the framework's front door rather
+        // than AddEdictOutbox: every EdictIdempotencyBase consumer resolves
+        // this on the stream-observer path, independent of publisher-side
+        // policy. The store is optional — a host with no store still passes
+        // non-envelope and inline-payload events through.
+        // EdictDeadLetterProjectionBuilder is the one consumer for which
+        // the fetch is suppressed — the dead-letter row stores the pointer,
+        // not the rehydrated event.
         services.TryAddSingleton(serviceProvider => new ClaimCheckUnwrap(
             serviceProvider.GetRequiredService<Serializer>(),
             serviceProvider.GetService<IEdictClaimCheckStore>(),

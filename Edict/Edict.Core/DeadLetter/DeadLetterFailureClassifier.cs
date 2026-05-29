@@ -30,9 +30,9 @@ static class DeadLetterFailureClassifier
         };
     }
 
-    // Forward-compatibility hook for EdictOutboxSaturatedException (planned by the
-    // dead-letter grain-backed-design slice). Match by name so the classifier doesn't
-    // need a hard reference to a type that doesn't ship yet.
+    // Forward-compatibility hook for EdictOutboxSaturatedException. Match by
+    // name so the classifier doesn't need a hard reference to a type that
+    // doesn't ship yet.
     static bool ContainsSaturated(string typeName) =>
         typeName.Contains("Saturated", StringComparison.OrdinalIgnoreCase);
 }

@@ -54,7 +54,6 @@ public sealed class OutboxDrainMetricsTests
         var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
         var host = BuildHost(state, log, new SuccessfulExecutor(), grainTypeName: marker);
 
-        // Both entries gated into the future — drain finds nothing ready.
         await host.EnqueueAndDrainAsync(
         [
             Entry(1) with { NextAttemptUtc = Now.AddMinutes(5) },

@@ -25,8 +25,6 @@ public sealed class MetricsCacheProbeTests
         var (totalPending, oldestEnqueuedAt) =
             app.GetOutboxState(typeof(WidgetAggregate).FullName!);
 
-        // Inline drain succeeded, so Pending is empty and the cache entry was
-        // removed — aggregate is zero with no oldest timestamp.
         Assert.Equal(0, totalPending);
         Assert.Null(oldestEnqueuedAt);
     }
