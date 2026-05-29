@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore
+        run: dotnet restore Edict/Edict.slnx
+
+      - name: Build
+        run: dotnet build Edict/Edict.slnx --configuration Release --no-restore
+
+      - name: Test (excluding Edict.Benchmarks.Throughput.Tests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find . \( -name '*.Tests.csproj' -o -name 'Edict.Tests.Conformance.csproj' \) -not -path '*Edict.Benchmarks.Throughput.Tests*' | sort)
+          for project in "${projects[@]}"; do
+            echo "::group::Testing $project"
+            dotnet test "$project" --configuration Release --no-build
+            echo "::endgroup::"
+          done

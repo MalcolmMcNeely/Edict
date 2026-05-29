@@ -1,5 +1,7 @@
 # Edict
 
+[![CI](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml)
+
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
 A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics.
