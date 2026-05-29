@@ -5,6 +5,25 @@ description: Test-driven development with red-green-refactor loop. Use when user
 
 # Test-Driven Development
 
+## Edict conventions apply at every step
+
+This is a generic TDD loop. **The Edict skills override the generic examples below.** The SessionStart hook injects `csharp`, `testing`, `blazor`, and `surface-config` into every session — those skills are authoritative, not this one. Re-read them before each RED and each GREEN, not just at the start of the task.
+
+The four rules most often blown past during TDD — check each on every cycle:
+
+1. **Naming.** Never abbreviate. `cancellationToken` not `ct`, `serviceProvider` not `sp`, `exception` not `ex`, `logger` not `log`. Applies to test parameters, locals, lambda variables — everywhere. (`csharp` skill, also enforced by the `block-style-violations.ps1` PostToolUse hook.)
+2. **Verify over Assert chains.** When the GREEN outcome has more than one field, the assertion is a single `Verify(...)` snapshot — not a stack of `Assert.Equal`. Use targeted `Assert`s only for a single behavioural fact (e.g. exception type) or for a semantically load-bearing Guid alongside the `Verify`. Contract-surface round-trips **are** the ADR 0007 drift guard. (`testing` skill.)
+3. **Project placement (ADR 0016).** Pick the test project deliberately *before* writing the test:
+   - Mechanism logic, in-memory only → `Edict.Core.Tests`. **No Testcontainers, no Azurite here.**
+   - Real-infra battery (at-least-once, dedup realism, table-projection persistence) → `Edict.Azure.Tests` / `Edict.Postgres.Tests` / `Edict.Kafka.Tests` via Testcontainers.
+   - Span tree / `edict.*` tags → `Edict.Telemetry.Tests`.
+   - Generator output shape → `Edict.Generators.Tests` (Verify snapshots).
+   - `EDICT00x` diagnostics → `Edict.Analyzers.Tests` (assert diagnostic line positions).
+   - Internal framework tests **never** depend on `Edict.Testing` — that surface is proven by Sample app tests only.
+4. **Comments and AAA.** No comments that restate what the code does. No XML doc on internal-only types. No ADR-number citations inline. The `// Arrange` / `// Act` / `// Assert` markers **are** allowed — they are the one permitted readability convention in test bodies. No section-divider comments inside test files; split into separate files instead.
+
+Also: **FluentAssertions is banned** (commercial licence). **Moq is banned for infrastructure boundaries** — use real Azurite/Postgres/Kafka via Testcontainers in the provider suites.
+
 ## Philosophy
 
 **Core principle**: Tests should verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
@@ -86,14 +105,12 @@ Rules:
 - Don't anticipate future tests
 - Keep tests focused on observable behavior
 
-**Asserting GREEN in this repo:** the project convention (CLAUDE.md, the
-`testing` skill) overrides this skill's generic Assert-based examples. The
-GREEN assertion defaults to a **single Verify snapshot** capturing the
-outcome and shape, not a chain of `Assert.Equal`. Reach for a few targeted
-`Assert`s only for a single behavioral fact (e.g. an exception type). For
-the command/event contract surface, the round-trip/shape test **is** the
-ADR 0007 Verify drift guard — a renamed or removed property must fail CI on
-the snapshot diff. Use fixed, deterministic inputs so the snapshot is
+**Asserting GREEN in this repo:** see the "Edict conventions apply" section
+above — Verify snapshot over Assert chains, no abbreviated names in the
+test, AAA markers allowed, ADR 0016 project placement chosen deliberately.
+For the command/event contract surface, the round-trip/shape test **is**
+the ADR 0007 Verify drift guard — a renamed or removed property must fail
+CI on the snapshot diff. Use fixed, deterministic inputs so the snapshot is
 stable and the literal values are themselves the assertion.
 
 ### 4. Refactor
@@ -130,6 +147,13 @@ Once all tests are GREEN and any refactoring is done:
 [ ] Test would survive internal refactor
 [ ] Code is minimal for this test
 [ ] No speculative features added
-[ ] GREEN asserted via a Verify snapshot, not an Assert chain (targeted Asserts only for a single behavioral fact)
+
+Edict conventions (every cycle, not just the first):
+[ ] Test parameters, locals, lambdas use full words — no ct/sp/ex/log
+[ ] GREEN asserted via a Verify snapshot, not an Assert chain (targeted Asserts only for a single behavioural fact, or a load-bearing Guid alongside Verify)
 [ ] Contract-surface tests double as the ADR 0007 Verify drift guard
+[ ] Test landed in the right project per ADR 0016 (no Azurite in Core.Tests, no mechanism logic in provider suites, no Edict.Testing dependency from framework tests)
+[ ] No comments that restate what the code does; no XML doc on internal-only types; no ADR-number citations inline; AAA markers are fine
+[ ] No FluentAssertions; no Moq at infrastructure boundaries
+[ ] If the implementation introduced a tunable (TimeSpan, int, magic string) on the Edict.Core / Edict.Contracts / provider surface, the surface-config skill's five-step ADR-0028 checklist was followed — it is an options property, not a literal in mechanism code
 ```
