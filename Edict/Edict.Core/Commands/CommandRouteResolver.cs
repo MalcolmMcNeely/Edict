@@ -38,6 +38,6 @@ public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute>
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        return !routes.TryGetValue(command.GetType(), out var route) ? throw new UnroutableCommandException(command.GetType()) : route;
+        return !routes.TryGetValue(command.GetType(), out var route) ? throw new EdictUnroutableCommandException(command.GetType()) : route;
     }
 }

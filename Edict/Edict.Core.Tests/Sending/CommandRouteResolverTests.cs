@@ -46,11 +46,11 @@ public class CommandRouteResolverTests
     }
 
     [Fact]
-    public void Resolve_ShouldThrowUnroutableCommandException_WhenCommandIsUnmapped()
+    public void Resolve_ShouldThrowEdictUnroutableCommandException_WhenCommandIsUnmapped()
     {
         var resolver = ResolverFor();
 
-        var exception = Assert.Throws<UnroutableCommandException>(
+        var exception = Assert.Throws<EdictUnroutableCommandException>(
             () => resolver.Resolve(new PlaceOrder(Guid.NewGuid())));
 
         Assert.Equal(typeof(PlaceOrder), exception.CommandType);

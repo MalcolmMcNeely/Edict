@@ -38,7 +38,7 @@ internal static class CommandGrainSpineEmitter
                             result = await (command switch
                             {
             {{arms.ToString().TrimEnd('\n')}}
-                                _ => throw new global::Edict.Core.Commands.UnroutableCommandException(
+                                _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
                                     command.GetType()),
                             });
                         }

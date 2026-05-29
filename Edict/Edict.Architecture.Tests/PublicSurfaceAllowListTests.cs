@@ -1,4 +1,5 @@
 using Edict.Contracts.Commands;
+using Edict.Core.Commands;
 
 using Xunit;
 
@@ -12,18 +13,57 @@ namespace Edict.Architecture.Tests;
 public class PublicSurfaceAllowListTests
 {
     [Fact]
+    public void EdictCore_ExceptionsHaveEdictPrefix()
+    {
+        var coreAssembly = typeof(CommandRouteResolver).Assembly;
+        var offenders = coreAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Where(type => typeof(Exception).IsAssignableFrom(type))
+            .Where(type => type.Name.EndsWith("Exception", StringComparison.Ordinal))
+            .Where(type => !type.Name.StartsWith("Edict", StringComparison.Ordinal))
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            "Public exception types in Edict.Core must be Edict-prefixed:\n  - "
+                + string.Join("\n  - ", offenders));
+    }
+
+    [Fact]
     public void EdictContracts_PublicTypesMatchAllowList()
     {
         var contractsAssembly = typeof(EdictCommand).Assembly;
         var actual = contractsAssembly
             .GetExportedTypes()
-            .Where(t => !t.IsNested)
-            .Select(t => t.FullName!)
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
         var unexpected = actual.Where(name => !EdictContractsAllowList.Contains(name)).ToList();
         var missing = EdictContractsAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
+    [Fact]
+    public void EdictCore_PublicTypesMatchAllowList()
+    {
+        var coreAssembly = typeof(CommandRouteResolver).Assembly;
+        var actual = coreAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictCoreAllowList.Contains(name)).ToList();
+        var missing = EdictCoreAllowList.Where(name => !actual.Contains(name)).ToList();
 
         Assert.True(
             unexpected.Count == 0 && missing.Count == 0,
@@ -58,6 +98,69 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.TableStorage.IEdictTableRepository`1",
         "Edict.Contracts.TableStorage.IEdictTableWriteStore`1",
         "Edict.Contracts.Telemetry.EdictTelemeterizedAttribute",
+    };
+
+    static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Core.Commands.CommandRoute",
+        "Edict.Core.Commands.CommandRouteResolver",
+        "Edict.Core.Commands.EdictCommandHandler",
+        "Edict.Core.Commands.EdictCommandHandler`1",
+        "Edict.Core.Commands.EdictSender",
+        "Edict.Core.Commands.EdictUnroutableCommandException",
+        "Edict.Core.Commands.IEdictCommandHandler",
+        "Edict.Core.Configuration.EdictWiringException",
+        "Edict.Core.Configuration.EdictWiringValidator",
+        "Edict.Core.DeadLetter.EdictClaimCheckFetchException",
+        "Edict.Core.DeadLetter.EdictDeadLetterProjectionBuilder",
+        "Edict.Core.DeadLetter.EdictInternalInvariantException",
+        "Edict.Core.DeadLetter.EdictMissingRouteKeyException",
+        "Edict.Core.DeadLetter.EdictSagaCoordinationException",
+        "Edict.Core.DeadLetter.EdictUnregisteredTypeException",
+        "Edict.Core.DeadLetter.EdictUnsupportedEffectKindException",
+        "Edict.Core.EdictServiceCollectionExtensions",
+        "Edict.Core.EdictSiloBuilderExtensions",
+        "Edict.Core.EventHandler.EdictEventHandler",
+        "Edict.Core.Idempotency.EdictIdempotencyBase",
+        "Edict.Core.Idempotency.EdictIdempotencyBase`1",
+        "Edict.Core.Idempotency.IEdictEventConsumer",
+        "Edict.Core.Idempotency.IdempotencyState", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Metrics.IEdictMetricsCache",
+        "Edict.Core.Outbox.EventStreamAccessors",
+        "Edict.Core.Outbox.GrainEnvelope`1", // ADR 0045: base chain of EdictCommandHandler<TState> / EdictIdempotencyBase<TPayload> — permanent resident (CS9338).
+        "Edict.Core.Outbox.IEventStreamAccessors",
+        "Edict.Core.Outbox.OutboxBackoff",
+        "Edict.Core.Outbox.OutboxEffectKind", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Outbox.OutboxEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Outbox.OutboxServiceCollectionExtensions",
+        "Edict.Core.Outbox.OutboxSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Outbox.UpsertRowEffect", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Projections.EdictProjectionBuilder",
+        "Edict.Core.Projections.EdictTableProjectionBuilder`1",
+        "Edict.Core.Projections.IEdictProjectionBuilder",
+        "Edict.Core.Sagas.EdictSaga`1",
+        "Edict.Core.Sagas.IEdictSaga",
+        "Edict.Core.Serialization.EdictSerialization",
+        "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictTableProjectionBuilder<T> — permanent resident.
+        "OrleansCodeGen.Edict.Core.Commands.Codec_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
+        "OrleansCodeGen.Edict.Core.Commands.Copier_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
+        "OrleansCodeGen.Edict.Core.Commands.Invokable_IEdictCommandHandler_GrainReference_E0958B40",
+        "OrleansCodeGen.Edict.Core.Idempotency.Codec_IdempotencyState",
+        "OrleansCodeGen.Edict.Core.Idempotency.Codec_Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
+        "OrleansCodeGen.Edict.Core.Idempotency.Copier_IdempotencyState",
+        "OrleansCodeGen.Edict.Core.Idempotency.Copier_Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
+        "OrleansCodeGen.Edict.Core.Idempotency.Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
+        "OrleansCodeGen.Edict.Core.Outbox.Codec_GrainEnvelope`1",
+        "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxEntry",
+        "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxSlice",
+        "OrleansCodeGen.Edict.Core.Outbox.Codec_UpsertRowEffect",
+        "OrleansCodeGen.Edict.Core.Outbox.Copier_GrainEnvelope`1",
+        "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxEntry",
+        "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxSlice",
+        "OrleansCodeGen.Edict.Core.Outbox.Copier_UpsertRowEffect",
+        "OrleansCodeGen.Edict.Core.Sagas.Codec_Invokable_IEdictSaga_GrainReference_747818AD",
+        "OrleansCodeGen.Edict.Core.Sagas.Copier_Invokable_IEdictSaga_GrainReference_747818AD",
+        "OrleansCodeGen.Edict.Core.Sagas.Invokable_IEdictSaga_GrainReference_747818AD",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)

@@ -53,7 +53,7 @@ namespace Sample
                 {
                 global::Sample.CancelOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
                 global::Sample.PlaceOrder c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),
-                    _ => throw new global::Edict.Core.Commands.UnroutableCommandException(
+                    _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
                         command.GetType()),
                 });
             }

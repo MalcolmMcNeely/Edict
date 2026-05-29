@@ -50,7 +50,7 @@ static class RouteDiscovery
         {
             logger.LogWarning(
                 "AddEdict() found no [assembly: EdictRoutes] in the scanned assemblies. " +
-                "Send() will throw UnroutableCommandException until a handler-bearing assembly is referenced.");
+                "Send() will throw EdictUnroutableCommandException until a handler-bearing assembly is referenced.");
         }
         return routes;
     }

@@ -7,7 +7,7 @@ namespace Edict.Core.Commands;
 /// business rejection, so it throws rather than returning a
 /// <see cref="Contracts.Results.CommandResult.Rejected"/>.
 /// </summary>
-public sealed class UnroutableCommandException(Type commandType)
+public sealed class EdictUnroutableCommandException(Type commandType)
     : InvalidOperationException(
         $"No aggregate grain handles command '{commandType.FullName}'. " +
         $"Declare a Handle({commandType.Name}) overload on a CommandHandlerGrain " +
