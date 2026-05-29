@@ -38,7 +38,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.NamedType);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
@@ -68,7 +68,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool DerivesFrom(INamedTypeSymbol type, string fqn)
+    static bool DerivesFrom(INamedTypeSymbol type, string fqn)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

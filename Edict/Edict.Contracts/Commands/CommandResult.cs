@@ -13,7 +13,7 @@ namespace Edict.Contracts.Commands;
 [MessagePackObject(keyAsPropertyName: true)]
 public abstract record EdictCommandResult
 {
-    private EdictCommandResult()
+    EdictCommandResult()
     {
     }
 

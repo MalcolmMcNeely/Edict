@@ -8,8 +8,8 @@ namespace Edict.Telemetry.Tests;
 
 public sealed class ActivityExtensionsTests : IDisposable
 {
-    private readonly ActivityListener _listener;
-    private readonly List<Activity> _stopped = [];
+    readonly ActivityListener _listener;
+    readonly List<Activity> _stopped = [];
 
     public ActivityExtensionsTests()
     {

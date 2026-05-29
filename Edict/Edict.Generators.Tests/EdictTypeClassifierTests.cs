@@ -214,7 +214,7 @@ public class EdictTypeClassifierTests
 
             public sealed class Outer
             {
-                private sealed partial record OrderPlacedEvent(Guid Id) : EdictEvent
+                sealed partial record OrderPlacedEvent(Guid Id) : EdictEvent
                 {
                     [EdictRouteKey]
                     public Guid Id { get; init; } = Id;
@@ -239,7 +239,7 @@ public class EdictTypeClassifierTests
         Assert.Equal(EdictTypeKind.None, ClassifyFirstTypeDeclaration(source));
     }
 
-    private static EdictTypeKind ClassifyFirstTypeDeclaration(string source, int skip = 0)
+    static EdictTypeKind ClassifyFirstTypeDeclaration(string source, int skip = 0)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)

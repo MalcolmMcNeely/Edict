@@ -159,7 +159,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         Assert.NotNull(edictEvent.SpanId);
     }
 
-    private async Task<IReadOnlyList<Edict.Contracts.Events.EdictEvent>> WaitForEventsAsync(
+    async Task<IReadOnlyList<Edict.Contracts.Events.EdictEvent>> WaitForEventsAsync(
         Guid orderId, int expectedCount = 1)
     {
         var captureGrain = fixture.Cluster.GrainFactory.GetGrain<ITelOrderEventCaptureGrain>(orderId);
@@ -168,7 +168,10 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         {
             var events = await captureGrain.GetCapturedEventsAsync();
             if (events.Count >= expectedCount)
+            {
                 return events;
+            }
+
             await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
         return await captureGrain.GetCapturedEventsAsync();

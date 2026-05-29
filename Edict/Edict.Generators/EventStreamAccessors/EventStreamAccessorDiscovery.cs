@@ -71,6 +71,6 @@ internal static class EventStreamAccessorDiscovery
             routeKeyProperty);
     }
 
-    private static readonly SymbolDisplayFormat FullyQualified =
+    static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
 }

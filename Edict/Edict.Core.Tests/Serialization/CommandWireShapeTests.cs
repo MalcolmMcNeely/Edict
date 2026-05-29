@@ -29,8 +29,8 @@ public sealed partial record MixedPrimitiveCommand(Guid ProbeId) : EdictCommand
 
 public sealed class CommandWireShapeTests
 {
-    private static readonly Guid FixedCommandId = new("11111111-1111-1111-1111-111111111111");
-    private static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
+    static readonly Guid FixedCommandId = new("11111111-1111-1111-1111-111111111111");
+    static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
 
     [Fact]
     public Task PlaceOrderCommand_ShouldHaveStableWireShape()
@@ -98,7 +98,7 @@ public sealed class CommandWireShapeTests
         return VerifyWireShape(command);
     }
 
-    private static Task VerifyWireShape<T>(T command) where T : EdictCommand
+    static Task VerifyWireShape<T>(T command) where T : EdictCommand
     {
         var bytes = MessagePackSerializer.Serialize(command);
         var json = MessagePackSerializer.ConvertToJson(bytes);

@@ -95,9 +95,9 @@ internal static class GeneratorIncrementalityHarness
         }
     }
 
-    private const string UnrelatedV1 =
+    const string UnrelatedV1 =
         "namespace Edict.Generators.Tests.HarnessUnrelated { internal sealed class Sentinel { } }";
 
-    private const string UnrelatedV2 =
+    const string UnrelatedV2 =
         "namespace Edict.Generators.Tests.HarnessUnrelated { internal sealed class Sentinel { /* edit */ } }";
 }

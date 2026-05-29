@@ -15,10 +15,10 @@ namespace Edict.Analyzers.Tests;
 /// </summary>
 public class EdictWellKnownNamesParityTests
 {
-    private static readonly Assembly GeneratorsAssembly =
+    static readonly Assembly GeneratorsAssembly =
         typeof(EdictGenerator).Assembly;
 
-    private static readonly Assembly AnalyzersAssembly =
+    static readonly Assembly AnalyzersAssembly =
         typeof(GrainMustBePartialAnalyzer).Assembly;
 
     [Fact]

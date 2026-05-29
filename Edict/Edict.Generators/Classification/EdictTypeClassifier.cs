@@ -58,7 +58,7 @@ public static class EdictTypeClassifier
         return ClassifyByBaseChain(symbol);
     }
 
-    private static EdictTypeKind ClassifyByBaseChain(INamedTypeSymbol symbol)
+    static EdictTypeKind ClassifyByBaseChain(INamedTypeSymbol symbol)
     {
         for (var current = symbol.BaseType; current is not null; current = current.BaseType)
         {
@@ -101,9 +101,9 @@ public static class EdictTypeClassifier
         return EdictTypeKind.None;
     }
 
-    private static readonly SymbolDisplayFormat FullyQualified =
+    static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
 
-    private static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
         SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 }

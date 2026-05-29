@@ -92,7 +92,7 @@ internal static class CommandDiscovery
             new EquatableArray<CommandModel>(commands));
     }
 
-    private static CommandModel? MapCommand(INamedTypeSymbol command)
+    static CommandModel? MapCommand(INamedTypeSymbol command)
     {
         string? routeKeyProperty = null;
         var telemeterizedProperties = new List<TelemeterizedProperty>();
@@ -139,7 +139,7 @@ internal static class CommandDiscovery
             new EquatableArray<TelemeterizedProperty>(telemeterizedProperties));
     }
 
-    private static bool IsPrimitiveType(ITypeSymbol type) =>
+    static bool IsPrimitiveType(ITypeSymbol type) =>
         type.SpecialType is
             SpecialType.System_String or
             SpecialType.System_Boolean or
@@ -157,7 +157,7 @@ internal static class CommandDiscovery
             SpecialType.System_Char
         || type.ToDisplayString(FullyQualified) == "global::System.Guid";
 
-    private static bool DerivesFromCommand(INamedTypeSymbol type)
+    static bool DerivesFromCommand(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
@@ -170,6 +170,6 @@ internal static class CommandDiscovery
         return false;
     }
 
-    private static readonly SymbolDisplayFormat FullyQualified =
+    static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
 }

@@ -47,7 +47,7 @@ public class IncrementalityTests
         GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(SagaSource);
     }
 
-    private const string CommandSource = """
+    const string CommandSource = """
         using System;
         using System.Threading.Tasks;
 
@@ -69,7 +69,7 @@ public class IncrementalityTests
         }
         """;
 
-    private const string EventSource = """
+    const string EventSource = """
         using System;
 
         using Edict.Contracts.Events;
@@ -86,7 +86,7 @@ public class IncrementalityTests
         }
         """;
 
-    private const string EventHandlerSource = """
+    const string EventHandlerSource = """
         using System;
         using System.Threading.Tasks;
 
@@ -110,7 +110,7 @@ public class IncrementalityTests
         }
         """;
 
-    private const string ProjectionSource = """
+    const string ProjectionSource = """
         using System;
         using System.Threading.Tasks;
 
@@ -134,7 +134,7 @@ public class IncrementalityTests
         }
         """;
 
-    private const string SagaSource = """
+    const string SagaSource = """
         using System;
         using System.Threading.Tasks;
 
@@ -174,7 +174,7 @@ public class IncrementalityTests
     /// unrelated tree), so the output step re-runs every time. This is the
     /// canonical "closes over Compilation" mistake the harness must catch.
     /// </summary>
-    private sealed class BrokenViaCompilationProviderGenerator : IIncrementalGenerator
+    sealed class BrokenViaCompilationProviderGenerator : IIncrementalGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {

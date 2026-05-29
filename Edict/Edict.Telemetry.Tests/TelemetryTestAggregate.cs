@@ -62,7 +62,7 @@ public interface ITelOrderEventCaptureGrain : IGrainWithGuidKey
 [ImplicitStreamSubscription("TelOrders")]
 public sealed class TelOrderEventCaptureGrain : Grain, ITelOrderEventCaptureGrain
 {
-    private readonly List<EdictEvent> _events = [];
+    readonly List<EdictEvent> _events = [];
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {

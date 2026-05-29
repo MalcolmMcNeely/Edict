@@ -12,7 +12,7 @@ namespace Edict.Analyzers.Routing;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 {
-    private const string GuidFqn = "global::System.Guid";
+    const string GuidFqn = "global::System.Guid";
 
     internal static readonly DiagnosticDescriptor MissingRouteKey = new DiagnosticDescriptor(
         id: "EDICT003",
@@ -48,7 +48,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.NamedType);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
@@ -85,7 +85,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static List<IPropertySymbol> CollectRouteKeyProperties(INamedTypeSymbol type)
+    static List<IPropertySymbol> CollectRouteKeyProperties(INamedTypeSymbol type)
     {
         var result = new List<IPropertySymbol>();
 
@@ -110,7 +110,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         return result;
     }
 
-    private static bool DerivesFromCommand(INamedTypeSymbol type)
+    static bool DerivesFromCommand(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
@@ -123,7 +123,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool DerivesFromEvent(INamedTypeSymbol type)
+    static bool DerivesFromEvent(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

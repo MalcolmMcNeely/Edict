@@ -24,7 +24,9 @@ public static class ActivityExtensions
         RequestContext.Set(EdictDiagnostics.TraceIdKey, activity.TraceId.ToHexString());
         RequestContext.Set(EdictDiagnostics.SpanIdKey, activity.SpanId.ToHexString());
         if (activity.TraceStateString is { } traceState)
+        {
             RequestContext.Set(EdictDiagnostics.TraceStateKey, traceState);
+        }
     }
 
     /// <summary>

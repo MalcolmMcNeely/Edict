@@ -9,14 +9,14 @@ namespace Edict.Core.Tests.Outbox;
 
 public sealed class OutboxSliceTests
 {
-    private static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
-    private static readonly Guid EntryB = new("bbbbbbbb-0000-0000-0000-000000000002");
-    private static readonly Guid EntryC = new("cccccccc-0000-0000-0000-000000000003");
-    private static readonly Guid PromotedId = new("dddddddd-0000-0000-0000-000000000099");
-    private static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
-    private static readonly EdictOptions Options = new();
+    static readonly Guid EntryA = new("aaaaaaaa-0000-0000-0000-000000000001");
+    static readonly Guid EntryB = new("bbbbbbbb-0000-0000-0000-000000000002");
+    static readonly Guid EntryC = new("cccccccc-0000-0000-0000-000000000003");
+    static readonly Guid PromotedId = new("dddddddd-0000-0000-0000-000000000099");
+    static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
+    static readonly EdictOptions Options = new();
 
-    private static OutboxEntry Entry(Guid id, OutboxEffectKind kind) => new()
+    static OutboxEntry Entry(Guid id, OutboxEffectKind kind) => new()
     {
         EntryId = id,
         Kind = kind,

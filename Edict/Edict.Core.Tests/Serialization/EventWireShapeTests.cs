@@ -9,8 +9,8 @@ namespace Edict.Core.Tests.Serialization;
 
 public sealed class EventWireShapeTests
 {
-    private static readonly Guid FixedEventId = new("33333333-3333-3333-3333-333333333333");
-    private static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
+    static readonly Guid FixedEventId = new("33333333-3333-3333-3333-333333333333");
+    static readonly Guid FixedAggregateId = new("22222222-2222-2222-2222-222222222222");
 
     [Fact]
     public Task OrderPlacedEvent_ShouldHaveStableWireShape()
@@ -27,7 +27,7 @@ public sealed class EventWireShapeTests
         return VerifyWireShape(edictEvent);
     }
 
-    private static Task VerifyWireShape<T>(T edictEvent) where T : EdictEvent
+    static Task VerifyWireShape<T>(T edictEvent) where T : EdictEvent
     {
         var bytes = MessagePackSerializer.Serialize(edictEvent);
         var json = MessagePackSerializer.ConvertToJson(bytes);

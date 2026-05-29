@@ -53,7 +53,10 @@ public sealed class UpsertRowGapClosureAzureTests(AzureUpsertRowRecoveryClusterF
         while (DateTimeOffset.UtcNow < deadline)
         {
             if (await condition())
+            {
                 return;
+            }
+
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
     }

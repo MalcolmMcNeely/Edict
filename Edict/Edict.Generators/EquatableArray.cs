@@ -24,7 +24,7 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
 {
     public static readonly EquatableArray<T> Empty = new(Array.Empty<T>());
 
-    private readonly T[]? array;
+    readonly T[]? array;
 
     public EquatableArray(T[] array)
     {

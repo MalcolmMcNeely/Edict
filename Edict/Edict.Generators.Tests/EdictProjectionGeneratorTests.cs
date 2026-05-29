@@ -4,7 +4,7 @@ namespace Edict.Generators.Tests;
 
 public class EdictProjectionGeneratorTests
 {
-    private const string SingleStreamConsumer = """
+    const string SingleStreamConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -29,7 +29,7 @@ public class EdictProjectionGeneratorTests
         }
         """;
 
-    private const string MultiEventSameStreamConsumer = """
+    const string MultiEventSameStreamConsumer = """
         using System;
         using System.Threading.Tasks;
 

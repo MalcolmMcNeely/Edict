@@ -21,7 +21,7 @@ public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IEdic
     public Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<T>>(GetPartition(partitionKey));
 
-    private readonly Dictionary<(string pk, string rk), T> _rows = new();
+    readonly Dictionary<(string pk, string rk), T> _rows = new();
 
     public void UpsertObject(string partitionKey, string rowKey, object row) =>
         _rows[(partitionKey, rowKey)] = (T)row;
@@ -56,7 +56,7 @@ public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IEdic
 /// </summary>
 public sealed class InMemoryTableStoreFactory : IEdictTableStoreFactory
 {
-    private readonly Dictionary<string, object> _stores = new();
+    readonly Dictionary<string, object> _stores = new();
 
     public Task<IEdictTableWriteStore<T>> CreateAsync<T>(
         string tableName,

@@ -75,7 +75,7 @@ internal static class GeneratorTestHarness
                        || kvp.Key == "Edict.Generated.InterceptsLocationAttribute.g.cs")
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-    private static IReadOnlyDictionary<string, string> RunUnified(
+    static IReadOnlyDictionary<string, string> RunUnified(
         string consumerSource, bool interceptorsEnabled = true)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)

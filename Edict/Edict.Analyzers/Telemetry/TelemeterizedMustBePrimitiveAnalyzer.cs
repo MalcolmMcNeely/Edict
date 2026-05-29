@@ -29,7 +29,7 @@ public sealed class TelemeterizedMustBePrimitiveAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.Property);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var property = (IPropertySymbol)context.Symbol;
 
@@ -51,7 +51,7 @@ public sealed class TelemeterizedMustBePrimitiveAnalyzer : DiagnosticAnalyzer
             Diagnostic.Create(Rule, property.Locations[0], property.Name));
     }
 
-    private static bool IsPrimitiveType(ITypeSymbol type) =>
+    static bool IsPrimitiveType(ITypeSymbol type) =>
         type.SpecialType is
             SpecialType.System_String or
             SpecialType.System_Boolean or

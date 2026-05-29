@@ -16,7 +16,7 @@ file interface IOrderCommandHandler;
 
 public class CommandRouteResolverTests
 {
-    private static CommandRouteResolver ResolverFor(params CommandRoute[] routes) =>
+    static CommandRouteResolver ResolverFor(params CommandRoute[] routes) =>
         new(routes.ToDictionary(route => route.CommandType));
 
     [Fact]

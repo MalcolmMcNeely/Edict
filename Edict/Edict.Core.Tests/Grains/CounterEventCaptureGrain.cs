@@ -19,7 +19,7 @@ public interface ICounterEventCaptureGrain : IGrainWithGuidKey
 [ImplicitStreamSubscription("Counters")]
 public sealed class CounterEventCaptureGrain : Grain, ICounterEventCaptureGrain
 {
-    private readonly List<EdictEvent> _events = [];
+    readonly List<EdictEvent> _events = [];
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {

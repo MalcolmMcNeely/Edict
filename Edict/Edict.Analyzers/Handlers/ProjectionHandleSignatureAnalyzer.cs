@@ -36,7 +36,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.Method);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var method = (IMethodSymbol)context.Symbol;
 
@@ -71,7 +71,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool DerivesFrom(INamedTypeSymbol type, string fqn)
+    static bool DerivesFrom(INamedTypeSymbol type, string fqn)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
@@ -85,7 +85,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private static bool DerivesFromEvent(INamedTypeSymbol type)
+    static bool DerivesFromEvent(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

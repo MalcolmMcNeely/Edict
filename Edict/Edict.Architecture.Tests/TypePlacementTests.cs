@@ -26,7 +26,7 @@ namespace Edict.Architecture.Tests;
 
 public class TypePlacementTests
 {
-    private static readonly DomainArchitecture Architecture = new ArchLoader()
+    static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(AzureTableWriteStoreFactory).Assembly,
             typeof(EdictCommand).Assembly,

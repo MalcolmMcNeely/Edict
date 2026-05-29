@@ -30,7 +30,7 @@ public sealed class CommandMustBePartialAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.NamedType);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
@@ -55,7 +55,7 @@ public sealed class CommandMustBePartialAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool DerivesFromCommand(INamedTypeSymbol type)
+    static bool DerivesFromCommand(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

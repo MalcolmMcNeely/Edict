@@ -102,9 +102,17 @@ public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
             var method = serializerType.GetMethods()
                 .FirstOrDefault(m =>
                 {
-                    if (m.Name != nameof(Serializer<object>.SerializeToArray)) return false;
+                    if (m.Name != nameof(Serializer<object>.SerializeToArray))
+                    {
+                        return false;
+                    }
+
                     var parameters = m.GetParameters();
-                    if (parameters.Length == 0) return false;
+                    if (parameters.Length == 0)
+                    {
+                        return false;
+                    }
+
                     var first = parameters[0].ParameterType;
                     var elementType = first.IsByRef ? first.GetElementType() : first;
                     return elementType == rowType;

@@ -28,7 +28,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
         context.RegisterSymbolAction(Analyze, SymbolKind.Method);
     }
 
-    private static void Analyze(SymbolAnalysisContext context)
+    static void Analyze(SymbolAnalysisContext context)
     {
         var method = (IMethodSymbol)context.Symbol;
 
@@ -58,7 +58,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool DerivesFromCommand(INamedTypeSymbol type)
+    static bool DerivesFromCommand(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

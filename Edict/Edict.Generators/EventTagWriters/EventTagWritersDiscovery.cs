@@ -63,7 +63,7 @@ internal static class EventTagWritersDiscovery
             new EquatableArray<TelemeterizedProperty>(telemeterizedProperties));
     }
 
-    private static bool IsPrimitiveType(ITypeSymbol type) =>
+    static bool IsPrimitiveType(ITypeSymbol type) =>
         type.SpecialType is
             SpecialType.System_String or
             SpecialType.System_Boolean or
@@ -81,6 +81,6 @@ internal static class EventTagWritersDiscovery
             SpecialType.System_Char
         || type.ToDisplayString(FullyQualified) == "global::System.Guid";
 
-    private static readonly SymbolDisplayFormat FullyQualified =
+    static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
 }

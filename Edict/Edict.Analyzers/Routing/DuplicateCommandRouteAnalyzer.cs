@@ -31,7 +31,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationAction(Analyze);
     }
 
-    private static void Analyze(CompilationAnalysisContext context)
+    static void Analyze(CompilationAnalysisContext context)
     {
         var firstHandler = new Dictionary<string, string>();
 
@@ -72,7 +72,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static IEnumerable<INamedTypeSymbol> GetAllTypes(INamespaceSymbol ns)
+    static IEnumerable<INamedTypeSymbol> GetAllTypes(INamespaceSymbol ns)
     {
         foreach (var type in ns.GetTypeMembers())
         {
@@ -88,7 +88,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool DerivesFromCommand(INamedTypeSymbol type)
+    static bool DerivesFromCommand(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {

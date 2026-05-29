@@ -4,7 +4,7 @@ namespace Edict.Generators.Tests;
 
 public class EdictEventGeneratorTests
 {
-    private const string SampleEventConsumer = """
+    const string SampleEventConsumer = """
         using System;
         using Edict.Contracts.Commands;
         using Edict.Contracts.Events;

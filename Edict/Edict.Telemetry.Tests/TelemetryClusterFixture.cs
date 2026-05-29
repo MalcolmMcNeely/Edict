@@ -30,13 +30,13 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
     public Task DisposeAsync() =>
         Cluster is not null ? Cluster.DisposeAsync().AsTask() : Task.CompletedTask;
 
-    private static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
+    static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(TelOrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
-    private sealed class SiloConfigurator : ISiloConfigurator
+    sealed class SiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
@@ -51,7 +51,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
         }
     }
 
-    private sealed class ClientConfigurator : IClientBuilderConfigurator
+    sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
             Microsoft.Extensions.Configuration.IConfiguration configuration,

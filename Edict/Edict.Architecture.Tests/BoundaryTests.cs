@@ -19,7 +19,7 @@ namespace Edict.Architecture.Tests;
 
 public class BoundaryTests
 {
-    private static readonly DomainArchitecture Architecture = new ArchLoader()
+    static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
@@ -183,11 +183,14 @@ public class BoundaryTests
         Assert.Empty(gitkeepFiles);
     }
 
-    private static string GetSolutionRoot()
+    static string GetSolutionRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !dir.EnumerateFiles("*.slnx").Any())
+        {
             dir = dir.Parent;
+        }
+
         return dir?.FullName ?? AppContext.BaseDirectory;
     }
 

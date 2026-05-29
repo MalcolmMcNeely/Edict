@@ -24,8 +24,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     public Task<EdictCommandResult> Handle(AddLineItemCommand command)
     {
         if (State.Status != OrderStatus.Open)
+        {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("order_not_open", "Order is not open for modifications.")]));
+        }
 
         State.Items.Add(new OrderLine { LineItemId = command.LineItemId, Sku = command.Sku, Quantity = command.Quantity });
         Raise(new LineItemAddedEvent(command.OrderId, command.LineItemId, command.Sku, command.Quantity));
@@ -35,8 +37,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     public Task<EdictCommandResult> Handle(SubmitOrderCommand command)
     {
         if (State.Items.Count == 0)
+        {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("no_items", "Order has no line items.")]));
+        }
 
         State.Status = OrderStatus.Submitted;
         Raise(new OrderSubmittedEvent(command.OrderId, command.Amount));
@@ -48,8 +52,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     public Task<EdictCommandResult> Handle(ConfirmOrderCommand command)
     {
         if (State.Status == OrderStatus.Cancelled)
+        {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("order_cancelled", "Order has been cancelled.")]));
+        }
 
         State.Status = OrderStatus.Confirmed;
         // Carry the snapshot of line item ids so the OrderFulfillment saga can
@@ -64,8 +70,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     public Task<EdictCommandResult> Handle(MarkOrderShippedCommand command)
     {
         if (State.Status != OrderStatus.Confirmed)
+        {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("order_not_confirmed", "Order is not confirmed.")]));
+        }
 
         State.Status = OrderStatus.Shipped;
         Raise(new OrderShippedEvent(command.OrderId));
@@ -78,8 +86,10 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     public Task<EdictCommandResult> Handle(CancelOrderCommand command)
     {
         if (State.Status == OrderStatus.Confirmed)
+        {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("already_confirmed", "Order has already been confirmed.")]));
+        }
 
         State.Status = OrderStatus.Cancelled;
         Raise(new OrderCancelledEvent(command.OrderId, command.Reason));

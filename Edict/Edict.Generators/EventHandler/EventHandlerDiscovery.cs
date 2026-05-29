@@ -77,7 +77,7 @@ internal static class EventHandlerDiscovery
         return new EventHandlerGrainModel(grainNamespace, grain.Name, new EquatableArray<EventHandlerHandlerModel>(handlers));
     }
 
-    private static string? GetStreamName(INamedTypeSymbol eventType)
+    static string? GetStreamName(INamedTypeSymbol eventType)
     {
         var attr = eventType.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictStreamAttributeFqn);
@@ -87,7 +87,7 @@ internal static class EventHandlerDiscovery
             : null;
     }
 
-    private static bool DerivesFromEvent(INamedTypeSymbol type)
+    static bool DerivesFromEvent(INamedTypeSymbol type)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
@@ -100,6 +100,6 @@ internal static class EventHandlerDiscovery
         return false;
     }
 
-    private static readonly SymbolDisplayFormat FullyQualified =
+    static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
 }

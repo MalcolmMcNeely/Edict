@@ -4,7 +4,7 @@ namespace Edict.Generators.Tests;
 
 public class EdictCommandGeneratorTests
 {
-    private const string SampleConsumer = """
+    const string SampleConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -35,7 +35,7 @@ public class EdictCommandGeneratorTests
         }
         """;
 
-    private const string TelemeterizedConsumer = """
+    const string TelemeterizedConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -70,7 +70,7 @@ public class EdictCommandGeneratorTests
         }
         """;
 
-    private const string StatefulConsumer = """
+    const string StatefulConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -134,7 +134,7 @@ public class EdictCommandGeneratorTests
         return Verify(generated);
     }
 
-    private const string ContractsOnlyConsumer = """
+    const string ContractsOnlyConsumer = """
         using System;
 
         using Edict.Contracts.Commands;

@@ -4,7 +4,7 @@ namespace Edict.Generators.Tests;
 
 public class EdictEventHandlerGeneratorTests
 {
-    private const string SingleHandleConsumer = """
+    const string SingleHandleConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -29,7 +29,7 @@ public class EdictEventHandlerGeneratorTests
         }
         """;
 
-    private const string MultiHandleSameStreamConsumer = """
+    const string MultiHandleSameStreamConsumer = """
         using System;
         using System.Threading.Tasks;
 
@@ -65,7 +65,7 @@ public class EdictEventHandlerGeneratorTests
     // Cross-assembly trap: the generator must emit FQN-only references and
     // keep the semantic walk syntax-scoped to the current compilation, so an
     // event type that lives in a separate contracts assembly still dispatches.
-    private const string CrossAssemblyContractConsumer = """
+    const string CrossAssemblyContractConsumer = """
         using System;
         using System.Threading.Tasks;
 
