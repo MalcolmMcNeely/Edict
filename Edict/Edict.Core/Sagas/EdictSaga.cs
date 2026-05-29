@@ -137,8 +137,6 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
     OutboxEntry BuildSendCommandEntry(EdictCommand command)
     {
-        // Nest the deferred command under the live handle span as parent-child,
-        // even when a crash-recovery drain runs much later.
         var current = Activity.Current;
         var traceParent = current?.BuildTraceParent();
 
