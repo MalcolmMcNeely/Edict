@@ -49,6 +49,17 @@ public static class ClusterHarness
         try
         {
             var clusterBuilder = new TestClusterBuilder();
+            // Single silo per run is the documented setup
+            // (docs/benchmarks/throughput.md § Setup: "Single Orleans
+            // TestCluster silo per substrate run") and matches the assumption
+            // EdictPostgresPersistenceOptions.MaxPoolSize bakes in
+            // ("Default 200 gives a single silo 2× headroom against the
+            // published N = 256 closed-loop sweep point"). TestClusterBuilder
+            // defaults to 2 silos; leaving the default would double the silo-
+            // side Npgsql connection demand and overrun what the framework
+            // defaults plan for, surfacing as bursts of "Failed to connect to
+            // 127.0.0.1:<port>" during the saturation pass.
+            clusterBuilder.Options.InitialSilosCount = 1;
             clusterBuilder.AddSiloBuilderConfigurator<ActiveRuntime.SiloConfigurator>();
             clusterBuilder.AddClientBuilderConfigurator<ActiveRuntime.ClientConfigurator>();
             var cluster = clusterBuilder.Build();

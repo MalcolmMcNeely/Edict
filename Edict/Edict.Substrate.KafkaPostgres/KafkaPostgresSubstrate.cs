@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Confluent.Kafka;
 
 using Edict.Contracts.DeadLetter;
@@ -40,14 +42,16 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     {
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
-            // Postgres ships max_connections=100. One bench silo opens up to
+            // Postgres ships max_connections=100. The bench silo opens up to
             // EdictPostgresPersistenceOptions.MaxPoolSize=200 (ADR-0035) on
             // its dedicated DataSource, plus Orleans PubSubStore + Reminders
-            // share Npgsql's ambient pool (~100), plus the client-side
-            // substrate DataSource below (~100). 512 fits that demand with
-            // headroom and matches the operator math the ADR-0035 doc on
-            // MaxPoolSize names ("silos × MaxPoolSize ≤ pg.max_connections").
-            .WithCommand("-c", "max_connections=512")
+            // each get their own AdoNet pool (~100 default), plus the client-
+            // side substrate DataSource below (~100). The harness pins
+            // InitialSilosCount=1 (see ClusterHarness), so peak demand is
+            // 200 + 100 + 100 + 100 = 500. 1024 fits that with 2× headroom
+            // and keeps the operator math from ADR-0035 satisfied
+            // ("silos × MaxPoolSize ≤ pg.max_connections").
+            .WithCommand("-c", "max_connections=1024")
             .Build();
         var kafkaContainer = new KafkaBuilder().Build();
         await Task.WhenAll(postgresContainer.StartAsync(ct), kafkaContainer.StartAsync(ct));
@@ -59,6 +63,8 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         var bootstrapServers = bootstrapAddress.StartsWith("PLAINTEXT://", StringComparison.Ordinal)
             ? bootstrapAddress["PLAINTEXT://".Length..]
             : bootstrapAddress;
+
+        await WaitForKafkaReadyAsync(bootstrapServers, ct);
         var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
         // Saturation pass measures count-at-window-end on a fresh consumer
         // group; Latest avoids replaying warmup-window backlog into the
@@ -75,6 +81,56 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             bootstrapServers,
             consumerGroupId,
             autoOffsetReset);
+    }
+
+    // Mirrors AzuriteSubstrate.WaitForHostEndpointsAsync: Testcontainers'
+    // Kafka wait strategy keys off an in-container log line, so the container
+    // is reported ready while the broker is still settling — fresh listeners,
+    // KRaft controller election, etc. The silo's EdictKafkaTopicProvisioner
+    // immediately calls AdminClient.GetMetadata(10 s), and a TestCluster's 2
+    // silos plus their stream-provider pulling agents add up to dozens of
+    // simultaneous ApiVersionRequest probes. On a cold broker that storm
+    // times out as "Local: Broker transport failure" and aborts silo
+    // startup. Waiting for a single successful metadata round-trip here
+    // proves the broker can serve the API surface before the silos race.
+    static async Task WaitForKafkaReadyAsync(string bootstrapServers, CancellationToken ct)
+    {
+        var deadline = TimeSpan.FromSeconds(60);
+        var stopwatch = Stopwatch.StartNew();
+        var adminConfig = new AdminClientConfig
+        {
+            BootstrapServers = bootstrapServers,
+            SocketTimeoutMs = 5_000,
+        };
+
+        Exception? lastError = null;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                using var admin = new AdminClientBuilder(adminConfig).Build();
+                var metadata = admin.GetMetadata(TimeSpan.FromSeconds(5));
+                if (metadata.Brokers.Count > 0)
+                {
+                    return;
+                }
+                lastError = new InvalidOperationException(
+                    "AdminClient.GetMetadata succeeded but returned zero brokers.");
+            }
+            catch (KafkaException ex)
+            {
+                lastError = ex;
+            }
+
+            if (stopwatch.Elapsed >= deadline)
+            {
+                throw new InvalidOperationException(
+                    $"Kafka container reported ready, but the host could not complete an AdminClient.GetMetadata round-trip against '{bootstrapServers}' within {deadline.TotalSeconds:F0} s. The broker may be stuck in KRaft controller election or the host port-forwarder may not have published the mapping.",
+                    lastError);
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        }
     }
 }
 
