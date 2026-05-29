@@ -32,12 +32,6 @@ sealed class InvokeHandlerExecutor(
         Type? consumerType,
         EdictEvent? liveWireEvent)
     {
-        if (deferredDispatch is null)
-        {
-            throw new NotSupportedException(
-                "InvokeHandler executor invoked on a host that does not wire deferred dispatch.");
-        }
-
         var staged = serializer.Deserialize<EdictEvent>(entry.Payload);
         var materialised = await unwrap.ApplyAsync(
             staged, consumerType ?? typeof(object), CancellationToken.None);
@@ -64,7 +58,7 @@ sealed class InvokeHandlerExecutor(
         var startTimestamp = Stopwatch.GetTimestamp();
         try
         {
-            await deferredDispatch(materialised);
+            await deferredDispatch!(materialised);
         }
         finally
         {

@@ -182,13 +182,7 @@ sealed class OutboxHost<TPayload>
             return;
         }
 
-        if (_claimCheckPolicy is null)
-        {
-            throw new InvalidOperationException(
-                "EnqueueRaisedEventsAndDrainAsync requires a ClaimCheckPolicy; none was registered on this host.");
-        }
-
-        var policy = _claimCheckPolicy;
+        var policy = _claimCheckPolicy!;
         var results = await Task.WhenAll(events.Select(edictEvent => policy.ApplyAsync(edictEvent, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];

@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Edict.Contracts.Routing;
+using Edict.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +23,7 @@ static class RouteDiscovery
             {
                 if (requireAttribute)
                 {
-                    throw new InvalidOperationException(
+                    throw new EdictWiringException(
                         $"Assembly '{asm.GetName().Name}' was passed to AddEdict(params Assembly[]) " +
                         $"but carries no [assembly: {nameof(EdictRoutesAttribute)}]. " +
                         "Either remove it from the call or reference Edict.Generators from that project so the registrar is emitted.");
@@ -36,7 +37,7 @@ static class RouteDiscovery
             {
                 if (origin.TryGetValue(commandType, out var firstAsm))
                 {
-                    throw new InvalidOperationException(
+                    throw new EdictWiringException(
                         $"Command '{commandType.FullName}' is registered by both " +
                         $"'{firstAsm.GetName().Name}' and '{asm.GetName().Name}'. " +
                         "A command type may only be handled by one assembly.");

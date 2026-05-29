@@ -53,18 +53,12 @@ public sealed class ClaimCheckUnwrap
             return envelope;
         }
 
-        if (_store is null)
-        {
-            throw new InvalidOperationException(
-                "ClaimCheckUnwrap received a pointer-bearing EdictEventEnvelope but no IEdictClaimCheckStore is registered.");
-        }
-
         var key = envelope.ClaimCheckKey!;
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
             SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
 
-        var bytes = await _store.GetAsync(key, cancellationToken);
+        var bytes = await _store!.GetAsync(key, cancellationToken);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, bytes.Length);
 
         var inner = _serializer.Deserialize<EdictEvent>(bytes.ToArray());

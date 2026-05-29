@@ -1,3 +1,5 @@
+using Edict.Core.Configuration;
+
 using Microsoft.Extensions.Hosting;
 
 using Orleans.Hosting;
@@ -11,7 +13,7 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenProducerOverrideDowngradesAcks()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<EdictWiringException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {
@@ -26,7 +28,7 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenProducerOverrideTurnsOffIdempotence()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<EdictWiringException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {
@@ -41,7 +43,7 @@ public sealed class EdictKafkaSiloBuilderExtensionsTests
     [Fact]
     public void AddEdictKafkaStreams_ShouldThrow_WhenConsumerOverrideTurnsOnAutoCommit()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<EdictWiringException>(() =>
             new HostBuilder()
                 .UseOrleans(silo => silo.AddEdictKafkaStreams(o =>
                 {

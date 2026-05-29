@@ -1,3 +1,5 @@
+using Edict.Core.Configuration;
+
 namespace Edict.Kafka.Internal;
 
 /// <summary>
@@ -7,7 +9,7 @@ namespace Edict.Kafka.Internal;
 /// and <c>enable.idempotence=true</c>, consumer <c>enable.auto.commit=false</c>)
 /// that callers must not downgrade — the at-least-once delivery + dedup-ring
 /// strategy depends on them. Throws
-/// <see cref="InvalidOperationException"/> at <c>AddEdictKafkaStreams</c>
+/// <see cref="EdictWiringException"/> at <c>AddEdictKafkaStreams</c>
 /// time so misconfiguration surfaces at host build, not during the first
 /// produce or poll.
 /// </summary>
@@ -17,13 +19,13 @@ static class EdictKafkaContractFloors
     {
         if (overrides.TryGetValue("acks", out var acks) && !IsAcksAll(acks))
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 $"EdictKafkaStreamsOptions.ProducerConfigOverrides[\"acks\"] = \"{acks}\" downgrades the Edict broker contract. acks must remain \"all\" — the at-least-once delivery guarantee depends on it.");
         }
 
         if (overrides.TryGetValue("enable.idempotence", out var idempotence) && !IsTrue(idempotence))
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 $"EdictKafkaStreamsOptions.ProducerConfigOverrides[\"enable.idempotence\"] = \"{idempotence}\" downgrades the Edict broker contract. The producer must stay idempotent — Edict's dedup ring assumes no producer-side duplicates inside a single send retry sequence.");
         }
     }
@@ -32,7 +34,7 @@ static class EdictKafkaContractFloors
     {
         if (overrides.TryGetValue("enable.auto.commit", out var autoCommit) && !IsFalse(autoCommit))
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 $"EdictKafkaStreamsOptions.ConsumerConfigOverrides[\"enable.auto.commit\"] = \"{autoCommit}\" downgrades the Edict broker contract. Auto-commit must stay off — Edict commits offsets manually after HandleAsync returns so a mid-handler crash redelivers, not silently advances.");
         }
     }

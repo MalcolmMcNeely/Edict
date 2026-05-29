@@ -1,6 +1,8 @@
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 
+using Edict.Core.Configuration;
+
 using KafkaErrorCode = Confluent.Kafka.ErrorCode;
 
 using Microsoft.Extensions.Hosting;
@@ -116,7 +118,7 @@ sealed class EdictKafkaTopicProvisioner : IHostedService
         }
         if (isExplicit)
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 $"Edict.Kafka cannot provision topic '{topicName}' with the explicitly requested replication factor {requested}: only {brokerCount} broker(s) are available. Either provision more brokers or omit EdictKafkaStreamsOptions.ReplicationFactor to let the provisioner auto-clamp.");
         }
         return (short)brokerCount;

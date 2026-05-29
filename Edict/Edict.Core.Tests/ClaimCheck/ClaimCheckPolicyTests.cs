@@ -101,15 +101,6 @@ public sealed class ClaimCheckPolicyTests
         Assert.Equal(store.Puts[0].ReturnedKey, put.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
     }
 
-    [Fact]
-    public async Task ApplyAsync_ShouldThrow_WhenStoreNotConfiguredButThresholdExceeded()
-    {
-        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store: null, accessors: new StubEdictEventStreamAccessors());
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => policy.ApplyAsync(new OrderPlacedEvent(Guid.NewGuid(), "SKU"), CancellationToken.None));
-    }
-
     static Serializer BuildSerializer()
     {
         var services = new ServiceCollection();

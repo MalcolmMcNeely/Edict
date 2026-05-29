@@ -9,6 +9,7 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core.ClaimCheck;
+using Edict.Core.Configuration;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.TableStorage;
@@ -54,7 +55,7 @@ public static class EdictAzureSiloBuilderExtensions
 
         var queueClient = FindRegisteredInstance<QueueServiceClient>(silo.Services)
             ?? options.QueueServiceClient
-            ?? throw new InvalidOperationException(
+            ?? throw new EdictWiringException(
                 "AddEdictAzureStreams requires either a DI-registered QueueServiceClient singleton instance or one set on EdictAzureStreamsOptions.QueueServiceClient.");
 
         silo.AddAzureQueueStreams(options.StreamProviderName, providerConfigure =>
@@ -117,11 +118,11 @@ public static class EdictAzureSiloBuilderExtensions
         // documented limitation; the simple path (instance) wins.
         var tableClient = FindRegisteredInstance<TableServiceClient>(silo.Services)
             ?? options.TableServiceClient
-            ?? throw new InvalidOperationException(
+            ?? throw new EdictWiringException(
                 "AddEdictAzurePersistence requires either a DI-registered TableServiceClient singleton instance or one set on EdictAzurePersistenceOptions.TableServiceClient.");
         var blobClient = FindRegisteredInstance<BlobServiceClient>(silo.Services)
             ?? options.BlobServiceClient
-            ?? throw new InvalidOperationException(
+            ?? throw new EdictWiringException(
                 "AddEdictAzurePersistence requires either a DI-registered BlobServiceClient singleton instance or one set on EdictAzurePersistenceOptions.BlobServiceClient.");
 
         // PubSubStore stays on Tables — Orleans-internal, bounded shape.

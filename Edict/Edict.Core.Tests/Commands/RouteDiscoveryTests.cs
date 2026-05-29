@@ -4,6 +4,7 @@ using System.Reflection.Emit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Routing;
 using Edict.Core.Commands;
+using Edict.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,7 +96,7 @@ public class RouteDiscoveryTests
         var asmA = BuildAssemblyWithRoutes(typeof(PlaceOrderRegistrar), nameof(RouteDiscovery_ShouldThrow_WhenSameCommandTypeRegisteredInTwoAssemblies) + "A");
         var asmB = BuildAssemblyWithRoutes(typeof(DuplicatePlaceOrderRegistrar), nameof(RouteDiscovery_ShouldThrow_WhenSameCommandTypeRegisteredInTwoAssemblies) + "B");
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictWiringException>(
             () => RouteDiscovery.Discover([asmA, asmB], requireAttribute: false, NullLogger.Instance));
 
         Assert.Contains(typeof(PlaceOrder).FullName!, exception.Message);
@@ -108,7 +109,7 @@ public class RouteDiscoveryTests
     {
         var asm = BuildAssemblyWithoutRoutes(nameof(RouteDiscovery_ShouldThrow_WhenExplicitAssemblyMissingRoutesAttribute));
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictWiringException>(
             () => RouteDiscovery.Discover([asm], requireAttribute: true, NullLogger.Instance));
 
         Assert.Contains(asm.GetName().Name!, exception.Message);

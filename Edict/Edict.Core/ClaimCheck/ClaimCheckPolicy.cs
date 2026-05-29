@@ -75,15 +75,6 @@ public sealed class ClaimCheckPolicy
             return new ClaimCheckApplyResult(innerBytes, edictEvent);
         }
 
-        if (_store is null)
-        {
-            throw new InvalidOperationException(
-                $"Event '{edictEvent.GetType().FullName}' serialised to {innerBytes.Length} bytes, exceeding the claim-check threshold "
-                + $"of {_thresholdBytes}, but no IEdictClaimCheckStore is registered. "
-                + "Register the Azure provider's AzureBlobClaimCheckStore (or the in-memory store in Edict.Testing) "
-                + "via DI so oversized events can be uploaded.");
-        }
-
         var key = await PutAsync(edictEvent, innerBytes, cancellationToken);
 
         var (innerStreamName, innerRouteKey) = _accessors.Resolve(edictEvent);

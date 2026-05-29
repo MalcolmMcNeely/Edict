@@ -1,4 +1,5 @@
 using Edict.Contracts.Configuration;
+using Edict.Core.Configuration;
 using Edict.Kafka.Internal;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,7 @@ public static class EdictKafkaSiloBuilderExtensions
 
         if (string.IsNullOrWhiteSpace(options.BootstrapServers))
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 "AddEdictKafkaStreams requires EdictKafkaStreamsOptions.BootstrapServers.");
         }
 

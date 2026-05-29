@@ -3,6 +3,7 @@ using System.Reflection;
 
 using Edict.Contracts.Events;
 using Edict.Contracts.Routing;
+using Edict.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +35,7 @@ static class EventTagWritersDiscovery
             {
                 if (origin.TryGetValue(eventType, out var firstAsm))
                 {
-                    throw new InvalidOperationException(
+                    throw new EdictWiringException(
                         $"Event '{eventType.FullName}' has a tag writer registered by both " +
                         $"'{firstAsm.GetName().Name}' and '{asm.GetName().Name}'. " +
                         "An event type may only be declared in one assembly.");

@@ -2,6 +2,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
+using Edict.Core.Configuration;
 using Edict.Core.TableStorage;
 using Edict.Postgres.Bootstrap;
 using Edict.Postgres.ClaimCheck;
@@ -57,7 +58,7 @@ public static class EdictPostgresSiloBuilderExtensions
 
         if (string.IsNullOrWhiteSpace(options.ConnectionString))
         {
-            throw new InvalidOperationException(
+            throw new EdictWiringException(
                 "AddEdictPostgresPersistence requires EdictPostgresPersistenceOptions.ConnectionString.");
         }
 

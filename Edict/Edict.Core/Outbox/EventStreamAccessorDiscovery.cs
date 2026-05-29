@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Edict.Contracts.Routing;
+using Edict.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +33,7 @@ static class EventStreamAccessorDiscovery
             {
                 if (origin.TryGetValue(eventType, out var firstAsm))
                 {
-                    throw new InvalidOperationException(
+                    throw new EdictWiringException(
                         $"Event '{eventType.FullName}' is registered by both " +
                         $"'{firstAsm.GetName().Name}' and '{asm.GetName().Name}'. " +
                         "An event type may only be declared in one assembly.");
