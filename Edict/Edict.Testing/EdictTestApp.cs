@@ -158,38 +158,38 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>
     /// Waits for the in-memory engine to quiesce: the inline outbox drain plus
     /// the asynchronous memory-stream fan-out to projection builders and sagas
-    /// (whose own dispatched Commands cascade). Settles on in-flight counters
-    /// going to zero, so it is as fast as the cluster allows.
+    /// (whose own dispatched Commands cascade). The dispatch counter, held
+    /// queue and silo-wide outbox pending aggregate all going to zero is the
+    /// load-bearing signal — a short stable window catches the gap between
+    /// FakeTimeProvider firing a grain timer and the resulting grain method
+    /// landing on the scheduler.
     /// </summary>
     public async Task Drain()
     {
-        // Counters cover fire-and-forget cascades, but timer- and reminder-
-        // triggered grain methods can raise events without going through
-        // any tracked counter until they publish. A short recorder-count
-        // stability window catches that gap; the counters are otherwise
-        // the load-bearing settle signal.
-        var stableWindow = TimeSpan.FromMilliseconds(150);
         var timeout = TimeSpan.FromSeconds(30);
+        var stableWindow = TimeSpan.FromMilliseconds(150);
         var start = DateTime.UtcNow;
         var executor = _context.PublishExecutor;
-        var lastCount = -1;
-        var lastChange = DateTime.UtcNow;
+        var cache = _context.MetricsCache;
+        DateTime? settledAt = null;
 
         while (DateTime.UtcNow - start < timeout)
         {
             var inflight = executor?.OutstandingDispatches ?? 0;
             var held = executor?.HeldCount ?? 0;
-            var count = _context.Recorder.Count;
+            var pending = cache?.GetOutboxStateAggregate().TotalPending ?? 0;
 
-            if (count != lastCount)
+            if (inflight == 0 && held == 0 && pending == 0)
             {
-                lastCount = count;
-                lastChange = DateTime.UtcNow;
+                settledAt ??= DateTime.UtcNow;
+                if (DateTime.UtcNow - settledAt.Value >= stableWindow)
+                {
+                    return;
+                }
             }
-
-            if (inflight == 0 && held == 0 && DateTime.UtcNow - lastChange >= stableWindow)
+            else
             {
-                return;
+                settledAt = null;
             }
 
             if (inflight == 0 && held > 0)
@@ -197,7 +197,7 @@ public sealed class EdictTestApp : IAsyncDisposable
                 // Held events release on arrivals to the same subscriber.
                 // No arrivals are coming, so release them explicitly.
                 await executor!.FlushHeldAsync();
-                lastChange = DateTime.UtcNow;
+                settledAt = null;
             }
 
             await Task.Delay(10);
