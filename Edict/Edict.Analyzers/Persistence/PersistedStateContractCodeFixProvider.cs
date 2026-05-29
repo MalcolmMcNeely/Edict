@@ -105,7 +105,6 @@ public sealed class PersistedStateContractCodeFixProvider : CodeFixProvider
                                     SyntaxKind.StringLiteralExpression,
                                     SyntaxFactory.Literal(symbol.Name))))));
                 root = root.ReplaceNode(oldSyntax, newAttribute);
-                // Recompute the new type declaration in the rewritten tree.
                 typeDecl = (TypeDeclarationSyntax)root.FindNode(originalType.Identifier.Span)
                     .AncestorsAndSelf().OfType<TypeDeclarationSyntax>().First();
             }

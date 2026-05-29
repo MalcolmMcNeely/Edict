@@ -43,7 +43,6 @@ public sealed class AzureTableRepository<T>(TableServiceClient tableServiceClien
         }
         catch (RequestFailedException exception) when (exception.Status == 404)
         {
-            // Table does not exist yet — return empty list.
         }
         return results;
     }

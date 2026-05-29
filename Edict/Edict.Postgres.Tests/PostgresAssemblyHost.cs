@@ -26,7 +26,6 @@ static class PostgresAssemblyHost
                 }
                 catch
                 {
-                    // Best-effort teardown.
                 }
             }
         };
