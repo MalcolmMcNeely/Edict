@@ -8,7 +8,7 @@ namespace Edict.Generated
     file static class SendInterceptor_Sample_PlaceOrder
     {
         // Consumer.cs(25,16)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "xXhOKvjnRZvet0AlKEN/7I0CAABDb25zdW1lci5jcw==")]
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "Zs9qPwaWDqg35Hx61GZhwnUCAABDb25zdW1lci5jcw==")]
         public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSend(
             this global::Edict.Contracts.Sending.IEdictSender sender,
             global::Edict.Contracts.Commands.EdictCommand command)

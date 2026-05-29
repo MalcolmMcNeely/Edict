@@ -86,14 +86,19 @@ internal static class GeneratorTestHarness
 
         // Stable, non-empty file path so the InterceptableLocation base64 data
         // does not encode build-host noise — the Verify snapshot must remain
-        // byte-identical across machines.
+        // byte-identical across machines. Also normalise CRLF → LF so the
+        // SHA-256 over the syntax-tree source matches between a Windows
+        // checkout (raw-string-literal source has CRLF) and a Linux CI
+        // checkout (LF) — without it, the InterceptableLocation hash drifts.
+        var normalisedSource = consumerSource.Replace("\r\n", "\n");
+
         var parseOptions = CSharpParseOptions.Default
             .WithLanguageVersion(LanguageVersion.Latest)
             .WithFeatures(new[] { new KeyValuePair<string, string>("InterceptorsNamespaces", "Edict.Generated") });
 
         var compilation = CSharpCompilation.Create(
             assemblyName: "ConsumerUnderTest",
-            syntaxTrees: [CSharpSyntaxTree.ParseText(consumerSource, parseOptions, path: "Consumer.cs")],
+            syntaxTrees: [CSharpSyntaxTree.ParseText(normalisedSource, parseOptions, path: "Consumer.cs")],
             references: references,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
