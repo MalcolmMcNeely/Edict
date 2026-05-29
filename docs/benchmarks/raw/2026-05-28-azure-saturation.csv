@@ -1,2 +1,2 @@
-substrate,events_per_second,window_seconds,producer_concurrency,aggregate_count
-azure,55.20,30.00,256,1024
+substrate,events_per_second,window_seconds,producer_concurrency,aggregate_count,succeeded,failed,failure_rate,failure_types
+azure,38.73,30.00,256,1024,1162,0,0.0000,
