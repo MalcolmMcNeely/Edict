@@ -38,6 +38,15 @@ sealed class InProcPublishExecutor(
     readonly ChaosRoller _roller = new(chaos);
     readonly HeldQueue _held = new();
     readonly Lock _heldLock = new();
+    int _outstandingDispatches;
+
+    /// <summary>
+    /// Count of fire-and-forget consumer dispatches that have not yet
+    /// run to completion. Drain stability needs more than recorder-count
+    /// quiescence on a slow runner — an UpsertRow projection effect can
+    /// still be in-flight after the publish-side recorder has gone quiet.
+    /// </summary>
+    public int OutstandingDispatches => Volatile.Read(ref _outstandingDispatches);
 
     public Task ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
@@ -138,7 +147,11 @@ sealed class InProcPublishExecutor(
         var deliveries = 1 + _roller.ExtraDeliveries(grainClass);
         for (var i = 0; i < deliveries; i++)
         {
-            _ = grain.OnEdictEventAsync(edictEvent);
+            Interlocked.Increment(ref _outstandingDispatches);
+            _ = grain.OnEdictEventAsync(edictEvent)
+                .ContinueWith(
+                    _ => Interlocked.Decrement(ref _outstandingDispatches),
+                    TaskContinuationOptions.ExecuteSynchronously);
         }
     }
 

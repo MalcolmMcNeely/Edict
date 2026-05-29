@@ -178,7 +178,8 @@ public sealed class EdictTestApp : IAsyncDisposable
         while (DateTime.UtcNow - start < timeout)
         {
             var count = _context.Recorder.Count;
-            if (count != lastCount)
+            var inflight = _context.PublishExecutor?.OutstandingDispatches ?? 0;
+            if (count != lastCount || inflight > 0)
             {
                 lastCount = count;
                 lastChange = DateTime.UtcNow;
