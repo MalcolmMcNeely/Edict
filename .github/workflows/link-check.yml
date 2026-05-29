@@ -49,7 +49,7 @@ jobs:
           fail=0
           for file in "${files[@]}"; do
             echo "::group::Checking $file"
-            if ! markdown-link-check --config .github/markdown-link-check.json --quiet "$file"; then
+            if ! markdown-link-check --config .github/markdown-link-check.json "$file"; then
               fail=1
             fi
             echo "::endgroup::"
