@@ -8,7 +8,7 @@ on:
       - 'README.md'
       - 'Edict/Edict.*/README.md'
       - '.github/workflows/link-check.yml'
-      - '.github/markdown-link-check.json'
+      - '.github/lychee.toml'
   push:
     branches:
       - main
@@ -18,7 +18,7 @@ on:
       - 'README.md'
       - 'Edict/Edict.*/README.md'
       - '.github/workflows/link-check.yml'
-      - '.github/markdown-link-check.json'
+      - '.github/lychee.toml'
 
 jobs:
   link-check:
@@ -27,31 +27,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Lychee link check
+        uses: lycheeverse/lychee-action@v2
         with:
-          node-version: '20'
-
-      - name: Install markdown-link-check
-        run: npm install --global markdown-link-check@3.13.6
-
-      - name: Check consumer-facing markdown
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s globstar nullglob
-          files=(
+          args: >-
+            --config .github/lychee.toml
+            --no-progress
             README.md
             AGENTS.md
-            docs/usage/**/*.md
-            Edict/Edict.*/README.md
-          )
-          fail=0
-          for file in "${files[@]}"; do
-            echo "::group::Checking $file"
-            if ! markdown-link-check --config .github/markdown-link-check.json "$file"; then
-              fail=1
-            fi
-            echo "::endgroup::"
-          done
-          exit "$fail"
+            'docs/usage/**/*.md'
+            'Edict/Edict.*/README.md'
+          fail: true

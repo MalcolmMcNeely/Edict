@@ -1,0 +1,24 @@
+# Lychee link-check config. See https://lychee.cli.rs/usage/config/.
+
+# Skip self-referencing GitHub URLs to `main` so a PR adding the target file
+# does not fail against the pre-merge main branch. Intra-repo health is
+# already covered by the relative-path links in the same docs.
+exclude = [
+    '^https://github\.com/MalcolmMcNeely/Edict/blob/main/',
+]
+
+# Localhost references in code blocks are not real targets.
+exclude_loopback = true
+
+# Treat fragments (#section) on local markdown files as advisory rather than
+# load-bearing — Lychee does heading-derivation that occasionally disagrees
+# with GitHub's renderer, and a broken anchor is not worth a CI failure.
+include_fragments = false
+
+# External hosts get retries on transient failures and rate-limits.
+max_retries = 3
+retry_wait_time = 10
+timeout = 20
+
+# Lychee's default user-agent is rejected by some CDNs.
+user_agent = "lychee/edict-link-check"
