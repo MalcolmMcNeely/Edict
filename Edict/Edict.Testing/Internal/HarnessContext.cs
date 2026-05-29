@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
+using Edict.Core.Metrics;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
@@ -40,6 +42,13 @@ sealed class HarnessContext(
     // (i.e. before any event has been published, when there is nothing to
     // flush anyway).
     public InProcPublishExecutor? PublishExecutor { get; set; }
+
+    /// <summary>The silo's IEdictMetricsCache singleton, captured by the silo
+    /// configurator so EdictTestApp's GetOutboxState / GetSagaState probes
+    /// read the SAME cache that the OutboxHost + EdictSaga pushed to. Null
+    /// until the silo's DI container instantiates the cache (i.e. before any
+    /// grain has activated, when there is nothing to probe anyway).</summary>
+    public EdictMetricsCache? MetricsCache { get; set; }
 }
 
 static class HarnessRegistry

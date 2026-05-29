@@ -5,6 +5,7 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
+using Edict.Core.Metrics;
 using Edict.Telemetry;
 
 using Orleans.Runtime;
@@ -36,6 +37,7 @@ sealed class OutboxHost<TPayload>
     readonly IDeadLetterPromoter _promoter;
     readonly Func<EdictEvent, Task>? _deferredDispatch;
     readonly ClaimCheckPolicy? _claimCheckPolicy;
+    readonly IEdictMetricsCache? _metricsCache;
     readonly string _grainKey;
     readonly string _grainTypeName;
     readonly Type? _consumerType;
@@ -59,7 +61,8 @@ sealed class OutboxHost<TPayload>
         string grainTypeName,
         Func<EdictEvent, Task>? deferredDispatch = null,
         ClaimCheckPolicy? claimCheckPolicy = null,
-        Type? consumerType = null)
+        Type? consumerType = null,
+        IEdictMetricsCache? metricsCache = null)
     {
         _state = state;
         _streamProvider = streamProvider;
@@ -73,6 +76,7 @@ sealed class OutboxHost<TPayload>
         _deferredDispatch = deferredDispatch;
         _claimCheckPolicy = claimCheckPolicy;
         _consumerType = consumerType;
+        _metricsCache = metricsCache;
     }
 
     /// <summary>The persisted envelope <c>{ Payload, Outbox, Idempotency }</c>.</summary>
@@ -106,13 +110,53 @@ sealed class OutboxHost<TPayload>
     /// </summary>
     public async Task EnqueueAndDrainAsync(IReadOnlyList<OutboxEntry> entries)
     {
+        var now = _timeProvider.GetUtcNow();
         foreach (var entry in entries)
         {
-            State.Outbox = State.Outbox.Enqueue(entry);
+            // Stamp EnqueuedAt at the single enqueue choke point so every entry
+            // carries the host clock's view of when it joined Pending. Callers
+            // that construct entries (EdictSaga, the pointer-envelope branch in
+            // EdictIdempotencyBase, EnqueueRaisedEventsAndDrainAsync) don't
+            // need to know about the field.
+            State.Outbox = State.Outbox.Enqueue(entry with { EnqueuedAt = now });
         }
 
-        await _state.WriteStateAsync();
+        await WriteStateAndReportAsync();
         await DrainAsync();
+    }
+
+    /// <summary>Removes this grain's cache entry. Called by the hosting base's
+    /// <c>OnDeactivateAsync</c> so a deactivated grain stops contributing to
+    /// the per-type aggregate (ADR-0040's load-bearing cleanup).</summary>
+    public Task OnDeactivateAsync()
+    {
+        _metricsCache?.Remove(_grainTypeName, _grainKey);
+        return Task.CompletedTask;
+    }
+
+    async Task WriteStateAndReportAsync()
+    {
+        await _state.WriteStateAsync();
+        ReportPendingToCache();
+    }
+
+    void ReportPendingToCache()
+    {
+        if (_metricsCache is null)
+        {
+            return;
+        }
+
+        var pending = State.Outbox.Pending;
+        DateTimeOffset? oldest = null;
+        foreach (var entry in pending)
+        {
+            if (oldest is null || entry.EnqueuedAt < oldest)
+            {
+                oldest = entry.EnqueuedAt;
+            }
+        }
+        _metricsCache.ReportOutbox(_grainTypeName, _grainKey, pending.Count, oldest);
     }
 
     /// <summary>
@@ -289,15 +333,16 @@ sealed class OutboxHost<TPayload>
                     if (bumped is not null && bumped.AttemptCount >= _options.OutboxMaxAttempts)
                     {
                         var promoted = _promoter.Promote(
-                            bumped, exception, _grainKey, _grainTypeName, now);
+                            bumped, exception, _grainKey, _grainTypeName, now)
+                            with { EnqueuedAt = now };
                         State.Outbox = State.Outbox.Promote(entry.EntryId, promoted);
-                        await _state.WriteStateAsync();
+                        await WriteStateAndReportAsync();
                         dirty = false;
                         anyTailAppend = true;
                         continue;
                     }
 
-                    await _state.WriteStateAsync();
+                    await WriteStateAndReportAsync();
                     dirty = false;
                 }
             }
@@ -313,7 +358,17 @@ sealed class OutboxHost<TPayload>
 
         if (dirty)
         {
-            await _state.WriteStateAsync();
+            await WriteStateAndReportAsync();
+        }
+        else
+        {
+            // No coalesced trailing write — every state mutation was already
+            // persisted inline (FailWithBackoff / Promote) or the drain found
+            // nothing ready. Push the current Pending view anyway so an
+            // activation drain that opened with gated entries seeds the cache
+            // with their depth + earliest enqueue time even though no write
+            // ran this pass.
+            ReportPendingToCache();
         }
 
         if (State.Outbox.Pending.Count == 0)

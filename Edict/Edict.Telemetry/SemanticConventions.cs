@@ -112,6 +112,29 @@ public static class SemanticConventions
 
             /// <summary>Histogram of entries processed per drain pass.</summary>
             public const string DrainEntries = "edict.outbox.drain.entries";
+
+            /// <summary>Observable gauge of pending outbox entries summed per grain type
+            /// across every live host on this silo. Sourced from the silo-local
+            /// metrics cache (ADR-0040) so a scrape costs zero grain calls.</summary>
+            public const string PendingCount = "edict.outbox.pending.count";
+
+            /// <summary>Observable gauge of the oldest pending outbox entry's age in
+            /// seconds, per grain type, taken as <c>max(now − enqueuedAt_i)</c> across
+            /// every live host on this silo. Sourced from the silo-local metrics
+            /// cache (ADR-0040).</summary>
+            public const string OldestEntryAge = "edict.outbox.oldest_entry.age";
+        }
+    }
+
+    public static class Sagas
+    {
+        public static class Meters
+        {
+            /// <summary>Observable gauge of seconds since the last event a saga handled,
+            /// per saga type, taken as <c>max(now − lastHandledAt_i)</c> across every
+            /// live saga on this silo. Sourced from the silo-local metrics cache
+            /// (ADR-0040).</summary>
+            public const string ProgressAge = "edict.saga.progress.age";
         }
     }
 

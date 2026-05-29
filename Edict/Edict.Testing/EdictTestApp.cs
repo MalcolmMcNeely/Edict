@@ -10,6 +10,7 @@ using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
+using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Core.Sagas;
 using Edict.Core.Serialization;
@@ -103,6 +104,41 @@ public sealed class EdictTestApp : IAsyncDisposable
     {
         var grain = _cluster.GrainFactory.GetGrain<IEdictSaga>(key, typeof(TSaga).FullName);
         return (TProgress)await grain.GetEdictProgressAsync();
+    }
+
+    /// <summary>
+    /// Per-grain-type probe over the silo-local metrics cache (ADR-0040):
+    /// returns the aggregate outbox state the
+    /// <c>edict.outbox.pending.count</c> +
+    /// <c>edict.outbox.oldest_entry.age</c> observable gauges would read at
+    /// scrape time. <c>TotalPending</c> is the sum across every live grain of
+    /// <paramref name="grainType"/> on this silo; <c>OldestEnqueuedAt</c> is
+    /// the earliest enqueue timestamp across those grains (null when no entry
+    /// of that type has any pending work). Tests assert on this when they need
+    /// to verify outbox state shape without attaching a MeterListener.
+    /// </summary>
+    public (int TotalPending, DateTimeOffset? OldestEnqueuedAt) GetOutboxState(string grainType)
+    {
+        var cache = _context.MetricsCache
+            ?? throw new InvalidOperationException(
+                "Silo metrics cache has not been constructed yet. Send at least one command first.");
+        return cache.GetOutboxState(grainType);
+    }
+
+    /// <summary>
+    /// Per-saga-type probe over the silo-local metrics cache: returns the
+    /// most-recent <c>lastHandledAt</c> across every live saga of
+    /// <paramref name="sagaType"/> on this silo, or <c>null</c> when no saga
+    /// of that type has handled an event. Pair with
+    /// <see cref="AdvanceClock"/> in tests to verify
+    /// <c>edict.saga.progress.age</c> grows when a saga sits idle.
+    /// </summary>
+    public DateTimeOffset? GetSagaState(string sagaType)
+    {
+        var cache = _context.MetricsCache
+            ?? throw new InvalidOperationException(
+                "Silo metrics cache has not been constructed yet. Send at least one command first.");
+        return cache.GetSagaState(sagaType);
     }
 
     /// <summary>
@@ -231,6 +267,16 @@ public sealed class EdictTestApp : IAsyncDisposable
             InvokeAddEdict(siloBuilder.Services);
             RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);
             siloBuilder.Services.AddEdictOutbox();
+
+            // Replace AddEdict()'s default IEdictMetricsCache with a
+            // harness-shared instance so the probe methods on EdictTestApp
+            // read the same cache the silo's OutboxHost + EdictSaga push to.
+            // Constructed eagerly (rather than via TryAddSingleton + lazy DI
+            // resolution) so the static gauges register before the first grain
+            // activates and the conformance scenario's MeterListener attaches.
+            var harnessCache = new EdictMetricsCache(ctx.Clock);
+            ctx.MetricsCache = harnessCache;
+            siloBuilder.Services.AddSingleton<IEdictMetricsCache>(harnessCache);
 
             // Swap the bare PublishEvent executor for the in-process dispatcher
             // (the single Event choke point — records and fan-outs in one).

@@ -9,6 +9,7 @@ using Edict.Contracts.TableStorage;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
+using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -80,6 +81,16 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
         services.AddSingleton<IEdictSender, EdictSender>();
         services.AddSingleton(EdictDiagnostics.ActivitySource);
+
+        // Silo-local metrics cache (ADR-0040): fed by every OutboxHost commit
+        // and EdictSaga event-handle, scraped by the three Slice-2 observable
+        // gauges. TryAdd so a host with its own assertable variant (the
+        // Edict.Testing rig) wins via the same swap-seam pattern as
+        // IEdictSender. The concrete EdictMetricsCache requires a TimeProvider
+        // — TryAddSingleton(TimeProvider.System) inside AddEdictOutbox or the
+        // test harness's FakeTimeProvider registration covers both cases.
+        services.TryAddSingleton<IEdictMetricsCache>(sp =>
+            new EdictMetricsCache(sp.GetRequiredService<TimeProvider>()));
 
         // Forensic dead-letter repository is auto-wired so the framework's
         // no-silent-loss guarantee holds without consumer configuration.

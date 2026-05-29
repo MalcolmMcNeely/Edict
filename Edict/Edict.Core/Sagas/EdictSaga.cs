@@ -4,6 +4,7 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Core.Idempotency;
+using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -42,6 +43,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     readonly SagaDispatchBuffer _dispatchBuffer = new();
     OutboxEntry? _stagedEntry;
     Serializer? _cachedSerializer;
+    IEdictMetricsCache? _cachedMetricsCache;
+    TimeProvider? _cachedTimeProvider;
 
     /// <summary>
     /// Durable workflow progress. The consumer mutates this inside a
@@ -99,6 +102,22 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         {
             _stagedEntry = BuildSendCommandEntry(command);
         }
+
+        ReportSagaProgress();
+    }
+
+    void ReportSagaProgress()
+    {
+        var cache = _cachedMetricsCache ??= ServiceProvider.GetService<IEdictMetricsCache>();
+        if (cache is null)
+        {
+            return;
+        }
+        var time = _cachedTimeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
+        cache.ReportSaga(
+            sagaType: GetType().FullName ?? GetType().Name,
+            sagaKey: this.GetPrimaryKey().ToString(),
+            lastHandledAt: time.GetUtcNow());
     }
 
     /// <inheritdoc />

@@ -6,6 +6,7 @@ using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
+using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -103,6 +104,18 @@ public abstract class EdictIdempotencyBase<TPayload>
     {
         await base.OnActivateAsync(cancellationToken);
         await Host.OnActivateAsync();
+    }
+
+    /// <summary>
+    /// Removes this consumer's entry from the silo-local metrics cache so a
+    /// deactivated grain stops contributing to
+    /// <c>edict.outbox.pending.count</c> / <c>edict.outbox.oldest_entry.age</c>
+    /// / <c>edict.saga.progress.age</c> (ADR-0040's load-bearing cleanup).
+    /// </summary>
+    public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
+    {
+        await Host.OnDeactivateAsync();
+        await base.OnDeactivateAsync(reason, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -359,7 +372,8 @@ public abstract class EdictIdempotencyBase<TPayload>
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
             deferredDispatch: evt => DispatchAsync(evt),
-            consumerType: GetType());
+            consumerType: GetType(),
+            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
 }
 
 /// <summary>

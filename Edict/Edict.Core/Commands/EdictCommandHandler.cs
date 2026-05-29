@@ -5,6 +5,7 @@ using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
+using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
@@ -78,6 +79,18 @@ public abstract class EdictCommandHandler<TState>
     {
         await base.OnActivateAsync(cancellationToken);
         await Host.OnActivateAsync();
+    }
+
+    /// <summary>
+    /// Removes this grain's entry from the silo-local metrics cache so a
+    /// deactivated aggregate stops contributing to the per-type
+    /// <c>edict.outbox.pending.count</c> / <c>edict.outbox.oldest_entry.age</c>
+    /// gauges (ADR-0040's load-bearing cleanup).
+    /// </summary>
+    public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
+    {
+        await Host.OnDeactivateAsync();
+        await base.OnDeactivateAsync(reason, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -206,7 +219,8 @@ public abstract class EdictCommandHandler<TState>
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
-            claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider));
+            claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
+            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider sp) =>
         // AddEdictOutbox registers the default policy; pre-existing test

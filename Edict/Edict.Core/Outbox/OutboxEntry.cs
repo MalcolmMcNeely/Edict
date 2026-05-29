@@ -32,4 +32,13 @@ public sealed record OutboxEntry
 
     [Id(6)]
     public DateTimeOffset NextAttemptUtc { get; init; }
+
+    /// <summary>The host's <see cref="TimeProvider"/> clock at the moment the entry was
+    /// staged onto <see cref="OutboxSlice.Pending"/>. Sourced from
+    /// <c>OutboxHost</c>'s clock so backoff-gated retries inherit the original
+    /// enqueue time, not the retry time — the <c>edict.outbox.oldest_entry.age</c>
+    /// gauge depends on this to surface a stuck outbox honestly across
+    /// reactivations.</summary>
+    [Id(7)]
+    public DateTimeOffset EnqueuedAt { get; init; }
 }
