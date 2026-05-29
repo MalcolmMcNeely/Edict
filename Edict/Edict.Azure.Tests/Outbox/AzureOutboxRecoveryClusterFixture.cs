@@ -3,6 +3,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
 using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -66,6 +68,10 @@ public sealed class AzureOutboxRecoveryClusterFixture : ConformanceFixture
         var token = Guid.NewGuid().ToString("N");
         GrainStateContainerName = $"edict-state-{token}";
         DeadLetterTableName = $"deadletter{token}";
+        var claimCheckContainerName = $"edict-claim-check-{token}";
+
+        var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
+            _blobServiceClient, claimCheckContainerName);
 
         var context = new AzureClusterContext(
             _connectionString,
@@ -73,7 +79,9 @@ public sealed class AzureOutboxRecoveryClusterFixture : ConformanceFixture
             _blobServiceClient,
             _queueServiceClient,
             GrainStateContainerName,
-            DeadLetterTableName);
+            DeadLetterTableName,
+            claimCheckContainerName,
+            claimCheckStore);
         _contextKey = AzureClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -120,6 +128,7 @@ public sealed class AzureOutboxRecoveryClusterFixture : ConformanceFixture
             siloBuilder.Services.AddSingleton(TimeProvider.System);
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore!);
             // AddEdict registers PublishEventExecutor; appending the
             // controllable one would make OutboxHost ctor's ToDictionary on
             // OutboxEffectKind throw on duplicate keys — so it is *replaced*

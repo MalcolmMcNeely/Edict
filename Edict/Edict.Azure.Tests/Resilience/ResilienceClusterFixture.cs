@@ -3,6 +3,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
 using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
@@ -46,6 +48,10 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
 
     public string DeadLetterTableName { get; private set; } = "";
 
+    public string ClaimCheckContainerName { get; private set; } = "";
+
+    IEdictClaimCheckStore _claimCheckStore = null!;
+
     public async Task InitializeAsync()
     {
         _azurite = new AzuriteBuilder()
@@ -64,6 +70,10 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
         var token = Guid.NewGuid().ToString("N");
         GrainStateContainerName = $"edict-state-{token}";
         DeadLetterTableName = $"deadletter{token}";
+        ClaimCheckContainerName = $"edict-claim-check-{token}";
+
+        _claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
+            _blobServiceClient, ClaimCheckContainerName);
 
         var context = new AzureClusterContext(
             _connectionString,
@@ -71,7 +81,9 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
             _blobServiceClient,
             _queueServiceClient,
             GrainStateContainerName,
-            DeadLetterTableName);
+            DeadLetterTableName,
+            ClaimCheckContainerName,
+            _claimCheckStore);
         _contextKey = AzureClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -140,7 +152,9 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
             _blobServiceClient,
             _queueServiceClient,
             GrainStateContainerName,
-            DeadLetterTableName);
+            DeadLetterTableName,
+            ClaimCheckContainerName,
+            _claimCheckStore);
         AzureClusterContextRegistry.Replace(_contextKey, refreshed);
     }
 
@@ -176,6 +190,7 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore!);
             siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

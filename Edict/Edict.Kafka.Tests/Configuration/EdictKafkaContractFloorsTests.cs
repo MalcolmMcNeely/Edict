@@ -1,3 +1,4 @@
+using Edict.Core.Configuration;
 using Edict.Kafka.Internal;
 
 using Xunit;
@@ -14,7 +15,7 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictWiringException>(
             () => EdictKafkaContractFloors.ValidateProducerOverrides(overrides));
 
         Assert.Contains("acks", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -28,7 +29,7 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictWiringException>(
             () => EdictKafkaContractFloors.ValidateProducerOverrides(overrides));
 
         Assert.Contains("idempotence", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -62,7 +63,7 @@ public sealed class EdictKafkaContractFloorsTests
     {
         var overrides = new Dictionary<string, string> { [key] = value };
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<EdictWiringException>(
             () => EdictKafkaContractFloors.ValidateConsumerOverrides(overrides));
 
         Assert.Contains("auto.commit", exception.Message, StringComparison.OrdinalIgnoreCase);

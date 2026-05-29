@@ -1,6 +1,7 @@
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 
+using Edict.Core.Configuration;
 using Edict.Kafka;
 using Edict.Kafka.Internal;
 
@@ -56,7 +57,7 @@ public sealed class EdictKafkaTopicProvisionerTests
         using var admin = await CreateAdminAsync();
         var topic = UniqueTopicName();
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<EdictWiringException>(() =>
             EdictKafkaTopicProvisioner.EnsureTopicAsync(
                 admin, topic, partitionCount: 1, requestedReplicationFactor: 3,
                 replicationFactorIsExplicit: true,

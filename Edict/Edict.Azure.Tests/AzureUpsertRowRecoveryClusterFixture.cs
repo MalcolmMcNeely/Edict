@@ -3,6 +3,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 
 using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
 using Edict.Core;
@@ -53,6 +55,10 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
         var token = Guid.NewGuid().ToString("N");
         GrainStateContainerName = $"edict-state-{token}";
         DeadLetterTableName = $"deadletter{token}";
+        var claimCheckContainerName = $"edict-claim-check-{token}";
+
+        var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
+            _blobServiceClient, claimCheckContainerName);
 
         var context = new AzureClusterContext(
             _connectionString,
@@ -60,7 +66,9 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             _blobServiceClient,
             _queueServiceClient,
             GrainStateContainerName,
-            DeadLetterTableName);
+            DeadLetterTableName,
+            claimCheckContainerName,
+            claimCheckStore);
         _contextKey = AzureClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -103,6 +111,7 @@ public sealed class AzureUpsertRowRecoveryClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(TimeProvider.System);
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ctx.ClaimCheckStore!);
             siloBuilder.AddEdict(o =>
             {
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
