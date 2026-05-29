@@ -29,12 +29,12 @@ static class DeadLetterPromotion
         OutboxEntry entry,
         EdictCommand command,
         string targetGrainType,
+        Guid targetGrainKey,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var targetGrainKey = ResolveCommandRouteKey(command);
         var effectTarget = $"{targetGrainType}/{targetGrainKey:D}";
         var payloadJson = JsonSerializer.Serialize(command, command.GetType());
         return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
@@ -143,14 +143,18 @@ static class DeadLetterPromotion
         PayloadJson = payloadJson,
     };
 
-    static Guid ResolveCommandRouteKey(EdictCommand command)
+    public static bool TryResolveCommandRouteKey(EdictCommand command, out Guid routeKey)
     {
         var routeKeyProp = Array.Find(
             command.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance),
-            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
-            ?? throw new InvalidOperationException(
-                $"Command {command.GetType().Name} is missing a [EdictRouteKey] Guid property.");
+            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)));
+        if (routeKeyProp is null)
+        {
+            routeKey = Guid.Empty;
+            return false;
+        }
 
-        return (Guid)routeKeyProp.GetValue(command)!;
+        routeKey = (Guid)routeKeyProp.GetValue(command)!;
+        return true;
     }
 }

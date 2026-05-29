@@ -9,16 +9,23 @@ using Edict.Core.Outbox;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Orleans.Serialization;
 
 namespace Edict.Core.DeadLetter;
 
-sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors accessors, IServiceProvider services)
+sealed class DeadLetterPromoter(
+    Serializer serializer,
+    IEventStreamAccessors accessors,
+    IServiceProvider services,
+    ILogger<DeadLetterPromoter> logger)
     : IDeadLetterPromoter
 {
     static readonly Counter<long> PromotionCount = EdictDiagnostics.Meter.CreateCounter<long>(
         SemanticConventions.DeadLetter.Meters.PromotionCount);
+    static readonly Counter<long> PromotionFailureCount = EdictDiagnostics.Meter.CreateCounter<long>(
+        SemanticConventions.DeadLetter.Meters.PromotionFailureCount);
 
     public OutboxEntry Promote(
         OutboxEntry failed,
@@ -27,13 +34,20 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
         string sourceGrainType,
         DateTimeOffset now)
     {
+        // Promote() runs outside the engine's per-group catch. A throw here
+        // propagates up the grain drain, skips the state write, leaves the
+        // failed entry Pending, and the next reminder fires the same throw —
+        // a poison-pill reminder loop. If the cause is itself unrepresentable
+        // (unknown effect kind, command missing [EdictRouteKey]), log + count +
+        // emit a synthetic row marked with a string-marker exception type
+        // instead of throwing.
         var raised = failed.Kind switch
         {
             OutboxEffectKind.PublishEvent => BuildFromPublishEvent(failed, exception, sourceGrainKey, sourceGrainType, now),
             OutboxEffectKind.SendCommand => BuildFromSendCommand(failed, exception, sourceGrainKey, sourceGrainType, now),
             OutboxEffectKind.UpsertRow => BuildFromUpsertRow(failed, exception, sourceGrainKey, sourceGrainType, now),
             OutboxEffectKind.InvokeHandler => BuildFromInvokeHandler(failed, exception, sourceGrainKey, sourceGrainType, now),
-            _ => throw new InvalidOperationException($"Unsupported effect kind '{failed.Kind}'."),
+            _ => BuildForUnsupportedKind(failed, exception, sourceGrainKey, sourceGrainType, now),
         };
 
         PromotionCount.Add(1,
@@ -75,7 +89,49 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
         var command = serializer.Deserialize<EdictCommand>(failed.Payload);
         var routes = services.GetRequiredService<CommandRouteResolver>();
         var targetGrainType = routes.GetRoute(command).GrainClassName;
-        return DeadLetterPromotion.Build(failed, command, targetGrainType, exception, sourceGrainKey, sourceGrainType, now);
+        if (DeadLetterPromotion.TryResolveCommandRouteKey(command, out var targetGrainKey))
+        {
+            return DeadLetterPromotion.Build(failed, command, targetGrainType, targetGrainKey, exception, sourceGrainKey, sourceGrainType, now);
+        }
+
+        logger.LogWarning(
+            "Dead-letter promoter could not resolve [EdictRouteKey] on command '{CommandType}' for source grain '{SourceGrainType}'. Emitting synthetic dead-letter row with RouteKey=Guid.Empty.",
+            command.GetType().FullName, sourceGrainType);
+        PromotionFailureCount.Add(1,
+            new KeyValuePair<string, object?>(
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReason,
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.MissingRouteKey),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Common.Tags.GrainType, sourceGrainType));
+        var raised = DeadLetterPromotion.Build(failed, command, targetGrainType, Guid.Empty, exception, sourceGrainKey, sourceGrainType, now);
+        return raised with { ExceptionType = nameof(EdictMissingRouteKeyException) };
+    }
+
+    EdictDeadLetterRaised BuildForUnsupportedKind(
+        OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+    {
+        logger.LogWarning(
+            "Dead-letter promoter received an unsupported OutboxEffectKind '{EffectKind}' from source grain '{SourceGrainType}'. Emitting synthetic dead-letter row.",
+            failed.Kind, sourceGrainType);
+        PromotionFailureCount.Add(1,
+            new KeyValuePair<string, object?>(
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReason,
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.UnsupportedKind),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Common.Tags.GrainType, sourceGrainType));
+        return new EdictDeadLetterRaised
+        {
+            EntryId = failed.EntryId,
+            Kind = failed.Kind.ToString(),
+            AttemptCount = failed.AttemptCount,
+            DeadLetteredAt = now,
+            SourceGrainKey = sourceGrainKey,
+            SourceGrainType = sourceGrainType,
+            EffectTarget = nameof(EdictUnsupportedEffectKindException),
+            TraceParent = failed.TraceParent,
+            ExceptionType = nameof(EdictUnsupportedEffectKindException),
+            Reason = $"Unsupported OutboxEffectKind ordinal {(int)failed.Kind}.",
+        };
     }
 
     EdictDeadLetterRaised BuildFromUpsertRow(

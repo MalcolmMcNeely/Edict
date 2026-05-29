@@ -169,6 +169,21 @@ public static class SemanticConventions
                 public const string InternalBug = "InternalBug";
                 public const string Unhandled = "Unhandled";
             }
+
+            /// <summary>Closed allowlist tagging an <see cref="Meters.PromotionFailureCount"/>
+            /// increment with the reason the promoter could not build a normal
+            /// dead-letter row. Distinct from <see cref="FailureReason"/> because
+            /// the values describe internal promoter faults — not the upstream
+            /// exception that drove the original effect to dead-letter.</summary>
+            public const string PromotionFailureReason = "edict.dead_letter.promotion_failure_reason";
+
+            /// <summary>The two allowlist values for <see cref="PromotionFailureReason"/>.
+            /// The set is closed at compile time so the dimension stays bounded per ADR 0039.</summary>
+            public static class PromotionFailureReasonValues
+            {
+                public const string UnsupportedKind = "unsupported_kind";
+                public const string MissingRouteKey = "missing_route_key";
+            }
         }
 
         public static class Meters
@@ -176,6 +191,15 @@ public static class SemanticConventions
             /// <summary>Counter of dead-letter promotions, partitioned by
             /// <see cref="Outbox.Tags.EffectKind"/> and <see cref="Tags.FailureReason"/>.</summary>
             public const string PromotionCount = "edict.dead_letter.promotion.count";
+
+            /// <summary>Counter of internal promoter faults that fell through to a
+            /// synthetic dead-letter row (an unsupported <c>OutboxEffectKind</c>
+            /// or a <c>SendCommand</c> whose command lacks <c>[EdictRouteKey]</c>).
+            /// Partitioned by <see cref="Tags.PromotionFailureReason"/> and
+            /// <see cref="Common.Tags.GrainType"/>. A non-zero rate means the safety net
+            /// caught what would otherwise have been a poison-pill reminder loop;
+            /// alert on it.</summary>
+            public const string PromotionFailureCount = "edict.dead_letter.promotion.failure.count";
         }
     }
 

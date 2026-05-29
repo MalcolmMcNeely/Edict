@@ -15,6 +15,7 @@ using Edict.Telemetry;
 using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans.Runtime;
 using Orleans.Serialization;
@@ -80,7 +81,11 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             },
         };
         var reminders = new FakeReminderRegistrar();
-        var promoter = new DeadLetterPromoter(_serializer, new StubEdictEventStreamAccessors(), new ServiceCollection().BuildServiceProvider());
+        var promoter = new DeadLetterPromoter(
+            _serializer,
+            new StubEdictEventStreamAccessors(),
+            new ServiceCollection().BuildServiceProvider(),
+            NullLogger<DeadLetterPromoter>.Instance);
 
         var host = new OutboxHost<EdictUnit>(
             state,

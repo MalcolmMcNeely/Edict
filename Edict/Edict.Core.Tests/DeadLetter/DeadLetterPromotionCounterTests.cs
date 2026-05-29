@@ -8,6 +8,7 @@ using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans.Serialization;
 
@@ -68,7 +69,11 @@ public sealed class DeadLetterPromotionCounterTests
     static DeadLetterPromoter BuildPromoter()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        return new DeadLetterPromoter(Serializer, new StubEdictEventStreamAccessors(), services);
+        return new DeadLetterPromoter(
+            Serializer,
+            new StubEdictEventStreamAccessors(),
+            services,
+            NullLogger<DeadLetterPromoter>.Instance);
     }
 
     static List<Capture> StartListener(string grainTypeMarker)

@@ -57,7 +57,7 @@ public sealed class DeadLetterPromotionTests
         var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, command, "Sample.PaymentCommandHandler",
+            entry, command, "Sample.PaymentCommandHandler", FixedOrderId,
             new InvalidOperationException("rejected"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 

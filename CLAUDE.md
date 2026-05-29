@@ -36,6 +36,10 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 - **Inline (`//`)** comments are only for non-obvious WHY, and the prose must stand alone. Do not cite ADR numbers — if the comment only earns its keep via a doc pointer, rewrite the prose so it stands alone or delete the comment. Comments that restate what the code does should be deleted.
 - **Test scaffolding** — `// Arrange`, `// Act`, `// Assert` markers are a permitted readability convention in tests.
 
+## Exception policy
+
+- **Nothing reached from `DeadLetterPromoter.Promote()` may throw.** The promoter is invoked from `OutboxHost` outside the engine's per-group catch — a throw inside it propagates up the grain drain method, the state write is skipped, the failed entry stays Pending, and the next reminder fires the same throw (poison-pill loop). When a cause is itself unrepresentable (an unknown `OutboxEffectKind`, a `SendCommand` whose command lacks `[EdictRouteKey]`), log a warning, increment `PromotionFailureCount` with a bounded `promotion_failure_reason` tag, and return a synthetic dead-letter row whose `ExceptionType` carries a string-marker `Edict*Exception` name. The marker types (`EdictUnsupportedEffectKindException`, `EdictMissingRouteKeyException`) are never instantiated or thrown.
+
 ## Skills available
 
 A SessionStart hook (`.claude/hooks/inject-skills-on-session-start.ps1`) injects the bodies of `csharp`, `blazor`, `testing`, and `surface-config` at the start of every session, so the full conventions are already in context. A PostToolUse hook (`.claude/hooks/block-style-violations.ps1`) blocks edits that ship known offenders (e.g. `CancellationToken ct`).
