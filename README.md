@@ -81,6 +81,13 @@ The consumer-facing surface is six concepts: **Command Handler**, **Event Handle
 
 Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 
+## Benchmarks
+
+`Edict.Benchmarks.Throughput` sweeps issuer parallelism against any registered substrate (`azure`, `kafkapostgres`, or `all`) and writes results to [`docs/benchmarks/`](docs/benchmarks/).
+
+- [`throughput.md`](docs/benchmarks/throughput.md) — measured per-event latency and sustained EPS on both substrates, framed as a regression guard on a known substrate, not a sizing tool.
+- [`production-scale-estimate.md`](docs/benchmarks/production-scale-estimate.md) — back-of-envelope extrapolation to real Azure Storage and managed Kafka + Postgres at 1/2/4/8 silos, with substrate ceilings and the assumptions worth pressure-testing.
+
 ## Tech stack
 
 C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analyzers, .NET Aspire, xUnit + Verify + Testcontainers.
@@ -142,13 +149,6 @@ dotnet run --project Sample/Sample.KafkaPostgres.AppHost
 ```
 
 Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdmin sidecars are wired in for topic and table inspection.
-
-## Benchmarks
-
-`Edict.Benchmarks.Throughput` sweeps issuer parallelism against any registered substrate (`azure`, `kafkapostgres`, or `all`) and writes results to `docs/benchmarks/`.
-
-- [`throughput.md`](docs/benchmarks/throughput.md) — measured per-event latency and sustained EPS on both substrates, framed as a regression guard on a known substrate, not a sizing tool.
-- [`production-scale-estimate.md`](docs/benchmarks/production-scale-estimate.md) — back-of-envelope extrapolation to real Azure Storage and managed Kafka + Postgres at 1/2/4/8 silos, with substrate ceilings and the assumptions worth pressure-testing.
 
 ## How this was built
 
