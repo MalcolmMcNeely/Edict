@@ -20,6 +20,7 @@ using Edict.Testing.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.Extensions.Configuration;
 
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -328,7 +329,7 @@ public sealed class EdictTestApp : IAsyncDisposable
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var ctx = HarnessRegistry.Current;

@@ -1,4 +1,5 @@
 using ArchUnitNET.Loader;
+using System.Reflection;
 using ArchUnitNET.xUnit;
 
 using Edict.Azure.TableStorage;
@@ -222,7 +223,7 @@ public class TypePlacementTests
     public void OutboxDrainEngine_ShouldNotExist()
     {
         // Algorithm folded into OutboxHost; the engine/host split is gone.
-        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var match = coreAssembly.GetTypes()
             .FirstOrDefault(t => t.Name == "OutboxDrainEngine");
         Assert.Null(match);
@@ -233,7 +234,7 @@ public class TypePlacementTests
     {
         // The interface that served only OutboxDrainEngine's testability is
         // gone now that the host *is* the testable thing.
-        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var match = coreAssembly.GetTypes()
             .FirstOrDefault(t => t.Name == "IOutboxHost");
         Assert.Null(match);
@@ -244,7 +245,7 @@ public class TypePlacementTests
     {
         // The intermediate shared root is gone; each consumer-facing root
         // owns its own ~30-40 line lifecycle shell.
-        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var match = coreAssembly.GetTypes()
             .FirstOrDefault(t => t.Name.StartsWith("EdictDurableConsumerBase", StringComparison.Ordinal));
         Assert.Null(match);
@@ -258,12 +259,12 @@ public class TypePlacementTests
         // should leak the type. The framework bases hold it as a private
         // field; test probes can reach the underlying envelope via the
         // internal OutboxStateForProbe accessor.
-        var coreAssembly = typeof(Edict.Core.Idempotency.EdictIdempotencyBase).Assembly;
+        var coreAssembly = typeof(EdictIdempotencyBase).Assembly;
         var leakingMembers = coreAssembly.GetExportedTypes()
             .SelectMany(t =>
-                t.GetProperties(System.Reflection.BindingFlags.Public
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Instance)
+                t.GetProperties(BindingFlags.Public
+                    | BindingFlags.NonPublic
+                    | BindingFlags.Instance)
                     .Where(p =>
                         (p.GetMethod is { IsFamily: true } or { IsFamilyOrAssembly: true } or { IsPublic: true })
                         && p.PropertyType.IsGenericType
@@ -400,10 +401,10 @@ public class TypePlacementTests
 
         var topicFor = mapper.GetMethod(
             "TopicFor",
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            BindingFlags.Public | BindingFlags.Static);
         var partitionFor = mapper.GetMethod(
             "PartitionFor",
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            BindingFlags.Public | BindingFlags.Static);
 
         Assert.NotNull(topicFor);
         Assert.NotNull(partitionFor);

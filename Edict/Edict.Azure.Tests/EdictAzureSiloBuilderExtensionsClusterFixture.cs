@@ -9,9 +9,11 @@ using Edict.Core.Serialization;
 using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans.Serialization;
 using Orleans.TestingHost;
+using Orleans.Configuration;
 
 namespace Edict.Azure.Tests;
 
@@ -110,7 +112,7 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
             // 30s response timeout when storage + reminder tables provision
             // in parallel; the bumped timeout gives the silo headroom for
             // the first command roundtrip.
-            siloBuilder.Configure<global::Orleans.Configuration.SiloMessagingOptions>(o =>
+            siloBuilder.Configure<SiloMessagingOptions>(o =>
             {
                 o.ResponseTimeout = TimeSpan.FromMinutes(2);
             });
@@ -141,13 +143,13 @@ public sealed class EdictAzureSiloBuilderExtensionsClusterFixture : IAsyncLifeti
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
-            clientBuilder.Configure<global::Orleans.Configuration.ClientMessagingOptions>(o =>
+            clientBuilder.Configure<ClientMessagingOptions>(o =>
             {
                 o.ResponseTimeout = TimeSpan.FromMinutes(2);
             });

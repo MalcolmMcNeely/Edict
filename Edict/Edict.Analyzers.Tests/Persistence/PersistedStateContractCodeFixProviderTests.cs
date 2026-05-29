@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using System.IO;
 
 using Edict.Analyzers.Persistence;
 
@@ -10,6 +12,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis.Host.Mef;
 
 using Xunit;
 
@@ -63,14 +66,14 @@ public class PersistedStateContractCodeFixProviderTests
     static async Task<string> ApplyCodeFixAsync(string source)
     {
         var references = ((string)System.AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(System.IO.Path.PathSeparator)
+            .Split(Path.PathSeparator)
             .Where(path => path.Length > 0)
             .Select(path => MetadataReference.CreateFromFile(path))
             .ToImmutableArray<MetadataReference>();
 
-        var host = Microsoft.CodeAnalysis.Host.Mef.MefHostServices.Create(
-            Microsoft.CodeAnalysis.Host.Mef.MefHostServices.DefaultAssemblies);
-        var workspace = new Microsoft.CodeAnalysis.AdhocWorkspace(host);
+        var host = MefHostServices.Create(
+            MefHostServices.DefaultAssemblies);
+        var workspace = new AdhocWorkspace(host);
         var project = workspace.AddProject("ConsumerUnderTest", LanguageNames.CSharp)
             .WithMetadataReferences(references)
             .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
@@ -93,13 +96,13 @@ public class PersistedStateContractCodeFixProviderTests
             document,
             firstDiagnostic,
             (action, _) => registered ??= action,
-            System.Threading.CancellationToken.None);
+            CancellationToken.None);
 
         await fixer.RegisterCodeFixesAsync(fixContext);
 
         Assert.NotNull(registered);
-        var operations = await registered!.GetOperationsAsync(System.Threading.CancellationToken.None);
-        var changedSolution = ((Microsoft.CodeAnalysis.CodeActions.ApplyChangesOperation)operations[0]).ChangedSolution;
+        var operations = await registered!.GetOperationsAsync(CancellationToken.None);
+        var changedSolution = ((ApplyChangesOperation)operations[0]).ChangedSolution;
         var changedDocument = changedSolution.GetDocument(document.Id)!;
         var changedRoot = await changedDocument.GetSyntaxRootAsync();
         return changedRoot!.ToFullString();

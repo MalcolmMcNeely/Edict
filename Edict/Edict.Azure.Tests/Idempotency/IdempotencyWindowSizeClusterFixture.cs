@@ -17,6 +17,7 @@ using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.Idempotency;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans;
 using Orleans.Serialization;
@@ -140,7 +141,7 @@ public sealed class IdempotencyWindowSizeClusterFixture : IdempotencyWindowSizeF
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             clientBuilder.AddActivityPropagation();

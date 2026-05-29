@@ -18,6 +18,7 @@ using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.ClaimCheck;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Npgsql;
 
@@ -172,7 +173,7 @@ public sealed class KafkaClaimCheckClusterFixture : ClaimCheckFixture
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             clientBuilder.AddActivityPropagation();

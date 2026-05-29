@@ -18,6 +18,7 @@ using Edict.Tests.Conformance;
 using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Npgsql;
 
@@ -167,7 +168,7 @@ public sealed class PostgresClusterFixture : ConformanceFixture
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[PostgresClusterContextRegistry.ContextKeyProperty]

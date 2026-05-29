@@ -18,6 +18,7 @@ using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Npgsql;
 
@@ -162,7 +163,7 @@ public sealed class PostgresOutboxControllableExecutorFixture : ConformanceFixtu
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[PostgresClusterContextRegistry.ContextKeyProperty]

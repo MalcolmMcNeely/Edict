@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Edict.Benchmarks.Throughput.Workload;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
@@ -26,7 +28,7 @@ public sealed class CommandsBaseTypedScenario : IClosedLoopScenario
 
     public string Name => "Command acceptance (base-typed)";
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+    [SuppressMessage(
         "Edict", "EDICT015",
         Justification = "ADR-0034 A/B counterpart — deliberately base-typed to force the slow path.")]
     public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)

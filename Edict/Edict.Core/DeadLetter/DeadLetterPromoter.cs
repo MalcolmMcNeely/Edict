@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using System.Text.Json;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
@@ -82,7 +83,7 @@ sealed class DeadLetterPromoter(Serializer serializer, IEventStreamAccessors acc
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(failed.Payload);
         var row = serializer.Deserialize<object>(effect.RowBytes);
-        var payloadJson = System.Text.Json.JsonSerializer.Serialize(row, row.GetType());
+        var payloadJson = JsonSerializer.Serialize(row, row.GetType());
         return DeadLetterPromotion.Build(failed, effect, payloadJson, exception, sourceGrainKey, sourceGrainType, now);
     }
 

@@ -17,7 +17,7 @@ namespace Edict.Kafka.Tests;
 /// the configurator itself, so the fixture writes its registry key into
 /// <see cref="Orleans.TestingHost.TestClusterBuilder.Properties"/> and the
 /// configurator reads it back off the silo's
-/// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>.
+/// <see cref="IConfiguration"/>.
 /// </summary>
 sealed record KafkaAzureClusterContext(
     string KafkaBootstrapServers,

@@ -17,6 +17,7 @@ using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans;
 using Orleans.Serialization;
@@ -150,7 +151,7 @@ public sealed class AzureOutboxDeadLetterClusterFixture : ConformanceFixture
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[AzureClusterContextRegistry.ContextKeyProperty]

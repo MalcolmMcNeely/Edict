@@ -18,10 +18,12 @@ using Edict.Tests.Conformance;
 using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans;
 using Orleans.Serialization;
 using Orleans.TestingHost;
+using Orleans.Configuration;
 
 namespace Edict.Azure.Tests;
 
@@ -121,7 +123,7 @@ public sealed class AzureClusterFixture : ConformanceFixture
             // cold grain activations can run past Orleans' default 30s
             // response timeout; the bumped timeout gives the silo headroom
             // (mirrors the precedent in EdictAzureSiloBuilderExtensionsClusterFixture).
-            siloBuilder.Configure<global::Orleans.Configuration.SiloMessagingOptions>(o =>
+            siloBuilder.Configure<SiloMessagingOptions>(o =>
             {
                 o.ResponseTimeout = TimeSpan.FromMinutes(2);
             });
@@ -167,7 +169,7 @@ public sealed class AzureClusterFixture : ConformanceFixture
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[AzureClusterContextRegistry.ContextKeyProperty]
@@ -177,7 +179,7 @@ public sealed class AzureClusterFixture : ConformanceFixture
 
             clientBuilder.AddActivityPropagation();
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
-            clientBuilder.Configure<global::Orleans.Configuration.ClientMessagingOptions>(o =>
+            clientBuilder.Configure<ClientMessagingOptions>(o =>
             {
                 o.ResponseTimeout = TimeSpan.FromMinutes(2);
             });

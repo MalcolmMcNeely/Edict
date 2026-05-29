@@ -15,6 +15,7 @@ using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans.Runtime;
 using Orleans.Serialization;
@@ -161,7 +162,7 @@ public sealed class SiloKillClusterFixture : IAsyncLifetime
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[AzureClusterContextRegistry.ContextKeyProperty]

@@ -5,6 +5,7 @@ using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -54,7 +55,7 @@ public sealed class TelemetryClusterFixture : IAsyncLifetime
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             clientBuilder.AddActivityPropagation();

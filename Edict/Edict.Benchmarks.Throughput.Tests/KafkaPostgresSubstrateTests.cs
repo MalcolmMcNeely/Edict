@@ -9,6 +9,7 @@ using Edict.Substrate;
 using Edict.Substrate.KafkaPostgres;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Npgsql;
 
@@ -175,7 +176,7 @@ public sealed class KafkaPostgresSubstrateTests
         public sealed class ClientConfigurator : IClientBuilderConfigurator
         {
             public void Configure(
-                Microsoft.Extensions.Configuration.IConfiguration configuration,
+                IConfiguration configuration,
                 IClientBuilder clientBuilder)
             {
                 var runtime = Current ?? throw new InvalidOperationException(

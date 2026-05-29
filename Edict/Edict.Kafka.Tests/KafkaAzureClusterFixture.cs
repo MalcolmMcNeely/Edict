@@ -22,6 +22,7 @@ using Edict.Tests.Conformance;
 using FluentValidation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans;
 using Orleans.Hosting;
@@ -185,7 +186,7 @@ public sealed class KafkaAzureClusterFixture : ConformanceFixture
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[KafkaAzureClusterContextRegistry.ContextKeyProperty]

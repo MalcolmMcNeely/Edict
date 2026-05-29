@@ -3,6 +3,7 @@ using System.Reflection;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Events;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
@@ -64,7 +65,7 @@ public static class EdictServiceCollectionExtensions
         var accessors = new Dictionary<Type, EdictEventStreamAccessor>(discoveredAccessors);
 
         var discoveredTagWriters = EventTagWritersDiscovery.Discover(materialised, logger);
-        var tagWriters = new Dictionary<Type, Action<Edict.Contracts.Events.EdictEvent, System.Diagnostics.Activity>>(discoveredTagWriters);
+        var tagWriters = new Dictionary<Type, Action<EdictEvent, Activity>>(discoveredTagWriters);
 
         // EdictDeadLetterRaised lives in Edict.Contracts where the Edict
         // generator does not run, so the per-assembly registrar mechanism

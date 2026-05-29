@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Sending;
@@ -19,7 +21,7 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
     // the same shape in *consumer* code, where the typed receiver is
     // statically knowable. Edict.Core does not reference the analyzer, so
     // this attribute is documentary today and a future-proof guard.
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+    [SuppressMessage(
         "Edict", "EDICT015",
         Justification = "Framework deferred dispatch from persisted state — base-typed by design (ADR-0034).")]
     public async Task ExecuteAsync(

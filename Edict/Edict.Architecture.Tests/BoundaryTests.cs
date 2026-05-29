@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 
@@ -211,9 +213,9 @@ public class BoundaryTests
             Path.Combine(solutionRoot, "Edict.Azure"),
         };
 
-        var literalPattern = new System.Text.RegularExpressions.Regex(
+        var literalPattern = new Regex(
             @"TimeSpan\.From(Minutes|Seconds|Milliseconds|Hours)\s*\(\s*\d",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
+            RegexOptions.Compiled);
 
         var violations = new List<string>();
         foreach (var root in mechanismRoots.Where(Directory.Exists))

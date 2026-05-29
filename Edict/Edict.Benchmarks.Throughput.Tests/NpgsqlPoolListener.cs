@@ -193,7 +193,7 @@ internal sealed class NpgsqlPoolListener : IDisposable
                 PeakUsage: _peakUsage,
                 MaxPoolSize: _max,
                 CreateTimeP99Seconds: createP99,
-                LongestSustainedPending: TimeSpan.FromSeconds(sustainedTicks / (double)System.Diagnostics.Stopwatch.Frequency),
+                LongestSustainedPending: TimeSpan.FromSeconds(sustainedTicks / (double)Stopwatch.Frequency),
                 CreateTimeSampleCount: _createTimesSeconds.Count);
         }
     }

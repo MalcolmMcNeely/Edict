@@ -14,7 +14,7 @@ namespace Edict.Postgres.Tests;
 /// constructor); the fixture writes its registry key into the
 /// <see cref="Orleans.TestingHost.TestClusterBuilder.Properties"/> dictionary
 /// and the configurator reads the same key off the silo's
-/// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>.
+/// <see cref="IConfiguration"/>.
 /// </summary>
 sealed record PostgresClusterContext(
     string PostgresConnectionString,

@@ -16,7 +16,7 @@ namespace Edict.Azure.Tests;
 /// constructor); the fixture writes its registry key into the
 /// <see cref="Orleans.TestingHost.TestClusterBuilder.Properties"/> dictionary
 /// and the configurator reads the same key off the silo's
-/// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>.
+/// <see cref="IConfiguration"/>.
 /// Keeping the (necessarily static) registry on a helper class — not on the
 /// fixture itself — satisfies the "no <c>static</c> field in any
 /// cluster fixture" rule that the previous shape violated.

@@ -8,6 +8,7 @@ using Edict.Substrate;
 using Edict.Substrate.Azurite;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans.Hosting;
 using Orleans.TestingHost;
@@ -180,7 +181,7 @@ public sealed class AzuriteSubstrateTests
         public sealed class ClientConfigurator : IClientBuilderConfigurator
         {
             public void Configure(
-                Microsoft.Extensions.Configuration.IConfiguration configuration,
+                IConfiguration configuration,
                 IClientBuilder clientBuilder)
             {
                 var runtime = Current ?? throw new InvalidOperationException("Substrate runtime not set");

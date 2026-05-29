@@ -19,6 +19,7 @@ using Edict.Core.TableStorage;
 using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 using Orleans;
 using Orleans.Runtime;
@@ -150,7 +151,7 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
     sealed class ClientConfigurator : IClientBuilderConfigurator
     {
         public void Configure(
-            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            IConfiguration configuration,
             IClientBuilder clientBuilder)
         {
             var key = configuration[AzureClusterContextRegistry.ContextKeyProperty]
