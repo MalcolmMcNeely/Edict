@@ -156,7 +156,7 @@ Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdm
 
 ## Agentic tooling (dogfood)
 
-This repo dogfoods two `dotnet tool`s pinned in `.config/dotnet-tools.json`: `edict-mcp` (Model Context Protocol server) and `edict-skills` (Claude Code skill installer). `.mcp.json` at the repo root wires the MCP server into any Claude Code session opened here, and the five `edict-*` consumer skills sit in `.claude/skills/` alongside the framework-dev ones.
+This repo dogfoods two `dotnet tool`s pinned in `.config/dotnet-tools.json`: [`Edict.Mcp`](Edict/Edict.Mcp/README.md) (Model Context Protocol server, CLI `edict-mcp`) and [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) (Claude Code skill installer, CLI `edict-skills`). `.mcp.json` at the repo root wires the MCP server into any Claude Code session opened here, and the five `edict-*` consumer skills sit in `.claude/skills/` alongside the framework-dev ones. Manifest-pinned install is the recommended path for consumers too — what's lived in here is what the READMEs document.
 
 Until the lockstep release pushes the two tools to nuget.org, pack them locally first; then restore from the bundled feed:
 
