@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Edict.Mcp.Protocol;
 using Edict.Mcp.Tools;
 using Edict.Mcp.Workspaces;
@@ -41,8 +43,22 @@ public class McpJsonRpcRouterTests
                 builder.Replace(FixtureSolutionPath.Replace("\\", "\\\\\\\\"), "{FIXTURE_SOLUTION_PATH}");
                 builder.Replace(FixtureSolutionPath.Replace("\\", "\\\\"), "{FIXTURE_SOLUTION_PATH}");
                 builder.Replace(FixtureSolutionPath, "{FIXTURE_SOLUTION_PATH}");
+                var scrubbed = ToolVersionFieldRegex.Replace(
+                    builder.ToString(),
+                    EncodedQuote + "toolVersion" + EncodedQuote + ": " + EncodedQuote + "{TOOL_VERSION}" + EncodedQuote);
+                builder.Clear();
+                builder.Append(scrubbed);
             });
     }
+
+    // The DescribeMcpState response is itself a JSON document serialised into the outer JSON-RPC payload's
+    // "text" field, so embedded quotes are written as the 6-char escape sequence " and we have to
+    // match the literal text, not the " character it decodes to — hence Regex.Escape on the prefix/suffix.
+    const string EncodedQuote = "\\u0022";
+
+    static readonly Regex ToolVersionFieldRegex = new(
+        Regex.Escape(EncodedQuote + "toolVersion" + EncodedQuote + ": " + EncodedQuote) + ".*?" + Regex.Escape(EncodedQuote),
+        RegexOptions.Compiled);
 
     [Fact]
     public async Task RouteAsync_ToolsCall_DescribeGlossaryTerm_ReturnsTermBody()

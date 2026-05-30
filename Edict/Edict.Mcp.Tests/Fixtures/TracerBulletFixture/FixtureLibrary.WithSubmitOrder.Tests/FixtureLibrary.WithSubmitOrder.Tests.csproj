@@ -9,14 +9,13 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
-        <PackageReference Include="Verify.Xunit" Version="31.12.5" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Edict.Mcp\Edict.Mcp.csproj" />
-        <ProjectReference Include="..\Edict.ClaudeSkills\Edict.ClaudeSkills.csproj" />
+        <ProjectReference Include="..\FixtureLibrary.WithSubmitOrder\FixtureLibrary.WithSubmitOrder.csproj" />
+        <ProjectReference Include="..\..\..\..\Edict.Testing\Edict.Testing.csproj" />
     </ItemGroup>
 
 </Project>

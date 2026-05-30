@@ -1,0 +1,32 @@
+﻿{
+  "commands": [
+    {
+      "commandType": "FixtureLibrary.Orders.CancelOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "FixtureLibrary.Orders.OrderCommandHandler"
+      ]
+    },
+    {
+      "commandType": "FixtureLibrary.Orders.PlaceOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "FixtureLibrary.Orders.OrderCommandHandler"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "eventType": "FixtureLibrary.Orders.OrderPlaced",
+      "routeKeyProperty": "OrderId",
+      "subscribers": [
+        "FixtureLibrary.Activity.OrderActivityProjection",
+        "FixtureLibrary.Notifications.OrderPlacedEmailHandler",
+        "FixtureLibrary.Reporting.OrdersByStatusProjection",
+        "FixtureLibrary.Shipping.ShipmentSaga"
+      ]
+    }
+  ],
+  "collisions": [],
+  "driftStatus": "no-edict-references"
+}

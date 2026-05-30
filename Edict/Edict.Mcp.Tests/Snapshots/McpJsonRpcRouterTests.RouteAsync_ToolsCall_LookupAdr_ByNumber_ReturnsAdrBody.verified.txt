@@ -1,11 +1,11 @@
-﻿{
+{
   "jsonrpc": "2.0",
   "id": 5,
   "result": {
     "content": [
       {
         "type": "text",
-        "text": "# Event-driven, not event-sourced\r\n\r\nEdict is built on Orleans streams and provides CQRS building blocks (Command Handlers, Event Handlers, Sagas, Projection Builders) but deliberately does **not** persist events to a replayable log \u2014 there is no event store, no replay, and no rehydration. Events are transient (delivered, handled, discarded); grain state is snapshot-persisted via ordinary Orleans grain storage, never reconstructed from history. \u0022Projection Builder\u0022 borrows its name from event sourcing but only ever consumes the live stream forward \u2014 a new global read model starts from \u0022now\u0022; there is no \u0022rebuild the projection\u0022 operation by design.\r\n"
+        "text": "# Event-driven, not event-sourced\n\nEdict is built on Orleans streams and provides CQRS building blocks (Command Handlers, Event Handlers, Sagas, Projection Builders) but deliberately does **not** persist events to a replayable log \u2014 there is no event store, no replay, and no rehydration. Events are transient (delivered, handled, discarded); grain state is snapshot-persisted via ordinary Orleans grain storage, never reconstructed from history. \u0022Projection Builder\u0022 borrows its name from event sourcing but only ever consumes the live stream forward \u2014 a new global read model starts from \u0022now\u0022; there is no \u0022rebuild the projection\u0022 operation by design.\n"
       }
     ],
     "isError": false

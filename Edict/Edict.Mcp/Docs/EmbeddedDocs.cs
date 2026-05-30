@@ -36,6 +36,8 @@ static class EmbeddedDocs
         using var stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' is not present in assembly '{assembly.FullName}'.");
         using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        // Normalise to LF so tool output is identical regardless of the OS the assembly was built on
+        // (Windows checkouts of CRLF markdown otherwise leak \r into the JSON response).
+        return reader.ReadToEnd().Replace("\r\n", "\n");
     }
 }

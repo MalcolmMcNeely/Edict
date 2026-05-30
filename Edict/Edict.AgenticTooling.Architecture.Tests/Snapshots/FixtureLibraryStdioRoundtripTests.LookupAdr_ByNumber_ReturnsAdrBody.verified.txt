@@ -1,0 +1,3 @@
+﻿# Event-driven, not event-sourced
+
+Edict is built on Orleans streams and provides CQRS building blocks (Command Handlers, Event Handlers, Sagas, Projection Builders) but deliberately does **not** persist events to a replayable log — there is no event store, no replay, and no rehydration. Events are transient (delivered, handled, discarded); grain state is snapshot-persisted via ordinary Orleans grain storage, never reconstructed from history. "Projection Builder" borrows its name from event sourcing but only ever consumes the live stream forward — a new global read model starts from "now"; there is no "rebuild the projection" operation by design.

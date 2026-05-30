@@ -1,0 +1,42 @@
+﻿{
+  "programSourceLocation": {
+    "filePath": "FixtureLibrary/Program.cs",
+    "line": 1,
+    "column": 1
+  },
+  "wired": [
+    {
+      "extensionName": "AddEdict",
+      "declaringAssembly": "FixtureLibrary",
+      "purpose": "Registers the Edict framework: handler discovery, outbox, telemetry."
+    },
+    {
+      "extensionName": "AddEdictAzurePersistence",
+      "declaringAssembly": "FixtureLibrary",
+      "purpose": "Wires Azure Table Storage as the grain-state provider."
+    },
+    {
+      "extensionName": "AddEdictAzureStreams",
+      "declaringAssembly": "FixtureLibrary",
+      "purpose": "Wires the Azure Queue stream provider."
+    }
+  ],
+  "missing": [
+    {
+      "extensionName": "AddEdictAzureBlobClaimCheck",
+      "declaringAssembly": "Edict.Azure.Streaming",
+      "purpose": "Enables the Azure Blob claim-check store for large event payloads."
+    },
+    {
+      "extensionName": "AddEdictPostgresPersistence",
+      "declaringAssembly": "Edict.Postgres",
+      "purpose": "Wires PostgreSQL as the grain-state provider."
+    },
+    {
+      "extensionName": "AddEdictKafkaStreams",
+      "declaringAssembly": "Edict.Kafka",
+      "purpose": "Wires the Kafka stream provider."
+    }
+  ],
+  "driftStatus": "no-edict-references"
+}

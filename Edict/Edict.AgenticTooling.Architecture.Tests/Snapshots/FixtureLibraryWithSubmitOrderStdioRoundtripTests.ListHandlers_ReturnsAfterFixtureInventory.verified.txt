@@ -1,0 +1,45 @@
+﻿{
+  "handlers": [
+    {
+      "declaringTypeName": "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler",
+      "role": "commandHandler",
+      "boundContracts": [
+        {
+          "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.CancelOrderCommand",
+          "routeKeyPropertyName": "OrderId"
+        },
+        {
+          "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.PlaceOrderCommand",
+          "routeKeyPropertyName": "OrderId"
+        },
+        {
+          "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.SubmitOrderCommand",
+          "routeKeyPropertyName": "OrderId"
+        }
+      ],
+      "declaringAssembly": "FixtureLibrary.WithSubmitOrder",
+      "sourceLocation": {
+        "filePath": "FixtureLibrary.WithSubmitOrder/Orders/OrderCommandHandler.Cancel.cs",
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "declaringTypeName": "Edict.Core.DeadLetter.EdictDeadLetterProjectionBuilder",
+      "role": "tableProjectionBuilder",
+      "boundContracts": [
+        {
+          "fullTypeName": "Edict.Contracts.DeadLetter.EdictDeadLetterRaised",
+          "routeKeyPropertyName": "SingletonKey"
+        }
+      ],
+      "declaringAssembly": "Edict.Core",
+      "sourceLocation": {
+        "filePath": "{REPO_ROOT}/Edict/Edict.Core/DeadLetter/EdictDeadLetterProjectionBuilder.cs",
+        "line": 11,
+        "column": 1
+      }
+    }
+  ],
+  "driftStatus": "no-edict-references"
+}

@@ -1,0 +1,3 @@
+﻿**Domain Stream**:
+A named Orleans stream that carries every event type for one domain, declared once via `[Stream("Name")]` on the concrete event type.
+_Avoid_: per-event-type streams; inferring the stream name from the CLR namespace; a publisher and subscriber naming the stream independently.

@@ -1,0 +1,36 @@
+﻿{
+  "commands": [
+    {
+      "commandType": "FixtureLibrary.WithSubmitOrder.Orders.CancelOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
+      ]
+    },
+    {
+      "commandType": "FixtureLibrary.WithSubmitOrder.Orders.PlaceOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
+      ]
+    },
+    {
+      "commandType": "FixtureLibrary.WithSubmitOrder.Orders.SubmitOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "eventType": "Edict.Contracts.DeadLetter.EdictDeadLetterRaised",
+      "routeKeyProperty": "SingletonKey",
+      "subscribers": [
+        "Edict.Core.DeadLetter.EdictDeadLetterProjectionBuilder"
+      ]
+    }
+  ],
+  "collisions": [],
+  "driftStatus": "no-edict-references"
+}

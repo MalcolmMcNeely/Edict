@@ -40,6 +40,7 @@
     <Project Path="Edict.ClaudeSkills/Edict.ClaudeSkills.csproj" />
     <Project Path="Edict.ClaudeSkills.Tests/Edict.ClaudeSkills.Tests.csproj" />
     <Project Path="Edict.AgenticTooling.Architecture.Tests/Edict.AgenticTooling.Architecture.Tests.csproj" />
+    <Project Path="Edict.Mcp.Tests/Fixtures/TracerBulletFixture/FixtureLibrary.WithSubmitOrder.Tests/FixtureLibrary.WithSubmitOrder.Tests.csproj" />
   </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
