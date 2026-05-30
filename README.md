@@ -156,7 +156,12 @@ Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdm
 
 ## Agentic tooling
 
-Two `dotnet tool`s ship from this repo for consumers: [`Edict.Mcp`](Edict/Edict.Mcp/README.md) (Model Context Protocol server, CLI `edict-mcp`) and [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) (Claude Code skill installer, CLI `edict-skills`). They land on nuget.org with the first lockstep release; install instructions live in each package README. The repo itself doesn't currently dogfood them — `Edict.AgenticTooling.Architecture.Tests` covers the install path end-to-end.
+Two `dotnet tool`s ship from this repo for consumers:
+
+- [`Edict.Mcp`](Edict/Edict.Mcp/README.md) — Model Context Protocol server (CLI `edict-mcp`). Lets an AI agent query a consumer's solution for handlers, route keys, silo wiring, glossary, and ADRs.
+- [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) — Claude Code skill installer (CLI `edict-skills`). Drops five trigger-scoped skills into `.claude/skills/` so the agent reaches for the right MCP tool at the right moment.
+
+Both land on nuget.org with the first lockstep release. Install instructions live in each package README.
 
 ## How this was built
 
