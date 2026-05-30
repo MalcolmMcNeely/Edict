@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
@@ -120,6 +122,7 @@ public abstract class EdictCommandHandler<TState>
     /// devirtualize the record-<c>with</c> clone. Not a stable public API; the
     /// interceptor emitter is the only caller.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public void RaiseFast<TEvent>(TEvent theEvent) where TEvent : EdictEvent
     {
         ArgumentNullException.ThrowIfNull(theEvent);

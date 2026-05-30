@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
@@ -10,7 +11,13 @@ namespace Edict.Core.Commands;
 /// (pure), get the aggregate grain by its Guid key, and dispatch. All routing
 /// logic lives in <see cref="CommandRouteResolver"/>; this type only owns the
 /// Orleans hop so the resolver stays cluster-free and unit-testable.
+/// <para>
+/// Public so the source generator can emit <c>is EdictSender</c> casts in
+/// consumer-emitted interceptor stubs; hidden from consumer IntelliSense
+/// because consumer code resolves <see cref="IEdictSender"/>, never this class.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class EdictSender : IEdictSender
 {
     readonly CommandRouteResolver _resolver;
@@ -64,6 +71,7 @@ public sealed class EdictSender : IEdictSender
     /// for telemeterized property writes — zero per-call allocation. Not a
     /// stable public API; the interceptor emitter is the only caller.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public async Task<EdictCommandResult> SendFastPathAsync<TCommand>(
         TCommand command,
         Guid routeKey,

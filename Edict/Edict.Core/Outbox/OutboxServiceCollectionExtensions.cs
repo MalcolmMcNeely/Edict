@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Core.ClaimCheck;
@@ -21,6 +23,7 @@ namespace Edict.Core.Outbox;
 /// </summary>
 public static class OutboxServiceCollectionExtensions
 {
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static IServiceCollection AddEdictOutbox(
         this IServiceCollection services,
         Action<EdictOptions>? configure = null)

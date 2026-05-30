@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -39,7 +40,11 @@ public static class EdictServiceCollectionExtensions
     /// Scans <see cref="AppDomain.CurrentDomain"/> for assemblies annotated
     /// with <c>[assembly: EdictRoutes]</c> and registers the resulting route
     /// map, <see cref="IEdictSender"/>, and the Edict <see cref="ActivitySource"/>.
+    /// Framework-internal: consumer hosts call <c>silo.AddEdict()</c>; this
+    /// <see cref="IServiceCollection"/> overload is used only by the in-memory
+    /// test rig.
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static IServiceCollection AddEdict(this IServiceCollection services) =>
         AddEdictCore(
             services,

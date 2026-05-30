@@ -1,5 +1,12 @@
+using System.ComponentModel;
+using System.Reflection;
+
 using Edict.Contracts.Commands;
+using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.Outbox;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Xunit;
 
@@ -49,6 +56,48 @@ public class PublicSurfaceAllowListTests
         Assert.True(
             unexpected.Count == 0 && missing.Count == 0,
             BuildDriftMessage(unexpected, missing));
+    }
+
+    [Fact]
+    public void EdictCore_GeneratorOnlyAndFrameworkInternalMembers_AreHiddenFromIntelliSense()
+    {
+        var addEdictServiceCollectionOverload = typeof(EdictServiceCollectionExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(method =>
+                method.Name == nameof(EdictServiceCollectionExtensions.AddEdict)
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == typeof(IServiceCollection));
+
+        var targets = new (string Description, MemberInfo Member)[]
+        {
+            ("EdictSender (class)", typeof(EdictSender)),
+            (
+                "EdictSender.SendFastPathAsync<TCommand>",
+                typeof(EdictSender).GetMethod(nameof(EdictSender.SendFastPathAsync))!),
+            (
+                "EdictCommandHandler<TState>.RaiseFast<TEvent>",
+                typeof(EdictCommandHandler<>).GetMethod("RaiseFast")!),
+            (
+                "OutboxServiceCollectionExtensions.AddEdictOutbox",
+                typeof(OutboxServiceCollectionExtensions).GetMethod(nameof(OutboxServiceCollectionExtensions.AddEdictOutbox))!),
+            (
+                "EdictServiceCollectionExtensions.AddEdict(IServiceCollection)",
+                addEdictServiceCollectionOverload),
+        };
+
+        var missing = targets
+            .Where(target =>
+            {
+                var attribute = target.Member.GetCustomAttribute<EditorBrowsableAttribute>();
+                return attribute?.State != EditorBrowsableState.Never;
+            })
+            .Select(target => target.Description)
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "These framework-internal and generator-only members must carry [EditorBrowsable(EditorBrowsableState.Never)]:\n  - "
+                + string.Join("\n  - ", missing));
     }
 
     [Fact]
