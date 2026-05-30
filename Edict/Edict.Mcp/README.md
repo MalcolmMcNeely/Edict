@@ -1,6 +1,6 @@
 # Edict.Mcp
 
-Model Context Protocol server for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework. Install as a `dotnet tool` and wire it into `.mcp.json` so an AI agent (Claude Code, Cursor, etc.) can query an Edict-based solution's handlers, route keys, silo wiring, glossary, and ADRs while it writes code.
+Model Context Protocol server for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework. Install as a `dotnet tool` and wire it into `.mcp.json` so an AI agent (Claude Code, Cursor, etc.) can query an Edict-based solution's handlers, route keys, silo wiring, glossary, and decision records while it writes code.
 
 ## Install
 
@@ -24,8 +24,13 @@ For a repo with multiple solutions, pass `--solution path/to.slnx`. Otherwise th
 
 ## Tools
 
-This release is a tracer-bullet. The only tool advertised today is `edict_describe_mcp_state` — a self-diagnostic that reports the loaded solution path, indexed-handler count, and registered tool list. Use it to verify the MCP server found your workspace. The full tool surface (`edict_describe_glossary_term`, `edict_lookup_adr`, `edict_list_handlers`, `edict_list_route_keys`, `edict_describe_silo_wiring`) ships in later prereleases.
+- `edict_describe_glossary_term` — fuzzy lookup of Edict's domain language. Case-insensitive, the optional `Edict` prefix elidable (`Saga`, `saga`, `EdictSaga` all resolve).
+- `edict_lookup_adr` — fuzzy retrieval of an Edict decision record by number or title substring.
+- `edict_list_handlers` — every consumer-defined `EdictCommandHandler` / `EdictEventHandler` / `EdictSaga` / `EdictProjectionBuilder` / `EdictTableProjectionBuilder` in the solution, with bound contract type, route-key property, declaring assembly, and source location.
+- `edict_list_route_keys` — derived view over the handler inventory surfacing route-key collisions and shares.
+- `edict_describe_silo_wiring` — locates `Program.cs`, walks the `ISiloBuilder` chain, reports the wired `AddEdict*` extensions plus the known-but-missing ones.
+- `edict_describe_mcp_state` — self-diagnostic. Reports the loaded solution path, indexed-handler count, and registered tool list.
 
-## Version
+## Learn more
 
-Released in lockstep with the rest of Edict per ADR-0043. The version on this package matches every other `Edict.*` package in your graph.
+See [docs/usage/getting-started.md](https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/getting-started.md) for the smallest valid sample.
