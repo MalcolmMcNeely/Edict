@@ -83,9 +83,14 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         ActivitySource.AddActivityListener(listener);
 
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+        await WaitForEventsAsync(orderId);
 
+        var commandSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         var publishSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent");
+            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
+            && a.TraceId == commandSpan.TraceId);
         Assert.Equal(sku, publishSpan.GetTagItem("edict.sku"));
     }
 
@@ -106,10 +111,13 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
         await WaitForEventsAsync(orderId);
 
-        var handleSpan = stopped.SingleOrDefault(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent");
-        Assert.NotNull(handleSpan);
-        Assert.Equal(sku, handleSpan!.GetTagItem("edict.sku"));
+        var commandSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var handleSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
+            && a.TraceId == commandSpan.TraceId);
+        Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
     }
 
     [Fact]
