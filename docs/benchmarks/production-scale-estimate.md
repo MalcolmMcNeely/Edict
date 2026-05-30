@@ -4,12 +4,12 @@
 
 ## Baseline
 
-From `docs/benchmarks/throughput.md` (2026-05-29, Git SHA `b4573ee`), single-silo Orleans TestCluster on a 20-core Ryzen AI 9 365 / 64 GB / .NET 10.0.8 laptop, Testcontainers on the same host:
+From `docs/benchmarks/throughput.md` (2026-05-30, Git SHA `12b8229`), single-silo Orleans TestCluster on a 20-core Ryzen AI 9 365 / 64 GB / .NET 10.0.8 laptop, Testcontainers on the same host:
 
 | Substrate                  | Open-loop sustained EPS | Notes                                                          |
 | -------------------------- | ----------------------: | -------------------------------------------------------------- |
-| `azure` (Azurite)          |                      70 | Azurite emulator dominates the per-op floor.                   |
-| `kafkapostgres` (TC)       |                     373 | Single-broker Kafka + Postgres 17, all sharing host CPU & RAM. |
+| `azure` (Azurite)          |                      62 | Azurite emulator dominates the per-op floor.                   |
+| `kafkapostgres` (TC)       |                     819 | Single-broker Kafka + Postgres 17, all sharing host CPU & RAM. |
 
 ## Per-silo lift estimate (laptop → production)
 
@@ -23,18 +23,18 @@ From `docs/benchmarks/throughput.md` (2026-05-29, Git SHA `b4573ee`), single-sil
 
 - Single-broker Kafka and a single Postgres container, both sharing CPU with the silo, contend for the same 20 cores.
 - Per event Edict writes ~3 rows to Postgres (idempotency + projection + grain state) plus the Kafka produce.
-- **Honest lift: 3–5×. Call it ~1,500 EPS per silo on real Kafka + managed Postgres.**
+- **Honest lift: 3–5×. Call it ~3,000 EPS per silo on real Kafka + managed Postgres.**
 
 ## Multi-silo extrapolation
 
 Applies a 0.75 efficiency factor per added silo to account for Orleans cross-silo coordination (idempotency grain placement, projection contention, stream-pulling-agent rebalancing). Production data may move this factor in either direction.
 
-| Silos | Azure (real) EPS | Kafka + Postgres (real) EPS  |
-| ----: | ---------------: | ---------------------------: |
-|     1 |             ~400 |                       ~1,500 |
-|     2 |             ~600 |                       ~2,250 |
-|     4 |           ~1,200 |                       ~4,500 |
-|     8 |           ~2,400 | ~9,000 (Postgres-bound — see below) |
+| Silos | Azure (real) EPS | Kafka + Postgres (real) EPS         |
+| ----: | ---------------: | ----------------------------------: |
+|     1 |             ~400 |                              ~3,000 |
+|     2 |             ~600 |                              ~4,500 |
+|     4 |           ~1,200 | ~9,000 (Postgres-bound — see below) |
+|     8 |           ~2,400 | ~18,000 (DB-saturated without sharding) |
 
 ## Substrate ceilings — what binds each column
 
@@ -48,8 +48,8 @@ Applies a 0.75 efficiency factor per added silo to account for Orleans cross-sil
 
 - `PartitionCount = 32` per `[EdictStream]` (ADR-0028) — up to 32 silos consume in parallel before partition exhaustion.
 - Kafka on a real 3-broker cluster comfortably does 100 k+ msg/sec for small messages — **not the bottleneck at any of these scales.**
-- **Postgres is the binding constraint.** With ~3 writes/event, a 16 vCPU managed Postgres at ~20–30 k TPS sustained gives roughly **5,000–7,000 EPS** for Edict. 4 silos fit; 8 silos likely saturate the DB unless you:
-  - vertically scale to a 32–64 vCPU instance (~10 k EPS for Edict), or
+- **Postgres is the binding constraint.** With ~3 writes/event, a 16 vCPU managed Postgres at ~20–30 k TPS sustained gives roughly **5,000–7,000 EPS** for Edict. 2 silos fit; **4 silos already brush the ceiling** at the new per-silo number, and 8 silos saturate it. To go past 2–3 silos on a 16 vCPU instance you need to:
+  - vertically scale to a 32–64 vCPU instance (~10 k EPS for Edict — fits 3–4 silos), or
   - shard idempotency / projection storage across multiple Postgres instances.
 
 ## Assumptions worth pressure-testing
