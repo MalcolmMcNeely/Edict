@@ -41,6 +41,10 @@ public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
 - **`[EdictTelemeterized]`** — on a primitive property of a Command or Event subclass. The generator emits code writing the property as an OpenTelemetry tag on the active span — `edict.{snake_case_property_name}` on the Command span for a Command, on both publish and handle spans for an Event. The tag key is shared across declaring types so the same domain concept queries by one key.
 - **`partial`** — required on every concrete Command and Event; the generator emits the Orleans `[Alias]` into a second partial declaration (`EDICT007`). A concrete Event must have exactly one `[EdictRouteKey]` `Guid` property (`EDICT003`).
 
+## When to look up a contract term
+
+When a consumer asks "what counts as a Domain Stream?" / "what is a Route Key here?" / "what does Telemeterized mean on an Event?", or when picking between two terms whose distinction is fuzzy in their head, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Stream`, `Domain Stream`, and `EdictStream` all resolve. Use this before guessing a definition from the attribute name.
+
 ## Wire format: MessagePack-first, no `[Union]`
 
 Edict contracts are MessagePack-serialised on the wire. Do **not** decorate a Command or Event with `[Union]` or treat the wire shape as JSON. Wire identity is the type's simple name; the generator emits `[Alias(nameof(TheCommand))]` so a rename is a wire break — that is intentional.
