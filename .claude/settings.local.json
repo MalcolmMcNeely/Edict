@@ -51,7 +51,9 @@
       "Bash(grep -E \"\\\\.cs$\")",
       "Bash(Get-ChildItem -Path \"C:\\\\Projects\\\\Edict\" -Filter \"*.csproj\" -Recurse)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Projects\\\\Edict\" -Depth 2 | Where-Object { $_.Name -match \"^\\(global\\\\.json|Directory\\\\..+\\\\.props\\)$\" })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Projects\\\\Edict\" -Depth 2 | Where-Object { $_.Name -match \"^\\(global\\\\.json|Directory\\\\..+\\\\.props\\)$\" })",
+      "Bash(rm -rf /c/Projects/Edict/Edict/artifacts-test/* /tmp/eds.dll)",
+      "Bash(rmdir /c/Projects/Edict/Edict/artifacts-test)"
     ]
   }
 }

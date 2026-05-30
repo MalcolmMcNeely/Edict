@@ -125,7 +125,17 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 **Never refactor while RED.** Get to GREEN first.
 
-### 5. Commit
+### 5. Convention Pass
+
+Apply Edict conventions on:
+
+- [ ] CSharp
+- [ ] Blazor (if applicable)
+- [ ] Testing
+- [ ] Code comments
+- [ ] File/Folder/Project structure and placement
+
+### 6. Commit
 
 Once all tests are GREEN and any refactoring is done:
 
@@ -134,7 +144,7 @@ Once all tests are GREEN and any refactoring is done:
 - [ ] Commit with a descriptive message referencing the issue (e.g. `feat: description (#N)`)
 - [ ] Always include the Co-authored-by trailer: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
-### 6. Close the Issue
+### 7. Close the Issue
 
 - [ ] Add a comment to the issue summarising what was implemented and the tests added
 - [ ] Close the issue with `gh issue close N --repo owner/repo`
