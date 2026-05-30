@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "edict": {
-      "command": "dotnet",
-      "args": ["edict-mcp"]
-    }
-  }
-}

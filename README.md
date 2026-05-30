@@ -154,19 +154,9 @@ dotnet run --project Sample/Sample.KafkaPostgres.AppHost
 
 Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdmin sidecars are wired in for topic and table inspection.
 
-## Agentic tooling (dogfood)
+## Agentic tooling
 
-This repo dogfoods two `dotnet tool`s pinned in `.config/dotnet-tools.json`: [`Edict.Mcp`](Edict/Edict.Mcp/README.md) (Model Context Protocol server, CLI `edict-mcp`) and [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) (Claude Code skill installer, CLI `edict-skills`). `.mcp.json` at the repo root wires the MCP server into any Claude Code session opened here, and the five `edict-*` consumer skills sit in `.claude/skills/` alongside the framework-dev ones. Manifest-pinned install is the recommended path for consumers too — what's lived in here is what the READMEs document.
-
-Until the lockstep release pushes the two tools to nuget.org, pack them locally first; then restore from the bundled feed:
-
-```bash
-dotnet pack Edict/Edict.Mcp           -c Release -o artifacts-dryrun -p:MinVerVersionOverride=0.1.1-preview
-dotnet pack Edict/Edict.ClaudeSkills  -c Release -o artifacts-dryrun -p:MinVerVersionOverride=0.1.1-preview
-dotnet tool restore
-```
-
-`nuget.config` adds `./artifacts-dryrun/` as a NuGet source so the restore finds the freshly-packed nupkgs. After restore, `dotnet edict-mcp` is what `.mcp.json` invokes, and `dotnet edict-skills install` is what populates `.claude/skills/edict-*` — the same path a consumer follows.
+Two `dotnet tool`s ship from this repo for consumers: [`Edict.Mcp`](Edict/Edict.Mcp/README.md) (Model Context Protocol server, CLI `edict-mcp`) and [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) (Claude Code skill installer, CLI `edict-skills`). They land on nuget.org with the first lockstep release; install instructions live in each package README. The repo itself doesn't currently dogfood them — `Edict.AgenticTooling.Architecture.Tests` covers the install path end-to-end.
 
 ## How this was built
 
