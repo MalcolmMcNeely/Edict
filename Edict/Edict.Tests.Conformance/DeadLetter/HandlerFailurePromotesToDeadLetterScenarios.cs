@@ -58,17 +58,17 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
         // independent of the fixture's per-collection DeadLetterTableName
         // (which backs the operator-facing repository facade).
         var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition);
+            EdictDeadLetterTable.Name);
 
         await WaitUntilAsync(async () =>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(
-                EdictDeadLetterProjectionBuilder.DeadLetterPartition);
+                EdictDeadLetterTable.Name);
             return entries.Any(e => e.SourceGrainKey.Contains(counterId.ToString()));
         });
 
         var allEntries = await deadLetterTable.QueryPartitionAsync(
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition);
+            EdictDeadLetterTable.Name);
         var entry = allEntries.Single(e => e.SourceGrainKey.Contains(counterId.ToString()));
 
         Assert.Equal("PublishEvent", entry.Kind);

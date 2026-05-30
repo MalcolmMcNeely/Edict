@@ -8,40 +8,14 @@ using Orleans;
 
 namespace Edict.Core.DeadLetter;
 
-/// <summary>
-/// Built-in singleton table projection for the dead-letter pivot.
-/// Consumes the <c>edict-dead-letter</c> stream — every
-/// <see cref="EdictDeadLetterRaised"/> the engine emits — and upserts an
-/// <see cref="EdictDeadLetterEntry"/> row into the fleet-wide
-/// <see cref="TableName"/> table under the constant
-/// <see cref="DeadLetterPartition"/> partition (matching the singleton-grain
-/// choice; a future fanned-out roll-up can change this without consumer
-/// migration). RowKey = <c>EntryId.ToString("N")</c> so every dead-lettered
-/// effect produces a distinct row inside that one partition.
-/// <para>
-/// Auto-wired by <c>AddEdict()</c> — consumers do not need to register either
-/// the grain or its repository. Hand-authored (no generator) because it lives in
-/// the framework assembly; the source-generator pipeline only runs over consumer
-/// projects.
-/// </para>
-/// </summary>
 [ImplicitStreamSubscription("edict-dead-letter")]
-public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory storeFactory)
+internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory storeFactory)
     : EdictTableProjectionBuilder<EdictDeadLetterEntry>(storeFactory)
 {
-    /// <summary>
-    /// The single partition every dead-letter row is written to. All
-    /// fleet-wide reads scan this partition.
-    /// </summary>
-    public const string DeadLetterPartition = "deadletter";
+    protected override string TableName => EdictDeadLetterTable.Name;
 
-    /// <inheritdoc />
-    protected override string TableName => DeadLetterPartition;
+    protected override string DefaultPartitionKey => EdictDeadLetterTable.Name;
 
-    /// <inheritdoc />
-    protected override string DefaultPartitionKey => DeadLetterPartition;
-
-    /// <inheritdoc />
     protected override string GetRowKey(EdictEvent edictEvent) =>
         edictEvent switch
         {
@@ -72,7 +46,6 @@ public sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory sto
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
     protected override async Task<bool> DispatchAsync(EdictEvent edictEvent)
     {
         switch (edictEvent)

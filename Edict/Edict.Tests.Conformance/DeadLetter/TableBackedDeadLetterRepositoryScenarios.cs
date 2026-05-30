@@ -8,11 +8,10 @@ namespace Edict.Tests.Conformance.DeadLetter;
 
 /// <summary>
 /// The <see cref="TableBackedDeadLetterRepository"/> facade reads
-/// <c>EdictDeadLetterEntry</c> rows from the
-/// <c>EdictDeadLetterProjectionBuilder.DeadLetterPartition</c> partition via
-/// any provider's <see cref="IEdictTableRepository{T}"/>. The four facts here
-/// pin the read contract: grain-keyed filter, missing-key empty, list-all,
-/// and never-created-table empty.
+/// <c>EdictDeadLetterEntry</c> rows from the <c>EdictDeadLetterTable.Name</c>
+/// partition via any provider's <see cref="IEdictTableRepository{T}"/>. The
+/// four facts here pin the read contract: grain-keyed filter, missing-key
+/// empty, list-all, and never-created-table empty.
 /// </summary>
 public abstract class TableBackedDeadLetterRepositoryScenarios<TFixture>
     where TFixture : ConformanceFixture
@@ -109,7 +108,7 @@ public abstract class TableBackedDeadLetterRepositoryScenarios<TFixture>
     {
         var store = await _fixture.TableStoreFactory.CreateAsync<EdictDeadLetterEntry>(tableName);
         await store.UpsertAsync(
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition,
+            EdictDeadLetterTable.Name,
             entry.EntryId.ToString("N"),
             entry);
     }

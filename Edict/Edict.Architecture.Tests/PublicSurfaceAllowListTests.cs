@@ -110,7 +110,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Commands.IEdictCommandHandler",
         "Edict.Core.Configuration.EdictWiringException",
         "Edict.Core.DeadLetter.EdictClaimCheckFetchException",
-        "Edict.Core.DeadLetter.EdictDeadLetterProjectionBuilder",
+        "Edict.Core.DeadLetter.EdictDeadLetterTable",
         "Edict.Core.DeadLetter.EdictInternalInvariantException",
         "Edict.Core.DeadLetter.EdictSagaCoordinationException",
         "Edict.Core.DeadLetter.EdictUnregisteredTypeException",

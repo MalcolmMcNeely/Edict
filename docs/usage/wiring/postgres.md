@@ -105,7 +105,7 @@ Postgres 16's default `max_connections = 100` will not survive any non-trivial t
 
 ### `DeadLetterTableName` does not control where the projection writes
 
-`EdictDeadLetterProjectionBuilder` writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterProjectionBuilder.DeadLetterPartition`. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict_dead_letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
+The auto-wired projection writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict_dead_letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
 
 ```csharp
 using Edict.Core.DeadLetter;
@@ -114,7 +114,7 @@ using Edict.Postgres.TableStorage;
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
     new PostgresTableRepository<EdictDeadLetterEntry>(
         serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-        EdictDeadLetterProjectionBuilder.DeadLetterPartition,
+        EdictDeadLetterTable.Name,
         serviceProvider.GetRequiredService<Serializer>()));
 ```
 

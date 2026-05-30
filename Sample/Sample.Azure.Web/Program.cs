@@ -51,13 +51,13 @@ builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(
     _ => new AzureTableRepository<LineItemFulfillmentRow>(tableServiceClient, "lineitemfulfillment"));
 
 // The framework projection writes to the literal table named by
-// EdictDeadLetterProjectionBuilder.DeadLetterPartition; AddEdictAzurePersistence's
-// DeadLetterTableName option configures the operator-facing repository facade but
-// not the projection itself, so the consumer-side read must target the literal
-// table to see what the projection actually wrote.
+// EdictDeadLetterTable.Name; AddEdictAzurePersistence's DeadLetterTableName option
+// configures the operator-facing repository facade but not the projection itself,
+// so the consumer-side read must target the literal table to see what the
+// projection actually wrote.
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
     _ => new AzureTableRepository<EdictDeadLetterEntry>(
-        tableServiceClient, EdictDeadLetterProjectionBuilder.DeadLetterPartition));
+        tableServiceClient, EdictDeadLetterTable.Name));
 
 builder.Services.AddEdict();
 

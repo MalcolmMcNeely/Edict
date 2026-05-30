@@ -8,13 +8,13 @@ sealed class TableBackedDeadLetterRepository(IEdictTableRepository<EdictDeadLett
 {
     public Task<IReadOnlyList<EdictDeadLetterEntry>> ListAllAsync(
         CancellationToken cancellationToken = default) =>
-        table.QueryPartitionAsync(EdictDeadLetterProjectionBuilder.DeadLetterPartition, cancellationToken);
+        table.QueryPartitionAsync(EdictDeadLetterTable.Name, cancellationToken);
 
     public async Task<IReadOnlyList<EdictDeadLetterEntry>> ListAsync(
         string grainKey, CancellationToken cancellationToken = default)
     {
         var all = await table.QueryPartitionAsync(
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition, cancellationToken).ConfigureAwait(false);
+            EdictDeadLetterTable.Name, cancellationToken).ConfigureAwait(false);
         return all.Where(e => e.SourceGrainKey == grainKey).ToList();
     }
 }

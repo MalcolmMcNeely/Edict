@@ -91,14 +91,14 @@ Local development uses Azurite via `UseDevelopmentStorage=true`. Production uses
 
 ### `DeadLetterTableName` does not control where the projection writes
 
-`EdictDeadLetterProjectionBuilder` writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterProjectionBuilder.DeadLetterPartition`, used as both the table name and the singleton partition key. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict-dead-letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
+The auto-wired projection writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`, used as both the table name and the singleton partition key. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict-dead-letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
 
 ```csharp
 using Edict.Core.DeadLetter;
 
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
     _ => new AzureTableRepository<EdictDeadLetterEntry>(
-        tableServiceClient, EdictDeadLetterProjectionBuilder.DeadLetterPartition));
+        tableServiceClient, EdictDeadLetterTable.Name));
 ```
 
 The Sample web project does exactly this. The framework option will stay until the projection is refactored to honour it.

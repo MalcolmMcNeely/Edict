@@ -50,13 +50,13 @@ public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDead
         // any sibling collection sharing the same Azurite.
         var table = new AzureTableRepository<EdictDeadLetterEntry>(
             fixture.TableServiceClient,
-            EdictDeadLetterProjectionBuilder.DeadLetterPartition);
+            EdictDeadLetterTable.Name);
 
         var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
         while (DateTimeOffset.UtcNow < deadline)
         {
             var rows = await table.QueryPartitionAsync(
-                EdictDeadLetterProjectionBuilder.DeadLetterPartition);
+                EdictDeadLetterTable.Name);
             var match = rows.FirstOrDefault(r => r.ClaimCheckKey == key);
             if (match is not null)
             {

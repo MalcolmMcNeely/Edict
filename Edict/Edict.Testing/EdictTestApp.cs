@@ -240,7 +240,7 @@ public sealed class EdictTestApp : IAsyncDisposable
         services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
             (IEdictTableRepository<EdictDeadLetterEntry>)
                 ctx.TableStoreFactory
-                    .CreateAsync<EdictDeadLetterEntry>(EdictDeadLetterProjectionBuilder.DeadLetterPartition)
+                    .CreateAsync<EdictDeadLetterEntry>(EdictDeadLetterTable.Name)
                     .GetAwaiter().GetResult());
 
     // Re-point IEdictSender at the recording decorator wrapping the real sender,

@@ -194,14 +194,19 @@ public class TypePlacementTests
     [Fact]
     public void OutboxAndDeadLetterEngine_ShouldBeBareNamed_NoConsumerTypesIt()
     {
-        // EdictDeadLetterProjectionBuilder is excluded: its role-named consumer
-        // subclass inherits the brand from EdictTableProjectionBuilder.
+        // EdictDeadLetterTable is excluded: it's the stable public anchor for
+        // the dead-letter table's name — consumers type its const at their
+        // call site, earning the Edict prefix per brand-rule clause (a).
+        // EdictDeadLetterProjectionBuilder is excluded: legacy brand on the
+        // (now internal) auto-wired grain class; dropping the prefix is a
+        // separate rename outside this slice's scope.
         // Edict*Exception types are excluded: a consumer can catch them, which
         // is what earns them the Edict prefix even though they sit beside the
         // bare engine.
         var rule = Types().That()
             .ResideInNamespaceMatching(@"^Edict\.Core\.(Outbox|DeadLetter)$")
             .And().DoNotHaveNameStartingWith("EdictDeadLetterProjectionBuilder")
+            .And().DoNotHaveNameStartingWith("EdictDeadLetterTable")
             .And().DoNotHaveNameEndingWith("Exception")
             .Should().HaveNameMatching("^(?!Edict)")
             .AndShould().HaveNameMatching("^(?!IEdict)");

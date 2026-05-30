@@ -60,14 +60,14 @@ builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(ser
         serviceProvider.GetRequiredService<NpgsqlDataSource>(), "lineitemfulfillment", serviceProvider.GetRequiredService<Serializer>()));
 
 // The framework projection writes to the literal table named by
-// EdictDeadLetterProjectionBuilder.DeadLetterPartition; AddEdictPostgresPersistence's
-// DeadLetterTableName option configures the operator-facing repository facade but
-// not the projection itself, so the consumer-side read must target the literal
-// table to see what the projection actually wrote.
+// EdictDeadLetterTable.Name; AddEdictPostgresPersistence's DeadLetterTableName
+// option configures the operator-facing repository facade but not the projection
+// itself, so the consumer-side read must target the literal table to see what the
+// projection actually wrote.
 builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
     new PostgresTableRepository<EdictDeadLetterEntry>(
         serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-        EdictDeadLetterProjectionBuilder.DeadLetterPartition,
+        EdictDeadLetterTable.Name,
         serviceProvider.GetRequiredService<Serializer>()));
 
 builder.Services.AddEdict();
