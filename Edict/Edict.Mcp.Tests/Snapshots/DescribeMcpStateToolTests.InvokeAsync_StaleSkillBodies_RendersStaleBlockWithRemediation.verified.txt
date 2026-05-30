@@ -17,6 +17,13 @@
     "hasInconsistentLibraryVersions": false,
     "driftStatus": "clean"
   },
+  "skillBodies": {
+    "manifestPath": ".claude/skills/.edict-skills-manifest.json",
+    "installedVersion": "0.2.1",
+    "toolVersion": "0.3.0",
+    "driftStatus": "stale",
+    "remediation": "edict-skills install (then --force if drift warnings appear)"
+  },
   "registeredTools": [
     {
       "name": "tool_one",

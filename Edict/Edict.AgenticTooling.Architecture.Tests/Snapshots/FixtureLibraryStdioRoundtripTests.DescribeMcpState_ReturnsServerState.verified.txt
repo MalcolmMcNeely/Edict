@@ -9,6 +9,12 @@
     "hasInconsistentLibraryVersions": false,
     "driftStatus": "no-edict-references"
   },
+  "skillBodies": {
+    "manifestPath": ".claude/skills/.edict-skills-manifest.json",
+    "toolVersion": "{TOOL_VERSION}",
+    "driftStatus": "missing",
+    "remediation": "edict-skills install"
+  },
   "registeredTools": [
     {
       "name": "edict_describe_mcp_state",

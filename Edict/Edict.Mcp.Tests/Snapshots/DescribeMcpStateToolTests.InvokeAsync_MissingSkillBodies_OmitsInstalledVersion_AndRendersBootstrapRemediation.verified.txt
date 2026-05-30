@@ -1,0 +1,36 @@
+﻿{
+  "loadedSolutionPath": "{TEMP_SOLUTION_PATH}",
+  "indexedHandlerCount": 2,
+  "edictVersionReport": {
+    "toolVersion": "0.1.0-preview.42",
+    "references": [
+      {
+        "assemblyName": "Edict.Core",
+        "version": "0.1.0-preview.42",
+        "projectsReferencing": [
+          "ConsumerProject"
+        ]
+      }
+    ],
+    "isDrifted": false,
+    "hasNoEdictReferences": false,
+    "hasInconsistentLibraryVersions": false,
+    "driftStatus": "clean"
+  },
+  "skillBodies": {
+    "manifestPath": ".claude/skills/.edict-skills-manifest.json",
+    "toolVersion": "0.3.0",
+    "driftStatus": "missing",
+    "remediation": "edict-skills install"
+  },
+  "registeredTools": [
+    {
+      "name": "tool_one",
+      "description": "first"
+    },
+    {
+      "name": "tool_two",
+      "description": "second"
+    }
+  ]
+}

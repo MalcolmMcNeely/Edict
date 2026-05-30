@@ -16,6 +16,8 @@ sealed class MSBuildWorkspaceProvider
         this.currentDirectoryProvider = currentDirectoryProvider;
     }
 
+    public string CurrentDirectory => currentDirectoryProvider();
+
     public string ResolveSolutionPath()
     {
         if (solutionOverride is not null)

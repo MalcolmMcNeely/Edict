@@ -60,6 +60,20 @@ static class Program
         {
             Console.Error.WriteLine($"[edict-mcp] startup drift check skipped: {exception.Message}");
         }
+
+        try
+        {
+            var skillBodiesReport = new EdictSkillsManifestInspector().Inspect(workspaceProvider.CurrentDirectory);
+            var skillBodiesMessage = EdictSkillBodiesDriftStderrFormatter.Format(skillBodiesReport);
+            if (skillBodiesMessage is not null)
+            {
+                Console.Error.WriteLine(skillBodiesMessage);
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"[edict-mcp] skill-body drift check skipped: {exception.Message}");
+        }
     }
 
     static string? ParseSolutionOverride(string[] args)

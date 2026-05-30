@@ -51,6 +51,7 @@ sealed class McpToolRegistry
             BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()),
             BuildSiloWiringReportProvider(workspaceProvider, new SiloWiringScanner()),
             BuildVersionReportProvider(workspaceProvider, new EdictVersionInspector()),
+            BuildSkillBodiesReportProvider(workspaceProvider, new EdictSkillsManifestInspector()),
             docs,
             workspaceProvider)
     {
@@ -60,10 +61,11 @@ sealed class McpToolRegistry
         Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
         Func<CancellationToken, Task<SiloWiringReport>> siloWiringReportProvider,
         Func<CancellationToken, Task<EdictVersionReport>> versionReportProvider,
+        Func<SkillBodiesReport> skillBodiesProvider,
         DocsLookup docs,
         MSBuildWorkspaceProvider workspaceProvider)
     {
-        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, inventoryProvider, versionReportProvider, () => Tools!);
+        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, inventoryProvider, versionReportProvider, skillBodiesProvider, () => Tools!);
         var describeGlossaryTerm = new DescribeGlossaryTermTool(docs);
         var lookupAdr = new LookupAdrTool(docs);
         var listHandlers = new ListHandlersTool(inventoryProvider, versionReportProvider);
@@ -159,6 +161,26 @@ sealed class McpToolRegistry
             finally
             {
                 gate.Release();
+            }
+        };
+    }
+
+    static Func<SkillBodiesReport> BuildSkillBodiesReportProvider(
+        MSBuildWorkspaceProvider workspaceProvider,
+        EdictSkillsManifestInspector inspector)
+    {
+        var gate = new object();
+        SkillBodiesReport? cachedReport = null;
+        return () =>
+        {
+            if (cachedReport is not null)
+            {
+                return cachedReport;
+            }
+            lock (gate)
+            {
+                cachedReport ??= inspector.Inspect(workspaceProvider.CurrentDirectory);
+                return cachedReport;
             }
         };
     }

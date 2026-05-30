@@ -1,0 +1,5 @@
+﻿{
+  ManifestPath: .claude/skills/.edict-skills-manifest.json,
+  ToolVersion: 0.3.0,
+  DriftStatus: missing
+}
