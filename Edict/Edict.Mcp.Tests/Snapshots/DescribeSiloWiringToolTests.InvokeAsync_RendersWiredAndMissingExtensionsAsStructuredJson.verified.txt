@@ -22,5 +22,6 @@
       "declaringAssembly": "Edict.Azure.Streaming",
       "purpose": "Enables the Azure Blob claim-check store for large event payloads."
     }
-  ]
+  ],
+  "driftStatus": "no-edict-references"
 }

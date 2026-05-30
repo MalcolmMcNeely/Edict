@@ -1,0 +1,4 @@
+﻿[edict-mcp] Edict version check: No Edict references found in the loaded solution.
+  Tool version: 0.1.0-preview.42
+  Library versions: (none)
+  Remediation: verify edict-mcp is pointed at the right solution.

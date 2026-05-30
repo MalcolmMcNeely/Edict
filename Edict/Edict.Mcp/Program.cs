@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Edict.Mcp.Tools;
+using Edict.Mcp.Versioning;
 using Edict.Mcp.Workspaces;
 
 using Microsoft.Build.Locator;
@@ -28,6 +29,8 @@ static class Program
             currentDirectoryProvider: Directory.GetCurrentDirectory);
         var registry = new McpToolRegistry(workspaceProvider);
 
+        await EmitStartupDriftCheckAsync(workspaceProvider);
+
         var builder = Host.CreateApplicationBuilder(args);
         builder.Logging.ClearProviders();
         builder.Services.AddMcpServer()
@@ -39,6 +42,24 @@ static class Program
 
         await builder.Build().RunAsync();
         return 0;
+    }
+
+    static async Task EmitStartupDriftCheckAsync(MSBuildWorkspaceProvider workspaceProvider)
+    {
+        try
+        {
+            var solution = await workspaceProvider.LoadSolutionAsync(CancellationToken.None);
+            var report = new EdictVersionInspector().Inspect(solution);
+            var message = EdictDriftStderrFormatter.Format(report);
+            if (message is not null)
+            {
+                Console.Error.Write(message);
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"[edict-mcp] startup drift check skipped: {exception.Message}");
+        }
     }
 
     static string? ParseSolutionOverride(string[] args)

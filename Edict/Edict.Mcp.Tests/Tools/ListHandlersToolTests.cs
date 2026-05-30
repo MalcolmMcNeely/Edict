@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Edict.Mcp.Handlers;
 using Edict.Mcp.Tools;
+using Edict.Mcp.Tests.Versioning;
 
 using static VerifyXunit.Verifier;
 
@@ -35,7 +36,7 @@ public class ListHandlersToolTests
                 DeclaringAssembly: "Acme.Notifications",
                 SourceLocation: new SourceLocationInfo("Acme.Notifications/OrderPlacedEmailHandler.cs", 8, 5)),
         ]);
-        var tool = new ListHandlersTool(_ => Task.FromResult(inventory));
+        var tool = new ListHandlersTool(_ => Task.FromResult(inventory), StubVersionReportProvider.Clean());
 
         // Act
         var responseJson = await tool.InvokeAsync(arguments: null, CancellationToken.None);

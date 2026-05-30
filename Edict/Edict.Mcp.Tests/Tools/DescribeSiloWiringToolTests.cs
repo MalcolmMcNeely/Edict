@@ -1,6 +1,7 @@
 using Edict.Mcp.Handlers;
 using Edict.Mcp.SiloWiring;
 using Edict.Mcp.Tools;
+using Edict.Mcp.Tests.Versioning;
 
 using static VerifyXunit.Verifier;
 
@@ -32,7 +33,7 @@ public class DescribeSiloWiringToolTests
                     DeclaringAssembly: "Edict.Azure.Streaming",
                     Purpose: "Enables the Azure Blob claim-check store for large event payloads."),
             ]);
-        var tool = new DescribeSiloWiringTool(_ => Task.FromResult(report));
+        var tool = new DescribeSiloWiringTool(_ => Task.FromResult(report), StubVersionReportProvider.Clean());
 
         // Act
         var responseJson = await tool.InvokeAsync(arguments: null, CancellationToken.None);

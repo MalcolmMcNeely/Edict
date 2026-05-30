@@ -1,0 +1,4 @@
+﻿[edict-mcp] Edict version check: Drift (tool version differs from a library reference).
+  Tool version: 0.1.0-preview.42
+  Library versions: 0.1.0-preview.41
+  Remediation: dotnet tool update Edict.Mcp --prerelease

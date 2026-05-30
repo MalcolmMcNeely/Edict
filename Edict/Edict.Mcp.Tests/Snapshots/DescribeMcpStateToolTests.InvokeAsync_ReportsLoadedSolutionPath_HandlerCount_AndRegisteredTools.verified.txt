@@ -1,6 +1,22 @@
 ﻿{
   "loadedSolutionPath": "{TEMP_SOLUTION_PATH}",
   "indexedHandlerCount": 2,
+  "edictVersionReport": {
+    "toolVersion": "0.1.0-preview.42",
+    "references": [
+      {
+        "assemblyName": "Edict.Core",
+        "version": "0.1.0-preview.42",
+        "projectsReferencing": [
+          "ConsumerProject"
+        ]
+      }
+    ],
+    "isDrifted": false,
+    "hasNoEdictReferences": false,
+    "hasInconsistentLibraryVersions": false,
+    "driftStatus": "clean"
+  },
   "registeredTools": [
     {
       "name": "tool_one",

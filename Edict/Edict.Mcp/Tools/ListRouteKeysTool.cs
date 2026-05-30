@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Edict.Mcp.Handlers;
+using Edict.Mcp.Versioning;
 
 namespace Edict.Mcp.Tools;
 
@@ -16,20 +17,25 @@ sealed class ListRouteKeysTool
     };
 
     readonly Func<CancellationToken, Task<HandlerInventory>> inventoryProvider;
+    readonly Func<CancellationToken, Task<EdictVersionReport>> versionReportProvider;
 
-    public ListRouteKeysTool(Func<CancellationToken, Task<HandlerInventory>> inventoryProvider)
+    public ListRouteKeysTool(
+        Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
+        Func<CancellationToken, Task<EdictVersionReport>> versionReportProvider)
     {
         this.inventoryProvider = inventoryProvider;
+        this.versionReportProvider = versionReportProvider;
     }
 
     public async Task<string> InvokeAsync(IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken)
     {
         var inventory = await inventoryProvider(cancellationToken);
-        var view = BuildView(inventory);
+        var versionReport = await versionReportProvider(cancellationToken);
+        var view = BuildView(inventory, versionReport.DriftStatus);
         return JsonSerializer.Serialize(view, JsonOptions);
     }
 
-    static RouteKeysView BuildView(HandlerInventory inventory)
+    static RouteKeysView BuildView(HandlerInventory inventory, string driftStatus)
     {
         var commandBindings = new SortedDictionary<string, CommandBindingBuilder>(StringComparer.Ordinal);
         var eventBindings = new SortedDictionary<string, EventBindingBuilder>(StringComparer.Ordinal);
@@ -78,7 +84,7 @@ sealed class ListRouteKeysTool
             .Select(entry => new CommandCollision(entry.CommandType, entry.Handlers))
             .ToArray();
 
-        return new RouteKeysView(commands, events, collisions);
+        return new RouteKeysView(commands, events, collisions, driftStatus);
     }
 
     sealed class CommandBindingBuilder
@@ -108,7 +114,8 @@ sealed class ListRouteKeysTool
     sealed record RouteKeysView(
         IReadOnlyList<CommandRouteEntry> Commands,
         IReadOnlyList<EventRouteEntry> Events,
-        IReadOnlyList<CommandCollision> Collisions);
+        IReadOnlyList<CommandCollision> Collisions,
+        string DriftStatus);
 
     sealed record CommandRouteEntry(string CommandType, string? RouteKeyProperty, IReadOnlyList<string> Handlers);
     sealed record EventRouteEntry(string EventType, string? RouteKeyProperty, IReadOnlyList<string> Subscribers);

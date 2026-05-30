@@ -1,0 +1,23 @@
+﻿{
+  ToolVersion: 0.1.0-preview.42,
+  References: [
+    {
+      AssemblyName: Edict.Core,
+      Version: 0.1.0-preview.41,
+      ProjectsReferencing: [
+        ConsumerProjectB
+      ]
+    },
+    {
+      AssemblyName: Edict.Core,
+      Version: 0.1.0-preview.42,
+      ProjectsReferencing: [
+        ConsumerProjectA
+      ]
+    }
+  ],
+  IsDrifted: true,
+  HasNoEdictReferences: false,
+  HasInconsistentLibraryVersions: true,
+  DriftStatus: inconsistent-library-versions
+}

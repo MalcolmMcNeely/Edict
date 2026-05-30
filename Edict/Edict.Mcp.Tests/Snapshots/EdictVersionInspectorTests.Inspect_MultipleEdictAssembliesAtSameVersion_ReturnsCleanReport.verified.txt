@@ -1,0 +1,23 @@
+﻿{
+  ToolVersion: 0.1.0-preview.42,
+  References: [
+    {
+      AssemblyName: Edict.Contracts,
+      Version: 0.1.0-preview.42,
+      ProjectsReferencing: [
+        ConsumerProjectB
+      ]
+    },
+    {
+      AssemblyName: Edict.Core,
+      Version: 0.1.0-preview.42,
+      ProjectsReferencing: [
+        ConsumerProjectA
+      ]
+    }
+  ],
+  IsDrifted: false,
+  HasNoEdictReferences: false,
+  HasInconsistentLibraryVersions: false,
+  DriftStatus: clean
+}

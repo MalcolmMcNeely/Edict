@@ -36,5 +36,6 @@
         "column": 5
       }
     }
-  ]
+  ],
+  "driftStatus": "no-edict-references"
 }

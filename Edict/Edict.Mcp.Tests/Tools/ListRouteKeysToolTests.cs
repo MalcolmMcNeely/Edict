@@ -1,5 +1,6 @@
 using Edict.Mcp.Handlers;
 using Edict.Mcp.Tools;
+using Edict.Mcp.Tests.Versioning;
 
 using static VerifyXunit.Verifier;
 
@@ -50,7 +51,7 @@ public class ListRouteKeysToolTests
                 DeclaringAssembly: "Acme.Reporting",
                 SourceLocation: null),
         ]);
-        var tool = new ListRouteKeysTool(_ => Task.FromResult(inventory));
+        var tool = new ListRouteKeysTool(_ => Task.FromResult(inventory), StubVersionReportProvider.Clean());
 
         // Act
         var responseJson = await tool.InvokeAsync(arguments: null, CancellationToken.None);

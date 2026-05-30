@@ -3,6 +3,7 @@ using System.Text.Json;
 using Edict.Mcp.Docs;
 using Edict.Mcp.Handlers;
 using Edict.Mcp.SiloWiring;
+using Edict.Mcp.Versioning;
 using Edict.Mcp.Workspaces;
 
 namespace Edict.Mcp.Tools;
@@ -49,6 +50,7 @@ sealed class McpToolRegistry
         : this(
             BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()),
             BuildSiloWiringReportProvider(workspaceProvider, new SiloWiringScanner()),
+            BuildVersionReportProvider(workspaceProvider, new EdictVersionInspector()),
             docs,
             workspaceProvider)
     {
@@ -57,20 +59,21 @@ sealed class McpToolRegistry
     internal McpToolRegistry(
         Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
         Func<CancellationToken, Task<SiloWiringReport>> siloWiringReportProvider,
+        Func<CancellationToken, Task<EdictVersionReport>> versionReportProvider,
         DocsLookup docs,
         MSBuildWorkspaceProvider workspaceProvider)
     {
-        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, inventoryProvider, () => Tools!);
+        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, inventoryProvider, versionReportProvider, () => Tools!);
         var describeGlossaryTerm = new DescribeGlossaryTermTool(docs);
         var lookupAdr = new LookupAdrTool(docs);
-        var listHandlers = new ListHandlersTool(inventoryProvider);
-        var listRouteKeys = new ListRouteKeysTool(inventoryProvider);
-        var describeSiloWiring = new DescribeSiloWiringTool(siloWiringReportProvider);
+        var listHandlers = new ListHandlersTool(inventoryProvider, versionReportProvider);
+        var listRouteKeys = new ListRouteKeysTool(inventoryProvider, versionReportProvider);
+        var describeSiloWiring = new DescribeSiloWiringTool(siloWiringReportProvider, versionReportProvider);
         Tools =
         [
             new McpToolDescriptor(
                 Name: "edict_describe_mcp_state",
-                Description: "Self-diagnostic. Reports the loaded solution path, indexed-handler count, and the list of MCP tools the server has registered.",
+                Description: "Self-diagnostic. Reports the loaded solution path, indexed-handler count, the Edict tool-vs-library version report, and the list of MCP tools the server has registered.",
                 InputSchema: EmptyInputSchema,
                 InvokeAsync: describeMcpState.InvokeAsync),
             new McpToolDescriptor(
@@ -127,6 +130,36 @@ sealed class McpToolRegistry
         {
             var solution = await workspaceProvider.LoadSolutionAsync(cancellationToken);
             return await scanner.ScanAsync(solution, cancellationToken);
+        };
+    }
+
+    static Func<CancellationToken, Task<EdictVersionReport>> BuildVersionReportProvider(
+        MSBuildWorkspaceProvider workspaceProvider,
+        EdictVersionInspector inspector)
+    {
+        var gate = new SemaphoreSlim(initialCount: 1, maxCount: 1);
+        EdictVersionReport? cachedReport = null;
+        return async cancellationToken =>
+        {
+            if (cachedReport is not null)
+            {
+                return cachedReport;
+            }
+            await gate.WaitAsync(cancellationToken);
+            try
+            {
+                if (cachedReport is not null)
+                {
+                    return cachedReport;
+                }
+                var solution = await workspaceProvider.LoadSolutionAsync(cancellationToken);
+                cachedReport = inspector.Inspect(solution);
+                return cachedReport;
+            }
+            finally
+            {
+                gate.Release();
+            }
         };
     }
 

@@ -1,0 +1,4 @@
+﻿[edict-mcp] Edict version check: Inconsistent library versions across projects (ADR-0043 lockstep violation).
+  Tool version: 0.1.0-preview.42
+  Library versions: 0.1.0-preview.41, 0.1.0-preview.42
+  Remediation: align all Edict.* PackageReference versions across the solution (ADR-0043 lockstep).

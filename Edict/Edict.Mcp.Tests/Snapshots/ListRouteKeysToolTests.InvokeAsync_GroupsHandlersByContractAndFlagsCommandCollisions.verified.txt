@@ -27,5 +27,6 @@
         "Acme.Orders.RogueOrderCommandHandler"
       ]
     }
-  ]
+  ],
+  "driftStatus": "no-edict-references"
 }
