@@ -12,13 +12,9 @@ Every Command and Event is wire material. Get the attributes wrong and the analy
 ```csharp
 using Edict.Contracts.Commands;
 
-public sealed partial record PlaceOrderCommand(Guid OrderId, string CustomerReference) : EdictCommand
-{
-    [EdictRouteKey]
-    public Guid OrderId { get; init; } = OrderId;
-
-    public string CustomerReference { get; init; } = CustomerReference;
-}
+public sealed partial record PlaceOrderCommand(
+    [property: EdictRouteKey] Guid OrderId,
+    string CustomerReference) : EdictCommand;
 ```
 
 ## Smallest valid Event
@@ -27,11 +23,8 @@ public sealed partial record PlaceOrderCommand(Guid OrderId, string CustomerRefe
 using Edict.Contracts.Events;
 
 [EdictStream("Orders")]
-public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
-{
-    [EdictRouteKey]
-    public Guid OrderId { get; init; } = OrderId;
-}
+public sealed partial record OrderPlacedEvent(
+    [property: EdictRouteKey] Guid OrderId) : EdictEvent;
 ```
 
 ## The attribute checklist
@@ -62,6 +55,7 @@ When a consumer asks "can we just use JSON?" or "why can't I add `[Union]`?" or 
 - ADR-0009 — Stable command wire identity.
 - ADR-0010 — Event addressing model.
 - ADR-0037 — `[EdictTelemeterized]` tag keys, no type prefix.
+- ADR-0046 — Canonical authoring shape for messages and persisted state.
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any contract-attribute "why" question rather than guessing.
 

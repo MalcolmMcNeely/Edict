@@ -73,6 +73,40 @@ Edict.Core/
 
 `Idempotency/` is the shared inheritance root — it is not an Events concept and does not live under `Events/`. Add new concept sub-folders only when a clear grouping emerges.
 
+## Message authoring shape (ADR 0046)
+
+Concrete `EdictCommand` and `EdictEvent` subclasses are `partial record` types authored as a primary constructor only. Attach attributes via the `[property: ...]` target on the primary-ctor parameter; do **not** redeclare primary-ctor parameters as body properties. The IDE greys body redeclarations because the compiler has already synthesised them — a consumer reading the type cannot tell whether the redeclaration is mandatory framework ceremony or stylistic. The wire shape is identical and the generator walks `IPropertySymbol`, so authoring form is a clarity decision, not a correctness one.
+
+```csharp
+// Bad (body redeclares primary-ctor parameters)
+public sealed partial record PlaceOrderCommand(Guid OrderId, string CustomerReference) : EdictCommand
+{
+    [EdictRouteKey]
+    public Guid OrderId { get; init; } = OrderId;
+
+    public string CustomerReference { get; init; } = CustomerReference;
+}
+
+// Good (primary ctor only, attributes via [property: ...])
+public sealed partial record PlaceOrderCommand(
+    [property: EdictRouteKey] Guid OrderId,
+    string CustomerReference) : EdictCommand;
+```
+
+## Persisted state authoring shape (ADR 0046)
+
+`IEdictPersistedState` implementations — aggregate state, saga progress, table-projection row POCOs — are `sealed class` with `{ get; set; }` properties. The framework's authoring contract for state is in-place mutation inside `Handle` (`State.Status = ...`, `Progress.Stage = ...`); a record with `init` setters would force `State = State with { ... }` per mutation, which fights the documented idiom and is not even possible on the grain base's read-only `State` property. The class-vs-record rule reaches `IEdictPersistedState` implementations only — other DTOs (`MetricsSnapshot`, ad-hoc DI carriers) are out of scope.
+
+```csharp
+[GenerateSerializer]
+[Alias("Sample.Silo.Orders.OrderState")]
+public sealed class OrderState : IEdictPersistedState
+{
+    [Id(0)]
+    public OrderStatus Status { get; set; } = OrderStatus.Open;
+}
+```
+
 ## Comment policy
 
 Comments are differentiated by kind. Each kind has a different bar.

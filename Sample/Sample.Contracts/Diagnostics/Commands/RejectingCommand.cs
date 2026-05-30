@@ -3,9 +3,5 @@ using Edict.Contracts.Telemetry;
 
 namespace Sample.Contracts.Diagnostics.Commands;
 
-public sealed partial record RejectingCommand(Guid SimulationId) : EdictCommand
-{
-    [EdictRouteKey]
-    [EdictTelemeterized]
-    public Guid SimulationId { get; init; } = SimulationId;
-}
+public sealed partial record RejectingCommand(
+    [property: EdictRouteKey] [property: EdictTelemeterized] Guid SimulationId) : EdictCommand;

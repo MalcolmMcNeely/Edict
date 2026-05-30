@@ -3,12 +3,7 @@ using Edict.Contracts.Telemetry;
 
 namespace Sample.Contracts.Orders.Commands;
 
-public sealed partial record SubmitOrderCommand(Guid OrderId, decimal Amount) : EdictCommand
-{
-    [EdictRouteKey]
-    [EdictTelemeterized]
-    public Guid OrderId { get; init; } = OrderId;
-
-    /// <summary>Order total the OrderPayment saga forwards to the payment aggregate.</summary>
-    public decimal Amount { get; init; } = Amount;
-}
+/// <param name="Amount">Order total the OrderPayment saga forwards to the payment aggregate.</param>
+public sealed partial record SubmitOrderCommand(
+    [property: EdictRouteKey] [property: EdictTelemeterized] Guid OrderId,
+    decimal Amount) : EdictCommand;

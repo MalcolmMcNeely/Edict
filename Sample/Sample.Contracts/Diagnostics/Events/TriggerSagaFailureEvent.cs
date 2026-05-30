@@ -5,9 +5,5 @@ using Edict.Contracts.Telemetry;
 namespace Sample.Contracts.Diagnostics.Events;
 
 [EdictStream("Diagnostics")]
-public sealed partial record TriggerSagaFailureEvent(Guid SimulationId) : EdictEvent
-{
-    [EdictRouteKey]
-    [EdictTelemeterized]
-    public Guid SimulationId { get; init; } = SimulationId;
-}
+public sealed partial record TriggerSagaFailureEvent(
+    [property: EdictRouteKey] [property: EdictTelemeterized] Guid SimulationId) : EdictEvent;

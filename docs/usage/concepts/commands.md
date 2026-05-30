@@ -5,13 +5,9 @@ An `EdictCommand` expresses intent to change state, routed to one aggregate grai
 ```csharp
 using Edict.Contracts.Commands;
 
-public sealed partial record PlaceOrderCommand(Guid OrderId, string CustomerReference) : EdictCommand
-{
-    [EdictRouteKey]
-    public Guid OrderId { get; init; } = OrderId;
-
-    public string CustomerReference { get; init; } = CustomerReference;
-}
+public sealed partial record PlaceOrderCommand(
+    [property: EdictRouteKey] Guid OrderId,
+    string CustomerReference) : EdictCommand;
 ```
 
 Dispatched through the DI-injected `IEdictSender`:

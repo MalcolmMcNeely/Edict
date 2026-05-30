@@ -5,9 +5,5 @@ using Edict.Contracts.Telemetry;
 namespace Sample.Contracts.Orders.Events;
 
 [EdictStream("Orders")]
-public sealed partial record OrderShippedEvent(Guid OrderId) : EdictEvent
-{
-    [EdictRouteKey]
-    [EdictTelemeterized]
-    public Guid OrderId { get; init; } = OrderId;
-}
+public sealed partial record OrderShippedEvent(
+    [property: EdictRouteKey] [property: EdictTelemeterized] Guid OrderId) : EdictEvent;

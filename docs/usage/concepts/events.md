@@ -6,11 +6,8 @@ An `EdictEvent` is a notification that state has changed, published to a named d
 using Edict.Contracts.Events;
 
 [EdictStream("Orders")]
-public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
-{
-    [EdictRouteKey]
-    public Guid OrderId { get; init; } = OrderId;
-}
+public sealed partial record OrderPlacedEvent(
+    [property: EdictRouteKey] Guid OrderId) : EdictEvent;
 ```
 
 A Command Handler raises an event through the protected `Raise` method on `EdictCommandHandler<TState>`. The framework stamps `EventId`, `OccurredAt`, and W3C trace fields; the consumer never sets them.

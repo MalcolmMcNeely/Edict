@@ -5,13 +5,8 @@ using Edict.Contracts.Telemetry;
 namespace Sample.Contracts.Orders.Events;
 
 [EdictStream("Orders")]
-public sealed partial record LineItemAddedEvent(Guid OrderId, Guid LineItemId, string Sku, int Quantity) : EdictEvent
-{
-    [EdictRouteKey]
-    [EdictTelemeterized]
-    public Guid OrderId { get; init; } = OrderId;
-
-    public Guid LineItemId { get; init; } = LineItemId;
-    public string Sku { get; init; } = Sku;
-    public int Quantity { get; init; } = Quantity;
-}
+public sealed partial record LineItemAddedEvent(
+    [property: EdictRouteKey] [property: EdictTelemeterized] Guid OrderId,
+    Guid LineItemId,
+    string Sku,
+    int Quantity) : EdictEvent;
