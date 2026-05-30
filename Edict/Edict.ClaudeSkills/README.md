@@ -22,7 +22,13 @@ Existing files are not overwritten; the installer reports which files it wrote a
 
 ## Skills
 
-This release is a tracer-bullet. One placeholder skill body is bundled so the install plumbing has something concrete to land. The full five-skill bundle — `edict-authoring`, `edict-contracts`, `edict-silo-wiring`, `edict-testing`, `edict-diagnostics` — ships in later prereleases.
+The bundle ships five consumer-facing skills, each scoped to "when working on a consumer app built on Edict" so they coexist with framework-development skills inside the Edict repo without auto-firing on framework code:
+
+- `edict-authoring` — fires when adding a feature. Walks the Command Handler / Event Handler / Saga / Projection Builder / Table Projection Builder decision tree and triggers `edict_list_handlers` and `edict_list_route_keys`.
+- `edict-contracts` — fires when defining or modifying Commands and Events. Covers `[EdictRouteKey]`, `[EdictStream]`, `[EdictTelemeterized]`, MessagePack-first, `[Alias]`, no `[Union]`; triggers `edict_lookup_adr` for the why.
+- `edict-silo-wiring` — fires when editing `Program.cs`. Covers the `AddEdict*` matrix; triggers `edict_describe_silo_wiring`.
+- `edict-testing` — fires when writing tests. Covers `EdictTestApp`, `WithConsumer`, `Replace`, `Send`, `Timeline`, `GetSagaProgress`, `GetProjectionRow`, `Drain`, `AdvanceClock`, and the chaos-default contract.
+- `edict-diagnostics` — fires when investigating failures. Covers `IEdictDeadLetterRepository`, the W3C trace stitch, common failure shapes; triggers `edict_lookup_adr` for the relevant decisions.
 
 ## Version
 
