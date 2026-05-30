@@ -25,7 +25,7 @@ public sealed class OrderEmailHandlerReplaceTests
             .WithConsumer(typeof(OrderCommandHandler).Assembly)
             .Replace<IEmailNotifier>(fake));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
         Assert.Single(fake.SentOrderIds);
@@ -50,7 +50,7 @@ The `IEmailNotifier` the production silo wires gets overridden on **both** the s
 ## Surface
 
 - **`EdictTestAppBuilder.Replace<TService>(TService fake)`** — registers `fake` as the resolved implementation of `TService` on both the silo and client containers. Returns the builder for chaining.
-- **`IEdictSender`** (`Edict.Contracts.Sending`) — already decorated by the harness. `Send` is recorded onto the timeline before delegating to the real sender; a consumer rarely replaces it explicitly. The `Edict.Testing` swap of this seam is the in-memory implementation the production `IEdictSender` is exchanged for.
+- **`IEdictSender`** (`Edict.Contracts.Sending`) — already decorated by the harness. `SendAsync` is recorded onto the timeline before delegating to the real sender; a consumer rarely replaces it explicitly. The `Edict.Testing` swap of this seam is the in-memory implementation the production `IEdictSender` is exchanged for.
 
 ## How `Replace` resolves
 

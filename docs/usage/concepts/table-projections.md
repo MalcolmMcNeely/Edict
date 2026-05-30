@@ -17,7 +17,7 @@ public sealed partial class OrdersByStatusTableProjectionBuilder
 
     protected override string GetRowKey(EdictEvent edictEvent) => "status";
 
-    public Task Handle(OrderPlacedEvent edictEvent)
+    public Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.Status = "Open";
         CurrentRow.PlacedAt = edictEvent.OccurredAt;
@@ -38,7 +38,7 @@ OrderStatusRow? row = await tableRepository.GetAsync(orderId.ToString(), "status
 - **`TableName`** (`protected abstract string`) — the provider-specific table or collection name.
 - **`GetRowKey(EdictEvent edictEvent)`** (`protected abstract string`) — derives the row key from the incoming event.
 - **`DefaultPartitionKey`** (`protected virtual string`) — defaults to the grain's primary key as a string (which equals the event's `[EdictRouteKey]` Guid for per-aggregate projections). Override for global-singleton projections that collapse every row into one partition.
-- **`CurrentRow`** (`protected T`) — the row loaded (or freshly constructed) before each `Handle` call. Modifications captured into an `UpsertRow` outbox effect after the handler returns. The setter is `protected` so an `init`-only row type can be replaced wholesale.
+- **`CurrentRow`** (`protected T`) — the row loaded (or freshly constructed) before each `HandleAsync` call. Modifications captured into an `UpsertRow` outbox effect after the handler returns. The setter is `protected` so an `init`-only row type can be replaced wholesale.
 - **`IEdictTableStoreFactory`** is the framework-internal write seam; ctor-inject and forward to `base`. The application tier reads via **`IEdictTableRepository<T>`** (`GetAsync`, `QueryPartitionAsync`); the repository is read-only.
 
 The upsert is idempotent by `(PartitionKey, RowKey)` — at-least-once redelivery of the effect does not double-apply.
@@ -46,7 +46,7 @@ The upsert is idempotent by `(PartitionKey, RowKey)` — at-least-once redeliver
 ## Analyzer rules
 
 - **EDICT001** — concrete table-projection builders must be declared `partial`.
-- **EDICT009** — every `Handle` must return `Task` and take a single `EdictEvent`-derived parameter.
+- **EDICT009** — every `HandleAsync` must return `Task` and take a single `EdictEvent`-derived parameter.
 - **EDICT011** — the row type `T` implements `IEdictPersistedState` and must carry `[GenerateSerializer]`, `[Alias("literal")]`, and `[Id(n)]` on every declared public property.
 
 ## See also

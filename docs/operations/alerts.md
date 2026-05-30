@@ -69,7 +69,7 @@ sum by (edict_outbox_effect_kind, edict_dead_letter_failure_reason) (
 
 ## 4. Stream falling behind
 
-**Symptom.** Consumers are handling events well after they were raised. Producer-side `Raise` is healthy; consumer-side `Handle` is lagging.
+**Symptom.** Consumers are handling events well after they were raised. Producer-side `Raise` is healthy; consumer-side `HandleAsync` is lagging.
 
 **Expression.**
 
@@ -84,7 +84,7 @@ histogram_quantile(0.99,
 **Triage.**
 1. Slice by `edict_event_type`. A single event type lagging means a single consumer (`EdictEventHandler` / `EdictSaga` / `EdictProjectionBuilder`) is the bottleneck — check `edict_event_handle_duration` p99 for the same type.
 2. Cross-check `edict_outbox_oldest_entry_age` for the source grain type. If the outbox is also stuck, lag is producer-side, not consumer-side.
-3. Compare against the substrate's own lag metric — `messaging.kafka.consumer.lag` for Kafka, `azure.queue.request.duration` p99 for Azure. See [`observability.md`](observability.md). The framework metric and the substrate metric should track together; a divergence (framework lag high, substrate lag low) means the consumer's `Handle` body is the bottleneck, not the wire.
+3. Compare against the substrate's own lag metric — `messaging.kafka.consumer.lag` for Kafka, `azure.queue.request.duration` p99 for Azure. See [`observability.md`](observability.md). The framework metric and the substrate metric should track together; a divergence (framework lag high, substrate lag low) means the consumer's `HandleAsync` body is the bottleneck, not the wire.
 
 ---
 

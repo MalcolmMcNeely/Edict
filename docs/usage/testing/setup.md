@@ -22,7 +22,7 @@ public sealed class PlaceOrderTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
         await Verify(app.Timeline);
@@ -37,7 +37,7 @@ The consumer assembly is the only required input. `EdictTestApp` reflects over i
 - **`EdictTestApp.StartAsync(Action<EdictTestAppBuilder>) → Task<EdictTestApp>`** — boots the in-memory cluster. Returns an `IAsyncDisposable`; always `await using`.
 - **`EdictTestAppBuilder.WithConsumer(Assembly)`** — the consumer assembly whose grains, commands, events and generated `AddEdict()` the cluster boots. Required.
 - **`EdictTestAppBuilder.Replace<TService>(TService fake)`** — last-`AddSingleton`-wins override applied to both the silo and client containers. See [seams.md](seams.md).
-- **`EdictTestApp.Send(EdictCommand) → Task<EdictCommandResult>`** — dispatches through the real `IEdictSender` on the cluster's client.
+- **`EdictTestApp.SendAsync(EdictCommand) → Task<EdictCommandResult>`** — dispatches through the real `IEdictSender` on the cluster's client.
 - **`EdictTestApp.Drain() → Task`** — settles the in-process engine on a stable timeline. Probes go through here, not `Task.Delay`. See [probes.md](probes.md).
 - **`EdictTestApp.AdvanceClock(TimeSpan) → Task`** — advances the virtual `TimeProvider` the engine reads for backoff and reminder gating, then drains.
 - **`EdictTestApp.Timeline`** — the single Verify-shaped snapshot of every Command sent, Event raised, and consumer Invocation observed.
@@ -55,7 +55,7 @@ A test never writes `TestClusterBuilder` itself. `StartAsync` runs an `ISiloConf
 
 ## Silo / client provider split
 
-The serializer is registered in **both** containers because Orleans's grain-call codec runs on each side of the wire. The client process needs the consumer's grain-interface assembly so its outgoing calls (`IEdictSender.Send`) can serialise concrete commands; the silo needs the consumer's handler assembly so its incoming activations can deserialise them.
+The serializer is registered in **both** containers because Orleans's grain-call codec runs on each side of the wire. The client process needs the consumer's grain-interface assembly so its outgoing calls (`IEdictSender.SendAsync`) can serialise concrete commands; the silo needs the consumer's handler assembly so its incoming activations can deserialise them.
 
 `AddEdict()` is also registered on both sides for the same reason — the `IEdictSender` lives on the client; the Outbox engine, sagas, projections, and dead-letter pipeline live on the silo.
 

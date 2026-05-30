@@ -6,12 +6,14 @@ New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-starte
 
 Using Claude Code or Cursor? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
 
+Curious how this was built? See [How this was built](#how-this-was-built) below.
+
 A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics.
 
 ```csharp
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
-    public Task<EdictCommandResult> Handle(PlaceOrderCommand cmd)
+    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand cmd)
     {
         State.Status = OrderStatus.Open;
         Raise(new OrderPlacedEvent(cmd.OrderId));
@@ -25,7 +27,7 @@ Subscribing to that event is just as small:
 ```csharp
 public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHandler
 {
-    public Task Handle(OrderPlacedEvent evt) => email.SendConfirmation(evt.OrderId, evt.EventId);
+    public Task HandleAsync(OrderPlacedEvent evt) => email.SendConfirmation(evt.OrderId, evt.EventId);
 }
 ```
 
@@ -33,26 +35,26 @@ That's both sides of an event-driven flow. No Orleans interfaces, no stream wiri
 
 | Guarantee | What it does |
 |---|---|
-| **Idempotent** | Redeliveries are deduplicated by `EventId` before `Handle` runs |
+| **Idempotent** | Redeliveries are deduplicated by `EventId` before `HandleAsync` runs |
 | **Atomic** | Aggregate state and raised events commit in a single write |
-| **Traced** | One OpenTelemetry trace covers every hop from `Send` to the terminal handler |
+| **Traced** | One OpenTelemetry trace covers every hop from `SendAsync` to the terminal handler |
 | **Forensic** | Poison messages land in a queryable dead-letter projection |
 | **At-least-once** | Duplicates and bounded reorder are deterministically exercised in tests |
-| **Wired** | Source generators connect `Handle` to its stream by parameter type |
+| **Wired** | Source generators connect `HandleAsync` to its stream by parameter type |
 
 The same handler code runs on either of two reference substrate pairings — Azure Storage, or Kafka + Postgres — both passing the same conformance battery. Substrate-pluggability is demonstrated, not claimed.
 
 ## Testing and chaos
 
-Edict ships with an in-memory test framework so command, event, saga, and projection handlers can be exercised without spinning up Orleans, Azurite, or any container. Tests `Send` a command, `Drain` the cascade, and inspect saga progress or projection rows directly.
+Edict ships with an in-memory test framework so command, event, saga, and projection handlers can be exercised without spinning up Orleans, Azurite, or any container. Tests `SendAsync` a command, `Drain` the cascade, and inspect saga progress or projection rows directly.
 
 ```csharp
 await using var app = await EdictTestApp.StartAsync(b => b
     .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
-await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
 await app.Drain();
 
 var progress = await app.GetSagaProgress<OrderPaymentSaga, OrderPaymentProgress>(orderId);
@@ -81,15 +83,15 @@ Orleans dissolves the infrastructure tax. It does not dissolve the application-l
 
 ## Why Edict?
 
-A webhook fires twice. A handler crashes after writing state but before publishing the event. A trace from `Send` ends at the first queue hop. A poison message blocks the aggregate. Conventional .NET answers each one with a different library and a fresh row in a fresh table.
+A webhook fires twice. A handler crashes after writing state but before publishing the event. A trace from `SendAsync` ends at the first queue hop. A poison message blocks the aggregate. Conventional .NET answers each one with a different library and a fresh row in a fresh table.
 
-Edict's answer is one rule: every consumer inherits a base class that wraps your `Handle` in an envelope carrying a dedup key, the trace context, and the outbox commit.
+Edict's answer is one rule: every consumer inherits a base class that wraps your `HandleAsync` in an envelope carrying a dedup key, the trace context, and the outbox commit.
 
 From that one wrapping:
 
-- **Idempotency is automatic.** The base class deduplicates by `EventId` before invoking `Handle`. Nothing to opt into.
+- **Idempotency is automatic.** The base class deduplicates by `EventId` before invoking `HandleAsync`. Nothing to opt into.
 - **State and events commit together.** A single grain write covers aggregate state and outbox entries; no two-phase commit.
-- **One trace per business flow.** The envelope carries trace context across every async stream hop, so `Send` through to the terminal handler is one OpenTelemetry trace.
+- **One trace per business flow.** The envelope carries trace context across every async stream hop, so `SendAsync` through to the terminal handler is one OpenTelemetry trace.
 - **Poison messages land in a queryable dead-letter projection.** The aggregate keeps accepting commands; the failure has a forensic home.
 
 The consumer-facing surface is six concepts: **Command Handler**, **Event Handler**, **Saga**, **Projection Builder**, **Sender**, **Stream**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
@@ -98,7 +100,7 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 
 ## Agentic tooling
 
-AI-assisted development against Edict isn't guesswork. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
+AI-assisted development against Edict isn't guesswork. These tools were built during Edict's own agentic build, when Claude kept burning tokens grepping for handlers and re-deriving the framework's structure from scratch. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
 
 | Skill (when it fires) | MCP tools it calls | What the agent stops guessing |
 |---|---|---|
@@ -132,7 +134,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 ## Highlights
 
-- **Agentic-friendly.** Ships an MCP server and Claude Code skill bundle so an agent picks the right grain role, queries the live solution for handlers/route keys/wiring, and reads ADRs — no hand-rolled prompts.
+- **Agentic-friendly.** The MCP server and Claude Code skill bundle exist because the framework's own agentic build needed them. Now they ship so any agent working on an Edict solution gets the same view of handlers, route keys, wiring, and ADRs.
 - **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** One grain write covers both.
@@ -143,7 +145,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Operational metrics.** Outbox depth + oldest-entry age, dead-letter rate by failure kind, handler p99 by command/event type, stream lag, saga progress age, claim-check size distribution, drain-cycle stability — all on a single `Meter` named `"Edict"`. Vendor-neutral PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
 - **Configurable.** Every knob is an options property with a default and startup validation.
-- **In-memory tests.** Send → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
+- **In-memory tests.** SendAsync → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
 ## What's next
 

@@ -10,7 +10,7 @@ Git SHA: 12b8229
 
 ## System throughput (sustained, end-to-end)
 
-Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment. Saturation runs against the same Testcontainers substrate as the closed-loop sweeps — a real Postgres / Kafka / Azure Storage backend will sit at a different ceiling, generally higher.
+Open-loop Events workload: N=256 producers fire `SendAsync(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment. Saturation runs against the same Testcontainers substrate as the closed-loop sweeps — a real Postgres / Kafka / Azure Storage backend will sit at a different ceiling, generally higher.
 
 | Substrate | Events / sec (end-to-end) | Health |
 | --- | ---: | :---: |
@@ -23,8 +23,8 @@ Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can 
 
 Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per substrate, 10 s warmup + 30 s measurement window. **No EPS column** here — closed-loop's bounded `await` rate-paces the producer, so any per-second figure would read as a throughput claim it cannot make. The full closed-loop EPS surface is preserved in the raw CSV alongside per-sample latency.
 
-- **Command acceptance** — `Send` round-trip, handler increments durable state and returns `Accepted`. No `Raise`, no stream hop, no projection.
-- **Command → Event delivery** — `Send` + handler `Raise` + stream hop + consumer dispatch + projection write, with completion signalled by a 5 ms point-get poll on the projection row.
+- **Command acceptance** — `SendAsync` round-trip, handler increments durable state and returns `Accepted`. No `Raise`, no stream hop, no projection.
+- **Command → Event delivery** — `SendAsync` + handler `Raise` + stream hop + consumer dispatch + projection write, with completion signalled by a 5 ms point-get poll on the projection row.
 
 | Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
 | --- | --- | --- | ---: | ---: | ---: | :---: |

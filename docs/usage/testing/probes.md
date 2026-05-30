@@ -23,9 +23,9 @@ public sealed class OrderPaymentSagaTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
         var progress = await app.GetSagaProgress<OrderPaymentSaga, OrderPaymentProgress>(orderId);
@@ -41,10 +41,10 @@ public sealed class OrderPaymentSagaTests
 
 - **`EdictTestApp.Timeline → Timeline`** — the recorded sequence of every Command sent, Event raised, and consumer Invocation observed. Volatile envelope fields (ids, timestamps, W3C trace context) are scrubbed; the snapshot is the deterministic wire-format drift guard. Assert with `await Verify(app.Timeline)`.
 - **`EdictTestApp.GetSagaProgress<TSaga, TProgress>(Guid key) → Task<TProgress>`** — typed read of the saga grain's durable `Progress` for direct snapshot assertion. `TSaga` is the saga implementation class; `TProgress` is its progress type. Routes through `IEdictSaga` plus a class-name prefix because Orleans's codegen runs before Edict's generator and so does not produce a client proxy for the generator-emitted `I{Saga}` interface.
-- **`EdictTestApp.GetProjectionRow<TRow>(string tableName, string partitionKey, string rowKey) → Task<TRow?>`** — typed read of the projection row a `EdictTableProjectionBuilder<TRow>` last wrote for the supplied `(tableName, partitionKey, rowKey)`, or `null` when the projection's `Handle` never ran for this key.
+- **`EdictTestApp.GetProjectionRow<TRow>(string tableName, string partitionKey, string rowKey) → Task<TRow?>`** — typed read of the projection row a `EdictTableProjectionBuilder<TRow>` last wrote for the supplied `(tableName, partitionKey, rowKey)`, or `null` when the projection's `HandleAsync` never ran for this key.
 - **`EdictTestApp.GetOutboxState(string grainType) → (int TotalPending, DateTimeOffset? OldestEnqueuedAt)`** — the silo-local metrics cache the `edict.outbox.pending.count` and `edict.outbox.oldest_entry.age` observable gauges read at scrape time, summed across every live grain of `grainType` on this silo.
 - **`EdictTestApp.GetSagaState(string sagaType) → DateTimeOffset?`** — the most-recent `lastHandledAt` across every live saga of `sagaType` on this silo, or `null` when no saga of that type has handled an event. Pairs with `AdvanceClock` to verify `edict.saga.progress.age` grows when a saga sits idle.
-- **`EdictTestApp.Drain() → Task`** — settles the engine. Polls timeline-recorder count for a stability window (250 ms), flushes the chaos held-queue, and re-polls until both have gone quiet. Hard timeout 10 s — exceeded only when the consumer's `Handle` itself does not terminate.
+- **`EdictTestApp.Drain() → Task`** — settles the engine. Polls timeline-recorder count for a stability window (250 ms), flushes the chaos held-queue, and re-polls until both have gone quiet. Hard timeout 10 s — exceeded only when the consumer's `HandleAsync` itself does not terminate.
 - **`EdictTestApp.AdvanceClock(TimeSpan) → Task`** — advances the `FakeTimeProvider` the engine reads for backoff and reminder gating, then drains. Backoff timing elapses with no wall-clock wait.
 
 ## Why not `Task.Delay`
@@ -55,7 +55,7 @@ The same principle holds inside the harness itself: the chaos held-queue is rele
 
 ## What the timeline records
 
-Every `Send` (through the recording `IEdictSender` decorator), every `Raise` (when the in-process publisher dispatches a stamped event), and every consumer `Handle` completion (`Ran`) or dead-letter promotion (`DeadLettered`) lands as a `TimelineEntry`. The entry carries the type's short name, the domain payload, and not much else — `EventId`, `OccurredAt`, `TraceId`, and `SpanId` are deliberately excluded so the Verify snapshot stays stable run-to-run.
+Every `SendAsync` (through the recording `IEdictSender` decorator), every `Raise` (when the in-process publisher dispatches a stamped event), and every consumer `HandleAsync` completion (`Ran`) or dead-letter promotion (`DeadLettered`) lands as a `TimelineEntry`. The entry carries the type's short name, the domain payload, and not much else — `EventId`, `OccurredAt`, `TraceId`, and `SpanId` are deliberately excluded so the Verify snapshot stays stable run-to-run.
 
 Permanent-failure outcomes are recorded out-of-band by the publish executor when it observes the framework's `EdictDeadLetterRaised` event with `Kind = InvokeHandler`, because the host's promotion path bypasses the invoke-handler executor on the final attempt. The timeline still shows the `arrived → DeadLettered` pair.
 

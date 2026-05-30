@@ -66,7 +66,7 @@ using Edict.Contracts.Commands;
 
 public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
-    public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         State.Status         = OrderStatus.Open;
         State.CustomerReference = command.CustomerReference;
@@ -159,7 +159,7 @@ using var host = builder.Build();
 await host.StartAsync();
 
 var sender = host.Services.GetRequiredService<IEdictSender>();
-var result = await sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "REF-001"));
+var result = await sender.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), "REF-001"));
 
 await host.StopAsync();
 ```

@@ -22,7 +22,7 @@ Raise(new OrderPlacedEvent(command.OrderId));
 - **`[EdictStream(name)]`** (`Edict.Contracts.Events`, on class) — names the domain stream the concrete event belongs to. The publisher's flush target and every subscriber's implicit subscription are derived from this name.
 - **`[EdictRouteKey]`** (`Edict.Contracts.Commands`, on property) — marks the one `Guid` property that addresses the event. On an event the route key selects the stream key; subscribers (handlers, sagas, projection builders) are activated with that Guid. The event's route key is independent of the command's — a saga commonly re-keys across domains.
 
-A consumer never sees `EdictEventEnvelope` on a `Handle` signature; the receiver pipeline unwraps the wire-format envelope before dispatch. See [claim-check.md](claim-check.md) for the oversized-event escape hatch.
+A consumer never sees `EdictEventEnvelope` on a `HandleAsync` signature; the receiver pipeline unwraps the wire-format envelope before dispatch. See [claim-check.md](claim-check.md) for the oversized-event escape hatch.
 
 ## Analyzer rules
 

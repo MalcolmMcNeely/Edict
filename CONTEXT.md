@@ -34,7 +34,7 @@ The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with r
 _Avoid_: returning domain payloads through a command; throwing for expected rejection.
 
 **Command Validator**:
-A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `Handle`, answering whether the Command is admissible against current aggregate state.
+A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `HandleAsync`, answering whether the Command is admissible against current aggregate state.
 _Avoid_: mutating state in a validator; client-side validation; throwing for validation failure; expressing transition-time outcomes (only discoverable while mutating) as validator rules.
 
 **Event Handler**:
@@ -50,7 +50,7 @@ A grain that consumes the live Event stream and maintains a current-state read m
 _Avoid_: implying replay, rehydration, or "rebuild the projection".
 
 **Sender**:
-The DI-injected `IEdictSender` with a single `Task<CommandResult> Send(Command)` that resolves the owning aggregate by `[RouteKey]` and dispatches.
+The DI-injected `IEdictSender` with a single `Task<CommandResult> SendAsync(Command)` that resolves the owning aggregate by `[RouteKey]` and dispatches.
 _Avoid_: static/extension-method send (bypasses DI, defeats the in-memory test swap); per-command overloads.
 
 **Domain Stream**:
@@ -75,7 +75,7 @@ _Avoid_: an in-grain dead-letter slice or cap; blocking aggregate intake when do
 
 **Event Envelope** (`EdictEventEnvelope`):
 The universal wire-format wrapper carried on every Edict stream hop, holding either an inline payload or a Claim Check pointer and unwrapped before dispatch.
-_Avoid_: deriving consumer event types from `EdictEventEnvelope`; reading it on a consumer `Handle` signature; treating it as solely a claim-check vehicle.
+_Avoid_: deriving consumer event types from `EdictEventEnvelope`; reading it on a consumer `HandleAsync` signature; treating it as solely a claim-check vehicle.
 
 **Claim Check**:
 The escape hatch for oversized events: the body is written to an append-only blob store and every wire hop carries a small pointer string instead.
@@ -87,14 +87,14 @@ _Avoid_: implying it owns or configures stream subscription.
 
 ## Relationships
 
-- A **Command Validator** gates a **Command** in the same activation turn before its **Command Handler**'s `Handle` runs, reads but never mutates state, and yields a `Rejected` **Command Result** on failure
+- A **Command Validator** gates a **Command** in the same activation turn before its **Command Handler**'s `HandleAsync` runs, reads but never mutates state, and yields a `Rejected` **Command Result** on failure
 - A **Command Handler** handles **Commands**, mutates durable `State`, returns a **Command Result**, and may raise **Events**
 - A **Saga** reacts to an **Event** and issues exactly one **Command**
 - The **Outbox** is one engine with four effect kinds; a permanently failing entry is **dead-lettered**; delivery is at-least-once and made effectively-once by the **Idempotency Base**
 - A **Command** is routed to exactly one aggregate grain by its single `[RouteKey]` Guid; a creation command routes identically — the caller mints the Guid and Orleans' virtual grains make the not-yet-activated aggregate addressable
 - A consumer issues a **Command** through the **Sender**; the **Sender** is the seam `Edict.Testing` swaps for an in-memory implementation
 - **Event Handlers**, **Sagas**, and **Projection Builders** subscribe to **Events** via implicit stream subscriptions and all inherit the **Idempotency Base**
-- An **Event** is published to its **Domain Stream** (named by `[Stream]` on the event), keyed by the event's `[RouteKey]` Guid; every subscriber to that stream is activated with that Guid and acts only on event types it has a `Handle` overload for. A fixed-Guid singleton is the explicit escape hatch for a global read model.
+- An **Event** is published to its **Domain Stream** (named by `[Stream]` on the event), keyed by the event's `[RouteKey]` Guid; every subscriber to that stream is activated with that Guid and acts only on event types it has a `HandleAsync` overload for. A fixed-Guid singleton is the explicit escape hatch for a global read model.
 
 ## Example dialogue
 
@@ -103,8 +103,8 @@ _Avoid_: implying it owns or configures stream subscription.
 > **Consumer:** "And if the same `OrderPlaced` is delivered to it twice?"
 > **Edict author:** "It inherits `EdictIdempotencyBase`. The `EventId` dedup window suppresses the second delivery for *that* projection — but the same event still reaches your `OrderEmailHandler`, because dedup is per consuming grain, not global."
 >
-> **Consumer:** "Where does 'can't cancel an already-shipped order' go — a Command Validator or `Handle`?"
-> **Edict author:** "Either could read the state, but the line is mutation. The validator is a precondition gate: it inspects current state and rejects *before* any transition, no writes. `Handle` owns the transition. If the rule is knowable from current state without attempting the change, it's a validator; if the rejection only emerges *while* mutating, it's a `Handle` outcome. Both return the same `Rejected` — they differ by *when* and *whether they mutate*, not by the envelope."
+> **Consumer:** "Where does 'can't cancel an already-shipped order' go — a Command Validator or `HandleAsync`?"
+> **Edict author:** "Either could read the state, but the line is mutation. The validator is a precondition gate: it inspects current state and rejects *before* any transition, no writes. `HandleAsync` owns the transition. If the rule is knowable from current state without attempting the change, it's a validator; if the rejection only emerges *while* mutating, it's a `HandleAsync` outcome. Both return the same `Rejected` — they differ by *when* and *whether they mutate*, not by the envelope."
 
 ## Flagged ambiguities
 

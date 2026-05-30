@@ -27,7 +27,7 @@ public sealed partial record OrderSubmittedEvent : EdictEvent
 }
 ```
 
-A third partial of `OrderCommandHandler` holds the new `Handle` overload. A second submission returns `EdictCommandResult.Rejected`, not silently re-raise.
+A third partial of `OrderCommandHandler` holds the new `HandleAsync` overload. A second submission returns `EdictCommandResult.Rejected`, not silently re-raise.
 
 ### 3. `edict-testing` fires — prescription only, no MCP call
 
@@ -37,8 +37,8 @@ A third partial of `OrderCommandHandler` holds the new `Handle` overload. A seco
 await using var app = await EdictTestApp.StartAsync(builder => builder
     .WithConsumer(typeof(SubmitOrderCommand).Assembly));
 
-await app.Send(new PlaceOrderCommand { OrderId = orderId });
-await app.Send(new SubmitOrderCommand { OrderId = orderId });
+await app.SendAsync(new PlaceOrderCommand { OrderId = orderId });
+await app.SendAsync(new SubmitOrderCommand { OrderId = orderId });
 await app.Drain();
 
 Assert.Contains(nameof(OrderSubmittedEvent),

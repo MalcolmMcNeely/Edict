@@ -17,7 +17,7 @@ Anything other than `clean` or `no-edict-references` is worth investigating — 
 
 > "Add a SubmitOrder command to the Orders aggregate."
 
-`edict-authoring` fires, and before writing any code the agent calls `edict_list_handlers` to see what's already there. You get back the handler inventory: every consumer subclass in your solution (Command Handler, Event Handler, Saga, Projection Builder, Table Projection Builder), the contracts each one is bound to, the `[EdictRouteKey]` property on each contract, and the source file. The agent uses it to spot that `OrderCommandHandler` already exists and the new `Handle` overload should extend that partial, not start a parallel handler.
+`edict-authoring` fires, and before writing any code the agent calls `edict_list_handlers` to see what's already there. You get back the handler inventory: every consumer subclass in your solution (Command Handler, Event Handler, Saga, Projection Builder, Table Projection Builder), the contracts each one is bound to, the `[EdictRouteKey]` property on each contract, and the source file. The agent uses it to spot that `OrderCommandHandler` already exists and the new `HandleAsync` overload should extend that partial, not start a parallel handler.
 
 ## edict_list_route_keys
 

@@ -1,9 +1,9 @@
 # Claim check
 
-Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store and the wire hop carries a small pointer string instead. The receiver pipeline materialises the body before dispatch; the consumer's `Handle(TEvent)` signature is unchanged.
+Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store and the wire hop carries a small pointer string instead. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged.
 
 ```csharp
-public Task Handle(LargeOrderEvent edictEvent)
+public Task HandleAsync(LargeOrderEvent edictEvent)
 {
     return Task.CompletedTask;
 }
@@ -30,7 +30,7 @@ public Task Handle(LargeOrderEvent edictEvent)
 ## Surface
 
 - **`IEdictClaimCheckStore`** (`Edict.Contracts.ClaimCheck`) — `PutAsync(payload, cancellationToken)` and `GetAsync(key, cancellationToken)` only. Framework-internal seam; consumers do not call it.
-- **`EdictEventEnvelope`** (`Edict.Contracts.Events`) — the universal wire-format wrapper. Consumers never derive from it and never see it on a `Handle` signature.
+- **`EdictEventEnvelope`** (`Edict.Contracts.Events`) — the universal wire-format wrapper. Consumers never derive from it and never see it on a `HandleAsync` signature.
 - **`EdictEnvelopeOverflowException`** (`Edict.Contracts.ClaimCheck`) — thrown at the commit boundary when the wrapped bytes still exceed the storage per-property cap. Carries `RouteKey`, `EventType`, and `MeasuredBytes`.
 
 ## Analyzer rules

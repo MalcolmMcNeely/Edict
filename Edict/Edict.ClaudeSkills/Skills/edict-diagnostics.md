@@ -34,8 +34,8 @@ When investigating a missing event or unrouted Command, the trace is what stitch
 ## Common failure shapes
 
 - **`PublishEvent` dead-lettered with `FailureKind = BlobMissing`** — a claim-checked event's blob was reaped before delivery. The original `ClaimCheckKey` is preserved on the row; the event payload itself is gone. Claim-check blobs are append-only on purpose; if you see this, something is deleting blobs out-of-band.
-- **`InvokeHandler` dead-lettered** — a consumer Event Handler threw past `MaxAttempts`. Read `Reason` and `ExceptionType` on the row; the failure is in the consumer's `Handle` body.
-- **`SendCommand` dead-lettered** — a saga's follow-up Command exhausted attempts. The target aggregate is unavailable or its `Handle` is rejecting durably. Saga progress is still readable via `GetSagaProgress` in tests; in production, query the saga grain directly.
+- **`InvokeHandler` dead-lettered** — a consumer Event Handler threw past `MaxAttempts`. Read `Reason` and `ExceptionType` on the row; the failure is in the consumer's `HandleAsync` body.
+- **`SendCommand` dead-lettered** — a saga's follow-up Command exhausted attempts. The target aggregate is unavailable or its `HandleAsync` is rejecting durably. Saga progress is still readable via `GetSagaProgress` in tests; in production, query the saga grain directly.
 - **`UpsertRow` dead-lettered** — a Table Projection's write to the external store kept failing. Read the row's contents to repair the destination by hand.
 - **Aggregate intake is not blocked** — dead-lettering is forensic-only. A permanently failing effect does not stall its source aggregate. If a Command Handler appears stuck, the cause is not dead-lettering.
 

@@ -19,8 +19,8 @@ public sealed class WidgetCounterTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(WidgetCounterTests).Assembly));
 
-        await app.Send(new PlaceWidgetCommand(widgetId));
-        await app.Send(new IncrementWidgetCommand(widgetId));
+        await app.SendAsync(new PlaceWidgetCommand(widgetId));
+        await app.SendAsync(new IncrementWidgetCommand(widgetId));
         await app.Drain();
 
         var row = await app.GetProjectionRow<WidgetCounterRow>(
@@ -55,7 +55,7 @@ Reorder release is `Drain`-triggered. On every stability window the harness flus
 - **Not a malformed-data simulator.** Bad payloads land in dead-letter via the runtime contract. Chaos does not produce them.
 - **Not a substrate-layer fault simulator.** Broker kill, rebalance, and mid-handler crash are resilience tests using native APIs (Testcontainers `PauseAsync` / `RestartAsync`, `TestCluster.StopSilo`). They live in the framework's provider suites against real Azurite / Postgres / Kafka, not in the consumer-facing harness.
 - **Not global or cross-aggregate reorder.** The reorder scope is per-subscriber-per-aggregate, mirroring the framework's reorder-tolerance contract. Modelling broader reorder would assert a stricter contract than the framework offers.
-- **Not within-`Handle` raised-event reorder.** Events raised in one `Handle` publish in raise order on the happy path; reordering them under test would make the harness less faithful to production, not more.
+- **Not within-`HandleAsync` raised-event reorder.** Events raised in one `HandleAsync` publish in raise order on the happy path; reordering them under test would make the harness less faithful to production, not more.
 - **Not failure injection.** Transient throws and provider timeouts are forensic seams the framework uses to prove its own dead-letter and retry pathways, not consumer surface.
 
 ## When to disable

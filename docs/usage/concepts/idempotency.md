@@ -11,7 +11,7 @@ public sealed partial class HighThroughputEventHandler : EdictEventHandler
 {
     protected override int WindowSize => 4096;
 
-    public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+    public Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
 }
 ```
 
@@ -23,7 +23,7 @@ public sealed partial class HighThroughputEventHandler : EdictEventHandler
 - **Dedup is keyed by `EventId`,** the framework-assigned Guid stamped at outbox drain. The route key does not deduplicate; only `EventId` does.
 - A suppressed redelivery emits an `edict.event.deduplicated` span (no payload tags) so a forensic dedup hit is visible in traces.
 
-The dedup ring slot, the consumer's payload mutation, and any staged outbox effect (a saga's `SendCommand`, a table-projection's `UpsertRow`) commit in the same one grain-state write — ring-equals-row atomicity. A throw from the consumer's `Handle` leaves the ring slot uncommitted; the framework redelivers.
+The dedup ring slot, the consumer's payload mutation, and any staged outbox effect (a saga's `SendCommand`, a table-projection's `UpsertRow`) commit in the same one grain-state write — ring-equals-row atomicity. A throw from the consumer's `HandleAsync` leaves the ring slot uncommitted; the framework redelivers.
 
 ## Analyzer rules
 

@@ -15,7 +15,7 @@ Reach for `EdictTestApp` in every consumer test. Do not mock Orleans, do not moc
 await using var app = await EdictTestApp.StartAsync(b => b
     .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
 await app.Drain();
 
 await Verify(app.Timeline);
@@ -28,7 +28,7 @@ The `Timeline` is the deterministic Verify-shaped view of every Command sent, Ev
 - **`EdictTestApp.StartAsync(configure)`** — boots the in-memory cluster. The `configure` callback uses `EdictTestAppBuilder`.
 - **`EdictTestAppBuilder.WithConsumer(Assembly)`** — required. The consumer grain assembly whose `AddEdict()` and generator-emitted route map the cluster boots.
 - **`EdictTestAppBuilder.Replace<TService>(fake)`** — registers `fake` as the resolved `TService` on both silo and client containers. Use this to swap a consumer-injected collaborator (an `IEmailNotifier`, an HTTP client wrapper, a tenant lookup). Last-`AddSingleton`-wins, so the fake takes precedence. **Grain implementations are not swappable through this seam** — they are framework-owned.
-- **`EdictTestApp.Send(EdictCommand)`** — issues a Command through the real `IEdictSender` decorated for timeline recording. This is the in-memory swap of the production `IEdictSender` — the same seam consumers inject in production code.
+- **`EdictTestApp.SendAsync(EdictCommand)`** — issues a Command through the real `IEdictSender` decorated for timeline recording. This is the in-memory swap of the production `IEdictSender` — the same seam consumers inject in production code.
 - **`EdictTestApp.Timeline`** — the recorded sequence to `Verify` against. The default assertion shape for any workflow with more than one observable step.
 - **`EdictTestApp.GetSagaProgress<TSaga, TProgress>(Guid key)`** — typed read of the saga grain's durable `Progress` for direct snapshot assertion.
 - **`EdictTestApp.GetProjectionRow<TRow>(tableName, partitionKey, rowKey)`** — typed read of the row a `EdictTableProjectionBuilder<TRow>` last wrote.

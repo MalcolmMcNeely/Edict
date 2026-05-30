@@ -13,7 +13,7 @@ public sealed partial record PlaceOrderCommand(
 Dispatched through the DI-injected `IEdictSender`:
 
 ```csharp
-EdictCommandResult result = await sender.Send(new PlaceOrderCommand(orderId, "acme/42"));
+EdictCommandResult result = await sender.SendAsync(new PlaceOrderCommand(orderId, "acme/42"));
 ```
 
 ## Surface
@@ -24,16 +24,16 @@ EdictCommandResult result = await sender.Send(new PlaceOrderCommand(orderId, "ac
   - `EdictCommandResult.Accepted` — carries no domain data.
   - `EdictCommandResult.Rejected(IReadOnlyList<EdictRejectionReason> Reasons)` — business rejection. Infrastructure faults still throw.
 - **`EdictRejectionReason(string Code, string Message)`** — `Code` is stable and machine-branchable; `Message` is human display text.
-- **`IEdictSender.Send(EdictCommand) → Task<EdictCommandResult>`** (`Edict.Contracts.Sending`) — the only dispatch surface. `Edict.Testing` swaps this seam for an in-memory implementation.
+- **`IEdictSender.SendAsync(EdictCommand) → Task<EdictCommandResult>`** (`Edict.Contracts.Sending`) — the only dispatch surface. `Edict.Testing` swaps this seam for an in-memory implementation.
 
-A server-side `FluentValidation.IValidator<TCommand>` registered in DI runs as a pre-`Handle` precondition gate; on failure the framework short-circuits to `Rejected` with each `ValidationFailure.ErrorCode` as a `EdictRejectionReason.Code`. The validator never mutates state.
+A server-side `FluentValidation.IValidator<TCommand>` registered in DI runs as a pre-`HandleAsync` precondition gate; on failure the framework short-circuits to `Rejected` with each `ValidationFailure.ErrorCode` as a `EdictRejectionReason.Code`. The validator never mutates state.
 
 ## Analyzer rules
 
 - **EDICT003** — concrete commands must have exactly one `[EdictRouteKey]` property, and that property must be of type `Guid`.
-- **EDICT004** — a given concrete command type can be the parameter of at most one `Handle` across all command handlers (compilation-end check).
+- **EDICT004** — a given concrete command type can be the parameter of at most one `HandleAsync` across all command handlers (compilation-end check).
 - **EDICT006** — concrete commands must be declared `partial`; the generator emits the Orleans `[Alias]` into a second partial declaration.
-- **EDICT015** — call `IEdictSender.Send` with a concrete-typed argument, not an `EdictCommand`-typed variable; the interceptor fast path needs the static type to intercept the call site.
+- **EDICT015** — call `IEdictSender.SendAsync` with a concrete-typed argument, not an `EdictCommand`-typed variable; the interceptor fast path needs the static type to intercept the call site.
 
 ## See also
 

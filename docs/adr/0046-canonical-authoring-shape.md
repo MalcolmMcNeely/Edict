@@ -60,7 +60,7 @@ The class-vs-record rule scopes to `IEdictPersistedState` implementations only. 
       public OrderStatus Status { get; init; } = OrderStatus.Open;
   }
   ```
-  Rejected: the framework's authoring contract for `IEdictPersistedState` is in-place mutation inside `Handle` methods. With `init` setters, a consumer would have to write `State = State with { Status = ... }` per mutation — but `State` on the grain base is not user-writable. The record shape fights the documented idiom.
+  Rejected: the framework's authoring contract for `IEdictPersistedState` is in-place mutation inside `HandleAsync` methods. With `init` setters, a consumer would have to write `State = State with { Status = ... }` per mutation — but `State` on the grain base is not user-writable. The record shape fights the documented idiom.
 
 - **Class with `init` setters.** Rejected for the same reason as the record case — `init`-only setters block the in-place mutation the framework already documents in `OrderState`'s xmldoc.
 

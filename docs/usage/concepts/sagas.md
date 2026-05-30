@@ -7,14 +7,14 @@ using Edict.Core.Sagas;
 
 public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
 {
-    public Task Handle(OrderSubmittedEvent edictEvent)
+    public Task HandleAsync(OrderSubmittedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.PaymentRequested;
         Dispatch(new AuthorizePaymentCommand(edictEvent.OrderId, edictEvent.Amount));
         return Task.CompletedTask;
     }
 
-    public Task Handle(PaymentAuthorizedEvent edictEvent)
+    public Task HandleAsync(PaymentAuthorizedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.Confirmed;
         Dispatch(new ConfirmOrderCommand(edictEvent.OrderId));
@@ -25,8 +25,8 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
 
 ## Surface
 
-- **`EdictSaga<TProgress>`** (`Edict.Core.Sagas`) — abstract base where `TProgress : IEdictPersistedState, new()`. A consumer declares the saga as a `partial class` (the generator emits the Orleans interface, the implicit stream subscription, and the `DispatchAsync` switch over the consumer's `Handle` overloads) and writes one `Task Handle(TEvent edictEvent)` per subscribed event type.
-- **`Progress`** (`protected TProgress`) — durable workflow state. The consumer mutates `Progress` inside `Handle`; it commits atomically with the dedup ring and the staged `SendCommand` effect in one grain-state write.
+- **`EdictSaga<TProgress>`** (`Edict.Core.Sagas`) — abstract base where `TProgress : IEdictPersistedState, new()`. A consumer declares the saga as a `partial class` (the generator emits the Orleans interface, the implicit stream subscription, and the `DispatchAsync` switch over the consumer's `HandleAsync` overloads) and writes one `Task HandleAsync(TEvent edictEvent)` per subscribed event type.
+- **`Progress`** (`protected TProgress`) — durable workflow state. The consumer mutates `Progress` inside `HandleAsync`; it commits atomically with the dedup ring and the staged `SendCommand` effect in one grain-state write.
 - **`Dispatch(EdictCommand)`** (`protected void`) — issues the single command this event implies. Buffered and staged as a `SendCommand` outbox effect after the handler returns; commits atomically with `Progress` and the dedup ring. A second call within the same event handler throws — saga command fan-out is a coordination smell and the API shape makes it structurally unmissable.
 - **`TProgress`** must implement `IEdictPersistedState` and follow the persistence contract (see EDICT011 below).
 

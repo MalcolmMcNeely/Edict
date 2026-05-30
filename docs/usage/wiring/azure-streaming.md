@@ -99,7 +99,7 @@ Local development uses Azurite via the `UseDevelopmentStorage=true` connection s
 
 ### AQS streams do not propagate `Activity.Current` across the hop
 
-The Azure Queue Storage stream substrate carries no W3C trace-context headers. Edict reconstitutes trace continuity by reading `evt.TraceId` and `evt.SpanId` off the event itself (stamped at `Raise` time inside the publisher's `edict.command` span) and restoring the parent context on the receiver. Any deferred-dispatch path that builds outbox entries from `Activity.Current` instead of the event fields will record `00000000…` traceparents — the receiver then opens a root span and the publisher → handle link is lost. This affects framework authors forking the deferred-dispatch executors, not consumers writing `Handle` methods.
+The Azure Queue Storage stream substrate carries no W3C trace-context headers. Edict reconstitutes trace continuity by reading `evt.TraceId` and `evt.SpanId` off the event itself (stamped at `Raise` time inside the publisher's `edict.command` span) and restoring the parent context on the receiver. Any deferred-dispatch path that builds outbox entries from `Activity.Current` instead of the event fields will record `00000000…` traceparents — the receiver then opens a root span and the publisher → handle link is lost. This affects framework authors forking the deferred-dispatch executors, not consumers writing `HandleAsync` methods.
 
 ## See also
 

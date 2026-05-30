@@ -31,7 +31,7 @@ Tag keys are stable across declaring types — the same domain property name (`O
 
 Span names:
 
-- `edict.command.send` — issued at the `IEdictSender.Send` call site.
+- `edict.command.send` — issued at the `IEdictSender.SendAsync` call site.
 - `edict.command` — handler dispatch span. `[EdictTelemeterized]` tags from the command land here.
 - `edict.event.publish` — outbox publish of a raised event.
 - `edict.event.handle` — consumer handler invocation. `[EdictTelemeterized]` tags from the event land on both `publish` and `handle` spans.

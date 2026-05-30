@@ -44,7 +44,7 @@ Edict contracts are MessagePack-serialised on the wire. Do **not** decorate a Co
 
 If you find yourself reaching for `[Union]` to model "command-or-this-other-command", that is two Commands, not one polymorphic Command. Split them.
 
-A consumer never types `EdictEventEnvelope` — the receiver pipeline unwraps the wire envelope before dispatch. Do not derive consumer Events from `EdictEventEnvelope`, and do not name it on a `Handle` signature.
+A consumer never types `EdictEventEnvelope` — the receiver pipeline unwraps the wire envelope before dispatch. Do not derive consumer Events from `EdictEventEnvelope`, and do not name it on a `HandleAsync` signature.
 
 ## When to look up the why
 

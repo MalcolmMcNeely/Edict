@@ -59,4 +59,4 @@ Edict.Azure rides Orleans' Azure Queue Storage stream provider, which uses the A
 
 ## Reading the docs together
 
-[`alerts.md`](alerts.md) recipes treat the framework metric as the **symptom** and the substrate metric as the **suspect**. "Stream falling behind" fires on `edict.event.handle.lag`; the triage line points you at `messaging.kafka.consumer.lag` (Kafka) or `azure.queue.request.duration` (Azure) to confirm the substrate is where the latency is being injected, not the consumer's `Handle` body.
+[`alerts.md`](alerts.md) recipes treat the framework metric as the **symptom** and the substrate metric as the **suspect**. "Stream falling behind" fires on `edict.event.handle.lag`; the triage line points you at `messaging.kafka.consumer.lag` (Kafka) or `azure.queue.request.duration` (Azure) to confirm the substrate is where the latency is being injected, not the consumer's `HandleAsync` body.
