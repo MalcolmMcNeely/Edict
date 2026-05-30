@@ -58,6 +58,14 @@
           "type": "object",
           "properties": {}
         }
+      },
+      {
+        "name": "edict_describe_silo_wiring",
+        "description": "Locates Program.cs in the loaded solution, walks the ISiloBuilder invocation chain, and reports the AddEdict* extensions that are wired plus the known-but-missing ones an agent should consider before suggesting wiring changes (for example AddEdictAzureBlobClaimCheck when the consumer asks for a Claim Check setup).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       }
     ]
   }

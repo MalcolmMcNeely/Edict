@@ -1,0 +1,26 @@
+﻿{
+  "programSourceLocation": {
+    "filePath": "ConsumerHost/Program.cs",
+    "line": 1,
+    "column": 1
+  },
+  "wired": [
+    {
+      "extensionName": "AddEdict",
+      "declaringAssembly": "Edict.Core",
+      "purpose": "Registers the Edict framework: handler discovery, outbox, telemetry."
+    },
+    {
+      "extensionName": "AddEdictAzureStreams",
+      "declaringAssembly": "Edict.Azure.Streaming",
+      "purpose": "Wires the Azure Queue stream provider."
+    }
+  ],
+  "missing": [
+    {
+      "extensionName": "AddEdictAzureBlobClaimCheck",
+      "declaringAssembly": "Edict.Azure.Streaming",
+      "purpose": "Enables the Azure Blob claim-check store for large event payloads."
+    }
+  ]
+}

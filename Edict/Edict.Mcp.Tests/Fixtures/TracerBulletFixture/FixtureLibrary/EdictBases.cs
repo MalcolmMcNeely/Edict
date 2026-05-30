@@ -50,3 +50,29 @@ namespace Edict.Core.Projections
     public abstract class EdictProjectionBuilder { }
     public abstract class EdictTableProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
 }
+
+namespace Orleans.Hosting
+{
+    public interface ISiloBuilder { }
+}
+
+namespace Edict.Hosting
+{
+    using Orleans.Hosting;
+
+    public static class EdictSiloBuilderExtensions
+    {
+        public static ISiloBuilder AddEdict(this ISiloBuilder siloBuilder) => siloBuilder;
+    }
+
+    public static class EdictAzureStreamingSiloBuilderExtensions
+    {
+        public static ISiloBuilder AddEdictAzureStreams(this ISiloBuilder siloBuilder) => siloBuilder;
+        public static ISiloBuilder AddEdictAzureBlobClaimCheck(this ISiloBuilder siloBuilder) => siloBuilder;
+    }
+
+    public static class EdictAzurePersistenceSiloBuilderExtensions
+    {
+        public static ISiloBuilder AddEdictAzurePersistence(this ISiloBuilder siloBuilder) => siloBuilder;
+    }
+}

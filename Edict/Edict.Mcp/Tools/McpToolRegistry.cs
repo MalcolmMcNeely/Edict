@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Edict.Mcp.Docs;
 using Edict.Mcp.Handlers;
+using Edict.Mcp.SiloWiring;
 using Edict.Mcp.Workspaces;
 
 namespace Edict.Mcp.Tools;
@@ -45,12 +46,17 @@ sealed class McpToolRegistry
     }
 
     internal McpToolRegistry(MSBuildWorkspaceProvider workspaceProvider, DocsLookup docs)
-        : this(BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()), docs, workspaceProvider)
+        : this(
+            BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()),
+            BuildSiloWiringReportProvider(workspaceProvider, new SiloWiringScanner()),
+            docs,
+            workspaceProvider)
     {
     }
 
     internal McpToolRegistry(
         Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
+        Func<CancellationToken, Task<SiloWiringReport>> siloWiringReportProvider,
         DocsLookup docs,
         MSBuildWorkspaceProvider workspaceProvider)
     {
@@ -59,6 +65,7 @@ sealed class McpToolRegistry
         var lookupAdr = new LookupAdrTool(docs);
         var listHandlers = new ListHandlersTool(inventoryProvider);
         var listRouteKeys = new ListRouteKeysTool(inventoryProvider);
+        var describeSiloWiring = new DescribeSiloWiringTool(siloWiringReportProvider);
         Tools =
         [
             new McpToolDescriptor(
@@ -86,6 +93,11 @@ sealed class McpToolRegistry
                 Description: "Derived view over the handler inventory. Groups Commands by their handler classes (a Command bound to more than one handler is a collision) and Events by their subscriber classes, with the [EdictRouteKey] property name on each contract.",
                 InputSchema: EmptyInputSchema,
                 InvokeAsync: listRouteKeys.InvokeAsync),
+            new McpToolDescriptor(
+                Name: "edict_describe_silo_wiring",
+                Description: "Locates Program.cs in the loaded solution, walks the ISiloBuilder invocation chain, and reports the AddEdict* extensions that are wired plus the known-but-missing ones an agent should consider before suggesting wiring changes (for example AddEdictAzureBlobClaimCheck when the consumer asks for a Claim Check setup).",
+                InputSchema: EmptyInputSchema,
+                InvokeAsync: describeSiloWiring.InvokeAsync),
         ];
     }
 
@@ -99,6 +111,17 @@ sealed class McpToolRegistry
     static Func<CancellationToken, Task<HandlerInventory>> BuildHandlerInventoryProvider(
         MSBuildWorkspaceProvider workspaceProvider,
         HandlerScanner scanner)
+    {
+        return async cancellationToken =>
+        {
+            var solution = await workspaceProvider.LoadSolutionAsync(cancellationToken);
+            return await scanner.ScanAsync(solution, cancellationToken);
+        };
+    }
+
+    static Func<CancellationToken, Task<SiloWiringReport>> BuildSiloWiringReportProvider(
+        MSBuildWorkspaceProvider workspaceProvider,
+        SiloWiringScanner scanner)
     {
         return async cancellationToken =>
         {

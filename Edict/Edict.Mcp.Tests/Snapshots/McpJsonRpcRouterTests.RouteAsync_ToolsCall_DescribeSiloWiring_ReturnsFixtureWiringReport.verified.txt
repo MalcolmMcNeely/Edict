@@ -1,0 +1,13 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \u0022programSourceLocation\u0022: {\n    \u0022filePath\u0022: \u0022FixtureLibrary/Program.cs\u0022,\n    \u0022line\u0022: 1,\n    \u0022column\u0022: 1\n  },\n  \u0022wired\u0022: [\n    {\n      \u0022extensionName\u0022: \u0022AddEdict\u0022,\n      \u0022declaringAssembly\u0022: \u0022FixtureLibrary\u0022,\n      \u0022purpose\u0022: \u0022Registers the Edict framework: handler discovery, outbox, telemetry.\u0022\n    },\n    {\n      \u0022extensionName\u0022: \u0022AddEdictAzurePersistence\u0022,\n      \u0022declaringAssembly\u0022: \u0022FixtureLibrary\u0022,\n      \u0022purpose\u0022: \u0022Wires Azure Table Storage as the grain-state provider.\u0022\n    },\n    {\n      \u0022extensionName\u0022: \u0022AddEdictAzureStreams\u0022,\n      \u0022declaringAssembly\u0022: \u0022FixtureLibrary\u0022,\n      \u0022purpose\u0022: \u0022Wires the Azure Queue stream provider.\u0022\n    }\n  ],\n  \u0022missing\u0022: [\n    {\n      \u0022extensionName\u0022: \u0022AddEdictAzureBlobClaimCheck\u0022,\n      \u0022declaringAssembly\u0022: \u0022Edict.Azure.Streaming\u0022,\n      \u0022purpose\u0022: \u0022Enables the Azure Blob claim-check store for large event payloads.\u0022\n    },\n    {\n      \u0022extensionName\u0022: \u0022AddEdictPostgresPersistence\u0022,\n      \u0022declaringAssembly\u0022: \u0022Edict.Postgres\u0022,\n      \u0022purpose\u0022: \u0022Wires PostgreSQL as the grain-state provider.\u0022\n    },\n    {\n      \u0022extensionName\u0022: \u0022AddEdictKafkaStreams\u0022,\n      \u0022declaringAssembly\u0022: \u0022Edict.Kafka\u0022,\n      \u0022purpose\u0022: \u0022Wires the Kafka stream provider.\u0022\n    }\n  ]\n}"
+      }
+    ],
+    "isError": false
+  }
+}

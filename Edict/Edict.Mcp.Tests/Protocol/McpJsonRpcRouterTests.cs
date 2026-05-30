@@ -101,6 +101,20 @@ public class McpJsonRpcRouterTests
     }
 
     [Fact]
+    public async Task RouteAsync_ToolsCall_DescribeSiloWiring_ReturnsFixtureWiringReport()
+    {
+        // Arrange
+        var router = BuildRouterAgainstFixture();
+        var request = """{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"edict_describe_silo_wiring"}}""";
+
+        // Act
+        var responseJson = await router.RouteAsync(request, CancellationToken.None);
+
+        // Assert
+        await Verify(responseJson);
+    }
+
+    [Fact]
     public async Task RouteAsync_UnknownMethod_ReturnsMethodNotFoundError()
     {
         // Arrange

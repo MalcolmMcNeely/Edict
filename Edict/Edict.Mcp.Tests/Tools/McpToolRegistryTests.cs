@@ -26,6 +26,7 @@ public class McpToolRegistryTests
     [InlineData("edict_lookup_adr")]
     [InlineData("edict_list_handlers")]
     [InlineData("edict_list_route_keys")]
+    [InlineData("edict_describe_silo_wiring")]
     public void Tools_IncludesDocsTool(string toolName)
     {
         // Arrange
