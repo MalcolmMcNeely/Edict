@@ -7,16 +7,7 @@ using NpgsqlTypes;
 
 namespace Edict.Postgres.ClaimCheck;
 
-/// <summary>
-/// Postgres-backed <see cref="IEdictClaimCheckStore"/> for the claim-check
-/// escape hatch. Append-only by design — the seam exposes no
-/// delete, and Postgres has no per-row cap (TOAST handles large bytea via
-/// lz4 compression). Key generation is the store's responsibility: each
-/// payload lands at a fresh GUID so a missing-blob lookup at the receiver
-/// surfaces as a dead-letter promotion (BlobMissing failure kind) rather
-/// than a silent overwrite.
-/// </summary>
-public sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
+sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
 {
     readonly NpgsqlDataSource _dataSource;
     readonly string _tableName;

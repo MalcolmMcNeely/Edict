@@ -12,15 +12,7 @@ using Orleans.Serialization;
 
 namespace Edict.Postgres.TableStorage;
 
-/// <summary>
-/// Postgres implementation of <see cref="IEdictTableStoreFactory"/>. Creates
-/// a generic projection table on demand (idempotent <c>CREATE TABLE IF NOT
-/// EXISTS</c>) and hands back a <see cref="PostgresTableWriteStore{T}"/>
-/// bound to it. The factory also services the framework-internal one-shot
-/// <see cref="UpsertRowAsync"/> overload used by the Outbox's UpsertRow
-/// effect executor.
-/// </summary>
-public sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
+sealed class PostgresTableWriteStoreFactory : IEdictTableStoreFactory
 {
     readonly NpgsqlDataSource _dataSource;
     readonly Serializer _serializer;

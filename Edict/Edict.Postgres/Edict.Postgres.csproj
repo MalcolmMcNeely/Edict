@@ -25,6 +25,9 @@
         <!-- The targeted Postgres unit tests reach the internal DDL bootstrap
              so the idempotency drift guard is one assertion away. -->
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />
+        <InternalsVisibleTo Include="Edict.Substrate.KafkaPostgres" />
+        <InternalsVisibleTo Include="Edict.Testing" />
+        <InternalsVisibleTo Include="Edict.Tests.Conformance" />
     </ItemGroup>
 
     <ItemGroup>
