@@ -52,6 +52,10 @@ For any "why does dead-letter behave this way?" or "why no redrive?" question, i
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any dead-letter, outbox, or trace "why" question rather than guessing.
 
+## When MCP results look off
+
+If a Dead Letter query returns empty when you know rows exist, or `edict_list_handlers` returns nothing when handlers are obviously present, the MCP server may have indexed the wrong workspace. Invoke **`edict_describe_mcp_state`** before re-running the lookup — it reports the loaded solution path, the indexed-handler count, and the registered tool list. A mismatch between the reported solution and the consumer's actual workspace explains the surprising empty result, and the `--solution` override in `.mcp.json` is the documented fix.
+
 ## See also
 
 - For the testing surface that surfaces dead-letter rows on `Timeline` and `GetProjectionRow`: see the `edict-testing` skill.

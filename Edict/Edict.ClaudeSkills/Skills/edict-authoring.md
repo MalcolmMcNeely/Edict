@@ -27,6 +27,10 @@ Before you write the new class, call **`edict_list_handlers`** to see every exis
 
 These two MCP tools are the load-bearing trigger for this skill: invoke `edict_list_handlers` and `edict_list_route_keys` when adding a feature, before suggesting code.
 
+## When to look up a term
+
+When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.
+
 ## Naming and brand prefix
 
 Consumer subclasses are `{Name}{Role}` — never `Grain`-suffixed. Examples: `OrderCommandHandler`, `OrderPaymentSaga`, `OrdersByStatusProjectionBuilder`. The `Edict`-prefix is reserved for the framework surface itself; do not add it to your subclasses.

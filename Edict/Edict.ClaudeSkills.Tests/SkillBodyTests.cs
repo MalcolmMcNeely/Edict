@@ -11,9 +11,11 @@ public class SkillBodyTests
     [Theory]
     [InlineData("edict-authoring", "edict_list_handlers")]
     [InlineData("edict-authoring", "edict_list_route_keys")]
+    [InlineData("edict-authoring", "edict_describe_glossary_term")]
     [InlineData("edict-contracts", "edict_lookup_adr")]
     [InlineData("edict-silo-wiring", "edict_describe_silo_wiring")]
     [InlineData("edict-diagnostics", "edict_lookup_adr")]
+    [InlineData("edict-diagnostics", "edict_describe_mcp_state")]
     public void SkillBody_NamesItsMcpToolTrigger(string skillName, string toolName)
     {
         var body = ReadEmbeddedSkillBody(skillName);
