@@ -21,4 +21,4 @@ Claim-check rides with `Edict.Azure.Streaming` because Azure Queue Storage's 64 
 - The Sample app's Azure-flavoured silo rewires onto both extension methods.
 - Architecture-tests' dependency assertions rebase: the "no `Azure.*` reference outside Azure assemblies" rule now lists both Azure assemblies as permitted carriers.
 - ADR-0012's `Edict.Azure` line is superseded; ADR-0012 itself is annotated to point at this ADR for the Azure boundary, and its other clauses (Telemetry, Generators/Analyzers, foldering) remain in force.
-- First NuGet publish ships the right package IDs from `0.1.0-preview.1` — no later deprecation of `Edict.Azure`.
+- First NuGet publish ships the right package IDs from `0.1.0` — no later deprecation of `Edict.Azure`.
