@@ -154,6 +154,20 @@ dotnet run --project Sample/Sample.KafkaPostgres.AppHost
 
 Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdmin sidecars are wired in for topic and table inspection.
 
+## Agentic tooling (dogfood)
+
+This repo dogfoods two `dotnet tool`s pinned in `.config/dotnet-tools.json`: `edict-mcp` (Model Context Protocol server) and `edict-skills` (Claude Code skill installer). `.mcp.json` at the repo root wires the MCP server into any Claude Code session opened here, and the five `edict-*` consumer skills sit in `.claude/skills/` alongside the framework-dev ones.
+
+Until the lockstep release pushes the two tools to nuget.org, pack them locally first; then restore from the bundled feed:
+
+```bash
+dotnet pack Edict/Edict.Mcp           -c Release -o artifacts-dryrun -p:MinVerVersionOverride=0.1.1-preview
+dotnet pack Edict/Edict.ClaudeSkills  -c Release -o artifacts-dryrun -p:MinVerVersionOverride=0.1.1-preview
+dotnet tool restore
+```
+
+`nuget.config` adds `./artifacts-dryrun/` as a NuGet source so the restore finds the freshly-packed nupkgs. After restore, `dotnet edict-mcp` is what `.mcp.json` invokes, and `dotnet edict-skills install` is what populates `.claude/skills/edict-*` — the same path a consumer follows.
+
 ## How this was built
 
 Edict was/is built using an AI-assisted workflow loosely modelled on [Matt Pocock's skills](https://github.com/mattpocock/skills) — a set of Claude Code skills that drive a disciplined PRD-then-TDD loop instead of free-form prompting. Each feature starts as a PRD on the [issue tracker](https://github.com/MalcolmMcNeely/Edict/issues), gets broken into tracer-bullet vertical slices, and lands via the red-green-refactor TDD skill. The whole decision trail is visible there: PRDs, slice issues, and the conversations that shaped each one.
