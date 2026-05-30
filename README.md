@@ -4,6 +4,8 @@
 
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
+Using Claude Code or Cursor? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
+
 A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics.
 
 ```csharp
@@ -85,6 +87,14 @@ The consumer-facing surface is six concepts: **Command Handler**, **Event Handle
 
 Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 
+## Agentic tooling
+
+AI-assisted development against Edict isn't guesswork: an MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution for handlers, route keys, silo wiring, glossary, and ADRs.
+
+Dev-loop walkthrough — install, when each skill fires, which MCP tool it calls, what the agent sees — lives under [`docs/usage/agentic/`](docs/usage/agentic/).
+
+Install instructions: [`Edict.Mcp`](Edict/Edict.Mcp/README.md), [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md).
+
 ## Benchmarks
 
 `Edict.Benchmarks.Throughput` sweeps issuer parallelism against any registered substrate (`azure`, `kafkapostgres`, or `all`) and writes results to [`docs/benchmarks/`](docs/benchmarks/).
@@ -105,6 +115,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 ## Highlights
 
+- **Agentic-friendly.** Ships an MCP server and Claude Code skill bundle so an agent picks the right grain role, queries the live solution for handlers/route keys/wiring, and reads ADRs — no hand-rolled prompts.
 - **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** One grain write covers both.
@@ -153,15 +164,6 @@ dotnet run --project Sample/Sample.KafkaPostgres.AppHost
 ```
 
 Aspire brings up Kafka, Postgres, the silo, and the web tier. Kafka UI and pgAdmin sidecars are wired in for topic and table inspection.
-
-## Agentic tooling
-
-Two `dotnet tool`s ship from this repo for consumers:
-
-- [`Edict.Mcp`](Edict/Edict.Mcp/README.md) — Model Context Protocol server (CLI `edict-mcp`). Lets an AI agent query a consumer's solution for handlers, route keys, silo wiring, glossary, and ADRs.
-- [`Edict.ClaudeSkills`](Edict/Edict.ClaudeSkills/README.md) — Claude Code skill installer (CLI `edict-skills`). Drops five trigger-scoped skills into `.claude/skills/` so the agent reaches for the right MCP tool at the right moment.
-
-Both land on nuget.org with the first lockstep release. Install instructions live in each package README.
 
 ## How this was built
 
