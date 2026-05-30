@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 using Edict.Core.Idempotency;
 
 namespace Edict.Core.Outbox;
@@ -15,7 +17,16 @@ namespace Edict.Core.Outbox;
 /// <c>[Alias]</c> survives a class rename even when the shape changes (slots
 /// have been dropped under this alias in past evolutions);
 /// <c>ORLEANS0010</c> is never suppressed.
+/// <para>
+/// Public because the consumer-facing <c>EdictCommandHandler&lt;TState&gt;</c>
+/// and <c>EdictIdempotencyBase&lt;TPayload&gt;</c> bases inherit
+/// <c>Grain&lt;GrainEnvelope&lt;TState&gt;&gt;</c> — flipping to internal fires
+/// CS9338 inside <c>Edict.Core</c>. Hidden from consumer IntelliSense because
+/// the consumer's own code never types this; it is reached purely through the
+/// base-class chain.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [GenerateSerializer]
 [Alias("GrainEnvelope`1")]
 public sealed class GrainEnvelope<TPayload>

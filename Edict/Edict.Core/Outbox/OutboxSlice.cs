@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.ComponentModel;
 
 using Edict.Contracts.Configuration;
 
@@ -18,7 +19,13 @@ namespace Edict.Core.Outbox;
 /// privileged. A failing entry stays in place and is gated by
 /// <see cref="OutboxEntry.NextAttemptUtc"/>; the drain continues past it.
 /// </para>
+/// <para>
+/// Public because it rides as a slot on <c>GrainEnvelope&lt;TPayload&gt;</c>,
+/// whose public slot properties expose it. Hidden from consumer IntelliSense
+/// because the consumer never types this — the engine owns every transition.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [GenerateSerializer]
 [Alias("OutboxSlice")]
 public sealed record OutboxSlice

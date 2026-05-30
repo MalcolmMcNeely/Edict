@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace Edict.Core.Outbox;
 
 /// <summary>
@@ -17,7 +19,14 @@ namespace Edict.Core.Outbox;
 /// in-flight entries dead-lettered. <c>ORLEANS0010</c> is never suppressed.
 /// Bare-named — no consumer types it.
 /// </para>
+/// <para>
+/// Public because the framework deserializes it from
+/// <see cref="OutboxEntry.Payload"/> bytes on drain; hidden from consumer
+/// IntelliSense because the consumer never types this — the projection-builder
+/// base stages the effect on the consumer's behalf.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [GenerateSerializer]
 [Alias("UpsertRowEffect")]
 public sealed record UpsertRowEffect

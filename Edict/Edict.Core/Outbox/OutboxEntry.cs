@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace Edict.Core.Outbox;
 
 /// <summary>
@@ -5,7 +7,14 @@ namespace Edict.Core.Outbox;
 /// Immutable: the slice's pure transitions produce new entries, never mutate in place.
 /// Persisted grain state, so a frozen string-literal <c>[Alias]</c> survives a class
 /// rename; <c>ORLEANS0010</c> is never suppressed.
+/// <para>
+/// Public because it rides as a list element on <c>OutboxSlice.Pending</c>,
+/// which rides on the public <c>GrainEnvelope&lt;TPayload&gt;</c>. Hidden from
+/// consumer IntelliSense because the consumer never types this — the engine
+/// stages and drains entries.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [GenerateSerializer]
 [Alias("OutboxEntry")]
 public sealed record OutboxEntry

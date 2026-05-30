@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 using Edict.Contracts.TableStorage;
 
 namespace Edict.Core.TableStorage;
@@ -6,7 +8,15 @@ namespace Edict.Core.TableStorage;
 /// Framework-internal factory that resolves a write store for a named table.
 /// The grain base calls this in <see cref="Orleans.Grain.OnActivateAsync"/> so each
 /// concrete grain targets its own table without coupling to a specific provider.
+/// <para>
+/// Public because the consumer-facing <c>EdictTableProjectionBuilder&lt;T&gt;</c>
+/// ctor takes it as a parameter (flipping to internal fires CS0051 on the
+/// public base ctor). Hidden from consumer IntelliSense — the consumer pipes
+/// the DI-resolved instance straight through to the base; they never look the
+/// type up themselves.
+/// </para>
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
 public interface IEdictTableStoreFactory
 {
     Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default) where T : class, new();

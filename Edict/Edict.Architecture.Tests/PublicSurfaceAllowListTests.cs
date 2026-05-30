@@ -4,9 +4,12 @@ using System.Reflection;
 using Edict.Azure.Persistence.TableStorage;
 using Edict.Azure.Streaming;
 using Edict.Contracts.Commands;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
+using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
+using Edict.Core.TableStorage;
 using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Telemetry;
@@ -61,6 +64,36 @@ public class PublicSurfaceAllowListTests
         Assert.True(
             unexpected.Count == 0 && missing.Count == 0,
             BuildDriftMessage(unexpected, missing));
+    }
+
+    [Fact]
+    public void BaseChainPublicTypes_AreHiddenFromIntelliSense()
+    {
+        var targets = new (string Description, Type Type)[]
+        {
+            ("Edict.Core.Outbox.GrainEnvelope<TPayload>", typeof(GrainEnvelope<>)),
+            ("Edict.Core.Outbox.OutboxSlice", typeof(OutboxSlice)),
+            ("Edict.Core.Outbox.OutboxEntry", typeof(OutboxEntry)),
+            ("Edict.Core.Outbox.OutboxEffectKind", typeof(OutboxEffectKind)),
+            ("Edict.Core.Outbox.UpsertRowEffect", typeof(UpsertRowEffect)),
+            ("Edict.Core.Idempotency.IdempotencyState", typeof(IdempotencyState)),
+            ("Edict.Core.TableStorage.IEdictTableStoreFactory", typeof(IEdictTableStoreFactory)),
+            ("Edict.Contracts.TableStorage.IEdictTableWriteStore<T>", typeof(IEdictTableWriteStore<>)),
+        };
+
+        var missing = targets
+            .Where(target =>
+            {
+                var attribute = target.Type.GetCustomAttribute<EditorBrowsableAttribute>();
+                return attribute?.State != EditorBrowsableState.Never;
+            })
+            .Select(target => target.Description)
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "These base-chain public types must carry [EditorBrowsable(EditorBrowsableState.Never)] per ADR 0045:\n  - "
+                + string.Join("\n  - ", missing));
     }
 
     [Fact]
