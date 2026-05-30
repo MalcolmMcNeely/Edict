@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Reflection;
 
+using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.Commands;
 using Edict.Core;
 using Edict.Core.Commands;
@@ -119,6 +120,25 @@ public class PublicSurfaceAllowListTests
             BuildDriftMessage(unexpected, missing));
     }
 
+    [Fact]
+    public void EdictAzurePersistence_PublicTypesMatchAllowList()
+    {
+        var azurePersistenceAssembly = typeof(AzureTableRepository<>).Assembly;
+        var actual = azurePersistenceAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictAzurePersistenceAllowList.Contains(name)).ToList();
+        var missing = EdictAzurePersistenceAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
@@ -203,6 +223,13 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Sagas.Codec_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Copier_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Invokable_IEdictSaga_GrainReference_747818AD",
+    };
+
+    static readonly HashSet<string> EdictAzurePersistenceAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Azure.Persistence.EdictAzurePersistenceOptions",
+        "Edict.Azure.Persistence.EdictAzurePersistenceSiloBuilderExtensions",
+        "Edict.Azure.Persistence.TableStorage.AzureTableRepository`1",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)

@@ -5,12 +5,7 @@ using Edict.Core.TableStorage;
 
 namespace Edict.Azure.Persistence.TableStorage;
 
-/// <summary>
-/// Azure Table Storage implementation of <see cref="IEdictTableStoreFactory"/>.
-/// Creates a <see cref="AzureTableWriteStore{T}"/> for each named table and ensures the
-/// table exists before the grain starts consuming events.
-/// </summary>
-public sealed class AzureTableWriteStoreFactory(TableServiceClient tableServiceClient) : IEdictTableStoreFactory
+internal sealed class AzureTableWriteStoreFactory(TableServiceClient tableServiceClient) : IEdictTableStoreFactory
 {
     public async Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
         where T : class, new()

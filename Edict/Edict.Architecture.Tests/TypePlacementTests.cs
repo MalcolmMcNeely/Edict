@@ -31,7 +31,7 @@ public class TypePlacementTests
 {
     static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
-            typeof(AzureTableWriteStoreFactory).Assembly,
+            typeof(AzureTableRepository<>).Assembly,
             typeof(EdictAzureStreamsOptions).Assembly,
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
