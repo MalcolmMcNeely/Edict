@@ -4,11 +4,13 @@
 
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
-Using Claude Code or Cursor? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
+Using Claude Code? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
+
+Using Cursor or another MCP-capable editor? See [`docs/usage/agentic/troubleshooting.md`](docs/usage/agentic/troubleshooting.md). Only the MCP server auto-wires; the skill bundle ships as plain markdown any agent can read.
 
 Curious how this was built? See [How this was built](#how-this-was-built) below.
 
-A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics.
+A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
 
 ```csharp
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
@@ -100,7 +102,7 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 
 ## Agentic tooling
 
-AI-assisted development against Edict isn't guesswork. These tools were built during Edict's own agentic build, when Claude kept burning tokens grepping for handlers and re-deriving the framework's structure from scratch. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
+AI-assisted development against Edict isn't guesswork. Same philosophy as the rest of the framework: consumers should be able to use Claude productively against Edict without first writing scaffolding to teach the agent what Edict is. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
 
 | Skill (when it fires) | MCP tools it calls | What the agent stops guessing |
 |---|---|---|
@@ -134,7 +136,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 ## Highlights
 
-- **Agentic-friendly.** The MCP server and Claude Code skill bundle exist because the framework's own agentic build needed them. Now they ship so any agent working on an Edict solution gets the same view of handlers, route keys, wiring, and ADRs.
+- **Agentic-friendly.** The MCP server and Claude Code skill bundle let consumers use Claude productively against Edict without first writing skills or rules to teach the agent how the framework works.
 - **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** One grain write covers both.
