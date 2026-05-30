@@ -1,6 +1,6 @@
 # Agentic-tooling setup
 
-Two `dotnet tool`s, one combined install. After this an Edict-aware agent (Claude Code, Cursor, etc.) has an MCP server it can query for handlers, route keys, silo wiring, glossary terms, and ADRs, plus the five skills that tell it when to reach for which tool.
+Two `dotnet tool`s install together: `Edict.Mcp` (the MCP server the agent queries for handlers, route keys, silo wiring, glossary terms, and ADRs) and `Edict.ClaudeSkills` (the five skills that tell the agent which tool to reach for, and when).
 
 ## Install
 
@@ -18,16 +18,16 @@ Check `.config/dotnet-tools.json` into source control. Every developer on the re
 
 ## What lands in your repo
 
-`dotnet edict-skills install` produces two things at the directory it is run from:
+`dotnet edict-skills install` writes two things into the directory you run it from:
 
 - **`.claude/skills/<skill-name>/SKILL.md`** — one folder per skill. Existing skill files are not overwritten; the installer reports each file it wrote and each it skipped.
-- **`.mcp.json`** — created only if absent, with `edict-mcp` registered as a server in the form matching the install mode (manifest or global). If the file already exists, it is left untouched and the installer prints the entry you should add. Hand-authored comments, ordering, and other server entries stay exactly as you wrote them.
+- **`.mcp.json`** — created only if absent, with `edict-mcp` registered as a server in the form matching the install mode (manifest or global). If the file already exists it is left untouched and the installer prints the entry you should add. Hand-authored comments, ordering, and other server entries stay exactly as you wrote them.
 
-Re-running `dotnet edict-skills install` is a no-op once the skills and the `.mcp.json` entry are in place.
+Re-running the installer is a no-op once both are in place.
 
 ## Global install
 
-For a single-dev workflow:
+Single-dev workflow:
 
 ```
 dotnet tool install --global Edict.Mcp --prerelease
