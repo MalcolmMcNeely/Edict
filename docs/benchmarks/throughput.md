@@ -2,9 +2,9 @@
 
 Machine: Microsoft Windows 10.0.26200 / 20 cores / AMD Ryzen AI 9 365 @ 2.0 GHz / 64 GB RAM
 .NET version: 10.0.8
-Azure run date: 2026-05-29
-Kafka × Postgres run date: 2026-05-29
-Git SHA: b4573ee
+Azure run date: 2026-05-30
+Kafka × Postgres run date: 2026-05-30
+Git SHA: 12b8229
 
 > **Read this first.** The substrates are Testcontainers (Azurite, Postgres, Kafka) on the same laptop as the silo process. Containers share host CPU and RAM with the producer/consumer Orleans process; no resource caps are set, so Docker defaults apply. The reported machine class is what the .NET process sees, not what each substrate sees in isolation. **Do not read these numbers as "Edict will do X EPS in production"** — a managed Postgres, a real Kafka cluster, or an Azure Storage account would all change the substrate ceiling independently of any Edict code change. The bench is a regression guard for the *framework's* per-event overhead on a known substrate, not a sizing tool for your deployment.
 
@@ -14,8 +14,8 @@ Open-loop Events workload: N=256 producers fire `Send(...)` as fast as they can 
 
 | Substrate | Events / sec (end-to-end) | Health |
 | --- | ---: | :---: |
-| azure | 70 | OK (0.00 %) |
-| kafkapostgres | 373 | OK (0.00 %) |
+| azure | 62 | OK (0.00 %) |
+| kafkapostgres | 819 | OK (0.00 %) |
 
 > **Per-silo baseline.** The published number is the rate **one** Orleans silo sustains on this hardware against the configured substrate. Orleans scales horizontally; an N-silo deployment extrapolates from this baseline modulo cross-silo coordination cost. A single-silo number is not the framework ceiling.
 
@@ -28,18 +28,18 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 
 | Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
 | --- | --- | --- | ---: | ---: | ---: | :---: |
-| azure | Command acceptance | 2 | 11.95 | 18.56 | 25.52 | OK (0.00 %) |
-| azure | Command acceptance | 16 | 36.58 | 57.11 | 141.14 | OK (0.00 %) |
-| azure | Command acceptance | 64 | 144.73 | 187.36 | 353.11 | OK (0.00 %) |
-| azure | Command → Event delivery | 2 | 77.42 | 98.10 | 114.85 | OK (0.00 %) |
-| azure | Command → Event delivery | 16 | 277.55 | 362.74 | 405.43 | OK (0.00 %) |
-| azure | Command → Event delivery | 64 | 1149.58 | 1251.14 | 1398.65 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 2 | 1.84 | 4.66 | 7.46 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 16 | 6.41 | 11.81 | 18.14 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 64 | 24.39 | 34.48 | 46.83 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 2 | 143.25 | 220.56 | 236.84 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 16 | 142.45 | 216.01 | 244.16 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 64 | 319.15 | 446.78 | 507.62 | OK (0.00 %) |
+| azure | Command acceptance | 2 | 12.90 | 18.60 | 23.76 | OK (0.00 %) |
+| azure | Command acceptance | 16 | 36.96 | 59.24 | 85.82 | OK (0.00 %) |
+| azure | Command acceptance | 64 | 142.78 | 175.72 | 249.74 | OK (0.00 %) |
+| azure | Command → Event delivery | 2 | 78.51 | 97.21 | 114.24 | OK (0.00 %) |
+| azure | Command → Event delivery | 16 | 284.07 | 396.31 | 448.60 | OK (0.00 %) |
+| azure | Command → Event delivery | 64 | 1154.39 | 1478.11 | 1613.18 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 2 | 0.78 | 1.38 | 2.14 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 16 | 2.83 | 3.92 | 5.26 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 64 | 11.06 | 17.56 | 21.49 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 2 | 143.18 | 206.43 | 211.10 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 16 | 110.31 | 177.32 | 193.30 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 64 | 186.78 | 276.31 | 303.33 | OK (0.00 %) |
 
 ## Run health
 

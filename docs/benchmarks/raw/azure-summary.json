@@ -1,73 +1,143 @@
 {
   "substrate": "azure",
-  "run_date": "2026-05-29T00:00:00+00:00",
+  "run_date": "2026-05-30T09:54:58.6880479+00:00",
   "closed_loop": [
     {
       "scenario": "Command acceptance",
       "parallelism": 2,
-      "completed_count": 100,
-      "elapsed_seconds": 30,
-      "p50_ms": 11.95,
-      "p95_ms": 18.56,
-      "p99_ms": 25.52,
-      "health": { "succeeded": 100, "failed": 0, "failures_by_type": {} }
+      "completed_count": 4681,
+      "elapsed_seconds": 30.004682,
+      "p50_ms": 12.903,
+      "p95_ms": 18.598,
+      "p99_ms": 23.7584,
+      "health": {
+        "succeeded": 4681,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     },
     {
       "scenario": "Command acceptance",
       "parallelism": 16,
-      "completed_count": 200,
-      "elapsed_seconds": 30,
-      "p50_ms": 36.58,
-      "p95_ms": 57.11,
-      "p99_ms": 141.14,
-      "health": { "succeeded": 200, "failed": 0, "failures_by_type": {} }
+      "completed_count": 11798,
+      "elapsed_seconds": 30.0264225,
+      "p50_ms": 36.9633,
+      "p95_ms": 59.2357,
+      "p99_ms": 85.8156,
+      "health": {
+        "succeeded": 11798,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     },
     {
       "scenario": "Command acceptance",
       "parallelism": 64,
-      "completed_count": 300,
-      "elapsed_seconds": 30,
-      "p50_ms": 144.73,
-      "p95_ms": 187.36,
-      "p99_ms": 353.11,
-      "health": { "succeeded": 300, "failed": 0, "failures_by_type": {} }
+      "completed_count": 13126,
+      "elapsed_seconds": 30.0859438,
+      "p50_ms": 142.7837,
+      "p95_ms": 175.7186,
+      "p99_ms": 249.7374,
+      "health": {
+        "succeeded": 13126,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     },
     {
-      "scenario": "Command → Event delivery",
+      "scenario": "Command acceptance (base-typed)",
       "parallelism": 2,
-      "completed_count": 400,
-      "elapsed_seconds": 30,
-      "p50_ms": 77.42,
-      "p95_ms": 98.10,
-      "p99_ms": 114.85,
-      "health": { "succeeded": 400, "failed": 0, "failures_by_type": {} }
+      "completed_count": 4662,
+      "elapsed_seconds": 30.0116257,
+      "p50_ms": 12.4832,
+      "p95_ms": 19.264,
+      "p99_ms": 24.251,
+      "health": {
+        "succeeded": 4662,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     },
     {
-      "scenario": "Command → Event delivery",
+      "scenario": "Command acceptance (base-typed)",
       "parallelism": 16,
-      "completed_count": 500,
-      "elapsed_seconds": 30,
-      "p50_ms": 277.55,
-      "p95_ms": 362.74,
-      "p99_ms": 405.43,
-      "health": { "succeeded": 500, "failed": 0, "failures_by_type": {} }
+      "completed_count": 12699,
+      "elapsed_seconds": 30.0228696,
+      "p50_ms": 35.5101,
+      "p95_ms": 48.9765,
+      "p99_ms": 132.6014,
+      "health": {
+        "succeeded": 12699,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     },
     {
-      "scenario": "Command → Event delivery",
+      "scenario": "Command acceptance (base-typed)",
       "parallelism": 64,
-      "completed_count": 600,
-      "elapsed_seconds": 30,
-      "p50_ms": 1149.58,
-      "p95_ms": 1251.14,
-      "p99_ms": 1398.65,
-      "health": { "succeeded": 600, "failed": 0, "failures_by_type": {} }
+      "completed_count": 13137,
+      "elapsed_seconds": 30.1018471,
+      "p50_ms": 142.3624,
+      "p95_ms": 181.1744,
+      "p99_ms": 255.7018,
+      "health": {
+        "succeeded": 13137,
+        "failed": 0,
+        "failures_by_type": {}
+      }
+    },
+    {
+      "scenario": "Command \u2192 Event delivery",
+      "parallelism": 2,
+      "completed_count": 769,
+      "elapsed_seconds": 30.0221162,
+      "p50_ms": 78.5141,
+      "p95_ms": 97.2063,
+      "p99_ms": 114.2357,
+      "health": {
+        "succeeded": 769,
+        "failed": 0,
+        "failures_by_type": {}
+      }
+    },
+    {
+      "scenario": "Command \u2192 Event delivery",
+      "parallelism": 16,
+      "completed_count": 1605,
+      "elapsed_seconds": 30.174893,
+      "p50_ms": 284.0655,
+      "p95_ms": 396.3145,
+      "p99_ms": 448.6026,
+      "health": {
+        "succeeded": 1605,
+        "failed": 0,
+        "failures_by_type": {}
+      }
+    },
+    {
+      "scenario": "Command \u2192 Event delivery",
+      "parallelism": 64,
+      "completed_count": 1665,
+      "elapsed_seconds": 30.7985695,
+      "p50_ms": 1154.3893,
+      "p95_ms": 1478.1106,
+      "p99_ms": 1613.1834,
+      "health": {
+        "succeeded": 1665,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     }
   ],
   "saturation": {
-    "events_per_second": 70,
+    "events_per_second": 61.7,
     "window_seconds": 30,
     "producer_concurrency": 256,
     "aggregate_count": 1024,
-    "health": { "succeeded": 2100, "failed": 0, "failures_by_type": {} }
+    "health": {
+      "succeeded": 1851,
+      "failed": 0,
+      "failures_by_type": {}
+    }
   }
 }
