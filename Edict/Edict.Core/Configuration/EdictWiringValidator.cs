@@ -7,15 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Edict.Core.Configuration;
 
-/// <summary>
-/// Host-start validator: at <see cref="StartAsync"/>, accumulates
-/// both <see cref="EdictWiringInspector"/>'s missing-provider list and
-/// <see cref="EdictOptionsValidator"/>'s invalid-value list into one
-/// <see cref="EdictWiringException"/>. A consumer with two problems sees
-/// two problems; the message lists every issue so the next host restart finds
-/// nothing wrong rather than the next-discovered problem.
-/// </summary>
-public sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
+sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
