@@ -27,6 +27,15 @@ static class Program
         {
             Console.Out.WriteLine($"  = {skipped}");
         }
+
+        var mcpInstaller = new McpInstaller(
+            installModeDetector: new InstallModeDetector(),
+            mcpJsonInspector: new McpJsonInspector(),
+            mcpJsonWriter: new McpJsonWriter(),
+            currentDirectoryProvider: Directory.GetCurrentDirectory);
+        var mcpReport = mcpInstaller.Install();
+        WriteMcpReport(mcpReport);
+
         return 0;
     }
 
@@ -40,5 +49,46 @@ static class Program
             }
         }
         return null;
+    }
+
+    static void WriteMcpReport(McpInstallReport report)
+    {
+        Console.Out.WriteLine($"MCP: {report.McpJsonPath}");
+        Console.Out.WriteLine($"  Detected install mode: {report.DetectedMode}");
+        switch (report.Action)
+        {
+            case McpInstallAction.CreatedFile:
+                Console.Out.WriteLine($"  + Created {Path.GetFileName(report.McpJsonPath)} with the edict entry for {report.DetectedMode} mode.");
+                break;
+            case McpInstallAction.AlreadyWired:
+                Console.Out.WriteLine($"  = {Path.GetFileName(report.McpJsonPath)} already wired for {report.DetectedMode} mode.");
+                break;
+            case McpInstallAction.InstructionsToAdd:
+                Console.Out.WriteLine($"  ! {Path.GetFileName(report.McpJsonPath)} has no \"edict\" entry under mcpServers. Add this entry:");
+                Console.Error.WriteLine(BuildEdictEntrySnippet(report.DetectedMode));
+                break;
+            case McpInstallAction.InstructionsToUpdate:
+                Console.Out.WriteLine($"  ! {Path.GetFileName(report.McpJsonPath)} has an \"edict\" entry in {report.ExistingForm} form but {report.DetectedMode} form was detected. Update the entry to:");
+                Console.Error.WriteLine(BuildEdictEntrySnippet(report.DetectedMode));
+                break;
+        }
+    }
+
+    static string BuildEdictEntrySnippet(InstallMode installMode)
+    {
+        if (installMode == InstallMode.Manifest)
+        {
+            return """
+                "edict": {
+                  "command": "dotnet",
+                  "args": ["edict-mcp"]
+                }
+                """;
+        }
+        return """
+            "edict": {
+              "command": "edict-mcp"
+            }
+            """;
     }
 }
