@@ -86,6 +86,9 @@ desktop.ini
 # Docker
 .dockerignore
 
+# Claude Code — per-user, per-machine settings
+.claude/settings.local.json
+
 # Terraform / infra (if you add it later)
 **/.terraform/
 *.tfstate
