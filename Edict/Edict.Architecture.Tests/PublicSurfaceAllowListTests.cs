@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 
 using Edict.Azure.Persistence.TableStorage;
+using Edict.Azure.Streaming;
 using Edict.Contracts.Commands;
 using Edict.Core;
 using Edict.Core.Commands;
@@ -139,6 +140,25 @@ public class PublicSurfaceAllowListTests
             BuildDriftMessage(unexpected, missing));
     }
 
+    [Fact]
+    public void EdictAzureStreaming_PublicTypesMatchAllowList()
+    {
+        var azureStreamingAssembly = typeof(EdictAzureStreamsOptions).Assembly;
+        var actual = azureStreamingAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictAzureStreamingAllowList.Contains(name)).ToList();
+        var missing = EdictAzureStreamingAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
@@ -230,6 +250,13 @@ public class PublicSurfaceAllowListTests
         "Edict.Azure.Persistence.EdictAzurePersistenceOptions",
         "Edict.Azure.Persistence.EdictAzurePersistenceSiloBuilderExtensions",
         "Edict.Azure.Persistence.TableStorage.AzureTableRepository`1",
+    };
+
+    static readonly HashSet<string> EdictAzureStreamingAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Azure.Streaming.ClaimCheck.EdictAzureBlobClaimCheckOptions",
+        "Edict.Azure.Streaming.EdictAzureStreamingSiloBuilderExtensions",
+        "Edict.Azure.Streaming.EdictAzureStreamsOptions",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)
