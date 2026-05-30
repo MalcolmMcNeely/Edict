@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <RootNamespace>Edict.ClaudeSkills</RootNamespace>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>edict-skills</ToolCommandName>
+        <PackageId>Edict.ClaudeSkills</PackageId>
+        <Description>Installs the Edict consumer-facing Claude Code skill bundle into a target .claude/skills/ directory. Install as a dotnet tool and run 'edict-skills install' from your repo root.</Description>
+        <PackageTags>edict;cqrs;orleans;claude;skills;agent;tooling</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Skills\*.md" LogicalName="Edict.ClaudeSkills.Skills.%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Edict.ClaudeSkills.Tests" />
+        <InternalsVisibleTo Include="Edict.AgenticTooling.Architecture.Tests" />
+    </ItemGroup>
+
+</Project>
