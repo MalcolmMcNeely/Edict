@@ -28,7 +28,7 @@ public sealed class FulfillmentCommandHandlerTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new StartFulfillmentCommand(orderId, lineItemIds));
+        await app.SendAsync(new StartFulfillmentCommand(orderId, lineItemIds));
         await app.Drain();
 
         // Five advances large enough to cover the max randomised due time (7s);

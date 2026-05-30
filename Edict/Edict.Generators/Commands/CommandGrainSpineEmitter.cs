@@ -13,7 +13,9 @@ internal static class CommandGrainSpineEmitter
         {
             arms.Append("                ")
                 .Append(command.Fqn)
-                .Append(" c => this.ValidateAndHandleAsync(c, () => this.Handle(c)),\n");
+                .Append(" c => this.ValidateAndHandleAsync(c, () => this.")
+                .Append(EdictWellKnownNames.HandleMethodName)
+                .Append("(c)),\n");
         }
 
         return $$"""

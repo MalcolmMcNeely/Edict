@@ -31,7 +31,7 @@ public sealed class EventsScenario : IClosedLoopScenario
     public async Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
         var correlationId = Guid.NewGuid();
-        await _sender.Send(new BenchPublishCommand(aggregateId, correlationId, filler));
+        await _sender.SendAsync(new BenchPublishCommand(aggregateId, correlationId, filler));
         await WaitForEventRowAsync(aggregateId, correlationId.ToString("D"), cancellationToken);
     }
 

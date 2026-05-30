@@ -171,7 +171,7 @@ public sealed class NpgsqlPoolPressureProbeTests
                     var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
                     try
                     {
-                        await sender.Send(new BenchIncrementCommand(aggregateId, filler));
+                        await sender.SendAsync(new BenchIncrementCommand(aggregateId, filler));
                     }
                     catch (OperationCanceledException)
                     {

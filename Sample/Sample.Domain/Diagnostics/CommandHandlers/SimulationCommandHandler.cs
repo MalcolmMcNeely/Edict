@@ -11,7 +11,7 @@ namespace Sample.Domain.Diagnostics.CommandHandlers;
 // for the Dead Letter demo. Production-shaped code does not live in Diagnostics/.
 public partial class SimulationCommandHandler : EdictCommandHandler<SimulationState>
 {
-    public Task<EdictCommandResult> Handle(TriggerSagaFailureCommand command)
+    public Task<EdictCommandResult> HandleAsync(TriggerSagaFailureCommand command)
     {
         State.Triggered = true;
         Raise(new TriggerSagaFailureEvent(command.SimulationId));

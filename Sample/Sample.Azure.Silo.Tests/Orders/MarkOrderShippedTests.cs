@@ -20,12 +20,12 @@ public sealed class MarkOrderShippedTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, lineItemId, "SKU-1", 1));
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, lineItemId, "SKU-1", 1));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
-        var result = await app.Send(new MarkOrderShippedCommand(orderId));
+        var result = await app.SendAsync(new MarkOrderShippedCommand(orderId));
         await app.Drain();
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
@@ -42,10 +42,10 @@ public sealed class MarkOrderShippedTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
-        var result = await app.Send(new MarkOrderShippedCommand(orderId));
+        var result = await app.SendAsync(new MarkOrderShippedCommand(orderId));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);

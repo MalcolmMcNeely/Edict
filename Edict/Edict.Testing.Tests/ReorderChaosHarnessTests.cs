@@ -26,8 +26,8 @@ public sealed class ReorderChaosHarnessTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(ReorderChaosHarnessTests).Assembly));
 
-        await app.Send(new PlaceWidgetCommand(widgetId));
-        await app.Send(new IncrementWidgetCommand(widgetId));
+        await app.SendAsync(new PlaceWidgetCommand(widgetId));
+        await app.SendAsync(new IncrementWidgetCommand(widgetId));
         await app.Drain();
 
         var row = await app.GetProjectionRow<WidgetCounterRow>(
@@ -78,14 +78,14 @@ public sealed partial record WidgetIncrementedEvent(Guid WidgetId) : EdictEvent
 
 public partial class WidgetAggregate : EdictCommandHandler<WidgetState>
 {
-    public Task<EdictCommandResult> Handle(PlaceWidgetCommand command)
+    public Task<EdictCommandResult> HandleAsync(PlaceWidgetCommand command)
     {
         State.Count = 0;
         Raise(new WidgetPlacedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(IncrementWidgetCommand command)
+    public Task<EdictCommandResult> HandleAsync(IncrementWidgetCommand command)
     {
         State.Count++;
         Raise(new WidgetIncrementedEvent(command.WidgetId));
@@ -114,13 +114,13 @@ public sealed partial class DecoyWidgetProjectionBuilder : EdictTableProjectionB
 
     protected override string GetRowKey(EdictEvent edictEvent) => "decoy";
 
-    public Task Handle(WidgetPlacedEvent edictEvent)
+    public Task HandleAsync(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(WidgetIncrementedEvent edictEvent)
+    public Task HandleAsync(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
@@ -147,13 +147,13 @@ public sealed partial class WidgetCounterProjectionBuilder : EdictTableProjectio
 
     protected override string GetRowKey(EdictEvent edictEvent) => "counter";
 
-    public Task Handle(WidgetPlacedEvent edictEvent)
+    public Task HandleAsync(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Count = 0;
         return Task.CompletedTask;
     }
 
-    public Task Handle(WidgetIncrementedEvent edictEvent)
+    public Task HandleAsync(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Count++;
         return Task.CompletedTask;

@@ -24,8 +24,8 @@ public abstract class TableProjectionIncrementsOnSubsequentEventScenarios<TFixtu
         var orderId = Guid.NewGuid();
         var repository = _fixture.GetTableRepository<OrderTableRow>("orderprojection");
 
-        await _fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-A"));
-        await _fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-B"));
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-A"));
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-B"));
 
         await TableProjectionWaiters.WaitForRowAsync(
             repository, orderId.ToString(), orderId.ToString(),

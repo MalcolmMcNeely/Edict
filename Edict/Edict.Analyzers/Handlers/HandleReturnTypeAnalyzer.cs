@@ -12,8 +12,8 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT002",
-        title: "Handle method must return Task<EdictCommandResult>",
-        messageFormat: "Handle method for '{0}' in '{1}' must return Task<EdictCommandResult>",
+        title: "HandleAsync method must return Task<EdictCommandResult>",
+        messageFormat: "HandleAsync method for '{0}' in '{1}' must return Task<EdictCommandResult>",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);

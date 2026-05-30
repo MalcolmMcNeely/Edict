@@ -34,6 +34,6 @@ public sealed class CommandsBaseTypedScenario : IClosedLoopScenario
     public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
         EdictCommand command = new BenchIncrementCommand(aggregateId, filler);
-        return _sender.Send(command);
+        return _sender.SendAsync(command);
     }
 }

@@ -22,7 +22,7 @@ public abstract class RejectedCommandPublishesNoEventScenarios<TFixture>
     {
         var orderId = Guid.NewGuid();
 
-        await _fixture.Sender.Send(new CancelOrderCommand(orderId, "changed mind"));
+        await _fixture.Sender.SendAsync(new CancelOrderCommand(orderId, "changed mind"));
 
         await Task.Delay(TimeSpan.FromSeconds(3));
         var captureGrain = _fixture.GrainFactory.GetGrain<IOrderEventCaptureGrain>(orderId);

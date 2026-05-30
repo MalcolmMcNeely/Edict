@@ -45,7 +45,7 @@ public sealed class PerModeProjectionRegistrationTests
             var aggregateId = Guid.NewGuid();
             var correlationId = Guid.NewGuid();
 
-            await sender.Send(new BenchPublishCommand(aggregateId, correlationId, []));
+            await sender.SendAsync(new BenchPublishCommand(aggregateId, correlationId, []));
 
             await WaitForRowAsync(
                 eventRepository,
@@ -77,7 +77,7 @@ public sealed class PerModeProjectionRegistrationTests
             var aggregateId = Guid.NewGuid();
             var correlationId = Guid.NewGuid();
 
-            await sender.Send(new BenchPublishCommand(aggregateId, correlationId, []));
+            await sender.SendAsync(new BenchPublishCommand(aggregateId, correlationId, []));
 
             await WaitForCounterAsync(counterRepository, aggregateId, CancellationToken.None);
 

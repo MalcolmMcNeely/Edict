@@ -105,7 +105,7 @@ public sealed class SaturationRunner
                     var aggregateId = aggregatePool[(int)(((uint)index) % aggregatePool.Length)];
                     try
                     {
-                        await sender.Send(new BenchPublishCommand(aggregateId, Guid.NewGuid(), FillerBuffer));
+                        await sender.SendAsync(new BenchPublishCommand(aggregateId, Guid.NewGuid(), FillerBuffer));
                         tracker.RecordSuccess();
                     }
                     catch (OperationCanceledException)

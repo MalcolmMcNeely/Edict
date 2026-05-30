@@ -45,7 +45,7 @@ public sealed partial class OrderTableProjectionBuilder
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(OrderPlacedEvent edictEvent)
+    public Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -68,7 +68,7 @@ public sealed partial class OrderSummaryTableProjectionBuilder : EdictTableProje
 
     protected override string GetRowKey(EdictEvent edictEvent) => "summary";
 
-    public Task Handle(OrderPlacedEvent edictEvent)
+    public Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -94,7 +94,7 @@ public sealed partial class GlobalOrderTableProjectionBuilder : EdictTableProjec
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(OrderPlacedEvent edictEvent)
+    public Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -112,7 +112,7 @@ public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder, IOr
 
     public Task<int> GetOrderCountAsync() => Task.FromResult(_orderCount);
 
-    public Task Handle(OrderPlacedEvent edictEvent)
+    public Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         _orderCount++;
         return Task.CompletedTask;

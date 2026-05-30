@@ -120,7 +120,7 @@ public sealed class PostgresClusterFixture : ConformanceFixture
         {
             try
             {
-                await Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "warmup"));
+                await Sender.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), "warmup"));
                 return;
             }
             catch (OrleansException orleansException) when (orleansException.Message.Contains("still initializing", StringComparison.Ordinal))

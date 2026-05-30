@@ -25,15 +25,15 @@ public sealed class OrderFulfillmentSagaTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         for (var i = 0; i < 5; i++)
         {
-            await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), $"SKU-{i}", 1));
+            await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), $"SKU-{i}", 1));
         }
         // Below the decline threshold so the OrderPayment saga authorises and
         // the order confirms; the new OrderFulfillment saga then bridges
         // OrderConfirmed → StartFulfillment.
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
         var startCount = app.Timeline.Entries.Count(e =>
@@ -49,12 +49,12 @@ public sealed class OrderFulfillmentSagaTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         for (var i = 0; i < 5; i++)
         {
-            await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), $"SKU-{i}", 1));
+            await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), $"SKU-{i}", 1));
         }
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
         // Five timer ticks transition all lines to Fulfilled; the terminal

@@ -44,7 +44,7 @@ public sealed partial record NotifyCustomerCommand(Guid CustomerId, string Reaso
 
 public partial class CustomerNotificationCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> Handle(NotifyCustomerCommand command)
+    public Task<EdictCommandResult> HandleAsync(NotifyCustomerCommand command)
     {
         Raise(new CustomerNotifiedEvent(command.CustomerId, command.Reason));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -76,7 +76,7 @@ public sealed partial class EmailEventHandler : EdictEventHandler, IEmailHandler
 {
     readonly List<Guid> _handled = [];
 
-    public Task Handle(CustomerNotifiedEvent edictEvent)
+    public Task HandleAsync(CustomerNotifiedEvent edictEvent)
     {
         _handled.Add(edictEvent.EventId);
         return Task.CompletedTask;

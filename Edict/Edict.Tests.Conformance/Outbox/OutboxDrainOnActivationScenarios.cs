@@ -24,7 +24,7 @@ public abstract class OutboxDrainOnActivationScenarios<TFixture>
         ControllableOutboxExecutor.Reset();
         ControllableOutboxExecutor.ShouldFail = true;
 
-        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);

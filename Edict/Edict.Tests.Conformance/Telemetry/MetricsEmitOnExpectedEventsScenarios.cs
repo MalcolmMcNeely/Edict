@@ -66,7 +66,7 @@ public abstract class ClaimCheckPayloadSizeMetricsScenarios<TFixture>
         });
         listener.Start();
 
-        await _fixture.Sender.Send(new IncrementClaimCheckCounterCommand(counterId, payload));
+        await _fixture.Sender.SendAsync(new IncrementClaimCheckCounterCommand(counterId, payload));
 
         // The publisher-side recording is synchronous with Send, so by the time
         // Send returns the histogram has already received the spilled-event
@@ -125,7 +125,7 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
         });
         listener.Start();
 
-        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
@@ -239,7 +239,7 @@ public abstract class OutboxPendingCountMetricsScenarios<TFixture>
                 // Send swallows the publish failure inside the inline drain so
                 // the command still returns Accepted; the entry stays Pending
                 // with a backed-off NextAttemptUtc.
-                try { await _fixture.Sender.Send(new IncrementCounterCommand(id)); }
+                try { await _fixture.Sender.SendAsync(new IncrementCounterCommand(id)); }
                 catch { /* publish-side failure surfaces via the gauge, not the sender */ }
             }
 

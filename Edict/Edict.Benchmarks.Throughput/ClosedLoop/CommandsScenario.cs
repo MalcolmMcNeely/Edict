@@ -22,5 +22,5 @@ public sealed class CommandsScenario : IClosedLoopScenario
     public string Name => "Command acceptance";
 
     public Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken) =>
-        _sender.Send(new BenchIncrementCommand(aggregateId, filler));
+        _sender.SendAsync(new BenchIncrementCommand(aggregateId, filler));
 }

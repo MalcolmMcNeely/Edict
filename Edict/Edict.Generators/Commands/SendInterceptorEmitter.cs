@@ -101,12 +101,12 @@ internal static class SendInterceptorEmitter
         }
 
         // Interceptor signatures must mirror the intercepted method exactly
-        // (Roslyn 5.0): IEdictSender.Send takes EdictCommand, so the
+        // (Roslyn 5.0): IEdictSender.SendAsync takes EdictCommand, so the
         // interceptor's parameter is also EdictCommand. The per-type knowledge
         // (route key property, telemeterized tags, grain interface) is baked
         // in via a direct cast inside — the call site is known to bind to a
         // concrete command type because that's how we discovered it.
-        sb.Append("        public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSend(\n");
+        sb.Append("        public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSendAsync(\n");
         sb.Append("            this global::Edict.Contracts.Sending.IEdictSender sender,\n");
         sb.Append("            global::Edict.Contracts.Commands.EdictCommand command)\n");
         sb.Append("        {\n");
@@ -141,7 +141,7 @@ internal static class SendInterceptorEmitter
         }
 
         sb.Append("            }\n");
-        sb.Append("            return sender.Send(command);\n");
+        sb.Append("            return sender.SendAsync(command);\n");
         sb.Append("        }\n");
         sb.Append("    }\n");
         sb.Append("}\n");

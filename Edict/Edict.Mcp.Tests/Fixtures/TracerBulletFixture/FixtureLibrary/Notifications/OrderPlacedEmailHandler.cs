@@ -5,6 +5,6 @@ namespace FixtureLibrary.Notifications;
 
 public sealed partial class OrderPlacedEmailHandler : EdictEventHandler
 {
-    public System.Threading.Tasks.Task Handle(OrderPlaced edictEvent) =>
+    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) =>
         System.Threading.Tasks.Task.CompletedTask;
 }

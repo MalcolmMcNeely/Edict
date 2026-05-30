@@ -29,7 +29,7 @@ public abstract class ReceiverUnwrapsClaimCheckScenarios<TFixture>
         var counterId = Guid.NewGuid();
         var payload = $"unwrap-me-{Guid.NewGuid():N}";
 
-        await _fixture.Sender.Send(new IncrementClaimCheckCounterCommand(counterId, payload));
+        await _fixture.Sender.SendAsync(new IncrementClaimCheckCounterCommand(counterId, payload));
 
         var handler = _fixture.GrainFactory.GetGrain<IClaimCheckEventHandlerProbe>(counterId);
         var handled = await WaitForHandledAsync(handler);

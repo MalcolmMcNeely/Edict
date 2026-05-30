@@ -11,7 +11,7 @@ namespace Sample.Domain.Diagnostics.CommandHandlers;
 // Letter. Production-shaped code does not live in Diagnostics/.
 public partial class RejectingCommandHandler : EdictCommandHandler<RejectingState>
 {
-    public Task<EdictCommandResult> Handle(RejectingCommand command)
+    public Task<EdictCommandResult> HandleAsync(RejectingCommand command)
     {
         State.RejectedCount++;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(

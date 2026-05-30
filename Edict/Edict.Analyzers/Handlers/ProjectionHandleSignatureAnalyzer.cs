@@ -12,16 +12,16 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor WrongReturnType = new DiagnosticDescriptor(
         id: "EDICT009",
-        title: "Projection Builder Handle must return Task",
-        messageFormat: "Handle method for '{0}' in '{1}' must return Task, not Task<T>",
+        title: "Projection Builder HandleAsync must return Task",
+        messageFormat: "HandleAsync method for '{0}' in '{1}' must return Task, not Task<T>",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     internal static readonly DiagnosticDescriptor NonEventParameter = new DiagnosticDescriptor(
         id: "EDICT009",
-        title: "Projection Builder Handle parameter must derive from EdictEvent",
-        messageFormat: "Handle method for '{0}' in '{1}' must take an EdictEvent-derived parameter",
+        title: "Projection Builder HandleAsync parameter must derive from EdictEvent",
+        messageFormat: "HandleAsync method for '{0}' in '{1}' must take an EdictEvent-derived parameter",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);

@@ -41,7 +41,7 @@ public abstract class EventTelemeterizedTagsOnSpansScenarios<TFixture>
         };
         ActivitySource.AddActivityListener(listener);
 
-        await _fixture.Sender.Send(new NotifyCustomerCommand(customerId, reason));
+        await _fixture.Sender.SendAsync(new NotifyCustomerCommand(customerId, reason));
 
         var handler = _fixture.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
         await EmailHandlerWaiters.WaitForHandledAsync(handler);

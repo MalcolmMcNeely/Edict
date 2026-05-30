@@ -30,7 +30,7 @@ public class HandleReturnTypeAnalyzerTests
             }
             public partial class OrderCommandHandler : EdictCommandHandler
             {
-                public Task<bool> Handle(PlaceOrder c) =>
+                public Task<bool> HandleAsync(PlaceOrder c) =>
                     Task.FromResult(true);
             }
             """;
@@ -41,7 +41,7 @@ public class HandleReturnTypeAnalyzerTests
         Assert.Equal("EDICT002", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderCommandHandler", d.GetMessage());
-        // Line 12 (0-indexed): "public Task<bool> Handle(PlaceOrder c) =>"
+        // Line 12 (0-indexed): "public Task<bool> HandleAsync(PlaceOrder c) =>"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

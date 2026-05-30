@@ -30,7 +30,7 @@ public abstract class OutboxRecoveryAfterCrashScenarios<TFixture>
         ControllableOutboxExecutor.Reset();
         ControllableOutboxExecutor.ShouldFail = true;
 
-        var result = await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        var result = await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
         Assert.True(ControllableOutboxExecutor.FailedAttempts >= 1);

@@ -25,7 +25,7 @@ public abstract class ProjectionDeliveryScenarios<TFixture>
     {
         var orderId = Guid.NewGuid();
 
-        await _fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-1"));
 
         var projection = _fixture.GrainFactory.GetGrain<IOrderProjectionAccess>(orderId);
         await WaitForProjectionAsync(projection, expectedCount: 1);

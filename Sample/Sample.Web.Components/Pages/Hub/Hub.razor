@@ -218,7 +218,7 @@
     async Task OnInjectPoison()
     {
         var orderId = Guid.NewGuid();
-        var place = await Sender.Send(new PlaceOrderCommand(orderId, "POISON-DEMO"));
+        var place = await Sender.SendAsync(new PlaceOrderCommand(orderId, "POISON-DEMO"));
         if (place is not EdictCommandResult.Accepted)
         {
             _message = Describe("Place", place);
@@ -226,7 +226,7 @@
         }
 
         KnownOrders.Register(orderId);
-        var cancel = await Sender.Send(new CancelOrderCommand(orderId, "POISON: handler-throw demo"));
+        var cancel = await Sender.SendAsync(new CancelOrderCommand(orderId, "POISON: handler-throw demo"));
         _message = cancel is EdictCommandResult.Accepted
             ? "Injected dead letter — a row should appear within ~5s."
             : Describe("Cancel", cancel);
@@ -235,7 +235,7 @@
     async Task OnInject5Mb()
     {
         var orderId = Guid.NewGuid();
-        var place = await Sender.Send(new PlaceOrderCommand(orderId, "CLAIM-CHECK-DEMO"));
+        var place = await Sender.SendAsync(new PlaceOrderCommand(orderId, "CLAIM-CHECK-DEMO"));
         if (place is not EdictCommandResult.Accepted)
         {
             _message = Describe("Place", place);
@@ -244,7 +244,7 @@
 
         KnownOrders.Register(orderId);
         var paddedSku = "SKU-" + new string('X', 5000);
-        var add = await Sender.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), paddedSku, 1));
+        var add = await Sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), paddedSku, 1));
         _message = add is EdictCommandResult.Accepted
             ? "Fired oversize order — open the Aspire dashboard and look for envelope.shape=ClaimCheck on the publish span."
             : Describe("AddLineItem", add);
@@ -253,7 +253,7 @@
     async Task OnInjectSagaReject()
     {
         var simulationId = Guid.NewGuid();
-        var result = await Sender.Send(new TriggerSagaFailureCommand(simulationId));
+        var result = await Sender.SendAsync(new TriggerSagaFailureCommand(simulationId));
         _message = result is EdictCommandResult.Accepted
             ? "Injected saga reject — a dead-letter row should appear within ~5s."
             : Describe("TriggerSagaFailure", result);

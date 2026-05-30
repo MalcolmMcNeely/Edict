@@ -45,7 +45,9 @@ internal static class ProjectionGrainSpineEmitter
                 .Append(" __writers && __writers.TryGet(typeof(")
                 .Append(handler.EventFqn)
                 .Append("), out var __write)) { __write(typed, span); }\n")
-                .Append("                    await DispatchEventAsync(typed, Handle);\n")
+                .Append("                    await DispatchEventAsync(typed, ")
+                .Append(EdictWellKnownNames.HandleMethodName)
+                .Append(");\n")
                 .Append("                    return true;\n")
                 .Append("                }\n");
         }

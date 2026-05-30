@@ -254,7 +254,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <see cref="OutboxEffectKind.InvokeHandler"/> entry the engine drains.
     /// <c>EdictEventHandler</c> overrides this to swap inline dispatch for a
     /// deferred <see cref="OutboxEffectKind.InvokeHandler"/> stage so the
-    /// consumer's <c>Handle(TEvent)</c> runs off the stream-callback path with
+    /// consumer's <c>HandleAsync(TEvent)</c> runs off the stream-callback path with
     /// retry/backoff/dead-letter wrapping.
     /// </summary>
     protected virtual async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)

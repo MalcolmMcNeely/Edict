@@ -13,7 +13,7 @@ namespace Sample.Domain.Orders.CommandHandlers;
 // inline FIFO drain publishes. No volatile aggregate fields.
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
-    public Task<EdictCommandResult> Handle(PlaceOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         State.Status = OrderStatus.Open;
         State.Items.Clear();
@@ -21,7 +21,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(AddLineItemCommand command)
+    public Task<EdictCommandResult> HandleAsync(AddLineItemCommand command)
     {
         if (State.Status != OrderStatus.Open)
         {
@@ -34,7 +34,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(SubmitOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(SubmitOrderCommand command)
     {
         if (State.Items.Count == 0)
         {
@@ -49,7 +49,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 
     // Driven by the OrderPayment saga on PaymentAuthorized — the happy-path
     // terminal transition.
-    public Task<EdictCommandResult> Handle(ConfirmOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(ConfirmOrderCommand command)
     {
         if (State.Status == OrderStatus.Cancelled)
         {
@@ -67,7 +67,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 
     // Driven by the OrderFulfillment saga on OrderFullyFulfilled — the terminal
     // transition past Confirmed. Only a confirmed order may ship.
-    public Task<EdictCommandResult> Handle(MarkOrderShippedCommand command)
+    public Task<EdictCommandResult> HandleAsync(MarkOrderShippedCommand command)
     {
         if (State.Status != OrderStatus.Confirmed)
         {
@@ -83,7 +83,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     // A submitted order stays cancellable — that is exactly the OrderPayment
     // saga's compensation branch (PaymentDeclined → CancelOrder). Only a
     // confirmed order is terminal and rejects cancellation.
-    public Task<EdictCommandResult> Handle(CancelOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(CancelOrderCommand command)
     {
         if (State.Status == OrderStatus.Confirmed)
         {

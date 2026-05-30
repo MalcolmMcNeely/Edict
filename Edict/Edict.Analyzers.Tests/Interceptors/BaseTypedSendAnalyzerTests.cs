@@ -23,7 +23,7 @@ public class BaseTypedSendAnalyzerTests
             public sealed class Caller
             {
                 public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
-                    => sender.Send(new PlaceOrder(orderId));
+                    => sender.SendAsync(new PlaceOrder(orderId));
             }
             """;
 
@@ -51,7 +51,7 @@ public class BaseTypedSendAnalyzerTests
                 public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
                 {
                     EdictCommand command = new PlaceOrder(orderId);
-                    return sender.Send(command);
+                    return sender.SendAsync(command);
                 }
             }
             """;
@@ -83,7 +83,7 @@ public class BaseTypedSendAnalyzerTests
                 public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
                 {
                     OrderCommandBase command = new PlaceOrder(orderId);
-                    return sender.Send(command);
+                    return sender.SendAsync(command);
                 }
             }
             """;
@@ -115,7 +115,7 @@ public class BaseTypedSendAnalyzerTests
             {
                 [SuppressMessage("Edict", "EDICT015", Justification = "Deferred dispatch from persisted state")]
                 public Task<EdictCommandResult> Dispatch(IEdictSender sender, EdictCommand command)
-                    => sender.Send(command);
+                    => sender.SendAsync(command);
             }
             """;
 

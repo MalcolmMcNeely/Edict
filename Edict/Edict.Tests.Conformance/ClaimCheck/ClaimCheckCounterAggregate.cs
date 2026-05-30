@@ -40,7 +40,7 @@ public sealed partial record ClaimCheckCounterIncrementedEvent(Guid CounterId, i
 
 public partial class ClaimCheckCounterAggregate : EdictCommandHandler<ClaimCheckCounterState>
 {
-    public Task<EdictCommandResult> Handle(IncrementClaimCheckCounterCommand command)
+    public Task<EdictCommandResult> HandleAsync(IncrementClaimCheckCounterCommand command)
     {
         State.Count++;
         Raise(new ClaimCheckCounterIncrementedEvent(command.CounterId, State.Count, command.Payload));
@@ -86,7 +86,7 @@ public sealed partial class ClaimCheckCounterEventHandler : EdictEventHandler, I
 {
     readonly List<ClaimCheckCounterIncrementedEvent> _handled = [];
 
-    public Task Handle(ClaimCheckCounterIncrementedEvent edictEvent)
+    public Task HandleAsync(ClaimCheckCounterIncrementedEvent edictEvent)
     {
         _handled.Add(edictEvent);
         return Task.CompletedTask;

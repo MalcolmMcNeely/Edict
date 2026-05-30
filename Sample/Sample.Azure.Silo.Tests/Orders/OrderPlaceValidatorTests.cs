@@ -16,7 +16,7 @@ public sealed class OrderPlaceValidatorTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        var result = await app.Send(new PlaceOrderCommand(Guid.NewGuid(), string.Empty));
+        var result = await app.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), string.Empty));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
@@ -29,7 +29,7 @@ public sealed class OrderPlaceValidatorTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        var result = await app.Send(new PlaceOrderCommand(Guid.NewGuid(), "REF-001"));
+        var result = await app.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), "REF-001"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }

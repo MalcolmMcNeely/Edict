@@ -38,7 +38,7 @@ public abstract class EventHandlerSpanStitchAcrossOutboxHopScenarios<TFixture>
         };
         ActivitySource.AddActivityListener(listener);
 
-        await _fixture.Sender.Send(new NotifyCustomerCommand(customerId, "welcome"));
+        await _fixture.Sender.SendAsync(new NotifyCustomerCommand(customerId, "welcome"));
 
         var handler = _fixture.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
         await EmailHandlerWaiters.WaitForHandledAsync(handler);

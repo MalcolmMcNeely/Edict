@@ -29,7 +29,7 @@ public partial class FulfillmentCommandHandler : EdictCommandHandler<Fulfillment
 {
     IGrainTimer? _timer;
 
-    public Task<EdictCommandResult> Handle(StartFulfillmentCommand command)
+    public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
     {
         if (State.Lines.Count > 0)
         {

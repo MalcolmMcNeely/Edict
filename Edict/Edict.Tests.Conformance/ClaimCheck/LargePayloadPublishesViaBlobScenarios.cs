@@ -27,7 +27,7 @@ public abstract class LargePayloadPublishesViaBlobScenarios<TFixture>
         var counterId = Guid.NewGuid();
         var payload = new string('x', 64);
 
-        await _fixture.Sender.Send(new IncrementClaimCheckCounterCommand(counterId, payload));
+        await _fixture.Sender.SendAsync(new IncrementClaimCheckCounterCommand(counterId, payload));
 
         var capture = _fixture.GrainFactory.GetGrain<IClaimCheckEventCaptureGrain>(counterId);
         var captured = await WaitForCapturedAsync(capture);

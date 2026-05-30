@@ -22,7 +22,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal($"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand", span.OperationName);
@@ -42,7 +42,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         ActivitySource.AddActivityListener(listener);
 
         await Assert.ThrowsAnyAsync<Exception>(
-            () => fixture.Sender.Send(new TelFailOrderCommand(orderId)));
+            () => fixture.Sender.SendAsync(new TelFailOrderCommand(orderId)));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Error, span.Status);
@@ -62,7 +62,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(sku, span.GetTagItem("edict.sku"));
@@ -82,7 +82,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
         await WaitForEventsAsync(orderId);
 
         var commandSpan = stopped.Single(a =>
@@ -108,7 +108,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, sku));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
         await WaitForEventsAsync(orderId);
 
         var commandSpan = stopped.Single(a =>
@@ -133,7 +133,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
         var commandSpan = stopped.Single(a =>
             a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
@@ -157,7 +157,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new TelPlaceOrderCommand(orderId, "SKU-1"));
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
         var events = await WaitForEventsAsync(orderId);
         var edictEvent = Assert.Single(events);

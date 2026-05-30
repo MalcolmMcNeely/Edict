@@ -23,7 +23,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(EdictDeadLetterRaised raised)
+    public Task HandleAsync(EdictDeadLetterRaised raised)
     {
         CurrentRow = new EdictDeadLetterEntry
         {
@@ -55,7 +55,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
                 var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                 using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
                     nameof(EdictDeadLetterRaised), parentContext);
-                await DispatchEventAsync(raised, Handle);
+                await DispatchEventAsync(raised, HandleAsync);
                 return true;
             }
             default:

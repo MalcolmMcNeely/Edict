@@ -28,8 +28,8 @@ public sealed class DrainCoversEveryDispatchTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(DrainCoversEveryDispatchTests).Assembly));
 
-        await app.Send(new PlaceTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new PlaceTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
         await app.Drain();
 
         var row = await app.GetProjectionRow<TrackerRow>(
@@ -50,11 +50,11 @@ public sealed class DrainCoversEveryDispatchTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(DrainCoversEveryDispatchTests).Assembly));
 
-        await app.Send(new PlaceTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new PlaceTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
         await app.Drain();
 
         var row = await app.GetProjectionRow<TrackerRow>(
@@ -76,9 +76,9 @@ public sealed class DrainCoversEveryDispatchTests
             .WithConsumer(typeof(DrainCoversEveryDispatchTests).Assembly));
 
         // Place → Increment → Finalize → saga reacts → SendCascaded → cascade event
-        await app.Send(new PlaceTrackerCommand(widgetId));
-        await app.Send(new IncrementTrackerCommand(widgetId));
-        await app.Send(new FinalizeTrackerCommand(widgetId));
+        await app.SendAsync(new PlaceTrackerCommand(widgetId));
+        await app.SendAsync(new IncrementTrackerCommand(widgetId));
+        await app.SendAsync(new FinalizeTrackerCommand(widgetId));
         await app.Drain();
 
         var row = await app.GetProjectionRow<TrackerRow>(
@@ -156,25 +156,25 @@ public sealed partial record TrackerCascadedEvent(Guid WidgetId) : EdictEvent
 
 public partial class TrackerAggregate : EdictCommandHandler<TrackerState>
 {
-    public Task<EdictCommandResult> Handle(PlaceTrackerCommand command)
+    public Task<EdictCommandResult> HandleAsync(PlaceTrackerCommand command)
     {
         Raise(new TrackerPlacedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(IncrementTrackerCommand command)
+    public Task<EdictCommandResult> HandleAsync(IncrementTrackerCommand command)
     {
         Raise(new TrackerIncrementedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(FinalizeTrackerCommand command)
+    public Task<EdictCommandResult> HandleAsync(FinalizeTrackerCommand command)
     {
         Raise(new TrackerFinalizedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(CascadeTrackerCommand command)
+    public Task<EdictCommandResult> HandleAsync(CascadeTrackerCommand command)
     {
         Raise(new TrackerCascadedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -191,7 +191,7 @@ public sealed class TrackerSagaProgress : IEdictPersistedState
 
 public partial class TrackerSaga : Edict.Core.Sagas.EdictSaga<TrackerSagaProgress>
 {
-    public Task Handle(TrackerFinalizedEvent edictEvent)
+    public Task HandleAsync(TrackerFinalizedEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new CascadeTrackerCommand(edictEvent.WidgetId));
@@ -225,25 +225,25 @@ public sealed partial class TrackerProjectionBuilder : EdictTableProjectionBuild
 
     protected override string GetRowKey(EdictEvent edictEvent) => "tracker";
 
-    public Task Handle(TrackerPlacedEvent edictEvent)
+    public Task HandleAsync(TrackerPlacedEvent edictEvent)
     {
         CurrentRow.PlacedHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(TrackerIncrementedEvent edictEvent)
+    public Task HandleAsync(TrackerIncrementedEvent edictEvent)
     {
         CurrentRow.IncrementHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(TrackerFinalizedEvent edictEvent)
+    public Task HandleAsync(TrackerFinalizedEvent edictEvent)
     {
         CurrentRow.FinalizedHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task Handle(TrackerCascadedEvent edictEvent)
+    public Task HandleAsync(TrackerCascadedEvent edictEvent)
     {
         CurrentRow.CascadedHandlerCount++;
         return Task.CompletedTask;

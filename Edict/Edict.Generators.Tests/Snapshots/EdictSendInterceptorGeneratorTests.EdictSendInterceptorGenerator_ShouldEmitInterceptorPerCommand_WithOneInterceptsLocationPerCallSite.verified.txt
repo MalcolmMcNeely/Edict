@@ -8,8 +8,8 @@ namespace Edict.Generated
     file static class SendInterceptor_Sample_PlaceOrder
     {
         // Consumer.cs(25,16)
-        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "Zs9qPwaWDqg35Hx61GZhwnUCAABDb25zdW1lci5jcw==")]
-        public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSend(
+        [global::System.Runtime.CompilerServices.InterceptsLocation(1, "7Uq0S8ewYGsNUs90zag74noCAABDb25zdW1lci5jcw==")]
+        public static global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult> InterceptSendAsync(
             this global::Edict.Contracts.Sending.IEdictSender sender,
             global::Edict.Contracts.Commands.EdictCommand command)
         {
@@ -23,7 +23,7 @@ namespace Edict.Generated
                     "Sample.OrderCommandHandler",
                     extraTags: null);
             }
-            return sender.Send(command);
+            return sender.SendAsync(command);
         }
     }
 }

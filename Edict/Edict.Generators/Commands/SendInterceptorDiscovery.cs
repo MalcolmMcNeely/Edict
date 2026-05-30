@@ -9,7 +9,7 @@ namespace Edict.Generators.Commands;
 internal static class SendInterceptorDiscovery
 {
     /// <summary>
-    /// Cheap syntactic filter — match any <c>x.Send(arg)</c> invocation with
+    /// Cheap syntactic filter — match any <c>x.SendAsync(arg)</c> invocation with
     /// exactly one argument. The semantic walk below confirms the receiver is
     /// <see cref="EdictWellKnownNames.IEdictSenderFqn"/> and the argument is a
     /// concrete <c>EdictCommand</c>.
@@ -18,7 +18,7 @@ internal static class SendInterceptorDiscovery
         node is InvocationExpressionSyntax
         {
             ArgumentList.Arguments.Count: 1,
-            Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Send" }
+            Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "SendAsync" }
         };
 
     public static SendInvocationModel? MapInvocation(
@@ -31,7 +31,7 @@ internal static class SendInterceptorDiscovery
             return null;
         }
 
-        if (method.Name != "Send")
+        if (method.Name != "SendAsync")
         {
             return null;
         }

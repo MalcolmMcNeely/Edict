@@ -25,7 +25,7 @@ public class EdictEventHandlerGeneratorTests
 
         public sealed partial class OrderEmailHandler : EdictEventHandler
         {
-            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+            public Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
         }
         """;
 
@@ -57,8 +57,8 @@ public class EdictEventHandlerGeneratorTests
 
         public sealed partial class OrderNotificationHandler : EdictEventHandler
         {
-            public Task Handle(OrderPlacedEvent edictEvent) => Task.CompletedTask;
-            public Task Handle(OrderCancelledEvent edictEvent) => Task.CompletedTask;
+            public Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+            public Task HandleAsync(OrderCancelledEvent edictEvent) => Task.CompletedTask;
         }
         """;
 
@@ -89,7 +89,7 @@ public class EdictEventHandlerGeneratorTests
         {
             public sealed partial class CustomerEmailHandler : EdictEventHandler
             {
-                public Task Handle(CustomerNotifiedEvent edictEvent) => Task.CompletedTask;
+                public Task HandleAsync(CustomerNotifiedEvent edictEvent) => Task.CompletedTask;
             }
         }
         """;

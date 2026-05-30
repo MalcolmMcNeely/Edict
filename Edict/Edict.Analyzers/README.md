@@ -58,6 +58,9 @@ Same shape, for `EdictCommandHandler.Raise(EdictEvent)`. Abstract argument means
 ### EDICT017 — `BaseTypedSagaDispatchAnalyzer` (Warning)
 Same shape, for `EdictSaga<TProgress>.Dispatch(EdictCommand)`. Abstract argument means the typed `DispatchFast<TCommand>` stub can't bind.
 
+### EDICT018 — `HandleMustBeHandleAsyncAnalyzer` (Error, has a code fix)
+A Task-returning method literally named `Handle` on a class deriving from one of the four Edict consumer bases (Command Handler, Event Handler, Saga, Projection Builder). The generator discovers handlers by exact method name (`HandleAsync`); a method named `Handle` compiles cleanly but silently never fires at runtime, so the rule flips the silent no-op into a build error. The analyzer deliberately string-matches `"Handle"` rather than the shared `HandleMethodName` constant so it keeps catching the old name across future renames. `HandleMustBeHandleAsyncCodeFixProvider` renames the method in place.
+
 ---
 
 ## Numbering

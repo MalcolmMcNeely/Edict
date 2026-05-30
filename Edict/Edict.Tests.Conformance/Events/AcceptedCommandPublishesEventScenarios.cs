@@ -26,7 +26,7 @@ public abstract class AcceptedCommandPublishesEventScenarios<TFixture>
     {
         var orderId = Guid.NewGuid();
 
-        await _fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-1"));
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-1"));
 
         var events = await EventCaptureWaiters.WaitForEventsAsync(_fixture.GrainFactory, orderId);
         var placed = Assert.IsType<OrderPlacedEvent>(Assert.Single(events));

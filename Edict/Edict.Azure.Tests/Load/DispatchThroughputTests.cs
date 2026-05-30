@@ -33,7 +33,7 @@ public sealed class DispatchThroughputTests(AzureClusterFixture fixture)
                 await gate.WaitAsync();
                 try
                 {
-                    await fixture.Sender.Send(new AzurePlaceOrderCommand(id, "SKU-LOAD"));
+                    await fixture.Sender.SendAsync(new AzurePlaceOrderCommand(id, "SKU-LOAD"));
                 }
                 finally
                 {

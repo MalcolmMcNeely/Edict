@@ -24,8 +24,7 @@ public abstract class CommandPipelineEndToEndScenarios<TFixture>
     [Fact]
     public async Task Send_ShouldRouteCommandToHandlerAndReturnAccepted()
     {
-        var result = await _fixture.Sender.Send(
-            new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
+        var result = await _fixture.Sender.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -33,8 +32,7 @@ public abstract class CommandPipelineEndToEndScenarios<TFixture>
     [Fact]
     public async Task Send_ShouldReturnRejectedOutcomeWithReasons()
     {
-        var result = await _fixture.Sender.Send(
-            new CancelOrderCommand(Guid.NewGuid(), "changed mind"));
+        var result = await _fixture.Sender.SendAsync(new CancelOrderCommand(Guid.NewGuid(), "changed mind"));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);

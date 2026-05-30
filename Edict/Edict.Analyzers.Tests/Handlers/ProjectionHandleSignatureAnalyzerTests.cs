@@ -24,7 +24,7 @@ public class ProjectionHandleSignatureAnalyzerTests
             }
             public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
-                public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
+                public Task HandleAsync(OrderPlacedEvent e) => Task.CompletedTask;
             }
             """;
 
@@ -51,7 +51,7 @@ public class ProjectionHandleSignatureAnalyzerTests
             }
             public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
-                public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);
+                public Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);
             }
             """;
 
@@ -61,7 +61,7 @@ public class ProjectionHandleSignatureAnalyzerTests
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("OrderPlacedEvent", d.GetMessage());
         Assert.Contains("OrderProjectionBuilder", d.GetMessage());
-        // Line 14 (0-indexed): "public Task<bool> Handle(OrderPlacedEvent e) => Task.FromResult(true);"
+        // Line 14 (0-indexed): "public Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);"
         Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 
@@ -77,7 +77,7 @@ public class ProjectionHandleSignatureAnalyzerTests
             public class NotAnEvent { }
             public partial class OrderProjectionBuilder : EdictProjectionBuilder
             {
-                public Task Handle(NotAnEvent e) => Task.CompletedTask;
+                public Task HandleAsync(NotAnEvent e) => Task.CompletedTask;
             }
             """;
 
@@ -87,7 +87,7 @@ public class ProjectionHandleSignatureAnalyzerTests
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("NotAnEvent", d.GetMessage());
         Assert.Contains("OrderProjectionBuilder", d.GetMessage());
-        // Line 8 (0-indexed): "public Task Handle(NotAnEvent e) => Task.CompletedTask;"
+        // Line 8 (0-indexed): "public Task HandleAsync(NotAnEvent e) => Task.CompletedTask;"
         Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

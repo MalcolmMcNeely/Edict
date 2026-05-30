@@ -57,7 +57,7 @@ public interface ICounterProbe : IGrainWithGuidKey
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
 {
-    public Task<EdictCommandResult> Handle(IncrementCounterCommand command)
+    public Task<EdictCommandResult> HandleAsync(IncrementCounterCommand command)
     {
         State.Count++;
         Raise(new CounterIncrementedEvent(command.CounterId, State.Count));
@@ -66,7 +66,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     // Raises several events in one command so a test can prove the inline
     // drain publishes them FIFO (per-aggregate causal order).
-    public Task<EdictCommandResult> Handle(BatchIncrementCounterCommand command)
+    public Task<EdictCommandResult> HandleAsync(BatchIncrementCounterCommand command)
     {
         for (var i = 0; i < command.Times; i++)
         {

@@ -32,15 +32,15 @@ public sealed class FireOneOrderHelper : IDeterministicOrderPlacer
     public async Task<Guid> FireOneAsync(CancellationToken cancellationToken = default)
     {
         var orderId = Guid.NewGuid();
-        await _sender.Send(new PlaceOrderCommand(orderId, "FIRE-ONE"));
+        await _sender.SendAsync(new PlaceOrderCommand(orderId, "FIRE-ONE"));
         _knownOrders.Register(orderId);
 
         foreach (var (sku, quantity) in FixedLines)
         {
-            await _sender.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, quantity));
+            await _sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, quantity));
         }
 
-        await _sender.Send(new SubmitOrderCommand(orderId, FixedAmount));
+        await _sender.SendAsync(new SubmitOrderCommand(orderId, FixedAmount));
         return orderId;
     }
 }

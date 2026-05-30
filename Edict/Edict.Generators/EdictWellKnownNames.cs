@@ -54,7 +54,7 @@ internal static class EdictWellKnownNames
     // Edict.Analyzers and Edict.Mcp; the next convention change is a one-line
     // edit, and the parity test in Edict.Analyzers.Tests fails if any consumer
     // assembly drifts off this value.
-    public const string HandleMethodName = "Handle";
+    public const string HandleMethodName = "HandleAsync";
 
     // ── Edict.Core.Commands ──────────────────────────────────────────────────
     public const string EdictCommandHandlerFqn =

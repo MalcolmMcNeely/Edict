@@ -102,7 +102,7 @@ public sealed partial class KafkaSiloKillProjectionBuilder : EdictTableProjectio
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task Handle(KafkaSiloKillEvent edictEvent)
+    public async Task HandleAsync(KafkaSiloKillEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref KafkaSiloKillCoordinator.HandlerEntries);
         if (entry == 1)
@@ -148,7 +148,7 @@ public sealed partial class KafkaSiloKillBatchProjectionBuilder : EdictTableProj
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task Handle(KafkaSiloKillBatchEvent edictEvent)
+    public async Task HandleAsync(KafkaSiloKillBatchEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref KafkaSiloKillBatchCoordinator.HandlerEntries);
         if (edictEvent.Sequence == 1 && entry == 1)

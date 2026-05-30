@@ -31,12 +31,12 @@ public class DuplicateCommandRouteAnalyzerTests
             }
             public partial class OrderCommandHandler : EdictCommandHandler
             {
-                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             public partial class DuplicateOrderCommandHandler : EdictCommandHandler
             {
-                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;

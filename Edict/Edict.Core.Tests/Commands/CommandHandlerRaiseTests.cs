@@ -17,7 +17,7 @@ public sealed class CommandHandlerRaiseTests
 
         var handler = NewHandlerWithoutOrleans(time);
 
-        await handler.Handle(new PlaceOrderCommand(OrderId, "WIDGET"));
+        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "WIDGET"));
 
         // Simulate any subsequent outbox delay — the stamp must not change.
         time.Advance(TimeSpan.FromMinutes(30));
@@ -36,11 +36,11 @@ public sealed class CommandHandlerRaiseTests
 
         var handler = NewHandlerWithoutOrleans(time);
 
-        await handler.Handle(new PlaceOrderCommand(OrderId, "A"));
+        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "A"));
         time.Advance(TimeSpan.FromMilliseconds(1));
-        await handler.Handle(new PlaceOrderCommand(OrderId, "B"));
+        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "B"));
         time.Advance(TimeSpan.FromMilliseconds(1));
-        await handler.Handle(new PlaceOrderCommand(OrderId, "C"));
+        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "C"));
 
         var raised = handler._raisedEvents;
         Assert.NotNull(raised);

@@ -16,8 +16,8 @@ public sealed class SubmitOrderRoundtripTests
         await using var app = await EdictTestApp.StartAsync(builder => builder
             .WithConsumer(typeof(SubmitOrderCommand).Assembly));
 
-        await app.Send(new PlaceOrderCommand { OrderId = orderId });
-        await app.Send(new SubmitOrderCommand { OrderId = orderId });
+        await app.SendAsync(new PlaceOrderCommand { OrderId = orderId });
+        await app.SendAsync(new SubmitOrderCommand { OrderId = orderId });
         await app.Drain();
 
         var raisedEvents = app.Timeline.Entries

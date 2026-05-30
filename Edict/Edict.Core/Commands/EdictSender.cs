@@ -30,7 +30,7 @@ public sealed class EdictSender : IEdictSender
     }
 
     /// <inheritdoc />
-    public async Task<EdictCommandResult> Send(EdictCommand command)
+    public async Task<EdictCommandResult> SendAsync(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 

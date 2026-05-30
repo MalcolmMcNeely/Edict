@@ -29,7 +29,7 @@ public abstract class OutboxHappyPathScenarios<TFixture>
     {
         var counterId = Guid.NewGuid();
 
-        var result = await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        var result = await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
 
@@ -48,7 +48,7 @@ public abstract class OutboxHappyPathScenarios<TFixture>
         // list-equality.
         var counterId = Guid.NewGuid();
 
-        await _fixture.Sender.Send(new BatchIncrementCounterCommand(counterId, Times: 5));
+        await _fixture.Sender.SendAsync(new BatchIncrementCounterCommand(counterId, Times: 5));
 
         var events = await CounterEventWaiters.WaitForEventsAsync(
             _fixture.GrainFactory, counterId, expectedCount: 5);
@@ -61,7 +61,7 @@ public abstract class OutboxHappyPathScenarios<TFixture>
     {
         var counterId = Guid.NewGuid();
 
-        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         Assert.Equal(0, await probe.GetPendingOutboxCountAsync());

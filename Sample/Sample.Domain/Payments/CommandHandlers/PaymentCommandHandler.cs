@@ -20,7 +20,7 @@ public partial class PaymentCommandHandler : EdictCommandHandler<PaymentState>
     /// <summary>Payments above this amount are declined.</summary>
     public const decimal DeclineThreshold = 1000m;
 
-    public Task<EdictCommandResult> Handle(AuthorizePaymentCommand command)
+    public Task<EdictCommandResult> HandleAsync(AuthorizePaymentCommand command)
     {
         State.Amount = command.Amount;
 

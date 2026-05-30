@@ -26,13 +26,13 @@ public abstract class OutboxStateAtomicityScenarios<TFixture>
         var counterId = Guid.NewGuid();
         var aggregate = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
-        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         Assert.Equal(1, await aggregate.GetCountAsync());
 
         await aggregate.DeactivateAsync();
         await Task.Delay(TimeSpan.FromSeconds(1)); // let the activation drain
 
-        await _fixture.Sender.Send(new IncrementCounterCommand(counterId));
+        await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         Assert.Equal(2, await aggregate.GetCountAsync());
 

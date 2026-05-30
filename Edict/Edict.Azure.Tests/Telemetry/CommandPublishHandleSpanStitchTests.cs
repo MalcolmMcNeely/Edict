@@ -23,7 +23,7 @@ public sealed class CommandPublishHandleSpanStitchTests(AzureClusterFixture fixt
         };
         ActivitySource.AddActivityListener(listener);
 
-        await fixture.Sender.Send(new NotifyCustomerCommand(customerId, "welcome"));
+        await fixture.Sender.SendAsync(new NotifyCustomerCommand(customerId, "welcome"));
 
         var handler = fixture.Cluster.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15);

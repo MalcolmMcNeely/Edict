@@ -26,12 +26,12 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
         // Above PaymentCommandHandler.DeclineThreshold so the OrderPayment saga's
         // compensation branch (PaymentDeclined → CancelOrder) fires — neither
         // PaymentAuthorized nor OrderFullyFulfilled/OrderShipped ever land.
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 5_000m));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 5_000m));
         await app.Drain();
 
         var row = await GetRow(app, orderId);
@@ -52,12 +52,12 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
         // Below decline threshold — the saga authorises payment. No AdvanceClock
         // so the fulfillment grain timer never ticks; OrderFullyFulfilled and
         // OrderShipped do not fire.
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
         var row = await GetRow(app, orderId);
@@ -78,11 +78,11 @@ public sealed class OrdersByStatusProjectionBuilderTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-2", 1));
-        await app.Send(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-3", 1));
-        await app.Send(new SubmitOrderCommand(orderId, Amount: 100m));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-2", 1));
+        await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-3", 1));
+        await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
         for (var i = 0; i < 3; i++)
         {

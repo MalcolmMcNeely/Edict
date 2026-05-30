@@ -22,14 +22,14 @@ public class EdictSendInterceptorGeneratorTests
 
         public partial class OrderCommandHandler : EdictCommandHandler
         {
-            public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+            public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
 
         public sealed class Caller
         {
             public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId) =>
-                sender.Send(new PlaceOrder(orderId));
+                sender.SendAsync(new PlaceOrder(orderId));
         }
         """;
 
@@ -61,10 +61,10 @@ public class EdictSendInterceptorGeneratorTests
 
         public partial class OrderCommandHandler : EdictCommandHandler
         {
-            public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+            public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-            public Task<EdictCommandResult> Handle(CancelOrder c) =>
+            public Task<EdictCommandResult> HandleAsync(CancelOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
 
@@ -72,9 +72,9 @@ public class EdictSendInterceptorGeneratorTests
         {
             public async Task Use(IEdictSender sender, Guid orderId)
             {
-                await sender.Send(new PlaceOrder(orderId, "SKU-1"));
-                await sender.Send(new PlaceOrder(orderId, "SKU-2"));
-                await sender.Send(new CancelOrder(orderId));
+                await sender.SendAsync(new PlaceOrder(orderId, "SKU-1"));
+                await sender.SendAsync(new PlaceOrder(orderId, "SKU-2"));
+                await sender.SendAsync(new CancelOrder(orderId));
             }
         }
         """;

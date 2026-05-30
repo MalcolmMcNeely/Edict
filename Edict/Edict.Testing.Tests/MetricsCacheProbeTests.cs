@@ -19,7 +19,7 @@ public sealed class MetricsCacheProbeTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(MetricsCacheProbeTests).Assembly));
 
-        await app.Send(new PlaceWidgetCommand(widgetId));
+        await app.SendAsync(new PlaceWidgetCommand(widgetId));
         await app.Drain();
 
         var (totalPending, oldestEnqueuedAt) =

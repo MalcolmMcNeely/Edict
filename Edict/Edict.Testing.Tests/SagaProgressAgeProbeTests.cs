@@ -57,7 +57,7 @@ public sealed class SagaProgressAgeProbeTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(SagaProgressAgeProbeTests).Assembly));
 
-        await app.Send(new IssueStickerCommand(stickerId));
+        await app.SendAsync(new IssueStickerCommand(stickerId));
         await app.Drain();
 
         // Immediately after the saga handled the event the age should be ~0.
@@ -120,20 +120,20 @@ public sealed class StickerProgress : IEdictPersistedState
 
 public partial class StickerAggregate : EdictCommandHandler<StickerState>
 {
-    public Task<EdictCommandResult> Handle(IssueStickerCommand command)
+    public Task<EdictCommandResult> HandleAsync(IssueStickerCommand command)
     {
         State.Issued++;
         Raise(new StickerIssuedEvent(command.StickerId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(StickerAcknowledgedCommand command) =>
+    public Task<EdictCommandResult> HandleAsync(StickerAcknowledgedCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 }
 
 public partial class StickerSaga : EdictSaga<StickerProgress>
 {
-    public Task Handle(StickerIssuedEvent edictEvent)
+    public Task HandleAsync(StickerIssuedEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new StickerAcknowledgedCommand(edictEvent.StickerId));

@@ -25,7 +25,7 @@ public abstract class TableProjectionWritesRowScenarios<TFixture>
         var orderId = Guid.NewGuid();
         var repository = _fixture.GetTableRepository<OrderTableRow>("orderprojection");
 
-        await _fixture.Sender.Send(new PlaceOrderCommand(orderId, "SKU-E2E"));
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-E2E"));
 
         await TableProjectionWaiters.WaitForRowAsync(repository, orderId.ToString(), orderId.ToString());
         var row = await repository.GetAsync(orderId.ToString(), orderId.ToString());

@@ -38,7 +38,7 @@ namespace Edict.Core.Commands;
 /// <para>
 /// The consumer mutates <see cref="State"/> — its own <typeparamref name="TState"/>
 /// POCO — and never hand-persists fields. The consumer writes a <c>partial</c>
-/// grain with one strongly typed <c>Handle(TCommand)</c> per command; the
+/// grain with one strongly typed <c>HandleAsync(TCommand)</c> per command; the
 /// source generator emits the matching <see cref="DispatchAsync"/> override
 /// that type-switches to those overloads, calling
 /// <see cref="ValidateAndHandleAsync{TCommand}"/> per arm.
@@ -57,7 +57,7 @@ public abstract class EdictCommandHandler<TState>
 
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
-    /// inside <c>Handle</c>; it is the payload slot of the persisted envelope,
+    /// inside <c>HandleAsync</c>; it is the payload slot of the persisted envelope,
     /// committed atomically with the Outbox.
     /// </summary>
     protected new TState State => base.State.Payload;
@@ -134,7 +134,7 @@ public abstract class EdictCommandHandler<TState>
     /// Stages buffered events as <see cref="OutboxEffectKind.PublishEvent"/>
     /// entries, commits <c>{ State, Outbox }</c> in one write, then awaits the
     /// inline FIFO drain. Called by the generated <c>Dispatch</c> after
-    /// <c>Handle</c> returns <c>Accepted</c>. A post-commit publish failure does
+    /// <c>HandleAsync</c> returns <c>Accepted</c>. A post-commit publish failure does
     /// not roll back and does not surface — the Reminder retries.
     /// </summary>
     protected async Task CommitAndDrainRaisedEventsAsync()

@@ -5,6 +5,6 @@ namespace FixtureLibrary.Activity;
 
 public sealed partial class OrderActivityProjection : EdictProjectionBuilder
 {
-    public System.Threading.Tasks.Task Handle(OrderPlaced edictEvent) =>
+    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) =>
         System.Threading.Tasks.Task.CompletedTask;
 }

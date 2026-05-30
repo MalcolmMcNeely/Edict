@@ -11,7 +11,7 @@ namespace Sample.Domain.Diagnostics.Sagas;
 // live in Diagnostics/.
 public partial class BadCommandSaga : EdictSaga<BadCommandSagaProgress>
 {
-    public Task Handle(TriggerSagaFailureEvent edictEvent)
+    public Task HandleAsync(TriggerSagaFailureEvent edictEvent)
     {
         Progress.Stage = BadCommandSagaStage.Dispatched;
         Dispatch(new RejectingCommand(edictEvent.SimulationId));

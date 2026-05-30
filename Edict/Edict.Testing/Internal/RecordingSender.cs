@@ -10,9 +10,9 @@ namespace Edict.Testing.Internal;
 /// </summary>
 sealed class RecordingSender(IEdictSender inner, TimelineRecorder recorder) : IEdictSender
 {
-    public Task<EdictCommandResult> Send(EdictCommand command)
+    public Task<EdictCommandResult> SendAsync(EdictCommand command)
     {
         recorder.RecordCommand(command);
-        return inner.Send(command);
+        return inner.SendAsync(command);
     }
 }

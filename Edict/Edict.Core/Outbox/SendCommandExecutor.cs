@@ -38,6 +38,6 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
             command.GetType().Name, parentContext);
 
         var sender = services.GetRequiredService<IEdictSender>();
-        await sender.Send(command);
+        await sender.SendAsync(command);
     }
 }

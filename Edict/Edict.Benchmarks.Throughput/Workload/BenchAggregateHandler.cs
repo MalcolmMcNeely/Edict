@@ -5,7 +5,7 @@ namespace Edict.Benchmarks.Throughput.Workload;
 
 public partial class BenchAggregateHandler : EdictCommandHandler<BenchAggregateState>
 {
-    public async Task<EdictCommandResult> Handle(BenchIncrementCommand command)
+    public async Task<EdictCommandResult> HandleAsync(BenchIncrementCommand command)
     {
         // The Commands scenario exists to measure the aggregate-write path. The
         // framework's atomic commit only fires when a handler Raises; we
@@ -17,7 +17,7 @@ public partial class BenchAggregateHandler : EdictCommandHandler<BenchAggregateS
         return new EdictCommandResult.Accepted();
     }
 
-    public Task<EdictCommandResult> Handle(BenchPublishCommand command)
+    public Task<EdictCommandResult> HandleAsync(BenchPublishCommand command)
     {
         // The Events scenario exists to measure the full pipeline: Outbox +
         // stream + consumer dispatch + dedup ring + projection write.

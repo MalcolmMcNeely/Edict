@@ -82,8 +82,8 @@ public sealed class EdictTestApp : IAsyncDisposable
     }
 
     /// <summary>Issues a Command through the real <see cref="IEdictSender"/>.</summary>
-    public Task<EdictCommandResult> Send(EdictCommand command) =>
-        _cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>().Send(command);
+    public Task<EdictCommandResult> SendAsync(EdictCommand command) =>
+        _cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>().SendAsync(command);
 
     /// <summary>
     /// Typed probe over <see cref="IEdictSaga.GetEdictProgressAsync"/>: returns

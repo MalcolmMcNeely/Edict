@@ -50,7 +50,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
     /// <summary>
     /// Durable workflow progress. The consumer mutates this inside a
-    /// <c>Handle</c>; it is the payload slot of the persisted envelope,
+    /// <c>HandleAsync</c>; it is the payload slot of the persisted envelope,
     /// committed atomically with the dedup ring and any dispatched command.
     /// </summary>
     protected TProgress Progress => State.Payload;

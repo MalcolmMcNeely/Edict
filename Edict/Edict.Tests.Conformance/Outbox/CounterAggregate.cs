@@ -56,14 +56,14 @@ public interface ICounterProbe : IGrainWithGuidKey
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
 {
-    public Task<EdictCommandResult> Handle(IncrementCounterCommand command)
+    public Task<EdictCommandResult> HandleAsync(IncrementCounterCommand command)
     {
         State.Count++;
         Raise(new CounterIncrementedEvent(command.CounterId, State.Count));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(BatchIncrementCounterCommand command)
+    public Task<EdictCommandResult> HandleAsync(BatchIncrementCounterCommand command)
     {
         for (var i = 0; i < command.Times; i++)
         {

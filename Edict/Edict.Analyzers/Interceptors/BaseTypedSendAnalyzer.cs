@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Edict.Analyzers.Interceptors;
 
 /// <summary>
-/// EDICT015 — flags <see cref="EdictWellKnownNames.IEdictSenderFqn"/>.Send
+/// EDICT015 — flags <see cref="EdictWellKnownNames.IEdictSenderFqn"/>.SendAsync
 /// call sites whose argument has an abstract static type (e.g. an
 /// <c>EdictCommand</c>-typed variable). The interceptor fast path requires
 /// concrete-typed call sites; an abstract argument forces the runtime down
@@ -20,8 +20,8 @@ public sealed class BaseTypedSendAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: "EDICT015",
-        title: "IEdictSender.Send must be called with a concrete-typed command",
-        messageFormat: "'IEdictSender.Send' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path can intercept the site",
+        title: "IEdictSender.SendAsync must be called with a concrete-typed command",
+        messageFormat: "'IEdictSender.SendAsync' was called with base-typed argument '{0}' — call with a concrete command type so the interceptor fast path can intercept the site",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -41,7 +41,7 @@ public sealed class BaseTypedSendAnalyzer : DiagnosticAnalyzer
         var op = (IInvocationOperation)context.Operation;
         var method = op.TargetMethod;
 
-        if (method.Name != "Send" || method.Parameters.Length != 1)
+        if (method.Name != "SendAsync" || method.Parameters.Length != 1)
         {
             return;
         }

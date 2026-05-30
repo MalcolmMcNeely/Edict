@@ -20,7 +20,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     [Fact]
     public async Task Validator_ShouldReturnRejectedWithMappedReasons_WhenValidationFails()
     {
-        var result = await _fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
+        var result = await _fixture.Sender.SendAsync(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
@@ -30,7 +30,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     [Fact]
     public async Task Validator_ShouldAllowHandleToRunAndReturnAccepted_WhenValidationPasses()
     {
-        var result = await _fixture.Sender.Send(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
+        var result = await _fixture.Sender.SendAsync(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -38,7 +38,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     [Fact]
     public async Task Handle_ShouldDispatchCommandNormally_WhenNoValidatorPresent()
     {
-        var result = await _fixture.Sender.Send(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
+        var result = await _fixture.Sender.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -56,7 +56,7 @@ public abstract class CommandValidatorScenarios<TFixture>
         ActivitySource.AddActivityListener(listener);
 
         var orderId = Guid.NewGuid();
-        await _fixture.Sender.Send(new ValidateSkuCommand(orderId, string.Empty));
+        await _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, string.Empty));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Unset, span.Status);
@@ -67,7 +67,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     {
         // GrainStateRequiredValidator rejects on missing GrainState in
         // RootContextData; Accepted here proves the handler injected it.
-        var result = await _fixture.Sender.Send(new StateCheckCommand(Guid.NewGuid()));
+        var result = await _fixture.Sender.SendAsync(new StateCheckCommand(Guid.NewGuid()));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -76,8 +76,8 @@ public abstract class CommandValidatorScenarios<TFixture>
     public async Task ConcurrentCommands_ShouldCompleteWithoutInterleaving_WhenTargetingSameGrain()
     {
         var orderId = Guid.NewGuid();
-        var t1 = _fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-A"));
-        var t2 = _fixture.Sender.Send(new ValidateSkuCommand(orderId, "SKU-B"));
+        var t1 = _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, "SKU-A"));
+        var t2 = _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, "SKU-B"));
         var results = await Task.WhenAll(t1, t2);
 
         Assert.All(results, r => Assert.IsType<EdictCommandResult.Accepted>(r));

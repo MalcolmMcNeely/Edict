@@ -25,7 +25,7 @@ public sealed class OutboxTraceContextTests(AzureClusterFixture fixture)
         var repository = new AzureTableRepository<AzureOrderTableRow>(
             fixture.TableServiceClient, "azureorderprojection");
 
-        await fixture.Sender.Send(new AzurePlaceOrderCommand(orderId, "SKU-NULLTRACE"));
+        await fixture.Sender.SendAsync(new AzurePlaceOrderCommand(orderId, "SKU-NULLTRACE"));
 
         await WaitForRowAsync(repository, orderId.ToString(), orderId.ToString());
         var row = await repository.GetAsync(orderId.ToString(), orderId.ToString());
@@ -58,7 +58,7 @@ public sealed class OutboxTraceContextTests(AzureClusterFixture fixture)
         var repository = new AzureTableRepository<AzureOrderTableRow>(
             fixture.TableServiceClient, "azureorderprojection");
 
-        await fixture.Sender.Send(new AzurePlaceOrderCommand(orderId, "SKU-TRACE"));
+        await fixture.Sender.SendAsync(new AzurePlaceOrderCommand(orderId, "SKU-TRACE"));
 
         await WaitForRowAsync(repository, orderId.ToString(), orderId.ToString());
 

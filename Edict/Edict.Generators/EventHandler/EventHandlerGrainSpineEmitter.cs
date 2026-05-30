@@ -43,7 +43,9 @@ internal static class EventHandlerGrainSpineEmitter
             dispatchArms
                 .Append("                case ").Append(handler.EventFqn).Append(" typed:\n")
                 .Append("                {\n")
-                .Append("                    await DispatchEventAsync(typed, Handle);\n")
+                .Append("                    await DispatchEventAsync(typed, ")
+                .Append(EdictWellKnownNames.HandleMethodName)
+                .Append(");\n")
                 .Append("                    return true;\n")
                 .Append("                }\n");
         }

@@ -13,5 +13,5 @@ public interface IEdictSender
 {
     /// <summary>Routes <paramref name="command"/> to its aggregate grain and
     /// returns the handler's outcome.</summary>
-    Task<EdictCommandResult> Send(EdictCommand command);
+    Task<EdictCommandResult> SendAsync(EdictCommand command);
 }

@@ -64,7 +64,7 @@ public sealed partial class AzureRecoverableOrderTableProjectionBuilder
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureRecoverableOrderPlacedEvent edictEvent)
+    public Task HandleAsync(AzureRecoverableOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;

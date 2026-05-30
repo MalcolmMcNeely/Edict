@@ -23,7 +23,7 @@ public sealed partial class BenchCounterProjectionBuilder : EdictTableProjection
 
     protected override string GetRowKey(EdictEvent edictEvent) => FixedRowKey;
 
-    public Task Handle(BenchEvent edictEvent)
+    public Task HandleAsync(BenchEvent edictEvent)
     {
         CurrentRow.Count++;
         return Task.CompletedTask;

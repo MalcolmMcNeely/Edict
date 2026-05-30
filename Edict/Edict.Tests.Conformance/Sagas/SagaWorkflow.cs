@@ -57,7 +57,7 @@ public interface ISagaTrackerProbe : IGrainWithGuidKey
 
 public partial class WorkflowSaga : EdictSaga<WorkflowProgress>, ISagaProgressProbe
 {
-    public Task Handle(SagaTriggerEvent edictEvent)
+    public Task HandleAsync(SagaTriggerEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new SagaTrackerCommand(edictEvent.WorkflowId));
@@ -69,7 +69,7 @@ public partial class WorkflowSaga : EdictSaga<WorkflowProgress>, ISagaProgressPr
 
 public partial class SagaTrackerCommandHandler : EdictCommandHandler<TrackerState>, ISagaTrackerProbe
 {
-    public Task<EdictCommandResult> Handle(SagaTrackerCommand command)
+    public Task<EdictCommandResult> HandleAsync(SagaTrackerCommand command)
     {
         State.Received++;
         State.LastWorkflowId = command.WorkflowId;

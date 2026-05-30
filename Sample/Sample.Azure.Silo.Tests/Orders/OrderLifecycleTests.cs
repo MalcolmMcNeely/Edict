@@ -24,7 +24,7 @@ public sealed class OrderLifecycleTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();
 
         await Verify(app.Timeline);
@@ -39,8 +39,8 @@ public sealed class OrderLifecycleTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
 
-        await app.Send(new PlaceOrderCommand(orderId, "REF-001"));
-        await app.Send(new AddLineItemCommand(orderId, lineItemId, "SKU-1", 1));
+        await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+        await app.SendAsync(new AddLineItemCommand(orderId, lineItemId, "SKU-1", 1));
         await app.Drain();
 
         // Pin only the LineItemAddedEvent payload shape — full-timeline ordering is

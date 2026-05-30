@@ -60,23 +60,23 @@ public sealed partial record AzureStateCheckCommand(Guid OrderId) : EdictCommand
 
 public partial class AzureOrderCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> Handle(AzurePlaceOrderCommand command)
+    public Task<EdictCommandResult> HandleAsync(AzurePlaceOrderCommand command)
     {
         Raise(new AzureOrderPlacedEvent(command.OrderId, command.Sku));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> Handle(AzureCancelOrderCommand command) =>
+    public Task<EdictCommandResult> HandleAsync(AzureCancelOrderCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
             [new EdictRejectionReason("already_shipped", "Order has already shipped.")]));
 
-    public Task<EdictCommandResult> Handle(AzureFailOrderCommand command) =>
+    public Task<EdictCommandResult> HandleAsync(AzureFailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
 
-    public Task<EdictCommandResult> Handle(AzureValidateSkuCommand command) =>
+    public Task<EdictCommandResult> HandleAsync(AzureValidateSkuCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-    public Task<EdictCommandResult> Handle(AzureStateCheckCommand command) =>
+    public Task<EdictCommandResult> HandleAsync(AzureStateCheckCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
     protected override object? GetValidationState() => "grain-active";
@@ -142,7 +142,7 @@ public sealed partial class AzureOrderTableProjectionBuilder
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureOrderPlacedEvent edictEvent)
+    public Task HandleAsync(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -165,7 +165,7 @@ public sealed partial class AzureOrderSummaryTableProjectionBuilder : EdictTable
 
     protected override string GetRowKey(EdictEvent edictEvent) => "summary";
 
-    public Task Handle(AzureOrderPlacedEvent edictEvent)
+    public Task HandleAsync(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -191,7 +191,7 @@ public sealed partial class AzureGlobalOrderTableProjectionBuilder : EdictTableP
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task Handle(AzureOrderPlacedEvent edictEvent)
+    public Task HandleAsync(AzureOrderPlacedEvent edictEvent)
     {
         CurrentRow.OrderCount++;
         return Task.CompletedTask;
@@ -209,7 +209,7 @@ public sealed partial class AzureOrderProjectionBuilder : EdictProjectionBuilder
 
     public Task<int> GetOrderCountAsync() => Task.FromResult(_orderCount);
 
-    public Task Handle(AzureOrderPlacedEvent edictEvent)
+    public Task HandleAsync(AzureOrderPlacedEvent edictEvent)
     {
         _orderCount++;
         return Task.CompletedTask;
