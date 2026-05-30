@@ -49,6 +49,15 @@ public class FixtureLibraryStdioRoundtripTests
         VerifyToolCall(server.Session, "edict_lookup_adr",
             new Dictionary<string, object?> { ["query"] = "1" });
 
+    [Fact]
+    public Task LookupAdr_DeadLetterAdr_ReturnsDeadLetterAdrBody() =>
+        VerifyToolCall(server.Session, "edict_lookup_adr",
+            new Dictionary<string, object?> { ["query"] = "18" });
+
+    [Fact]
+    public Task DescribeMcpState_ReturnsServerState() =>
+        VerifyToolCall(server.Session, "edict_describe_mcp_state");
+
     static async Task VerifyToolCall(McpStdioSession session, string toolName, IReadOnlyDictionary<string, object?>? arguments = null)
     {
         var responseText = await McpToolStdioInvoker.InvokeAsync(session, toolName, arguments);
@@ -120,11 +129,16 @@ static class McpToolStdioScrubbers
         "\"filePath\"\\s*:\\s*\"(?<value>[^\"]*)\"",
         RegexOptions.Compiled);
 
+    static readonly Regex LoadedSolutionPathPattern = new(
+        "\"loadedSolutionPath\"\\s*:\\s*\"(?<value>[^\"]*)\"",
+        RegexOptions.Compiled);
+
     public static void Apply(StringBuilder builder)
     {
         var scrubbed = builder.ToString();
         scrubbed = ScrubRepoRoot(scrubbed);
         scrubbed = NormaliseFilePathSeparators(scrubbed);
+        scrubbed = NormaliseLoadedSolutionPathSeparators(scrubbed);
         scrubbed = ToolVersionPattern.Replace(scrubbed, "\"toolVersion\": \"{TOOL_VERSION}\"");
         scrubbed = EdictVersionPattern.Replace(scrubbed, "\"version\": \"{EDICT_VERSION}\"");
         builder.Clear();
@@ -147,6 +161,13 @@ static class McpToolStdioScrubbers
         {
             var normalised = match.Groups["value"].Value.Replace("\\\\", "/").Replace("\\", "/");
             return $"\"filePath\": \"{normalised}\"";
+        });
+
+    static string NormaliseLoadedSolutionPathSeparators(string text) =>
+        LoadedSolutionPathPattern.Replace(text, match =>
+        {
+            var normalised = match.Groups["value"].Value.Replace("\\\\", "/").Replace("\\", "/");
+            return $"\"loadedSolutionPath\": \"{normalised}\"";
         });
 }
 

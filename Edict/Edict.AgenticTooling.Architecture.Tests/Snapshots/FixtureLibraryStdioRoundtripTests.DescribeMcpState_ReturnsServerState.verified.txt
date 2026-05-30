@@ -1,0 +1,38 @@
+﻿{
+  "loadedSolutionPath": "{REPO_ROOT}/Edict/Edict.Mcp.Tests/Fixtures/TracerBulletFixture/TracerBulletFixture.slnx",
+  "indexedHandlerCount": 5,
+  "edictVersionReport": {
+    "toolVersion": "{TOOL_VERSION}",
+    "references": [],
+    "isDrifted": false,
+    "hasNoEdictReferences": true,
+    "hasInconsistentLibraryVersions": false,
+    "driftStatus": "no-edict-references"
+  },
+  "registeredTools": [
+    {
+      "name": "edict_describe_mcp_state",
+      "description": "Self-diagnostic. Reports the loaded solution path, indexed-handler count, the Edict tool-vs-library version report, and the list of MCP tools the server has registered."
+    },
+    {
+      "name": "edict_describe_glossary_term",
+      "description": "Returns the Edict glossary entry for a term from CONTEXT.md, including its definition, the \u0027_Avoid_\u0027 list, and any inline cross-references. Case-insensitive; the optional \u0027Edict\u0027 prefix on the query is elidable."
+    },
+    {
+      "name": "edict_lookup_adr",
+      "description": "Returns the raw markdown body of an Edict ADR matching the query. The query is either an ADR number (\u002728\u0027 or \u00270028\u0027) or a fuzzy substring of the ADR title."
+    },
+    {
+      "name": "edict_list_handlers",
+      "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location."
+    },
+    {
+      "name": "edict_list_route_keys",
+      "description": "Derived view over the handler inventory. Groups Commands by their handler classes (a Command bound to more than one handler is a collision) and Events by their subscriber classes, with the [EdictRouteKey] property name on each contract."
+    },
+    {
+      "name": "edict_describe_silo_wiring",
+      "description": "Locates Program.cs in the loaded solution, walks the ISiloBuilder invocation chain, and reports the AddEdict* extensions that are wired plus the known-but-missing ones an agent should consider before suggesting wiring changes (for example AddEdictAzureBlobClaimCheck when the consumer asks for a Claim Check setup)."
+    }
+  ]
+}
