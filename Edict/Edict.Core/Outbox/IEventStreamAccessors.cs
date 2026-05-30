@@ -8,7 +8,7 @@ namespace Edict.Core.Outbox;
 /// concrete <see cref="EdictEvent"/> tagged <c>[EdictStream]</c> with a single
 /// <c>[EdictRouteKey] Guid</c> contributes one map entry at startup.
 /// </summary>
-public interface IEventStreamAccessors
+internal interface IEventStreamAccessors
 {
     /// <summary>
     /// Returns the domain stream name and route-key Guid for

@@ -10,7 +10,7 @@ namespace Edict.Core.Commands;
 /// without a TestCluster — the <see cref="EdictSender"/> shell owns the
 /// Orleans hop.
 /// </summary>
-public sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute> routes)
+internal sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute> routes)
 {
     /// <summary>
     /// Resolves the owning aggregate grain interface and its Guid key for

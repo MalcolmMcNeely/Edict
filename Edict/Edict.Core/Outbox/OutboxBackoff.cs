@@ -13,7 +13,7 @@ namespace Edict.Core.Outbox;
 /// entries that fail together do not stampede the same retry instant while the
 /// function stays pure and reproducible.
 /// </summary>
-public static class OutboxBackoff
+internal static class OutboxBackoff
 {
     /// <summary>
     /// The earliest UTC instant the entry may be retried. <paramref name="attemptCount"/>

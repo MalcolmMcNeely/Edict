@@ -10,7 +10,7 @@ namespace Edict.Core.Outbox;
 /// Orleans dependency; unit-testable without a cluster. Mirrors
 /// <c>CommandRouteResolver</c> on the command side.
 /// </summary>
-public sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventStreamAccessor> accessors)
+internal sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventStreamAccessor> accessors)
     : IEventStreamAccessors
 {
     public (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent)

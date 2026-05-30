@@ -248,7 +248,11 @@ public sealed class EdictTestApp : IAsyncDisposable
     // one timeline. Last AddSingleton wins in MS DI.
     static void DecorateSender(IServiceCollection services, TimelineRecorder recorder) =>
         services.AddSingleton<IEdictSender>(serviceProvider =>
-            new RecordingSender(ActivatorUtilities.CreateInstance<EdictSender>(serviceProvider), recorder));
+            new RecordingSender(
+                new EdictSender(
+                    serviceProvider.GetRequiredService<CommandRouteResolver>(),
+                    serviceProvider.GetRequiredService<IGrainFactory>()),
+                recorder));
 
     sealed class SiloConfigurator : ISiloConfigurator
     {

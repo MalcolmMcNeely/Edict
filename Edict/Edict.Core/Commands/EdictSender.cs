@@ -11,17 +11,25 @@ namespace Edict.Core.Commands;
 /// logic lives in <see cref="CommandRouteResolver"/>; this type only owns the
 /// Orleans hop so the resolver stays cluster-free and unit-testable.
 /// </summary>
-public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory grainFactory)
-    : IEdictSender
+public sealed class EdictSender : IEdictSender
 {
+    readonly CommandRouteResolver _resolver;
+    readonly IGrainFactory _grainFactory;
+
+    internal EdictSender(CommandRouteResolver resolver, IGrainFactory grainFactory)
+    {
+        _resolver = resolver;
+        _grainFactory = grainFactory;
+    }
+
     /// <inheritdoc />
     public async Task<EdictCommandResult> Send(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var route = resolver.GetRoute(command);
+        var route = _resolver.GetRoute(command);
         var key = route.RouteKeySelector(command);
-        var grain = grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
+        var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {command.GetType().Name}");
 
@@ -66,7 +74,7 @@ public sealed class EdictSender(CommandRouteResolver resolver, IGrainFactory gra
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var grain = grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
+        var grain = _grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");
 

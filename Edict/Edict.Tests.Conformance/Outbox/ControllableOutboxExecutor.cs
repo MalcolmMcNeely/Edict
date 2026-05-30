@@ -3,6 +3,8 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Telemetry;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Orleans.Serialization;
 using Orleans.Streams;
 
@@ -18,9 +20,14 @@ namespace Edict.Tests.Conformance.Outbox;
 /// fixture that wires this executor must serialise its tests via an xUnit
 /// collection so the toggle does not race across fixture shapes.
 /// </summary>
-public sealed class ControllableOutboxExecutor(Serializer serializer, IEventStreamAccessors accessors, IEventTagWriters tagWriters) : IOutboxEffectExecutor
+public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
 {
-    readonly PublishEventExecutor _inner = new(serializer, accessors, tagWriters);
+    readonly PublishEventExecutor _inner;
+
+    public ControllableOutboxExecutor(IServiceProvider serviceProvider)
+    {
+        _inner = ActivatorUtilities.CreateInstance<PublishEventExecutor>(serviceProvider);
+    }
 
     public static volatile bool ShouldFail;
     public static int FailedAttempts;

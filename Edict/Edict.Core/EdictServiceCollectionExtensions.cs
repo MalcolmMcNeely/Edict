@@ -80,7 +80,9 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
-        services.AddSingleton<IEdictSender, EdictSender>();
+        services.AddSingleton<IEdictSender>(serviceProvider => new EdictSender(
+            serviceProvider.GetRequiredService<CommandRouteResolver>(),
+            serviceProvider.GetRequiredService<IGrainFactory>()));
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
         // TryAdd so an assertable variant (the Edict.Testing rig) wins via

@@ -15,7 +15,7 @@ public class PublicSurfaceAllowListTests
     [Fact]
     public void EdictCore_ExceptionsHaveEdictPrefix()
     {
-        var coreAssembly = typeof(CommandRouteResolver).Assembly;
+        var coreAssembly = typeof(EdictSender).Assembly;
         var offenders = coreAssembly
             .GetExportedTypes()
             .Where(type => !type.IsNested)
@@ -54,7 +54,7 @@ public class PublicSurfaceAllowListTests
     [Fact]
     public void EdictCore_PublicTypesMatchAllowList()
     {
-        var coreAssembly = typeof(CommandRouteResolver).Assembly;
+        var coreAssembly = typeof(EdictSender).Assembly;
         var actual = coreAssembly
             .GetExportedTypes()
             .Where(type => !type.IsNested)
@@ -103,7 +103,6 @@ public class PublicSurfaceAllowListTests
     static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Core.Commands.CommandRoute",
-        "Edict.Core.Commands.CommandRouteResolver",
         "Edict.Core.Commands.EdictCommandHandler",
         "Edict.Core.Commands.EdictCommandHandler`1",
         "Edict.Core.Commands.EdictSender",
@@ -126,10 +125,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Idempotency.IEdictEventConsumer",
         "Edict.Core.Idempotency.IdempotencyState", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Metrics.IEdictMetricsCache",
-        "Edict.Core.Outbox.EventStreamAccessors",
         "Edict.Core.Outbox.GrainEnvelope`1", // ADR 0045: base chain of EdictCommandHandler<TState> / EdictIdempotencyBase<TPayload> — permanent resident (CS9338).
-        "Edict.Core.Outbox.IEventStreamAccessors",
-        "Edict.Core.Outbox.OutboxBackoff",
         "Edict.Core.Outbox.OutboxEffectKind", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Outbox.OutboxEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Outbox.OutboxServiceCollectionExtensions",
