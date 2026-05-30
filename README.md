@@ -29,7 +29,16 @@ public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHa
 }
 ```
 
-That's both sides of an event-driven flow. No Orleans interfaces, no stream wiring, no idempotency code, no serialization attributes, no DI registration. The framework wires `Handle` into the stream by method signature; at-least-once redeliveries are deduplicated by `EventId` in the base class.
+That's both sides of an event-driven flow. No Orleans interfaces, no stream wiring, no serialization attributes, no DI registration. From those two methods you get:
+
+| Guarantee | What it does |
+|---|---|
+| **Idempotent** | Redeliveries are deduplicated by `EventId` before `Handle` runs |
+| **Atomic** | Aggregate state and raised events commit in a single write |
+| **Traced** | One OpenTelemetry trace covers every hop from `Send` to the terminal handler |
+| **Forensic** | Poison messages land in a queryable dead-letter projection |
+| **At-least-once** | Duplicates and bounded reorder are deterministically exercised in tests |
+| **Wired** | Source generators connect `Handle` to its stream by parameter type |
 
 The same handler code runs on either of two reference substrate pairings — Azure Storage, or Kafka + Postgres — both passing the same conformance battery. Substrate-pluggability is demonstrated, not claimed.
 
@@ -89,7 +98,15 @@ Edict isn't a production framework yet — there are gaps a hardened one would c
 
 ## Agentic tooling
 
-AI-assisted development against Edict isn't guesswork: an MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution for handlers, route keys, silo wiring, glossary, and ADRs.
+AI-assisted development against Edict isn't guesswork. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
+
+| Skill (when it fires) | MCP tools it calls | What the agent stops guessing |
+|---|---|---|
+| **edict-authoring** — adding a handler / saga / projection | `edict_list_handlers`, `edict_list_route_keys`, `edict_describe_glossary_term` | which `RouteKey` Guids are taken, which handlers already exist, what a "Saga" actually means here |
+| **edict-silo-wiring** — touching any `AddEdict*` call | `edict_describe_silo_wiring` | which substrate is wired in `Program.cs`, which extensions are missing |
+| **edict-contracts** — attribute or wire-format questions | `edict_describe_glossary_term`, `edict_lookup_adr` | what a `Stream` is, why `[Union]` is banned (with the source ADR) |
+| **edict-diagnostics** — debugging dead-letter / outbox / traces | `edict_lookup_adr` | why the framework behaves the way it does, with the decision record attached |
+| **edict-testing** — writing tests against `EdictTestApp` | (prose-only) | how to drain the cascade, which probe to use for sagas vs projections |
 
 Dev-loop walkthrough — install, when each skill fires, which MCP tool it calls, what the agent sees — lives under [`docs/usage/agentic/`](docs/usage/agentic/).
 
