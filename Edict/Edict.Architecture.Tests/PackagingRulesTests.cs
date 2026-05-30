@@ -16,6 +16,7 @@ public class PackagingRulesTests
         "Edict.Kafka",
         "Edict.Postgres",
         "Edict.Testing",
+        "Edict.Mcp",
     ];
 
     static readonly string[] RequiredShippingProperties =

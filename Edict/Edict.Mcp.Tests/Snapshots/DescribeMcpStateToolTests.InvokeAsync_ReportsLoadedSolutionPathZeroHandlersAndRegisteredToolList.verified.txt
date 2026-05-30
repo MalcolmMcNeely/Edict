@@ -1,0 +1,10 @@
+﻿{
+  "loadedSolutionPath": "{TEMP_SOLUTION_PATH}",
+  "indexedHandlerCount": 0,
+  "registeredTools": [
+    {
+      "name": "edict_describe_mcp_state",
+      "description": "Self-diagnostic. Reports the loaded solution path, indexed-handler count, and the list of MCP tools the server has registered."
+    }
+  ]
+}

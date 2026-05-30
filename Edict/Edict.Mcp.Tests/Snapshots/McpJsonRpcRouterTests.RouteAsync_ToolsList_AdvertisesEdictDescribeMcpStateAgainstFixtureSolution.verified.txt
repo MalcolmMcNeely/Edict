@@ -1,0 +1,16 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "edict_describe_mcp_state",
+        "description": "Self-diagnostic. Reports the loaded solution path, indexed-handler count, and the list of MCP tools the server has registered.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ]
+  }
+}

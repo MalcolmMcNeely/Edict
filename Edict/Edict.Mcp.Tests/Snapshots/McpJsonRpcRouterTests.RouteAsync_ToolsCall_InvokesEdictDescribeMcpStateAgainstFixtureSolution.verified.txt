@@ -1,0 +1,13 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \u0022loadedSolutionPath\u0022: \u0022{FIXTURE_SOLUTION_PATH}\u0022,\n  \u0022indexedHandlerCount\u0022: 0,\n  \u0022registeredTools\u0022: [\n    {\n      \u0022name\u0022: \u0022edict_describe_mcp_state\u0022,\n      \u0022description\u0022: \u0022Self-diagnostic. Reports the loaded solution path, indexed-handler count, and the list of MCP tools the server has registered.\u0022\n    }\n  ]\n}"
+      }
+    ],
+    "isError": false
+  }
+}

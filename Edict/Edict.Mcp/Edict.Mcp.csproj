@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <RootNamespace>Edict.Mcp</RootNamespace>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>edict-mcp</ToolCommandName>
+        <PackageId>Edict.Mcp</PackageId>
+        <Description>Model Context Protocol server for the Edict CQRS framework. Install as a dotnet tool and wire into .mcp.json so an AI agent can query an Edict-based solution's handlers, route keys, silo wiring, glossary, and ADRs.</Description>
+        <PackageTags>edict;cqrs;orleans;mcp;agent;tooling</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Locator" Version="1.9.1" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.3.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+        <PackageReference Include="ModelContextProtocol" Version="1.3.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Edict.Mcp.Tests" />
+        <InternalsVisibleTo Include="Edict.AgenticTooling.Architecture.Tests" />
+    </ItemGroup>
+
+</Project>

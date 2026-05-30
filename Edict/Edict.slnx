@@ -34,6 +34,11 @@
     <Project Path="Edict.Substrate.Azurite/Edict.Substrate.Azurite.csproj" />
     <Project Path="Edict.Substrate.KafkaPostgres/Edict.Substrate.KafkaPostgres.csproj" />
   </Folder>
+  <Folder Name="/Agentic Tooling/">
+    <Project Path="Edict.Mcp/Edict.Mcp.csproj" />
+    <Project Path="Edict.Mcp.Tests/Edict.Mcp.Tests.csproj" />
+    <Project Path="Edict.AgenticTooling.Architecture.Tests/Edict.AgenticTooling.Architecture.Tests.csproj" />
+  </Folder>
   <Folder Name="/Sample/">
     <Project Path="../Sample/Sample.Contracts/Sample.Contracts.csproj" />
     <Project Path="../Sample/Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
