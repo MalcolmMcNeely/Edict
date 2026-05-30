@@ -32,6 +32,11 @@
         <EmbeddedResource Include="..\..\docs\adr\*.md" LogicalName="Edict.Mcp.Docs.Adr.%(Filename)%(Extension)" />
     </ItemGroup>
 
+    <!-- ADR 0014: FQN constants single-sourced; compile-linked into every consumer -->
+    <ItemGroup>
+        <Compile Include="..\Edict.Generators\EdictWellKnownNames.cs" />
+    </ItemGroup>
+
     <ItemGroup>
         <InternalsVisibleTo Include="Edict.Mcp.Tests" />
         <InternalsVisibleTo Include="Edict.AgenticTooling.Architecture.Tests" />

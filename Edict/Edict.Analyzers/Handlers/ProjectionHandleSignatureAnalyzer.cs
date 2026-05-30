@@ -40,7 +40,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
     {
         var method = (IMethodSymbol)context.Symbol;
 
-        if (method.Name != "Handle" || method.Parameters.Length != 1)
+        if (method.Name != EdictWellKnownNames.HandleMethodName || method.Parameters.Length != 1)
         {
             return;
         }

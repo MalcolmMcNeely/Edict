@@ -43,7 +43,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            foreach (var member in type.GetMembers("Handle").OfType<IMethodSymbol>())
+            foreach (var member in type.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
             {
                 if (member.Parameters.Length != 1)
                 {

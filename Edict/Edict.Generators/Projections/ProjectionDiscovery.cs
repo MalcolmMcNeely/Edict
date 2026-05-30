@@ -24,7 +24,7 @@ internal static class ProjectionDiscovery
 
         var handlers = new List<ProjectionHandlerModel>();
 
-        foreach (var method in grain.GetMembers("Handle").OfType<IMethodSymbol>())
+        foreach (var method in grain.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
         {
             if (method.Parameters.Length != 1)
             {

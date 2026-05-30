@@ -1,3 +1,5 @@
+using Edict.Generators;
+
 using Microsoft.CodeAnalysis;
 
 namespace Edict.Mcp.Handlers;
@@ -83,7 +85,7 @@ sealed class HandlerScanner
         var bound = new List<BoundContractInfo>();
         foreach (var member in EnumerateInheritedMembers(handlerSymbol))
         {
-            if (member is not IMethodSymbol method || method.Name != "Handle" || method.Parameters.Length != 1)
+            if (member is not IMethodSymbol method || method.Name != EdictWellKnownNames.HandleMethodName || method.Parameters.Length != 1)
             {
                 continue;
             }

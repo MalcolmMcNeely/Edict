@@ -48,6 +48,14 @@ internal static class EdictWellKnownNames
     public const string IEventTagWritersFqn =
         "global::Edict.Telemetry.IEventTagWriters";
 
+    // ── Handler discovery ────────────────────────────────────────────────────
+    // Single source of truth for the method name the source generators and
+    // analyzers look up on consumer handler bases. Compile-linked into
+    // Edict.Analyzers and Edict.Mcp; the next convention change is a one-line
+    // edit, and the parity test in Edict.Analyzers.Tests fails if any consumer
+    // assembly drifts off this value.
+    public const string HandleMethodName = "Handle";
+
     // ── Edict.Core.Commands ──────────────────────────────────────────────────
     public const string EdictCommandHandlerFqn =
         "global::Edict.Core.Commands.EdictCommandHandler";

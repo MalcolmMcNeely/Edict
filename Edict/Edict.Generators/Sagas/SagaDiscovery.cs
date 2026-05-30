@@ -24,7 +24,7 @@ internal static class SagaDiscovery
 
         var handlers = new List<SagaHandlerModel>();
 
-        foreach (var method in grain.GetMembers("Handle").OfType<IMethodSymbol>())
+        foreach (var method in grain.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
         {
             if (method.Parameters.Length != 1)
             {

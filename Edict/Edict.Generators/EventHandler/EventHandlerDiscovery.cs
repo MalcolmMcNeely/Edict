@@ -24,7 +24,7 @@ internal static class EventHandlerDiscovery
 
         var handlers = new List<EventHandlerHandlerModel>();
 
-        foreach (var method in grain.GetMembers("Handle").OfType<IMethodSymbol>())
+        foreach (var method in grain.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
         {
             if (method.Parameters.Length != 1)
             {
