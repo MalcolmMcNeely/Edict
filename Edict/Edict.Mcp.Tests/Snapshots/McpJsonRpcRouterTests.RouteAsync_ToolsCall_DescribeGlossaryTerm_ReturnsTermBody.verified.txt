@@ -1,0 +1,13 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "**Saga**:\r\nA grain that coordinates a multi-step workflow by reacting to Events and issuing exactly one Command per Event via \u0060Dispatch\u0060.\r\n_Avoid_: dispatching more than one command per handled event; expecting \u0060Dispatch\u0060 to buffer like \u0060Raise\u0060; reconstructing progress by replay."
+      }
+    ],
+    "isError": false
+  }
+}

@@ -22,7 +22,7 @@ public class DescribeMcpStateToolTests
         var describeMcpState = registry.Find("edict_describe_mcp_state")!;
 
         // Act
-        var responseJson = await describeMcpState.InvokeAsync(CancellationToken.None);
+        var responseJson = await describeMcpState.InvokeAsync(null, CancellationToken.None);
 
         // Assert
         await Verify(responseJson)

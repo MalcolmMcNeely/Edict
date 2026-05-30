@@ -26,7 +26,7 @@ sealed class DescribeMcpStateTool
         this.toolsAccessor = toolsAccessor;
     }
 
-    public Task<string> InvokeAsync(CancellationToken cancellationToken)
+    public Task<string> InvokeAsync(IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken)
     {
         var response = new DescribeMcpStateResponse(
             LoadedSolutionPath: workspaceProvider.ResolveSolutionPath(),

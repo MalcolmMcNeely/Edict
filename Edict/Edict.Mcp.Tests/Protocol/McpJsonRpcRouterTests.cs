@@ -45,6 +45,34 @@ public class McpJsonRpcRouterTests
     }
 
     [Fact]
+    public async Task RouteAsync_ToolsCall_DescribeGlossaryTerm_ReturnsTermBody()
+    {
+        // Arrange
+        var router = BuildRouterAgainstFixture();
+        var request = """{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"edict_describe_glossary_term","arguments":{"term":"Saga"}}}""";
+
+        // Act
+        var responseJson = await router.RouteAsync(request, CancellationToken.None);
+
+        // Assert
+        await Verify(responseJson);
+    }
+
+    [Fact]
+    public async Task RouteAsync_ToolsCall_LookupAdr_ByNumber_ReturnsAdrBody()
+    {
+        // Arrange
+        var router = BuildRouterAgainstFixture();
+        var request = """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"edict_lookup_adr","arguments":{"query":"1"}}}""";
+
+        // Act
+        var responseJson = await router.RouteAsync(request, CancellationToken.None);
+
+        // Assert
+        await Verify(responseJson);
+    }
+
+    [Fact]
     public async Task RouteAsync_UnknownMethod_ReturnsMethodNotFoundError()
     {
         // Arrange

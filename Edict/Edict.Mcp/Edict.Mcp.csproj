@@ -27,6 +27,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="..\..\CONTEXT.md" LogicalName="Edict.Mcp.Docs.CONTEXT.md" />
+        <EmbeddedResource Include="..\..\docs\adr\*.md" LogicalName="Edict.Mcp.Docs.Adr.%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="Edict.Mcp.Tests" />
         <InternalsVisibleTo Include="Edict.AgenticTooling.Architecture.Tests" />
     </ItemGroup>

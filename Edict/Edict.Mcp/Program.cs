@@ -14,9 +14,6 @@ namespace Edict.Mcp;
 
 static class Program
 {
-    static readonly JsonElement InputSchema = JsonSerializer.Deserialize<JsonElement>(
-        """{"type":"object","properties":{}}""");
-
     static async Task<int> Main(string[] args)
     {
         var solutionOverride = ParseSolutionOverride(args);
@@ -65,7 +62,7 @@ static class Program
                 {
                     Name = tool.Name,
                     Description = tool.Description,
-                    InputSchema = InputSchema,
+                    InputSchema = tool.InputSchema,
                 })
                 .ToList(),
         };
@@ -87,7 +84,11 @@ static class Program
             };
         }
 
-        var responseText = await descriptor.InvokeAsync(cancellationToken);
+        IReadOnlyDictionary<string, JsonElement>? arguments = parameters?.Arguments is { } argumentsDictionary
+            ? new Dictionary<string, JsonElement>(argumentsDictionary)
+            : null;
+
+        var responseText = await descriptor.InvokeAsync(arguments, cancellationToken);
         return new CallToolResult
         {
             Content = [new TextContentBlock { Text = responseText }],

@@ -17,6 +17,7 @@ public class PackagingRulesTests
         "Edict.Postgres",
         "Edict.Testing",
         "Edict.Mcp",
+        "Edict.ClaudeSkills",
     ];
 
     static readonly string[] RequiredShippingProperties =

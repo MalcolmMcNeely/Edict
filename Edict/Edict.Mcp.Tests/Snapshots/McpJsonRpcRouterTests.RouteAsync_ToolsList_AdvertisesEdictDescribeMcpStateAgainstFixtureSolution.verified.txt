@@ -10,6 +10,38 @@
           "type": "object",
           "properties": {}
         }
+      },
+      {
+        "name": "edict_describe_glossary_term",
+        "description": "Returns the Edict glossary entry for a term from CONTEXT.md, including its definition, the \u0027_Avoid_\u0027 list, and any inline cross-references. Case-insensitive; the optional \u0027Edict\u0027 prefix on the query is elidable.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "term": {
+              "type": "string",
+              "description": "Glossary term to look up. Case-insensitive; the optional \u0027Edict\u0027 prefix is elidable so \u0027Saga\u0027, \u0027saga\u0027, and \u0027EdictSaga\u0027 all resolve to the same entry."
+            }
+          },
+          "required": [
+            "term"
+          ]
+        }
+      },
+      {
+        "name": "edict_lookup_adr",
+        "description": "Returns the raw markdown body of an Edict ADR matching the query. The query is either an ADR number (\u002728\u0027 or \u00270028\u0027) or a fuzzy substring of the ADR title.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "ADR number (e.g. \u002728\u0027 or \u00270028\u0027) or a fuzzy substring of the ADR title."
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
       }
     ]
   }

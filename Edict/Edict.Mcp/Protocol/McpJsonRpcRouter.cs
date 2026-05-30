@@ -57,11 +57,7 @@ sealed class McpJsonRpcRouter
             {
                 ["name"] = tool.Name,
                 ["description"] = tool.Description,
-                ["inputSchema"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject(),
-                },
+                ["inputSchema"] = JsonNode.Parse(tool.InputSchema.GetRawText()),
             })
             .ToArray<JsonNode?>();
 
@@ -85,7 +81,8 @@ sealed class McpJsonRpcRouter
             return ErrorResponse(requestId, code: -32602, message: $"Unknown tool: {toolName}");
         }
 
-        var resultText = await descriptor.InvokeAsync(cancellationToken);
+        var arguments = ExtractArguments(parameters?["arguments"]);
+        var resultText = await descriptor.InvokeAsync(arguments, cancellationToken);
         return Envelope(requestId, new JsonObject
         {
             ["content"] = new JsonArray(
@@ -96,6 +93,26 @@ sealed class McpJsonRpcRouter
                 }),
             ["isError"] = false,
         });
+    }
+
+    static IReadOnlyDictionary<string, JsonElement>? ExtractArguments(JsonNode? argumentsNode)
+    {
+        if (argumentsNode is not JsonObject argumentsObject)
+        {
+            return null;
+        }
+
+        var dictionary = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var (key, value) in argumentsObject)
+        {
+            if (value is null)
+            {
+                continue;
+            }
+            var element = JsonSerializer.Deserialize<JsonElement>(value.ToJsonString());
+            dictionary[key] = element;
+        }
+        return dictionary;
     }
 
     static string Envelope(JsonNode? requestId, JsonObject result)
