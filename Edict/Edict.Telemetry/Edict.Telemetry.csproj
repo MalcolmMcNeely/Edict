@@ -22,6 +22,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Edict.Core" />
+        <InternalsVisibleTo Include="Edict.Core.Tests" />
+        <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 

@@ -9,6 +9,7 @@ using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Kafka;
 using Edict.Postgres;
+using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -199,6 +200,25 @@ public class PublicSurfaceAllowListTests
             BuildDriftMessage(unexpected, missing));
     }
 
+    [Fact]
+    public void EdictTelemetry_PublicTypesMatchAllowList()
+    {
+        var telemetryAssembly = typeof(IEventTagWriters).Assembly;
+        var actual = telemetryAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictTelemetryAllowList.Contains(name)).ToList();
+        var missing = EdictTelemetryAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
@@ -313,6 +333,15 @@ public class PublicSurfaceAllowListTests
     {
         "Edict.Kafka.EdictKafkaSiloBuilderExtensions",
         "Edict.Kafka.EdictKafkaStreamsOptions",
+    };
+
+    static readonly HashSet<string> EdictTelemetryAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Telemetry.ActivityExtensions",
+        "Edict.Telemetry.ActivitySourceExtensions",
+        "Edict.Telemetry.EdictDiagnostics",
+        "Edict.Telemetry.IEventTagWriters",
+        "Edict.Telemetry.SemanticConventions",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)
