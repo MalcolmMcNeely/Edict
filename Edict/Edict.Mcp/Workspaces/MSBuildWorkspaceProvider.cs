@@ -1,9 +1,14 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.MSBuild;
+
 namespace Edict.Mcp.Workspaces;
 
 sealed class MSBuildWorkspaceProvider
 {
     readonly string? solutionOverride;
     readonly Func<string> currentDirectoryProvider;
+    readonly SemaphoreSlim loadGate = new(initialCount: 1, maxCount: 1);
+    Solution? loadedSolution;
 
     public MSBuildWorkspaceProvider(string? solutionOverride, Func<string> currentDirectoryProvider)
     {
@@ -39,5 +44,31 @@ sealed class MSBuildWorkspaceProvider
         }
 
         throw new EdictMcpWorkspaceNotFoundException(startDirectory);
+    }
+
+    public async Task<Solution> LoadSolutionAsync(CancellationToken cancellationToken)
+    {
+        if (loadedSolution is not null)
+        {
+            return loadedSolution;
+        }
+
+        await loadGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (loadedSolution is not null)
+            {
+                return loadedSolution;
+            }
+
+            var solutionPath = ResolveSolutionPath();
+            var workspace = MSBuildWorkspace.Create();
+            loadedSolution = await workspace.OpenSolutionAsync(solutionPath, cancellationToken: cancellationToken);
+            return loadedSolution;
+        }
+        finally
+        {
+            loadGate.Release();
+        }
     }
 }

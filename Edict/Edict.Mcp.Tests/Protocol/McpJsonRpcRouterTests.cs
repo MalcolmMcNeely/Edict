@@ -73,6 +73,34 @@ public class McpJsonRpcRouterTests
     }
 
     [Fact]
+    public async Task RouteAsync_ToolsCall_ListHandlers_ReturnsFixtureHandlerInventory()
+    {
+        // Arrange
+        var router = BuildRouterAgainstFixture();
+        var request = """{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"edict_list_handlers"}}""";
+
+        // Act
+        var responseJson = await router.RouteAsync(request, CancellationToken.None);
+
+        // Assert
+        await Verify(responseJson);
+    }
+
+    [Fact]
+    public async Task RouteAsync_ToolsCall_ListRouteKeys_ReturnsFixtureRouteKeyView()
+    {
+        // Arrange
+        var router = BuildRouterAgainstFixture();
+        var request = """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"edict_list_route_keys"}}""";
+
+        // Act
+        var responseJson = await router.RouteAsync(request, CancellationToken.None);
+
+        // Assert
+        await Verify(responseJson);
+    }
+
+    [Fact]
     public async Task RouteAsync_UnknownMethod_ReturnsMethodNotFoundError()
     {
         // Arrange

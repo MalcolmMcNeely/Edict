@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Edict.Mcp.Docs;
+using Edict.Mcp.Handlers;
 using Edict.Mcp.Workspaces;
 
 namespace Edict.Mcp.Tools;
@@ -44,10 +45,20 @@ sealed class McpToolRegistry
     }
 
     internal McpToolRegistry(MSBuildWorkspaceProvider workspaceProvider, DocsLookup docs)
+        : this(BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()), docs, workspaceProvider)
     {
-        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, () => Tools!);
+    }
+
+    internal McpToolRegistry(
+        Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
+        DocsLookup docs,
+        MSBuildWorkspaceProvider workspaceProvider)
+    {
+        var describeMcpState = new DescribeMcpStateTool(workspaceProvider, inventoryProvider, () => Tools!);
         var describeGlossaryTerm = new DescribeGlossaryTermTool(docs);
         var lookupAdr = new LookupAdrTool(docs);
+        var listHandlers = new ListHandlersTool(inventoryProvider);
+        var listRouteKeys = new ListRouteKeysTool(inventoryProvider);
         Tools =
         [
             new McpToolDescriptor(
@@ -65,6 +76,16 @@ sealed class McpToolRegistry
                 Description: "Returns the raw markdown body of an Edict ADR matching the query. The query is either an ADR number ('28' or '0028') or a fuzzy substring of the ADR title.",
                 InputSchema: LookupAdrInputSchema,
                 InvokeAsync: lookupAdr.InvokeAsync),
+            new McpToolDescriptor(
+                Name: "edict_list_handlers",
+                Description: "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location.",
+                InputSchema: EmptyInputSchema,
+                InvokeAsync: listHandlers.InvokeAsync),
+            new McpToolDescriptor(
+                Name: "edict_list_route_keys",
+                Description: "Derived view over the handler inventory. Groups Commands by their handler classes (a Command bound to more than one handler is a collision) and Events by their subscriber classes, with the [EdictRouteKey] property name on each contract.",
+                InputSchema: EmptyInputSchema,
+                InvokeAsync: listRouteKeys.InvokeAsync),
         ];
     }
 
@@ -73,6 +94,17 @@ sealed class McpToolRegistry
     public McpToolDescriptor? Find(string name)
     {
         return Tools.FirstOrDefault(tool => tool.Name == name);
+    }
+
+    static Func<CancellationToken, Task<HandlerInventory>> BuildHandlerInventoryProvider(
+        MSBuildWorkspaceProvider workspaceProvider,
+        HandlerScanner scanner)
+    {
+        return async cancellationToken =>
+        {
+            var solution = await workspaceProvider.LoadSolutionAsync(cancellationToken);
+            return await scanner.ScanAsync(solution, cancellationToken);
+        };
     }
 
     static JsonElement ParseInputSchema(string json)

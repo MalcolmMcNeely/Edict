@@ -42,6 +42,22 @@
             "query"
           ]
         }
+      },
+      {
+        "name": "edict_list_handlers",
+        "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "edict_list_route_keys",
+        "description": "Derived view over the handler inventory. Groups Commands by their handler classes (a Command bound to more than one handler is a collision) and Events by their subscriber classes, with the [EdictRouteKey] property name on each contract.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       }
     ]
   }

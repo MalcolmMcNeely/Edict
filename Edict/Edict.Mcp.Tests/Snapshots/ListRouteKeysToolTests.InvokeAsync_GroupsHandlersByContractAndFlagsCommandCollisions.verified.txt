@@ -1,0 +1,31 @@
+﻿{
+  "commands": [
+    {
+      "commandType": "Acme.Orders.PlaceOrderCommand",
+      "routeKeyProperty": "OrderId",
+      "handlers": [
+        "Acme.Orders.OrderCommandHandler",
+        "Acme.Orders.RogueOrderCommandHandler"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "eventType": "Acme.Orders.OrderPlaced",
+      "routeKeyProperty": "OrderId",
+      "subscribers": [
+        "Acme.Notifications.OrderPlacedEmailHandler",
+        "Acme.Reporting.OrdersByStatusProjection"
+      ]
+    }
+  ],
+  "collisions": [
+    {
+      "commandType": "Acme.Orders.PlaceOrderCommand",
+      "handlers": [
+        "Acme.Orders.OrderCommandHandler",
+        "Acme.Orders.RogueOrderCommandHandler"
+      ]
+    }
+  ]
+}

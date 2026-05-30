@@ -24,6 +24,8 @@ public class McpToolRegistryTests
     [Theory]
     [InlineData("edict_describe_glossary_term")]
     [InlineData("edict_lookup_adr")]
+    [InlineData("edict_list_handlers")]
+    [InlineData("edict_list_route_keys")]
     public void Tools_IncludesDocsTool(string toolName)
     {
         // Arrange

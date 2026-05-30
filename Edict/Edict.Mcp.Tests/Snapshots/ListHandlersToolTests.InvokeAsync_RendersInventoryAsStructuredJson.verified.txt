@@ -1,0 +1,40 @@
+﻿{
+  "handlers": [
+    {
+      "declaringTypeName": "Acme.Orders.OrderCommandHandler",
+      "role": "commandHandler",
+      "boundContracts": [
+        {
+          "fullTypeName": "Acme.Orders.PlaceOrderCommand",
+          "routeKeyPropertyName": "OrderId"
+        },
+        {
+          "fullTypeName": "Acme.Orders.CancelOrderCommand",
+          "routeKeyPropertyName": "OrderId"
+        }
+      ],
+      "declaringAssembly": "Acme.Orders",
+      "sourceLocation": {
+        "filePath": "Acme.Orders/OrderCommandHandler.cs",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "declaringTypeName": "Acme.Notifications.OrderPlacedEmailHandler",
+      "role": "eventHandler",
+      "boundContracts": [
+        {
+          "fullTypeName": "Acme.Notifications.OrderPlaced",
+          "routeKeyPropertyName": "OrderId"
+        }
+      ],
+      "declaringAssembly": "Acme.Notifications",
+      "sourceLocation": {
+        "filePath": "Acme.Notifications/OrderPlacedEmailHandler.cs",
+        "line": 8,
+        "column": 5
+      }
+    }
+  ]
+}

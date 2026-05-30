@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Edict.Mcp.Handlers;
 using Edict.Mcp.Workspaces;
 
 namespace Edict.Mcp.Tools;
@@ -16,25 +17,29 @@ sealed class DescribeMcpStateTool
     };
 
     readonly MSBuildWorkspaceProvider workspaceProvider;
+    readonly Func<CancellationToken, Task<HandlerInventory>> inventoryProvider;
     readonly Func<IReadOnlyList<McpToolDescriptor>> toolsAccessor;
 
     public DescribeMcpStateTool(
         MSBuildWorkspaceProvider workspaceProvider,
+        Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
         Func<IReadOnlyList<McpToolDescriptor>> toolsAccessor)
     {
         this.workspaceProvider = workspaceProvider;
+        this.inventoryProvider = inventoryProvider;
         this.toolsAccessor = toolsAccessor;
     }
 
-    public Task<string> InvokeAsync(IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken)
+    public async Task<string> InvokeAsync(IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken)
     {
+        var inventory = await inventoryProvider(cancellationToken);
         var response = new DescribeMcpStateResponse(
             LoadedSolutionPath: workspaceProvider.ResolveSolutionPath(),
-            IndexedHandlerCount: 0,
+            IndexedHandlerCount: inventory.Handlers.Count,
             RegisteredTools: toolsAccessor()
                 .Select(tool => new RegisteredToolSummary(tool.Name, tool.Description))
                 .ToArray());
-        return Task.FromResult(JsonSerializer.Serialize(response, JsonOptions));
+        return JsonSerializer.Serialize(response, JsonOptions);
     }
 
     sealed record DescribeMcpStateResponse(

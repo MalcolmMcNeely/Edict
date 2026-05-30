@@ -1,0 +1,14 @@
+﻿{
+  "loadedSolutionPath": "{TEMP_SOLUTION_PATH}",
+  "indexedHandlerCount": 2,
+  "registeredTools": [
+    {
+      "name": "tool_one",
+      "description": "first"
+    },
+    {
+      "name": "tool_two",
+      "description": "second"
+    }
+  ]
+}

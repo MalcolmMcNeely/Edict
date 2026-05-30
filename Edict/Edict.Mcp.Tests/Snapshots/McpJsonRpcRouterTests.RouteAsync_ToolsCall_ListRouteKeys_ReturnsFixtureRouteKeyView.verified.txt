@@ -1,0 +1,13 @@
+﻿{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \u0022commands\u0022: [\n    {\n      \u0022commandType\u0022: \u0022FixtureLibrary.Orders.CancelOrderCommand\u0022,\n      \u0022routeKeyProperty\u0022: \u0022OrderId\u0022,\n      \u0022handlers\u0022: [\n        \u0022FixtureLibrary.Orders.OrderCommandHandler\u0022\n      ]\n    },\n    {\n      \u0022commandType\u0022: \u0022FixtureLibrary.Orders.PlaceOrderCommand\u0022,\n      \u0022routeKeyProperty\u0022: \u0022OrderId\u0022,\n      \u0022handlers\u0022: [\n        \u0022FixtureLibrary.Orders.OrderCommandHandler\u0022\n      ]\n    }\n  ],\n  \u0022events\u0022: [\n    {\n      \u0022eventType\u0022: \u0022FixtureLibrary.Orders.OrderPlaced\u0022,\n      \u0022routeKeyProperty\u0022: \u0022OrderId\u0022,\n      \u0022subscribers\u0022: [\n        \u0022FixtureLibrary.Activity.OrderActivityProjection\u0022,\n        \u0022FixtureLibrary.Notifications.OrderPlacedEmailHandler\u0022,\n        \u0022FixtureLibrary.Reporting.OrdersByStatusProjection\u0022,\n        \u0022FixtureLibrary.Shipping.ShipmentSaga\u0022\n      ]\n    }\n  ],\n  \u0022collisions\u0022: []\n}"
+      }
+    ],
+    "isError": false
+  }
+}
