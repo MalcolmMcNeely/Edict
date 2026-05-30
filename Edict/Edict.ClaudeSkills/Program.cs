@@ -6,27 +6,18 @@ static class Program
     {
         if (args.Length == 0 || args[0] != "install")
         {
-            Console.Error.WriteLine("usage: edict-skills install [--target <path>]");
+            Console.Error.WriteLine("usage: edict-skills install [--target <path>] [--force]");
             return 1;
         }
 
         var targetOverride = ParseTargetOverride(args);
+        var force = args.Contains("--force", StringComparer.Ordinal);
         var installer = new SkillsInstaller(
             targetOverride: targetOverride,
             currentDirectoryProvider: Directory.GetCurrentDirectory);
-        var report = installer.Install();
+        var report = installer.Install(force);
 
-        Console.Out.WriteLine($"Target: {report.TargetDirectory}");
-        Console.Out.WriteLine($"Installed: {report.Installed.Count}");
-        foreach (var installed in report.Installed)
-        {
-            Console.Out.WriteLine($"  + {installed}");
-        }
-        Console.Out.WriteLine($"Skipped: {report.Skipped.Count}");
-        foreach (var skipped in report.Skipped)
-        {
-            Console.Out.WriteLine($"  = {skipped}");
-        }
+        WriteSkillsReport(report);
 
         var mcpInstaller = new McpInstaller(
             installModeDetector: new InstallModeDetector(),
@@ -49,6 +40,33 @@ static class Program
             }
         }
         return null;
+    }
+
+    static void WriteSkillsReport(SkillsInstallReport report)
+    {
+        Console.Out.WriteLine($"Target: {report.TargetDirectory}");
+        var manifestFileName = Path.GetFileName(report.ManifestPath);
+        var versionTransition = report.PreviousInstalledVersion is null
+            ? $"(no prior manifest → {report.NewInstalledVersion})"
+            : $"({report.PreviousInstalledVersion} → {report.NewInstalledVersion})";
+        Console.Out.WriteLine($"Manifest: {manifestFileName} {versionTransition}");
+        Console.Out.WriteLine();
+
+        Console.Out.WriteLine($"Installed: {report.Installed.Count}");
+        foreach (var entry in report.Installed)
+        {
+            Console.Out.WriteLine($"  + {entry}");
+        }
+        Console.Out.WriteLine($"Refreshed: {report.Refreshed.Count}");
+        foreach (var entry in report.Refreshed)
+        {
+            Console.Out.WriteLine($"  ~ {entry}");
+        }
+        Console.Out.WriteLine($"Skipped (drifted): {report.SkippedDrifted.Count}");
+        foreach (var entry in report.SkippedDrifted)
+        {
+            Console.Out.WriteLine($"  ! {entry} — re-run with --force to overwrite (your edits will be lost)");
+        }
     }
 
     static void WriteMcpReport(McpInstallReport report)
