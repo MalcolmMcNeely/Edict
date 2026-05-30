@@ -11,7 +11,7 @@ using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Kafka.Wire;
+using Edict.Kafka.Internal;
 using Edict.Postgres;
 using Edict.Postgres.TableStorage;
 using Edict.Tests.Conformance;
@@ -130,7 +130,7 @@ public sealed class KafkaClaimCheckClusterFixture : ClaimCheckFixture
         serializer
             .AddAssembly(typeof(ClaimCheckCounterAggregate).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
-            .AddAssembly(typeof(EdictKafkaWireEnvelope).Assembly)
+            .AddAssembly(typeof(KafkaWireEnvelope).Assembly)
             .AddEdictContractSerializer();
 
     sealed class SiloConfigurator : ISiloConfigurator

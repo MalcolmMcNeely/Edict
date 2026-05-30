@@ -1,7 +1,5 @@
 using Confluent.Kafka;
 
-using Edict.Kafka.Wire;
-
 using Microsoft.Extensions.Logging;
 
 using Orleans.Runtime;
@@ -106,10 +104,10 @@ sealed class EdictKafkaReceiver : IQueueAdapterReceiver
                 break;
             }
 
-            EdictKafkaWireEnvelope envelope;
+            KafkaWireEnvelope envelope;
             try
             {
-                envelope = _serializer.Deserialize<EdictKafkaWireEnvelope>(result.Message.Value);
+                envelope = _serializer.Deserialize<KafkaWireEnvelope>(result.Message.Value);
             }
             catch (Exception exception)
             {

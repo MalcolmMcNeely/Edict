@@ -382,10 +382,9 @@ public class TypePlacementTests
         rule.Check(Architecture);
     }
 
-    // The Kafka consumer surface is AddEdictKafkaStreams + EdictKafkaStreamsOptions
-    // (+ EdictKafkaWireEnvelope, which Orleans' [GenerateSerializer] requires to be
-    // public). Everything else under Edict.Kafka.Internal is mechanism and must
-    // not leak: a consumer reaching into the adapter, receiver, or topic
+    // The Kafka consumer surface is AddEdictKafkaStreams + EdictKafkaStreamsOptions.
+    // Everything else under Edict.Kafka.Internal is mechanism and must not leak: a
+    // consumer reaching into the adapter, receiver, wire envelope, or topic
     // provisioner would couple to internals the framework is free to reshape.
     [Fact]
     public void EdictKafkaInternals_ShouldNotBePublic()

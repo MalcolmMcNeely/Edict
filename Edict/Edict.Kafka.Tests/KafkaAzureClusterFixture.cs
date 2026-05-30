@@ -16,7 +16,7 @@ using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Kafka.Wire;
+using Edict.Kafka.Internal;
 using Edict.Tests.Conformance;
 
 using FluentValidation;
@@ -133,7 +133,7 @@ public sealed class KafkaAzureClusterFixture : ConformanceFixture
         serializer
             .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
-            .AddAssembly(typeof(EdictKafkaWireEnvelope).Assembly)
+            .AddAssembly(typeof(KafkaWireEnvelope).Assembly)
             .AddEdictContractSerializer();
 
     sealed class SiloConfigurator : ISiloConfigurator

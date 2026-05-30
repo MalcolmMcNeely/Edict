@@ -7,6 +7,7 @@ using Edict.Contracts.Commands;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
+using Edict.Kafka;
 using Edict.Postgres;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -179,6 +180,25 @@ public class PublicSurfaceAllowListTests
             BuildDriftMessage(unexpected, missing));
     }
 
+    [Fact]
+    public void EdictKafka_PublicTypesMatchAllowList()
+    {
+        var kafkaAssembly = typeof(EdictKafkaSiloBuilderExtensions).Assembly;
+        var actual = kafkaAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictKafkaAllowList.Contains(name)).ToList();
+        var missing = EdictKafkaAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
@@ -287,6 +307,12 @@ public class PublicSurfaceAllowListTests
         "Edict.Postgres.TableStorage.PostgresTableRepository`1",
         "OrleansCodeGen.Edict.Postgres.Codec_EdictPostgresStorageException",
         "OrleansCodeGen.Edict.Postgres.Copier_EdictPostgresStorageException",
+    };
+
+    static readonly HashSet<string> EdictKafkaAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Kafka.EdictKafkaSiloBuilderExtensions",
+        "Edict.Kafka.EdictKafkaStreamsOptions",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)

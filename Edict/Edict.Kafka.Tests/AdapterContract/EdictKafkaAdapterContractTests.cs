@@ -4,7 +4,6 @@ using Edict.Contracts.Configuration;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Kafka.Internal;
-using Edict.Kafka.Wire;
 using Edict.Tests.Conformance;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -43,7 +42,7 @@ public sealed class EdictKafkaAdapterContractTests
     {
         var services = new ServiceCollection();
         services.AddSerializer(s => s
-            .AddAssembly(typeof(EdictKafkaWireEnvelope).Assembly)
+            .AddAssembly(typeof(KafkaWireEnvelope).Assembly)
             .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer());

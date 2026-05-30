@@ -1,7 +1,5 @@
 using Confluent.Kafka;
 
-using Edict.Kafka.Wire;
-
 using Microsoft.Extensions.Logging;
 
 using Orleans.Runtime;
@@ -106,7 +104,7 @@ sealed class EdictKafkaAdapter : IQueueAdapter, IDisposable
         var keyString = streamId.GetKeyAsString() ?? streamId.ToString();
         var ns = streamId.GetNamespace() ?? string.Empty;
 
-        var envelope = new EdictKafkaWireEnvelope
+        var envelope = new KafkaWireEnvelope
         {
             StreamNamespace = ns,
             StreamKey = keyString,

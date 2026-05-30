@@ -17,7 +17,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
-using Edict.Kafka.Wire;
+using Edict.Kafka.Internal;
 using Edict.Tests.Conformance;
 using Edict.Tests.Conformance.Outbox;
 
@@ -122,7 +122,7 @@ public sealed class KafkaAzureOutboxControllableExecutorFixture : ConformanceFix
         serializer
             .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
-            .AddAssembly(typeof(EdictKafkaWireEnvelope).Assembly)
+            .AddAssembly(typeof(KafkaWireEnvelope).Assembly)
             .AddEdictContractSerializer();
 
     sealed class SiloConfigurator : ISiloConfigurator

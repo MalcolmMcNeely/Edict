@@ -8,7 +8,7 @@ using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
 using Edict.Kafka;
-using Edict.Kafka.Wire;
+using Edict.Kafka.Internal;
 using Edict.Postgres;
 using Edict.Postgres.TableStorage;
 using Edict.Tests.Conformance;
@@ -116,7 +116,7 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
         serializer
             .AddAssembly(typeof(OrderCommandHandler).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
-            .AddAssembly(typeof(EdictKafkaWireEnvelope).Assembly)
+            .AddAssembly(typeof(KafkaWireEnvelope).Assembly)
             .AddAssembly(typeof(KafkaSiloKillEvent).Assembly)
             .AddEdictContractSerializer();
 
