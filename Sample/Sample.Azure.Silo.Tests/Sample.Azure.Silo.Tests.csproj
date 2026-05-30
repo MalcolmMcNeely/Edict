@@ -8,6 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
         <PackageReference Include="Verify.Xunit" Version="31.12.5" />
         <PackageReference Include="xunit" Version="2.9.3" />
@@ -20,6 +22,9 @@
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <!-- The shipped in-memory Test Framework. -->
         <ProjectReference Include="../../Edict/Edict.Testing/Edict.Testing.csproj" />
+        <!-- For OrleansReadyHealthCheck + OrleansReadyGate; the sample-side cross-cutting
+             helpers live in ServiceDefaults so both silos and Web can wire them. -->
+        <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
     </ItemGroup>
 
 </Project>

@@ -10,6 +10,9 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
+using Orleans;
+using Orleans.Runtime;
+
 namespace Sample.ServiceDefaults;
 
 public static class Extensions
@@ -90,6 +93,22 @@ public static class Extensions
 
         builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+
+        return builder;
+    }
+
+    // Flips Healthy only after the silo crosses ServiceLifecycleStage.Active —
+    // i.e. once the Orleans gateway port is accepting connections. AppHost's
+    // WaitFor(silo) honors this so the Web Orleans client cannot race the
+    // gateway-open moment on cold start.
+    public static TBuilder AddOrleansSiloReadyHealthCheck<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddSingleton<OrleansReadyGate>();
+        builder.Services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>>(serviceProvider =>
+            serviceProvider.GetRequiredService<OrleansReadyGate>());
+        builder.Services.AddSingleton<OrleansReadyHealthCheck>();
+        builder.Services.AddHealthChecks()
+            .AddCheck<OrleansReadyHealthCheck>("orleans-silo-ready", tags: ["live"]);
 
         return builder;
     }

@@ -14,6 +14,10 @@
 
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
         <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
+        <!-- ISiloLifecycle + ILifecycleParticipant for the OrleansReadyHealthCheck wiring;
+             ISiloLifecycle lives in Microsoft.Orleans.Runtime, the abstractions package only
+             carries the base ILifecycleSubject/ILifecycleParticipant<T>. -->
+        <PackageReference Include="Microsoft.Orleans.Runtime" Version="10.1.0" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
         <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />

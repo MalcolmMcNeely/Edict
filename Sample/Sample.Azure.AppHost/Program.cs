@@ -15,7 +15,12 @@ var blobs = storage.AddBlobs("blobs");
 var silo = builder.AddProject<Projects.Sample_Azure_Silo>("silo")
     .WithReference(queues).WaitFor(storage)
     .WithReference(tables)
-    .WithReference(blobs);
+    .WithReference(blobs)
+    // The silo exposes /health that flips to Healthy only after Orleans
+    // crosses ServiceLifecycleStage.Active. Web's WaitFor(silo) below honors
+    // this so the Web's Orleans client cannot race the gateway-open moment
+    // and surface a ConnectionFailedException on the dashboard.
+    .WithHttpHealthCheck("/health");
 builder.AddProject<Projects.Sample_Azure_Web>("web")
     .WithReference(tables).WaitFor(storage)
     .WithReference(blobs)

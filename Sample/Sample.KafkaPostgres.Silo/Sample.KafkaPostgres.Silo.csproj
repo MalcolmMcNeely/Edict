@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -24,6 +24,7 @@
           Sample.Azure.Silo/Program.cs as the substrate-comparison page.
         -->
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
+        <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
         <ProjectReference Include="../../Edict/Edict.Kafka/Edict.Kafka.csproj" />
         <ProjectReference Include="../../Edict/Edict.Postgres/Edict.Postgres.csproj" />
     </ItemGroup>

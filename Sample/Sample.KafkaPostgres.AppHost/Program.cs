@@ -18,7 +18,12 @@ var appdb = postgres.AddDatabase("appdb");
 
 var silo = builder.AddProject<Projects.Sample_KafkaPostgres_Silo>("silo")
     .WithReference(kafka).WaitFor(kafka)
-    .WithReference(appdb).WaitFor(postgres);
+    .WithReference(appdb).WaitFor(postgres)
+    // The silo exposes /health that flips to Healthy only after Orleans
+    // crosses ServiceLifecycleStage.Active. Web's WaitFor(silo) below honors
+    // this so the Web's Orleans client cannot race the gateway-open moment
+    // and surface a ConnectionFailedException on the dashboard.
+    .WithHttpHealthCheck("/health");
 builder.AddProject<Projects.Sample_KafkaPostgres_Web>("web")
     .WithReference(appdb).WaitFor(postgres)
     .WaitFor(silo);
