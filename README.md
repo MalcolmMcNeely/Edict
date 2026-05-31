@@ -152,9 +152,10 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 ## What's next
 
 - **Saga timeouts.** Declarative deadlines per saga step with automatic compensation — today a saga that never gets its next event sits forever.
-- **Sharded dead-letter projection.** Today it's a single grain — under a poison-event storm the *thing recording the storm* becomes the bottleneck.
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
-- **Rate-limiter and monotonic-sequence primitives.** Token bucket as a grain base; per-aggregate gap-free `Seq` on events for audit consumers.
+- **External-work primitive.** Dispatch a slow out-of-grain operation (API call, batch job, external process), park via reminder, resume with the result to issue a command. Orleans grain turns should stay short, and there is no framework-shape way to do this today.
+- **Read-your-writes cursor.** Commands return a cursor identifying the event they raised; queries accept an `after: X` parameter and wait briefly until the projection has applied X before answering. Today consumers poll-and-retry or hand-track sequences to give users the obvious experience of seeing their own writes.
+- **Keyed projection builder.** A second species of projection builder whose read model lives in grain state — sibling to today's table projection. Reads stay fast for per-id "give me the record for {id}" shapes; consumers today either over-design a table projection or hand-roll a stateful grain.
 - **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider — no framework changes needed.
 
 ## Running locally

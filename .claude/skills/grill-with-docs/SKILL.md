@@ -85,4 +85,8 @@ Only offer to create an ADR when all three are true:
 
 If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
 
+### Edict-specific: walk the surface axes
+
+After the design has stabilised on language and decisions, walk every axis in [EDICT-SURFACES.md](./EDICT-SURFACES.md), one question at a time. Each axis maps to a surface a change might touch (CONTEXT.md, ADRs, skills bundle, MCP tools, usage docs, drift-guard tests, README, Sample app, theorycraft docs, wire shape). Capture each answer as a design requirement before the grill closes — the grill is where requirements get captured, not the issue tracker, not after the fact.
+
 </supporting-info>
