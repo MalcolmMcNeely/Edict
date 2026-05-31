@@ -17,7 +17,7 @@
           Edict.Telemetry must never reference the Orleans server runtime / grain bases
           (ADR 0014).
         -->
-        <PackageReference Include="Microsoft.Orleans.Core" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Core" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
     </ItemGroup>
 

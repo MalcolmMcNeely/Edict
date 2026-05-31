@@ -10,7 +10,7 @@
     <ItemGroup>
         <!-- Orleans attribute set (AliasAttribute, GenerateSerializerAttribute) so
              the Edict.Generators-emitted [Alias] partials compile here. -->
-        <PackageReference Include="Microsoft.Orleans.Sdk" Version="10.1.0" />
+        <PackageReference Include="Microsoft.Orleans.Sdk" />
     </ItemGroup>
 
     <ItemGroup>

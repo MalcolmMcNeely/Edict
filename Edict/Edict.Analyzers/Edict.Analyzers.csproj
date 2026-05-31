@@ -22,8 +22,8 @@
       types by fully-qualified name in the consumer's compilation.
     -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
     </ItemGroup>
 
     <!-- ADR 0014: FQN constants single-sourced; compile-linked into both Roslyn assemblies -->

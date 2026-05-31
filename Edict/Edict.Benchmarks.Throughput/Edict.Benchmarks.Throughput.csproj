@@ -10,11 +10,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Reminders.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Orleans.TestingHost" />
+        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" />
+        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" />
+        <PackageReference Include="Microsoft.Orleans.Reminders.AzureStorage" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     </ItemGroup>
 
     <ItemGroup>

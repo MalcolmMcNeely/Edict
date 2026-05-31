@@ -8,13 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.28.0" />
-        <PackageReference Include="Azure.Storage.Queues" Version="12.26.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Orleans.Server" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Client" Version="10.1.0" />
-        <PackageReference Include="Testcontainers.Azurite" Version="4.12.0" />
+        <PackageReference Include="Azure.Data.Tables" />
+        <PackageReference Include="Azure.Storage.Blobs" />
+        <PackageReference Include="Azure.Storage.Queues" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.Orleans.Server" />
+        <PackageReference Include="Microsoft.Orleans.Client" />
+        <PackageReference Include="Testcontainers.Azurite" />
     </ItemGroup>
 
     <ItemGroup>

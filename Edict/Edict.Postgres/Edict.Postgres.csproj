@@ -12,9 +12,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Npgsql" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Reminders.AdoNet" Version="10.1.0" />
+        <PackageReference Include="Npgsql" />
+        <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" />
+        <PackageReference Include="Microsoft.Orleans.Reminders.AdoNet" />
     </ItemGroup>
 
     <ItemGroup>

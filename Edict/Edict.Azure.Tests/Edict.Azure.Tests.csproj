@@ -8,16 +8,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="FluentValidation" Version="12.1.1" />
-        <PackageReference Include="MessagePack" Version="3.1.6" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
-        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="10.1.0" />
-        <PackageReference Include="Microsoft.Orleans.TestingHost" Version="10.1.0" />
-        <PackageReference Include="Testcontainers.Azurite" Version="4.12.0" />
-        <PackageReference Include="Verify.Xunit" Version="31.12.5" />
-        <PackageReference Include="xunit" Version="2.9.3" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+        <PackageReference Include="FluentValidation" />
+        <PackageReference Include="MessagePack" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" />
+        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" />
+        <PackageReference Include="Microsoft.Orleans.TestingHost" />
+        <PackageReference Include="Testcontainers.Azurite" />
+        <PackageReference Include="Verify.Xunit" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
     </ItemGroup>
 
     <ItemGroup>
