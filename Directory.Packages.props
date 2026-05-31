@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <!--
-    ADR-0049: Microsoft.CodeAnalysis.CSharp default is 5.0.0 — the floor for
-    shipped analyzer/generator assemblies (Edict.Analyzers, Edict.Generators)
-    so they load on the lowest consumer SDK Edict supports. Edict.Mcp,
+    Microsoft.CodeAnalysis.CSharp default is 5.0.0 — the floor for shipped
+    analyzer/generator assemblies (Edict.Analyzers, Edict.Generators) so they
+    load on the lowest consumer SDK Edict supports. Edict.Mcp,
     Edict.Mcp.Tests, Edict.Analyzers.Tests, and Sample.Azure.Silo.Tests
     apply VersionOverride="5.3.0" at their own PackageReference site.
   -->

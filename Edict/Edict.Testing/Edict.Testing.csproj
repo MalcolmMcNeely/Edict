@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <!-- Shipped to consumers as the in-memory Test Framework (ADR 0016). -->
         <IsPackable>true</IsPackable>
         <PackageId>Edict.Testing</PackageId>
         <Description>In-memory TestCluster fixtures, probes, and chaos controls for testing applications built on the Edict CQRS framework. Install this in your test project alongside one streaming and one persistence Edict package.</Description>

@@ -1,24 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Verify.Xunit" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
         <!-- For the EDICT018 packaging integration test below: load the analyzer
              in-process and run it against a consumer-shaped source. -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.3.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <!-- The consumer assembly under test: its grains + generated [assembly: EdictRoutes].
-             Lives in Sample.Domain since #137; Sample.Azure.Silo is the Azure host. -->
+        <!-- The consumer assembly under test: its grains + generated
+             [assembly: EdictRoutes]. Handlers live in Sample.Domain;
+             Sample.Azure.Silo is the Azure host wrapper. -->
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <!-- The shipped in-memory Test Framework. -->
         <ProjectReference Include="../../Edict/Edict.Testing/Edict.Testing.csproj" />

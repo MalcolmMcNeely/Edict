@@ -7,20 +7,14 @@
   </PropertyGroup>
 
   <!--
-    ADR-0034: Interceptor fast-path for consumer-facing dispatch APIs.
-
-    The shipped Edict.Core.targets file is auto-imported by any consumer that
-    PackageReferences Edict.Core. For in-repo ProjectReference consumers the
-    same effect is needed without packing, so we mirror the property here.
-    The unified Edict generator emits per-type Send/Raise/Dispatch interceptor
-    stubs into the `Edict.Generated` namespace; the Roslyn 5.0 C# compiler
-    only recognises `[InterceptsLocation]` attributes whose namespace appears
-    in this list.
-
-    Projects that do not reference the generator (Edict framework assemblies,
-    contracts-only consumers) emit no interceptor files, so the property is a
-    no-op for them. `EdictInterceptorsEnabled=false` makes the generator
-    short-circuit emission and reverts every call site to the registrar.
+    The Roslyn 5.0 compiler only honours [InterceptsLocation] attributes whose
+    containing namespace is listed in InterceptorsNamespaces. The unified
+    generator emits its Send/Raise/Dispatch interceptor stubs into
+    Edict.Generated; for the in-repo ProjectReference path we register that
+    namespace here to mirror what the shipped Edict.Core.targets does for
+    PackageReference consumers. Setting EdictInterceptorsEnabled=false makes
+    the generator short-circuit emission and reverts every call site to the
+    registrar.
   -->
 
   <PropertyGroup>
@@ -33,15 +27,20 @@
   </ItemGroup>
 
   <!--
-    ADR-0043: Lockstep prerelease packaging. The eight shipping packages opt in
-    via <IsPackable>true</IsPackable> in their own csproj; every other csproj
-    inherits the default-false here so dotnet pack only touches the shipping
-    surface. Shipping-package metadata + MinVer/SourceLink wiring live in
-    Directory.Build.targets so they evaluate after the csproj's own
-    PropertyGroup sets IsPackable.
+    The shipping packages opt in via <IsPackable>true</IsPackable> in their
+    own csproj; every other csproj inherits the default-false here so
+    dotnet pack only touches the shipping surface. Shipping-package metadata
+    + MinVer/SourceLink wiring live in Directory.Build.targets so they
+    evaluate after the csproj's own PropertyGroup sets IsPackable.
   -->
   <PropertyGroup>
     <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
 
 </Project>

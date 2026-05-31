@@ -11,8 +11,7 @@
     <ItemGroup>
         <!--
           Orleans.Core provides Orleans.Runtime.RequestContext (client abstractions).
-          Edict.Telemetry must never reference the Orleans server runtime / grain bases
-          (ADR 0014).
+          Edict.Telemetry must never reference the Orleans server runtime / grain bases.
         -->
         <PackageReference Include="Microsoft.Orleans.Core" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />

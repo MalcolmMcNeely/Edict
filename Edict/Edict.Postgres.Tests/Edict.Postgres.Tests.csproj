@@ -1,13 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="FluentValidation" />
         <PackageReference Include="MessagePack" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" />
         <PackageReference Include="Microsoft.Orleans.Reminders.AdoNet" />
         <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" />
@@ -16,8 +11,6 @@
         <PackageReference Include="Testcontainers.Azurite" />
         <PackageReference Include="Testcontainers.PostgreSql" />
         <PackageReference Include="Verify.Xunit" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
     </ItemGroup>
 
     <ItemGroup>

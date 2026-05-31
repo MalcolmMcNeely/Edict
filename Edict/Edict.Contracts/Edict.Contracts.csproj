@@ -10,9 +10,9 @@
 
     <ItemGroup>
         <!--
-          Attributes only (no serializer runtime) so the contract assembly
-          stays Orleans-free per ADR 0005/0008. Version tracks the MessagePack
-          runtime that Microsoft.Orleans.Serialization.MessagePack 9.2.1 pulls.
+          Attributes-only package (no serializer runtime) so the contracts
+          assembly stays Orleans-free. Version tracks the MessagePack runtime
+          that Microsoft.Orleans.Serialization.MessagePack 9.2.1 pulls.
         -->
         <PackageReference Include="MessagePack.Annotations" />
     </ItemGroup>

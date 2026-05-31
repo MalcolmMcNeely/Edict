@@ -42,13 +42,14 @@ public class PackagingRulesTests
     }
 
     [Fact]
-    public void EveryNonShippingCsproj_DeclaresIsPackableFalseExplicitly()
+    public void EveryNonShippingNonTestCsproj_DeclaresIsPackableFalseExplicitly()
     {
         var solutionRoot = GetSolutionRoot();
         var shipping = new HashSet<string>(ShippingPackages, StringComparer.Ordinal);
 
         var violations = EnumerateCsprojs(solutionRoot)
             .Where(csproj => !shipping.Contains(Path.GetFileNameWithoutExtension(csproj)))
+            .Where(csproj => !Path.GetFileNameWithoutExtension(csproj).EndsWith(".Tests", StringComparison.Ordinal))
             .Where(csproj => ReadProperty(csproj, "IsPackable") != "false")
             .Select(csproj => Path.GetFileName(csproj))
             .ToList();

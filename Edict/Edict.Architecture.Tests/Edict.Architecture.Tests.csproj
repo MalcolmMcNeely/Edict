@@ -1,13 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
         <PackageReference Include="TngTech.ArchUnitNET.xUnit" />
     </ItemGroup>
 
@@ -22,7 +15,7 @@
         <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
         <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
-        <!-- Needed for TelemeterizedTagPrefix parity test (issue #173) -->
+        <!-- Needed for the TelemeterizedTagPrefix parity test. -->
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" ReferenceOutputAssembly="true" />
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />

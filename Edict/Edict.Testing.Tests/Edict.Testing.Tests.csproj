@@ -1,15 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
-    </ItemGroup>
-
     <ItemGroup>
         <ProjectReference Include="..\Edict.Testing\Edict.Testing.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />

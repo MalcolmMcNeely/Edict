@@ -20,34 +20,27 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- ADR 0016: the internal/bare Outbox engine is unit-tested in Core.Tests;
-             the Azure provider conformance suite reuses the publish executor -->
+        <!-- Bare Outbox engine + PublishEventExecutor are internal; the unit and
+             provider conformance suites need to drive them directly. -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Tests" />
-        <!-- Edict.Postgres.Tests inherits the Outbox conformance scenarios that
-             register the conformance harness's ControllableOutboxExecutor in
-             place of the internal PublishEventExecutor — same shape as the
-             Azure-side conformance binding. -->
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />
-        <!-- Edict.Kafka.Tests inherits the dead-letter conformance binding via
-             the same Replace-not-Append swap of PublishEventExecutor for
-             ControllableOutboxExecutor. -->
         <InternalsVisibleTo Include="Edict.Kafka.Tests" />
-        <!-- The conformance harness reuses the internal PublishEventExecutor
-             via ControllableOutboxExecutor so every provider's outbox
-             conformance binding drives the real publish executor under test. -->
+        <!-- Conformance harness swaps the internal PublishEventExecutor for
+             ControllableOutboxExecutor so every provider's outbox conformance
+             binding drives the real publish executor under test. -->
         <InternalsVisibleTo Include="Edict.Tests.Conformance" />
-        <!-- The shipped in-memory Test Framework wraps the bare Outbox engine
-             (decorating the internal PublishEvent executor) so consumer code
-             runs the *real* engine under test (ADR 0016/0018). -->
+        <!-- Shipped in-memory Test Framework wraps the bare Outbox engine
+             (decorating the internal PublishEventExecutor) so consumer code
+             runs the real engine under test. -->
         <InternalsVisibleTo Include="Edict.Testing" />
-        <!-- The throughput regression-guard benchmark exercises the internal
+        <!-- Throughput regression-guard benchmark exercises the internal
              OutboxHost drain path so the perf claim sits next to the code,
              not a synthetic seam. -->
         <InternalsVisibleTo Include="Edict.Benchmarks" />
-        <!-- Stream-lag unit test (Slice 3, #178) drives InvokeHandlerExecutor
-             directly with a FakeTimeProvider; the test lives in
-             Edict.Telemetry.Tests next to the existing telemetry suite. -->
+        <!-- Stream-lag unit test drives InvokeHandlerExecutor directly with a
+             FakeTimeProvider; the test lives in Edict.Telemetry.Tests next to
+             the existing telemetry suite. -->
         <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
         <!-- AddEdictAzureStreams constructs the framework-internal
              ClaimCheckPolicy as the publisher-side singleton; the policy stays
@@ -71,8 +64,8 @@
                           PrivateAssets="all" />
     </ItemGroup>
 
-    <!-- ADR-0034: ships Edict.Core.targets so consumers that PackageReference
-         Edict.Core auto-enrol in the interceptors-namespaces gate. -->
+    <!-- Ship Edict.Core.targets so PackageReference consumers auto-enrol in
+         the interceptors-namespaces gate without extra wiring. -->
     <ItemGroup>
         <None Include="build\Edict.Core.targets" Pack="true" PackagePath="build" />
     </ItemGroup>
@@ -81,9 +74,9 @@
         <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
-    <!-- ADR-0043: pack the generator + analyzer assemblies inside the Core
-         nupkg under analyzers/dotnet/cs/ so one Edict.Core PackageReference
-         pulls them in transparently for consumers. -->
+    <!-- Pack the generator + analyzer assemblies inside the Core nupkg under
+         analyzers/dotnet/cs/ so one Edict.Core PackageReference pulls them
+         in transparently for consumers. -->
     <Target Name="PackEdictRoslynAssemblies" BeforeTargets="_GetPackageFiles" DependsOnTargets="ResolveProjectReferences">
         <ItemGroup>
             <_PackageFiles Include="..\Edict.Generators\bin\$(Configuration)\netstandard2.0\Edict.Generators.dll"

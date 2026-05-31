@@ -1,28 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="FluentValidation" />
         <PackageReference Include="MessagePack" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" />
         <PackageReference Include="Verify.Xunit" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
-        <!-- Generators run over this assembly's sample grains (slices 5/6 end-to-end) -->
+        <!-- Generators run over this assembly's in-test sample grains so the
+             end-to-end command/event flow exercises real generated code. -->
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <!-- Analyzers enforce Edict contracts on this assembly's grains/commands/events -->
+        <!-- Analyzers run alongside so the generator's outputs are validated
+             against the analyzer rules in the same compile. -->
         <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 

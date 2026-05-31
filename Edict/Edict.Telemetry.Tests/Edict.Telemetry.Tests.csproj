@@ -1,16 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <IsPackable>false</IsPackable>
-    </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="MessagePack" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio" />
     </ItemGroup>
 
     <ItemGroup>

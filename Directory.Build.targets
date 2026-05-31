@@ -1,9 +1,9 @@
 <Project>
 
   <!--
-    ADR-0043: Shipping-package metadata, MinVer wiring, and SourceLink.
-    Lives in Directory.Build.targets (not .props) so the conditional fires
-    after the csproj's own PropertyGroup has set IsPackable=true.
+    Shipping-package metadata, MinVer wiring, and SourceLink. Lives in
+    Directory.Build.targets (not .props) so the IsPackable=true conditional
+    fires after the csproj's own PropertyGroup has set the property.
   -->
 
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">

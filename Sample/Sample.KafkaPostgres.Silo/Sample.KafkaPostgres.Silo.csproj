@@ -13,12 +13,12 @@
 
     <ItemGroup>
         <!--
-          Same Sample.Domain assembly as Sample.Azure.Silo —
-          the handlers/sagas/projection builders are substrate-agnostic
-          (issue #137 extraction), and this host swaps only the streams +
-          persistence providers via the Edict.Kafka + Edict.Postgres
-          references below. Program.cs reads side-by-side with
-          Sample.Azure.Silo/Program.cs as the substrate-comparison page.
+          Same Sample.Domain assembly as Sample.Azure.Silo — the
+          handlers/sagas/projection builders are substrate-agnostic, and this
+          host swaps only the streams + persistence providers via the
+          Edict.Kafka + Edict.Postgres references below. Program.cs reads
+          side-by-side with Sample.Azure.Silo/Program.cs as the
+          substrate-comparison page.
         -->
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />

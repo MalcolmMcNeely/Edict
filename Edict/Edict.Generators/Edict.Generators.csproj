@@ -12,9 +12,10 @@
     </PropertyGroup>
 
     <!--
-      ADR 0005: this analyzer assembly deliberately does NOT reference
-      Edict.Abstractions (net10.0). It recognises Edict's annotations and base
-      types by fully-qualified name in the consumer's compilation.
+      This generator assembly deliberately does NOT reference Edict.Contracts
+      or any other net10.0 Edict assembly. It recognises Edict's annotations
+      and base types by fully-qualified name in the consumer's compilation,
+      which keeps it loadable on netstandard2.0 SDK hosts.
     -->
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
