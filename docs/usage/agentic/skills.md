@@ -96,5 +96,6 @@ If `IEdictDeadLetterRepository.ListAsync` returns empty when rows obviously exis
 
 - [Setup](setup.md) — install recipe.
 - [MCP tools](mcp-tools.md) — per-tool reference.
+- [Integration](integration.md) — how the bundle slots into an existing planning/design/implementation loop.
 - [Troubleshooting](troubleshooting.md) — version drift.
 - ADRs — [0044 — Agentic tooling](../../adr/0044-agentic-tooling.md).

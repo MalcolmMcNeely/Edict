@@ -39,6 +39,6 @@ The manifest path is the team default because it version-pins the MCP server's e
 
 ## See also
 
-- Agentic tooling — [Skills](skills.md), [MCP tools](mcp-tools.md), [Troubleshooting](troubleshooting.md).
+- Agentic tooling — [Skills](skills.md), [MCP tools](mcp-tools.md), [Integration](integration.md), [Troubleshooting](troubleshooting.md).
 - Per-package install reference — [`Edict.Mcp`](../../../Edict/Edict.Mcp/README.md), [`Edict.ClaudeSkills`](../../../Edict/Edict.ClaudeSkills/README.md).
 - ADRs — [0044 — Agentic tooling](../../adr/0044-agentic-tooling.md).
