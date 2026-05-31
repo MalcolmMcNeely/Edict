@@ -7,6 +7,7 @@ namespace Edict.Mcp.Handlers;
 sealed class HandlerScanner
 {
     const string CommandHandlerOpenGeneric = "Edict.Core.Commands.EdictCommandHandler`1";
+    const string CommandValidatorOpenGeneric = "Edict.Core.Commands.EdictCommandValidator`1";
     const string EventHandlerBase = "Edict.Core.EventHandler.EdictEventHandler";
     const string SagaOpenGeneric = "Edict.Core.Sagas.EdictSaga`1";
     const string ProjectionBuilderBase = "Edict.Core.Projections.EdictProjectionBuilder";
@@ -61,13 +62,13 @@ sealed class HandlerScanner
                 continue;
             }
 
-            entries.Add(BuildEntry(symbol, role.Value, solutionDirectory));
+            entries.Add(BuildEntry(symbol, role.Value, resolver, solutionDirectory));
         }
     }
 
-    static HandlerEntry BuildEntry(INamedTypeSymbol handlerSymbol, HandlerRole role, string? solutionDirectory)
+    static HandlerEntry BuildEntry(INamedTypeSymbol handlerSymbol, HandlerRole role, BaseTypeResolver resolver, string? solutionDirectory)
     {
-        var boundContracts = CollectBoundContracts(handlerSymbol, role);
+        var boundContracts = CollectBoundContracts(handlerSymbol, role, resolver);
         var sourceLocation = ResolveSourceLocation(handlerSymbol, solutionDirectory);
         return new HandlerEntry(
             DeclaringTypeName: handlerSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)),
@@ -77,8 +78,13 @@ sealed class HandlerScanner
             SourceLocation: sourceLocation);
     }
 
-    static IReadOnlyList<BoundContractInfo> CollectBoundContracts(INamedTypeSymbol handlerSymbol, HandlerRole role)
+    static IReadOnlyList<BoundContractInfo> CollectBoundContracts(INamedTypeSymbol handlerSymbol, HandlerRole role, BaseTypeResolver resolver)
     {
+        if (role == HandlerRole.CommandValidator)
+        {
+            return resolver.CollectValidatorBoundCommand(handlerSymbol);
+        }
+
         var expectedContractBase = role == HandlerRole.CommandHandler ? CommandBase : EventBase;
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -210,6 +216,7 @@ sealed class HandlerScanner
     sealed class BaseTypeResolver
     {
         readonly INamedTypeSymbol? commandHandlerOpen;
+        readonly INamedTypeSymbol? commandValidatorOpen;
         readonly INamedTypeSymbol? eventHandlerBase;
         readonly INamedTypeSymbol? sagaOpen;
         readonly INamedTypeSymbol? projectionBuilderBase;
@@ -218,6 +225,7 @@ sealed class HandlerScanner
         public BaseTypeResolver(Compilation compilation)
         {
             commandHandlerOpen = compilation.GetTypeByMetadataName(CommandHandlerOpenGeneric);
+            commandValidatorOpen = compilation.GetTypeByMetadataName(CommandValidatorOpenGeneric);
             eventHandlerBase = compilation.GetTypeByMetadataName(EventHandlerBase);
             sagaOpen = compilation.GetTypeByMetadataName(SagaOpenGeneric);
             projectionBuilderBase = compilation.GetTypeByMetadataName(ProjectionBuilderBase);
@@ -225,6 +233,7 @@ sealed class HandlerScanner
         }
 
         public bool HasAnyBase => commandHandlerOpen is not null
+            || commandValidatorOpen is not null
             || eventHandlerBase is not null
             || sagaOpen is not null
             || projectionBuilderBase is not null
@@ -249,11 +258,37 @@ sealed class HandlerScanner
             {
                 return HandlerRole.EventHandler;
             }
+            if (commandValidatorOpen is not null && DerivesFromOpenGeneric(type, commandValidatorOpen))
+            {
+                return HandlerRole.CommandValidator;
+            }
             if (commandHandlerOpen is not null && DerivesFromOpenGeneric(type, commandHandlerOpen))
             {
                 return HandlerRole.CommandHandler;
             }
             return null;
+        }
+
+        public IReadOnlyList<BoundContractInfo> CollectValidatorBoundCommand(INamedTypeSymbol validatorSymbol)
+        {
+            if (commandValidatorOpen is null)
+            {
+                return [];
+            }
+            for (var current = validatorSymbol.BaseType; current is not null; current = current.BaseType)
+            {
+                if (!SymbolEqualityComparer.Default.Equals(current.OriginalDefinition, commandValidatorOpen))
+                {
+                    continue;
+                }
+                if (current.TypeArguments.Length != 1 || current.TypeArguments[0] is not INamedTypeSymbol boundCommand)
+                {
+                    continue;
+                }
+                var displayName = boundCommand.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted));
+                return [new BoundContractInfo(displayName, FindRouteKeyPropertyName(boundCommand))];
+            }
+            return [];
         }
 
         static bool DerivesFromSymbol(INamedTypeSymbol type, INamedTypeSymbol target)

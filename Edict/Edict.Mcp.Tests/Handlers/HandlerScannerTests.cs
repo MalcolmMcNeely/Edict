@@ -184,6 +184,40 @@ public class HandlerScannerTests
     }
 
     [Fact]
+    public void Scan_CommandValidatorSubclass_ReportsCommandValidatorRoleWithBoundCommand()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Commands;
+            using Edict.Core.Commands;
+
+            namespace Acme.Orders
+            {
+                public sealed record PlaceOrderCommand : EdictCommand
+                {
+                    [EdictRouteKey]
+                    public System.Guid OrderId { get; init; }
+                }
+
+                public sealed class PlaceOrderCommandValidator : EdictCommandValidator<PlaceOrderCommand> { }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Equal("Acme.Orders.PlaceOrderCommandValidator", entry.DeclaringTypeName);
+        Assert.Equal(HandlerRole.CommandValidator, entry.Role);
+        var bound = Assert.Single(entry.BoundContracts);
+        Assert.Equal("Acme.Orders.PlaceOrderCommand", bound.FullTypeName);
+        Assert.Equal("OrderId", bound.RouteKeyPropertyName);
+    }
+
+    [Fact]
     public void Scan_ProjectionBuilderAndTableProjectionBuilder_AreRecognisedAndDistinguishedByRole()
     {
         // Arrange
@@ -388,10 +422,12 @@ public class HandlerScannerTests
 
         namespace Edict.Core.Commands
         {
+            using Edict.Contracts.Commands;
             using Edict.Contracts.Persistence;
             public abstract class EdictCommandHandler<TState> where TState : IEdictPersistedState, new() { }
             public abstract class EdictCommandHandler : EdictCommandHandler<EdictUnit> { }
             public sealed class EdictUnit : IEdictPersistedState { }
+            public abstract class EdictCommandValidator<TCommand> where TCommand : EdictCommand { }
         }
 
         namespace Edict.Core.EventHandler

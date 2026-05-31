@@ -12,7 +12,7 @@ The aggregate already handles `PlaceOrderCommand` and `CancelOrderCommand` and r
 
 Adding a new Command Handler matches `edict-authoring`. The skill prescribes `edict_list_handlers` and `edict_list_route_keys` **before** any code is written, so an existing handler or a Guid-key collision shows up first.
 
-`edict_list_handlers` returns one entry per consumer subclass with its role, bound contracts, route-key property, and source location. The response names `OrderCommandHandler` already bound to `PlaceOrderCommand` and `CancelOrderCommand` — extend that partial, don't write a parallel handler. `edict_list_route_keys` groups by Command/Event and reports `collisions: []`, so reusing `OrderId` is safe.
+`edict_list_handlers` returns one entry per consumer subclass with its role, bound contracts, route-key property, and source location — Command Handler, Command Validator, Event Handler, Saga, Projection Builder, and Table Projection Builder are all reported. The response names `OrderCommandHandler` already bound to `PlaceOrderCommand` and `CancelOrderCommand` — extend that partial, don't write a parallel handler. `edict_list_route_keys` groups by Command/Event and reports `collisions: []`, so reusing `OrderId` is safe.
 
 ### 2. `edict-contracts` fires — glossary first
 

@@ -42,6 +42,10 @@ sealed class ListRouteKeysTool
 
         foreach (var handler in inventory.Handlers)
         {
+            if (handler.Role == HandlerRole.CommandValidator)
+            {
+                continue;
+            }
             foreach (var contract in handler.BoundContracts)
             {
                 if (handler.Role == HandlerRole.CommandHandler)

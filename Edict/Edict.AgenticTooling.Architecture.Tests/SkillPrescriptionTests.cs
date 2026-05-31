@@ -1,6 +1,10 @@
 using System.Text.RegularExpressions;
 
 using Edict.ClaudeSkills;
+using Edict.Mcp.Handlers;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 using Xunit;
 
@@ -48,6 +52,46 @@ public class SkillPrescriptionTests
 
         Assert.Contains("edict_lookup_adr", body, StringComparison.Ordinal);
         Assert.Contains("edict_describe_mcp_state", body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(HandlerRoleNames))]
+    public void EdictMcp_HandlerRole_EveryEnumValueIsCoveredByScanner(string roleName)
+    {
+        var role = Enum.Parse<HandlerRole>(roleName);
+        var consumerSource = HandlerRoleFixtures.ConsumerSourceFor(role);
+        var compilation = CreateCompilation("ConsumerLibrary", HandlerRoleFixtures.EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Equal(role, entry.Role);
+    }
+
+    public static TheoryData<string> HandlerRoleNames()
+    {
+        var data = new TheoryData<string>();
+        foreach (var role in Enum.GetNames<HandlerRole>())
+        {
+            data.Add(role);
+        }
+        return data;
+    }
+
+    static CSharpCompilation CreateCompilation(string assemblyName, params string[] sources)
+    {
+        var references = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => !assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
+            .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
+            .Cast<MetadataReference>()
+            .ToList();
+        var syntaxTrees = sources.Select(source => CSharpSyntaxTree.ParseText(source));
+        return CSharpCompilation.Create(
+            assemblyName,
+            syntaxTrees,
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
     }
 
     static bool IsCoLocatedWithBefore(string body, string toolName)
