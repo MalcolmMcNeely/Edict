@@ -287,6 +287,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Commands.CommandRoute",
         "Edict.Core.Commands.EdictCommandHandler",
         "Edict.Core.Commands.EdictCommandHandler`1",
+        "Edict.Core.Commands.EdictCommandValidator`1",
         "Edict.Core.Commands.EdictSender",
         "Edict.Core.Commands.EdictUnroutableCommandException",
         "Edict.Core.Commands.IEdictCommandHandler",

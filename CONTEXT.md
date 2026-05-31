@@ -4,7 +4,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It provides 
 
 ## Naming convention (brand)
 
-Edict is treated as a brand. A type carries the **`Edict` prefix** if and only if **(a)** a consumer, or its generator-emitted code, types it — derives from it, applies it as an attribute, or receives/returns it — **or (b)** it is an inheritance root shared by the consumer-facing grain bases. Internal infrastructure that satisfies neither stays unprefixed and descriptively named. Consumer subclasses are named `{Name}{Role}` (`OrderCommandHandler`, `OrdersByStatusProjectionBuilder`).
+Edict is treated as a brand. A type carries the **`Edict` prefix** if and only if **(a)** a consumer, or its generator-emitted code, types it — derives from it, applies it as an attribute, or receives/returns it — **or (b)** it is an inheritance root shared by the consumer-facing bases (grain or DI-service). Internal infrastructure that satisfies neither stays unprefixed and descriptively named. Consumer subclasses are named `{Name}{Role}` (`OrderCommandHandler`, `OrdersByStatusProjectionBuilder`, `OrderPlaceCommandValidator`).
 _Avoid_: bare `Command`/`Event` base names; the `Grain` suffix on any Edict abstraction or consumer subclass; prefixing internal types the consumer never references. Raw Orleans test doubles that genuinely derive from `Grain` keep "Grain" — they are not Edict abstractions.
 
 ## Language
@@ -34,8 +34,8 @@ The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with r
 _Avoid_: returning domain payloads through a command; throwing for expected rejection.
 
 **Command Validator**:
-A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `HandleAsync`, answering whether the Command is admissible against current aggregate state.
-_Avoid_: mutating state in a validator; client-side validation; throwing for validation failure; expressing transition-time outcomes (only discoverable while mutating) as validator rules.
+A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `HandleAsync`, answering whether the Command is admissible against current aggregate state. Authored as `{Name}CommandValidator : EdictCommandValidator<TCommand>` — an Edict-owned thin base over `FluentValidation.AbstractValidator<TCommand>`. Discovered automatically by `AddEdict()` from the same assemblies it scans for handlers; no manual DI registration.
+_Avoid_: mutating state in a validator; client-side validation; throwing for validation failure; expressing transition-time outcomes (only discoverable while mutating) as validator rules; deriving consumer validators directly from `AbstractValidator<T>` (use `EdictCommandValidator<T>` so the brand and MCP discovery work).
 
 **Event Handler**:
 A terminal grain that subscribes implicitly to an Event stream and reacts by performing external side effects (sending email, calling an HTTP API, writing to a non-Edict store).

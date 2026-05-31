@@ -1,12 +1,14 @@
+using Edict.Core.Commands;
+
 using FluentValidation;
 
 using Sample.Contracts.Orders.Commands;
 
 namespace Sample.Domain.Orders.Validators;
 
-public sealed class OrderPlaceValidator : AbstractValidator<PlaceOrderCommand>
+public sealed class OrderPlaceCommandValidator : EdictCommandValidator<PlaceOrderCommand>
 {
-    public OrderPlaceValidator()
+    public OrderPlaceCommandValidator()
     {
         RuleFor(x => x.CustomerReference)
             .NotEmpty()

@@ -8,10 +8,10 @@ using Xunit;
 
 namespace Sample.Azure.Silo.Tests.Orders;
 
-public sealed class OrderPlaceValidatorTests
+public sealed class OrderPlaceCommandValidatorTests
 {
     [Fact]
-    public async Task Validator_ShouldReturnRejectedWithMappedReason_WhenCustomerReferenceIsEmpty()
+    public async Task ShouldReturnRejectedWithMappedReason_WhenCustomerReferenceIsEmpty()
     {
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
@@ -24,7 +24,7 @@ public sealed class OrderPlaceValidatorTests
     }
 
     [Fact]
-    public async Task Validator_ShouldAllowHandleToRunAndReturnAccepted_WhenCustomerReferenceIsPresent()
+    public async Task ShouldAllowHandleToRunAndReturnAccepted_WhenCustomerReferenceIsPresent()
     {
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(OrderCommandHandler).Assembly));
