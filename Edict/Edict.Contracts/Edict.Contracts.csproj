@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
         <PackageId>Edict.Contracts</PackageId>
         <Description>Consumer-facing contracts for the Edict CQRS framework: command and event base types, route-key attributes, and rejection model. Reference this from your domain assembly to share contracts with your handlers and tests.</Description>

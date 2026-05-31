@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
         <PackageId>Edict.Telemetry</PackageId>
         <Description>OpenTelemetry types and tag-key constants for the Edict CQRS framework. Covers the edict.* tag taxonomy and the [Telemeterized] attribute consumed by Edict's analyzers and generators.</Description>

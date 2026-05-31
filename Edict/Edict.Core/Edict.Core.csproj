@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <IsPackable>true</IsPackable>
         <PackageId>Edict.Core</PackageId>
         <Description>Core engine for the Edict CQRS framework on Microsoft Orleans: command handlers, sagas, event handlers, projection builders, idempotency, and the outbox engine. Includes the Edict source generators and analyzers, so one reference wires up the full consumer surface.</Description>

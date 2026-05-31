@@ -1,5 +1,11 @@
 <Project>
 
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
   <!--
     ADR-0034: Interceptor fast-path for consumer-facing dispatch APIs.
 
