@@ -60,6 +60,12 @@ internal static class EdictWellKnownNames
     public const string EdictCommandHandlerFqn =
         "global::Edict.Core.Commands.EdictCommandHandler";
 
+    // EdictCommandValidator is open-generic (`1); matched via a generics-stripped
+    // FQN base-chain walk (mirrors EdictSaga), so this name carries no `1 arity
+    // suffix.
+    public const string EdictCommandValidatorFqn =
+        "global::Edict.Core.Commands.EdictCommandValidator";
+
     // ── Edict.Core.Projections ───────────────────────────────────────────────
     public const string EdictProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictProjectionBuilder";
