@@ -28,6 +28,8 @@ This is the load-bearing trigger for this skill: call `edict_describe_silo_wirin
 | `AddEdictPostgresPersistence(...)` | `Edict.Postgres` | PostgreSQL as the grain-state provider. |
 | `AddEdictKafkaStreams(...)` | `Edict.Kafka` | Kafka as the stream provider. |
 
+Command Validators (`EdictCommandValidator<TCommand>` subclasses) are auto-discovered by `AddEdict(assembly)` through FluentValidation's `AddValidatorsFromAssemblies`. No manual DI registration is needed; adding a validator class to the consumer assembly is enough.
+
 ## Supported pairings
 
 Pick exactly one streaming + one persistence:

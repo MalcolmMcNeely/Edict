@@ -28,6 +28,15 @@ public class SkillPrescriptionTests
     }
 
     [Fact]
+    public void EdictAuthoringSkill_DescribesHowToAuthorACommandValidator()
+    {
+        var body = LoadSkillBody("edict-authoring");
+
+        Assert.Contains("EdictCommandValidator", body, StringComparison.Ordinal);
+        Assert.Contains("AbstractValidator", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EdictSiloWiringSkill_CoLocatesDescribeSiloWiringWithBefore()
     {
         var body = LoadSkillBody("edict-silo-wiring");
