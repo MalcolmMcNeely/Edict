@@ -96,7 +96,7 @@ From that one wrapping:
 - **One trace per business flow.** The envelope carries trace context across every async stream hop, so `SendAsync` through to the terminal handler is one OpenTelemetry trace.
 - **Poison messages land in a queryable dead-letter projection.** The aggregate keeps accepting commands; the failure has a forensic home.
 
-The consumer-facing surface is six concepts: **Command Handler**, **Event Handler**, **Saga**, **Projection Builder**, **Sender**, **Stream**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
+The consumer-facing surface is seven concepts: **Command Handler**, **Command Validator**, **Event Handler**, **Saga**, **Projection Builder**, **Sender**, **Stream**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
 
 Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 

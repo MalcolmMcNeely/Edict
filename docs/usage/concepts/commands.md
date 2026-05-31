@@ -38,4 +38,4 @@ A server-side `FluentValidation.IValidator<TCommand>` registered in DI runs as a
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `EdictCommand`, `RouteKey`, `Command Result`, `Command Validator`, `Sender`.
-- Concepts — [events.md](events.md), [sagas.md](sagas.md), [telemetry.md](telemetry.md).
+- Concepts — [validators.md](validators.md), [events.md](events.md), [sagas.md](sagas.md), [telemetry.md](telemetry.md).

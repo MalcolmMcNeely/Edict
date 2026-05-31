@@ -34,6 +34,7 @@
         <button @onclick="OnInjectPoison">Inject Dead Letter</button>
         <button @onclick="OnInject5Mb">Inject 5MB</button>
         <button @onclick="OnInjectSagaReject">Inject saga reject</button>
+        <button @onclick="OnPlaceEmptyReference">Place with Empty Reference</button>
     </section>
 
     @if (!string.IsNullOrEmpty(_message))
@@ -257,6 +258,12 @@
         _message = result is EdictCommandResult.Accepted
             ? "Injected saga reject — a dead-letter row should appear within ~5s."
             : Describe("TriggerSagaFailure", result);
+    }
+
+    async Task OnPlaceEmptyReference()
+    {
+        var result = await Sender.SendAsync(new PlaceOrderCommand(Guid.NewGuid(), string.Empty));
+        _message = Describe("Place", result);
     }
 
     static string FormatShort(Guid id) => id.ToString("N")[..8];

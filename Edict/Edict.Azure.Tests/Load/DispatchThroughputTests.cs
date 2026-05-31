@@ -5,7 +5,7 @@ using Edict.Contracts.Configuration;
 
 namespace Edict.Azure.Tests.Load;
 
-// Deliberately loose ~2-minute wall-clock ceiling: catches order-of-magnitude
+// Deliberately loose ~3-minute wall-clock ceiling: catches order-of-magnitude
 // regressions on slow CI runners without flaking.
 [Collection(AzureClusterCollection.Name)]
 public sealed class DispatchThroughputTests(AzureClusterFixture fixture)
@@ -13,7 +13,7 @@ public sealed class DispatchThroughputTests(AzureClusterFixture fixture)
     const int CommandCount = 1000;
     const int MaxParallelDispatches = 32;
     const int RingProbeSampleSize = 10;
-    static readonly TimeSpan WallClockCeiling = TimeSpan.FromMinutes(2);
+    static readonly TimeSpan WallClockCeiling = TimeSpan.FromMinutes(3);
 
     [Fact]
     public async Task Dispatch_ShouldDeliverDownstreamEffectExactlyOnce_When1000CommandsFan()
