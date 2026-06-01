@@ -39,6 +39,14 @@ jobs:
           mapfile -t projects < <(find . \( -name '*.Tests.csproj' -o -name 'Edict.Tests.Conformance.csproj' \) -not -path '*Edict.Benchmarks.Throughput.Tests*' | sort)
           for project in "${projects[@]}"; do
             echo "::group::Testing $project"
-            dotnet test "$project" --configuration Release --no-build
+            dotnet test "$project" --configuration Release --no-build \
+              --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage"
             echo "::endgroup::"
           done
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ${{ github.workspace }}/coverage
+          fail_ci_if_error: false
