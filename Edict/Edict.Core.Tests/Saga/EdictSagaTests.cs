@@ -14,16 +14,4 @@ public sealed class EdictSagaTests
 
         Assert.Throws<EdictSagaCoordinationException>(() => buffer.Set(new SagaTrackerCommand(Guid.NewGuid())));
     }
-
-    [Fact]
-    public void Set_ShouldSucceedAgain_WhenResetBetweenEvents()
-    {
-        var buffer = new SagaDispatchBuffer();
-
-        buffer.Set(new SagaTrackerCommand(Guid.NewGuid()));
-        buffer.Reset();
-        buffer.Set(new SagaTrackerCommand(Guid.NewGuid()));
-
-        Assert.NotNull(buffer.Take());
-    }
 }

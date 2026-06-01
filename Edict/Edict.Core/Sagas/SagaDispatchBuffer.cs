@@ -21,8 +21,6 @@ sealed class SagaDispatchBuffer
         _pending = command;
     }
 
-    public void Reset() => _pending = null;
-
     public EdictCommand? Take()
     {
         var command = _pending;

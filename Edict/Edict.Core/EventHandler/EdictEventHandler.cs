@@ -72,10 +72,8 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
             return;
         }
 
-        Commit(edictEvent.EventId);
-
         var entry = BuildInvokeHandlerEntry(edictEvent);
-        await Host.EnqueueAndDrainAsync([entry]);
+        await CommitAndPersistAsync(edictEvent.EventId, entry);
     }
 
     OutboxEntry BuildInvokeHandlerEntry(EdictEvent edictEvent)

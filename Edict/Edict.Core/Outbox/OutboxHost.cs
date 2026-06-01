@@ -125,6 +125,47 @@ sealed class OutboxHost<TPayload>
         await DrainAsync();
     }
 
+    /// <summary>
+    /// Atomic consumer-commit boundary. Applies the caller's in-memory progress
+    /// mutation (the dedup-ring slot, optimistically advanced so a concurrent
+    /// redelivery of the same in-flight event is suppressed before it can race a
+    /// second write) and any staged effect, then commits
+    /// <c>{ Payload, Outbox, Idempotency }</c> in one write — preserving
+    /// ring-equals-row atomicity. A write fault rolls the progress mutation and
+    /// the staged effect back and rethrows, so once the failure is durable a
+    /// genuine redelivery is re-dispatched rather than suppressed against an id
+    /// the store never persisted. The staged effect drains after a successful
+    /// write, inheriting the engine's at-least-once per-entry retry.
+    /// </summary>
+    public async Task CommitProgressAndDrainAsync(
+        Action applyProgress,
+        Action rollbackProgress,
+        OutboxEntry? stagedEffect)
+    {
+        var outboxBeforeCommit = State.Outbox;
+        applyProgress();
+        if (stagedEffect is { } effect)
+        {
+            State.Outbox = State.Outbox.Enqueue(effect with { EnqueuedAt = _timeProvider.GetUtcNow() });
+        }
+
+        try
+        {
+            await WriteStateAndReportAsync();
+        }
+        catch
+        {
+            rollbackProgress();
+            State.Outbox = outboxBeforeCommit;
+            throw;
+        }
+
+        if (stagedEffect is not null)
+        {
+            await DrainAsync();
+        }
+    }
+
     /// <summary>Removes this grain's cache entry. Called by the hosting base's
     /// <c>OnDeactivateAsync</c> so a deactivated grain stops contributing to
     /// the per-type aggregate.</summary>

@@ -165,10 +165,13 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// the gap between FakeTimeProvider firing a grain timer and the resulting
     /// grain method landing on the scheduler.
     /// </summary>
-    public async Task Drain()
+    public Task Drain() => Drain(TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(500));
+
+    // The 30s timeout and 500ms stability window are tuned for slow CI runners
+    // and are the shipped values; this overload exists so a test that drives a
+    // deliberately non-settling workflow can assert the timeout path in seconds.
+    internal async Task Drain(TimeSpan timeout, TimeSpan stableWindow)
     {
-        var timeout = TimeSpan.FromSeconds(30);
-        var stableWindow = TimeSpan.FromMilliseconds(500);
         var start = DateTime.UtcNow;
         var executor = _context.PublishExecutor;
         var cache = _context.MetricsCache;
@@ -177,6 +180,8 @@ public sealed class EdictTestApp : IAsyncDisposable
 
         while (DateTime.UtcNow - start < timeout)
         {
+            executor?.FirstFault?.Throw();
+
             var inflight = executor?.OutstandingDispatches ?? 0;
             var held = executor?.HeldCount ?? 0;
             var pending = cache?.GetOutboxStateAggregate().TotalPending ?? 0;
@@ -191,6 +196,10 @@ public sealed class EdictTestApp : IAsyncDisposable
             if (inflight == 0 && held == 0 && pending == 0
                 && DateTime.UtcNow - lastChange >= stableWindow)
             {
+                // A fault captured as the final dispatch decremented the counter
+                // is published-before that decrement, so it is visible now the
+                // counter reads zero: surface it rather than returning clean.
+                executor?.FirstFault?.Throw();
                 return;
             }
 
@@ -204,6 +213,17 @@ public sealed class EdictTestApp : IAsyncDisposable
 
             await Task.Delay(10);
         }
+
+        executor?.FirstFault?.Throw();
+
+        var outstanding = executor?.OutstandingDispatches ?? 0;
+        var heldDepth = executor?.HeldCount ?? 0;
+        var pendingEntries = cache?.GetOutboxStateAggregate().TotalPending ?? 0;
+        var timelineEntries = _context.Recorder.Count;
+        throw new TimeoutException(
+            $"Drain did not settle within {timeout.TotalSeconds:0}s: outstanding dispatches {outstanding}, held queue depth {heldDepth}, " +
+            $"pending outbox entries {pendingEntries}, timeline entries {timelineEntries}. A HandleAsync that never returns, or an effect " +
+            "that never drains (e.g. a backoff retry awaiting an AdvanceClock the test never calls), leaves the engine non-quiescent.");
     }
 
     /// <summary>

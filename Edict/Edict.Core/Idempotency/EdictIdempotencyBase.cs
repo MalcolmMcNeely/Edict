@@ -198,8 +198,6 @@ public abstract class EdictIdempotencyBase<TPayload>
             return;
         }
 
-        Commit(envelope.EventId);
-
         var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
         // Prefer the envelope's embedded trace ids (stamped by
@@ -234,7 +232,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             TraceState = traceState,
         };
 
-        await Host.EnqueueAndDrainAsync([entry]);
+        await CommitAndPersistAsync(envelope.EventId, entry);
     }
 
     /// <summary>
@@ -273,22 +271,14 @@ public abstract class EdictIdempotencyBase<TPayload>
 
         if (outcome.Handled)
         {
-            Commit(edictEvent.EventId);
-
-            // The ring slot and any outbox effect the dispatch staged commit
-            // in the SAME one WriteStateAsync: a Table Projection Builder's
-            // row write is an UpsertRow effect atomic with this ring commit,
-            // then drained at-least-once — closing the table-projection
-            // double-apply gap. Plain consumers stage nothing, so the path
-            // stays a single ring-only write with no engine/reminder churn.
-            if (outcome.StagedEffect is { } effect)
-            {
-                await Host.EnqueueAndDrainAsync([effect]);
-            }
-            else
-            {
-                await WriteStateAsync();
-            }
+            // The ring slot and any outbox effect the dispatch staged commit in
+            // the SAME one write — a Table Projection Builder's row write is an
+            // UpsertRow effect atomic with this ring commit, then drained
+            // at-least-once. Plain consumers stage nothing, so the path stays a
+            // single ring-only write with no engine/reminder churn. The
+            // dedup-window mirror is confirmed only after that write lands, so a
+            // write fault re-dispatches the redelivery instead of suppressing it.
+            await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
         }
     }
 
@@ -334,17 +324,31 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     private protected bool Contains(Guid eventId) => _dedupMirror!.Contains(eventId);
 
-    private protected void Commit(Guid eventId)
+    /// <summary>
+    /// Commits the dedup-window slot for <paramref name="eventId"/> and any
+    /// staged effect through the host's atomic-write boundary. The persisted ring
+    /// slot and the in-memory mirror are advanced together before the write, so a
+    /// concurrent redelivery of the same in-flight event is suppressed; a write
+    /// fault rolls the ring back and rebuilds the mirror from it, so once the
+    /// failure is durable a genuine redelivery is re-dispatched rather than
+    /// suppressed against an id the store never persisted — at-least-once is
+    /// preserved.
+    /// </summary>
+    private protected Task CommitAndPersistAsync(Guid eventId, OutboxEntry? stagedEffect)
     {
-        Idempotency.HandledEventIds[Idempotency.Head] = eventId;
-        Idempotency.Head = (Idempotency.Head + 1) % WindowSize;
-
-        if (Idempotency.Count < WindowSize)
-        {
-            Idempotency.Count++;
-        }
-
-        _dedupMirror!.Commit(eventId);
+        DedupRing.Revert revert = default;
+        return Host.CommitProgressAndDrainAsync(
+            applyProgress: () =>
+            {
+                revert = DedupRing.Apply(Idempotency, WindowSize, eventId);
+                _dedupMirror!.Commit(eventId);
+            },
+            rollbackProgress: () =>
+            {
+                DedupRing.RollBack(Idempotency, revert);
+                _dedupMirror!.Activate(Idempotency.HandledEventIds, Idempotency.Head, Idempotency.Count);
+            },
+            stagedEffect: stagedEffect);
     }
 
     private protected static void EmitDedupSpan(EdictEvent edictEvent)

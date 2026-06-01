@@ -1,3 +1,5 @@
+using System.Runtime.ExceptionServices;
+
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.Idempotency;
@@ -39,8 +41,17 @@ sealed class InProcPublishExecutor(
     readonly HeldQueue _held = new();
     readonly Lock _heldLock = new();
     int _outstandingDispatches;
+    ExceptionDispatchInfo? _firstFault;
 
     public int OutstandingDispatches => Volatile.Read(ref _outstandingDispatches);
+
+    /// <summary>
+    /// The first dispatch fault that escaped a fire-and-forget delivery, captured
+    /// with its original stack so <c>Drain</c> can rethrow it unwrapped. Null
+    /// until a saga/projection <c>HandleAsync</c> throws (or an
+    /// <c>InconsistentStateException</c> outlives every retry).
+    /// </summary>
+    public ExceptionDispatchInfo? FirstFault => Volatile.Read(ref _firstFault);
 
     public int HeldCount
     {
@@ -181,6 +192,16 @@ sealed class InProcPublishExecutor(
                     await Task.Delay(10);
                 }
             }
+        }
+        catch (Exception dispatchException)
+        {
+            // A saga/projection HandleAsync throw (or an InconsistentStateException
+            // that outlived every retry) propagates out of the grain call here. In
+            // production the consumer's stream would redeliver; the harness has no
+            // such redelivery, so without capture the fault escapes onto the
+            // unobserved task and Drain settles as if the event were delivered.
+            // First writer wins so the earliest fault is the one Drain reports.
+            Interlocked.CompareExchange(ref _firstFault, ExceptionDispatchInfo.Capture(dispatchException), null);
         }
         finally
         {
