@@ -1,6 +1,6 @@
 # Edict.Azure.Streaming
 
-Azure Queue Storage stream provider and blob-based claim-check store for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Azure.Streaming is its Azure Queue Storage stream provider and blob-based claim-check store.
 
 Pair this with any Edict persistence package — `Edict.Azure.Persistence` for an all-Azure deployment, or `Edict.Postgres` for AQS streaming with Postgres state.
 

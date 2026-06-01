@@ -1,6 +1,6 @@
 # Edict.Kafka
 
-Apache Kafka stream provider for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Kafka is its Apache Kafka stream provider.
 
 Pair this with any Edict persistence package — `Edict.Postgres` for a Kafka + Postgres deployment, or `Edict.Azure.Persistence` for Kafka streaming with Azure state.
 

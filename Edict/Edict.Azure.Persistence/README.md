@@ -1,6 +1,6 @@
 # Edict.Azure.Persistence
 
-Azure Table Storage projection store, Orleans grain persistence, and reminders for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Azure.Persistence is its Azure Table Storage projection store, Orleans grain persistence, and reminders.
 
 Pair this with any Edict streaming package — `Edict.Azure.Streaming` for an all-Azure deployment, or `Edict.Kafka` for Kafka streaming with Azure state.
 

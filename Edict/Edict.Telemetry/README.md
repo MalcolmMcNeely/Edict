@@ -1,8 +1,8 @@
 # Edict.Telemetry
 
-OpenTelemetry types and the `edict.*` tag taxonomy for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Telemetry carries its OpenTelemetry types and `edict.*` tag taxonomy — the `[Telemeterized]` attribute, the canonical tag-key constants, and the metric instruments emitted by the framework.
 
-This package carries the `[Telemeterized]` attribute, the canonical tag-key constants, and the metric instruments emitted by the framework. It is a transitive dependency of `Edict.Core` — most consumers never reference it directly.
+It is a transitive dependency of `Edict.Core` — most consumers never reference it directly.
 
 ## Install
 

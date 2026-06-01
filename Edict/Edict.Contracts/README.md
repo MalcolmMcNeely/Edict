@@ -1,8 +1,8 @@
 # Edict.Contracts
 
-Consumer-facing contracts for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework on Microsoft Orleans.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Contracts is its consumer-typed wire surface — command and event base types, the `[EdictRouteKey]` and `[EdictStream]` attributes, and the rejection model.
 
-This package carries the command and event base types, the `[EdictRouteKey]` and `[EdictStream]` attributes, and the rejection model. Reference it from any assembly that defines or consumes Edict commands and events — your contracts assembly, your domain assembly, your tests.
+Reference this package from any assembly that defines or consumes Edict commands and events — your contracts assembly, your domain assembly, your tests.
 
 ## Install
 

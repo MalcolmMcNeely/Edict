@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml)
 
+Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
+
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
 Using Claude Code? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
@@ -9,8 +11,6 @@ Using Claude Code? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.
 Using Cursor or another MCP-capable editor? See [`docs/usage/agentic/troubleshooting.md`](docs/usage/agentic/troubleshooting.md). Only the MCP server auto-wires; the skill bundle ships as plain markdown any agent can read.
 
 Curious how this was built? See [How this was built](#how-this-was-built) below.
-
-A CQRS, event-driven framework for Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
 
 ```csharp
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>

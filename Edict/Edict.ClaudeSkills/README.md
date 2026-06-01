@@ -1,6 +1,6 @@
 # Edict.ClaudeSkills
 
-Installer that drops the [Edict](https://github.com/MalcolmMcNeely/Edict) consumer-facing skill bundle into `.claude/skills/` and wires `Edict.Mcp` into `.mcp.json`. Install as a `dotnet tool` and run `edict-skills install` from your repo root so Claude Code knows when to reach for which Edict-specific MCP tool while authoring code, contracts, silo wiring, tests, and diagnostics.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.ClaudeSkills is the installer that drops Edict's consumer-facing skill bundle into `.claude/skills/` and wires `Edict.Mcp` into `.mcp.json`. Install as a `dotnet tool` and run `edict-skills install` from your repo root so Claude Code knows when to reach for which Edict-specific MCP tool while authoring code, contracts, silo wiring, tests, and diagnostics.
 
 Requires the .NET 10 SDK on the developer machine.
 

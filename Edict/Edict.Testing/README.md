@@ -1,8 +1,8 @@
 # Edict.Testing
 
-In-memory test framework for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Testing is its in-memory test framework — TestCluster fixtures, projection and saga probes, a deterministic-timeline alternative to `Task.Delay`, and the chaos controls (bounded reorder, duplicate delivery) that model at-least-once delivery.
 
-This package carries TestCluster fixtures, projection and saga probes, a deterministic-timeline alternative to `Task.Delay`, and the chaos controls (bounded reorder, duplicate delivery) that model at-least-once delivery. Install it in your test project alongside one Edict streaming and one Edict persistence package.
+Install it in your test project alongside one Edict streaming and one Edict persistence package.
 
 ## Install
 

@@ -1,6 +1,6 @@
 # Edict.Postgres
 
-PostgreSQL projection store, Orleans grain persistence, and reminders for the [Edict](https://github.com/MalcolmMcNeely/Edict) CQRS framework.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Postgres is its PostgreSQL projection store, Orleans grain persistence, and reminders.
 
 Pair this with any Edict streaming package — `Edict.Kafka` for a Kafka + Postgres deployment, or `Edict.Azure.Streaming` for AQS streaming with Postgres state.
 
