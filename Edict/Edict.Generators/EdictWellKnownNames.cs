@@ -115,4 +115,10 @@ internal static class EdictWellKnownNames
 
     public const string TaskOfEdictCommandResultFqn =
         "global::System.Threading.Tasks.Task<global::Edict.Contracts.Commands.EdictCommandResult>";
+
+    public const string TaskOfEdictDispatchOutcomeFqn =
+        "global::System.Threading.Tasks.Task<global::Edict.Core.Idempotency.EdictDispatchOutcome>";
+
+    public const string EdictDispatchOutcomeNotHandledFqn =
+        "global::Edict.Core.Idempotency.EdictDispatchOutcome.NotHandled";
 }

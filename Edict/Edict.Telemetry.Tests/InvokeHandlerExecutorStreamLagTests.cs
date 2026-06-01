@@ -49,7 +49,7 @@ public sealed class InvokeHandlerExecutorStreamLagTests
             Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters, time);
         await executor.ExecuteAsync(
             entry, NullStreamProvider.Instance,
-            _ => Task.CompletedTask,
+            _ => Task.FromResult<Edict.Core.Outbox.OutboxEntry?>(null),
             consumerType: typeof(LagSampleConsumer),
             liveWireEvent: null);
 

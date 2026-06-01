@@ -194,6 +194,6 @@ public sealed class AzureBlobMissingConsumer : EdictIdempotencyBase, IAzureBlobM
     public Task ForceDrainViaReminderAsync() =>
         ReceiveReminder("edict-outbox-drain", new TickStatus());
 
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent) =>
-        Task.FromResult(false);
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent) =>
+        Task.FromResult(EdictDispatchOutcome.NotHandled);
 }

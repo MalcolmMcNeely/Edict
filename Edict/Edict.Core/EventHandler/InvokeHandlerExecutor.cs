@@ -25,10 +25,10 @@ sealed class InvokeHandlerExecutor(
 
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
-    public async Task ExecuteAsync(
+    public async Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         EdictEvent? liveWireEvent)
     {
@@ -58,7 +58,12 @@ sealed class InvokeHandlerExecutor(
         var startTimestamp = Stopwatch.GetTimestamp();
         try
         {
-            await deferredDispatch!(materialised);
+            // A deferred saga / table-projection dispatch stages its downstream
+            // effect (SendCommand / UpsertRow) and returns it here; the host
+            // enqueues it into the same write that acks this InvokeHandler
+            // entry. Event handlers and the in-memory projection builder return
+            // null.
+            return await deferredDispatch!(materialised);
         }
         finally
         {

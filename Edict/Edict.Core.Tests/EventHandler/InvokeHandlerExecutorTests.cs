@@ -42,7 +42,7 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters, TimeProvider.System);
         await executor.ExecuteAsync(
-            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
+            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.FromResult<OutboxEntry?>(null); }, consumerType: typeof(object), liveWireEvent: null);
 
         await Verify(dispatched).DontScrubGuids();
     }
@@ -71,9 +71,45 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store), NoWriters, TimeProvider.System);
         await executor.ExecuteAsync(
-            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.CompletedTask; }, consumerType: typeof(object), liveWireEvent: null);
+            entry, NullStreamProvider.Instance, e => { dispatched.Add(e); return Task.FromResult<OutboxEntry?>(null); }, consumerType: typeof(object), liveWireEvent: null);
 
         await Verify(dispatched).DontScrubGuids();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldReturnStagedEffect_WhenDeferredDispatchStagesOne()
+    {
+        // Arrange
+        var edictEvent = new OrderPlacedEvent(
+            OrderId: new Guid("44444444-4444-4444-4444-444444444444"),
+            Sku: "SAGA")
+        {
+            EventId = new Guid("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+        };
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
+        var entry = new OutboxEntry
+        {
+            EntryId = new Guid("99999999-9999-9999-9999-999999999999"),
+            Kind = OutboxEffectKind.InvokeHandler,
+            Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
+        };
+        var stagedEffect = new OutboxEntry
+        {
+            EntryId = new Guid("12121212-1212-1212-1212-121212121212"),
+            Kind = OutboxEffectKind.SendCommand,
+            Payload = [7],
+        };
+
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters, TimeProvider.System);
+
+        // Act
+        var returned = await executor.ExecuteAsync(
+            entry, NullStreamProvider.Instance,
+            _ => Task.FromResult<OutboxEntry?>(stagedEffect),
+            consumerType: typeof(object), liveWireEvent: null);
+
+        // Assert
+        Assert.Same(stagedEffect, returned);
     }
 
     [Fact]
@@ -91,7 +127,7 @@ public sealed class InvokeHandlerExecutorTests
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(new InMemoryClaimCheckStore()), NoWriters, TimeProvider.System);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null));
+            executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.FromResult<OutboxEntry?>(null), consumerType: typeof(object), liveWireEvent: null));
     }
 
     [Fact]
@@ -128,7 +164,7 @@ public sealed class InvokeHandlerExecutorTests
 
         var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters, TimeProvider.System);
 
-        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.CompletedTask, consumerType: typeof(object), liveWireEvent: null);
+        await executor.ExecuteAsync(entry, NullStreamProvider.Instance, _ => Task.FromResult<OutboxEntry?>(null), consumerType: typeof(object), liveWireEvent: null);
 
         // Filter by operation name — parallel tests sharing the process-wide
         // ActivityListener mechanism may surface unrelated edict.* spans here.

@@ -300,6 +300,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.EdictServiceCollectionExtensions",
         "Edict.Core.EdictSiloBuilderExtensions",
         "Edict.Core.EventHandler.EdictEventHandler",
+        "Edict.Core.Idempotency.EdictDispatchOutcome", // Return type of the generated DispatchAsync override — public so consumer-assembly codegen can name it; [EditorBrowsable(Never)].
         "Edict.Core.Idempotency.EdictIdempotencyBase",
         "Edict.Core.Idempotency.EdictIdempotencyBase`1",
         "Edict.Core.Idempotency.IEdictEventConsumer",

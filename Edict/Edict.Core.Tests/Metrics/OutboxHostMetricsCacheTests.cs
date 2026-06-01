@@ -133,8 +133,8 @@ public sealed class OutboxHostMetricsCacheTests
     sealed class SuccessfulExecutor : IOutboxEffectExecutor
     {
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
-            Task.CompletedTask;
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
+            Task.FromResult<OutboxEntry?>(null);
     }
 
     sealed class RecordingExecutor : IOutboxEffectExecutor
@@ -142,10 +142,10 @@ public sealed class OutboxHostMetricsCacheTests
         readonly List<OutboxEntry> _invocations = [];
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
         public IReadOnlyList<OutboxEntry> Invocations => _invocations;
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
         {
             _invocations.Add(entry);
-            return Task.CompletedTask;
+            return Task.FromResult<OutboxEntry?>(null);
         }
     }
 

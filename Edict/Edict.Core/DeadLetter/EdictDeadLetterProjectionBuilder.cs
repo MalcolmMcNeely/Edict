@@ -1,5 +1,6 @@
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Core.Idempotency;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
 using Edict.Telemetry;
@@ -46,7 +47,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
         return Task.CompletedTask;
     }
 
-    protected override async Task<bool> DispatchAsync(EdictEvent edictEvent)
+    protected override async Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
         switch (edictEvent)
         {
@@ -55,11 +56,10 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
                 var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                 using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
                     nameof(EdictDeadLetterRaised), parentContext);
-                await DispatchEventAsync(raised, HandleAsync);
-                return true;
+                return await DispatchEventAsync(raised, HandleAsync);
             }
             default:
-                return false;
+                return EdictDispatchOutcome.NotHandled;
         }
     }
 }

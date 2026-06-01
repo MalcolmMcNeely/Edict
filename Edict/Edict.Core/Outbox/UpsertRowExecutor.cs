@@ -17,10 +17,10 @@ sealed class UpsertRowExecutor(
 {
     public OutboxEffectKind Kind => OutboxEffectKind.UpsertRow;
 
-    public async Task ExecuteAsync(
+    public async Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         EdictEvent? liveWireEvent)
     {
@@ -39,5 +39,6 @@ sealed class UpsertRowExecutor(
 
         var factory = services.GetRequiredService<IEdictTableStoreFactory>();
         await factory.UpsertRowAsync(effect.TableName, effect.PartitionKey, effect.RowKey, row);
+        return null;
     }
 }

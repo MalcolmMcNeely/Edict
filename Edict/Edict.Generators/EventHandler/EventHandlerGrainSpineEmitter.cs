@@ -43,10 +43,9 @@ internal static class EventHandlerGrainSpineEmitter
             dispatchArms
                 .Append("                case ").Append(handler.EventFqn).Append(" typed:\n")
                 .Append("                {\n")
-                .Append("                    await DispatchEventAsync(typed, ")
+                .Append("                    return await DispatchEventAsync(typed, ")
                 .Append(EdictWellKnownNames.HandleMethodName)
                 .Append(");\n")
-                .Append("                    return true;\n")
                 .Append("                }\n");
         }
 
@@ -74,14 +73,14 @@ internal static class EventHandlerGrainSpineEmitter
                         };
                     }
 
-                    protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
+                    protected override async {{EdictWellKnownNames.TaskOfEdictDispatchOutcomeFqn}} DispatchAsync(
                         global::Edict.Contracts.Events.EdictEvent edictEvent)
                     {
                         switch (edictEvent)
                         {
             {{dispatchArms.ToString().TrimEnd('\n')}}
                             default:
-                                return false;
+                                return {{EdictWellKnownNames.EdictDispatchOutcomeNotHandledFqn}};
                         }
                     }
                 }

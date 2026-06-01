@@ -24,10 +24,10 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
     [SuppressMessage(
         "Edict", "EDICT015",
         Justification = "Framework deferred dispatch from persisted state — base-typed by design.")]
-    public async Task ExecuteAsync(
+    public async Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         EdictEvent? liveWireEvent)
     {
@@ -39,5 +39,6 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
 
         var sender = services.GetRequiredService<IEdictSender>();
         await sender.SendAsync(command);
+        return null;
     }
 }

@@ -238,14 +238,15 @@ public abstract class EdictIdempotencyBase<TPayload>
     }
 
     /// <summary>
-    /// Implemented by the concrete subclass (or a future generator) to dispatch
-    /// the incoming event to a strongly typed handler. Returns <c>true</c> if
-    /// the event was handled (ring slot consumed on success), <c>false</c> if
-    /// the event type is not handled by this consumer (no ring slot consumed).
-    /// A thrown exception leaves the <see cref="EdictEvent.EventId"/> uncommitted so
-    /// Orleans redelivers.
+    /// Implemented by the generated spine to dispatch the incoming event to a
+    /// strongly typed handler. The returned <see cref="EdictDispatchOutcome"/>
+    /// reports whether the type matched a handler arm (ring slot consumed on
+    /// success) and carries the single downstream effect a saga or
+    /// table-projection builder staged during the handler. A thrown exception
+    /// leaves the <see cref="EdictEvent.EventId"/> uncommitted so Orleans
+    /// redelivers.
     /// </summary>
-    protected abstract Task<bool> DispatchAsync(EdictEvent edictEvent);
+    protected abstract Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent);
 
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by the bifurcation for the
@@ -268,53 +269,47 @@ public abstract class EdictIdempotencyBase<TPayload>
             return;
         }
 
-        var handled = await DispatchAsync(edictEvent);
+        var outcome = await DispatchAsync(edictEvent);
 
-        if (handled)
+        if (outcome.Handled)
         {
             Commit(edictEvent.EventId);
 
-            // The ring slot and any outbox effect the subclass staged commit
+            // The ring slot and any outbox effect the dispatch staged commit
             // in the SAME one WriteStateAsync: a Table Projection Builder's
             // row write is an UpsertRow effect atomic with this ring commit,
             // then drained at-least-once — closing the table-projection
             // double-apply gap. Plain consumers stage nothing, so the path
             // stays a single ring-only write with no engine/reminder churn.
-            var entries = CollectPendingOutboxEntries();
-            if (entries.Count == 0)
+            if (outcome.StagedEffect is { } effect)
             {
-                await WriteStateAsync();
+                await Host.EnqueueAndDrainAsync([effect]);
             }
             else
             {
-                await Host.EnqueueAndDrainAsync(entries);
+                await WriteStateAsync();
             }
         }
     }
 
     /// <summary>
-    /// Hook for a subclass to contribute durable side-effects staged during
-    /// dispatch (the Table Projection Builder's <see cref="OutboxEffectKind.UpsertRow"/>
-    /// entry, a saga's <see cref="OutboxEffectKind.SendCommand"/> entry).
-    /// Returning a non-empty list routes the ring commit through the Outbox
-    /// host so the ring slot and the effect commit atomically in one write.
-    /// The default is empty — event handlers and the in-memory projection
-    /// builder keep the ring-only commit unchanged.
-    /// </summary>
-    protected virtual IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries() => [];
-
-    /// <summary>
     /// Called by the generated <c>DispatchAsync</c> for each matched event type.
-    /// The default passes the event directly to <paramref name="handler"/>.
-    /// <c>EdictTableProjectionBuilder&lt;T&gt;</c> wraps it with
-    /// load-apply-writeback; <c>EdictSaga&lt;TProgress&gt;</c> wraps
-    /// it to reset the single outbound-command buffer per event.
-    /// Lives on the shared idempotency root so every consumer role — handler,
-    /// projection builder, saga — shares one dispatch seam.
+    /// The default passes the event directly to <paramref name="handler"/> and
+    /// stages no effect. <c>EdictTableProjectionBuilder&lt;T&gt;</c> wraps it
+    /// with load-apply-writeback and returns an
+    /// <see cref="OutboxEffectKind.UpsertRow"/> effect;
+    /// <c>EdictSaga&lt;TProgress&gt;</c> wraps it to buffer the single outbound
+    /// command and returns a <see cref="OutboxEffectKind.SendCommand"/> effect.
+    /// The effect rides the return value — never a grain field — so a parallel
+    /// deferred drain cannot lose or cross-wire it. Lives on the shared
+    /// idempotency root so every consumer role shares one dispatch seam.
     /// </summary>
-    protected virtual Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
+    protected virtual async Task<EdictDispatchOutcome> DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
         where TEvent : EdictEvent
-        => handler(edictEvent);
+    {
+        await handler(edictEvent);
+        return EdictDispatchOutcome.HandledWithNoEffect;
+    }
 
     private protected void EnsureWindowInitialized()
     {
@@ -373,7 +368,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
-            deferredDispatch: edictEvent => DispatchAsync(edictEvent),
+            deferredDispatch: async edictEvent => (await DispatchAsync(edictEvent)).StagedEffect,
             consumerType: GetType(),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
 }

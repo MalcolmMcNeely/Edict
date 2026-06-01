@@ -81,8 +81,8 @@ public class OutboxDrainBenchmarks
     sealed class NoopExecutor : IOutboxEffectExecutor
     {
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
-            Task.CompletedTask;
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
+            Task.FromResult<OutboxEntry?>(null);
     }
 
     sealed class NoopPromoter : IDeadLetterPromoter

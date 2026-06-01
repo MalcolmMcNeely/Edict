@@ -102,7 +102,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             promoter,
             grainKey: "11111111-1111-1111-1111-111111111111",
             grainTypeName: "Sample.OrderEmailHandler",
-            deferredDispatch: _ => Task.CompletedTask,
+            deferredDispatch: _ => Task.FromResult<OutboxEntry?>(null),
             consumerType: typeof(AzureBlobMissingEnginePathConformanceTests));
 
         await host.DrainAsync();
@@ -145,12 +145,12 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         public List<EdictDeadLetterRaised> Published { get; } = [];
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-        public Task ExecuteAsync(
-            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+        public Task<OutboxEntry?> ExecuteAsync(
+            OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
         {
             var raised = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
             Published.Add(Assert.IsType<EdictDeadLetterRaised>(raised));
-            return Task.CompletedTask;
+            return Task.FromResult<OutboxEntry?>(null);
         }
     }
 }

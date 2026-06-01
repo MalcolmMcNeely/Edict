@@ -29,8 +29,8 @@ sealed class InProcInvokeHandlerExecutor(
 {
     public OutboxEffectKind Kind => OutboxEffectKind.InvokeHandler;
 
-    public async Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+    public async Task<OutboxEntry?> ExecuteAsync(
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         if (deferredDispatch is null)
         {
@@ -46,8 +46,10 @@ sealed class InProcInvokeHandlerExecutor(
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
             materialised.GetType().Name, parentContext);
 
-        await deferredDispatch(materialised);
+        var stagedEffect = await deferredDispatch(materialised);
 
         recorder.RecordInvocation(materialised.GetType().Name, materialised.EventId, "Ran");
+
+        return stagedEffect;
     }
 }

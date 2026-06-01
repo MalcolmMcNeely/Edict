@@ -164,8 +164,8 @@ public sealed class OutboxHostTests
     sealed class SuccessfulExecutor : IOutboxEffectExecutor
     {
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
-            Task.CompletedTask;
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent) =>
+            Task.FromResult<OutboxEntry?>(null);
     }
 
     sealed class RecordingExecutor : IOutboxEffectExecutor
@@ -174,10 +174,10 @@ public sealed class OutboxHostTests
         public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
         public IReadOnlyList<OutboxEntry> Invocations => _invocations;
 
-        public Task ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
         {
             _invocations.Add(entry);
-            return Task.CompletedTask;
+            return Task.FromResult<OutboxEntry?>(null);
         }
     }
 
@@ -228,10 +228,10 @@ public sealed class OutboxHostTests
             return (parts[0], Guid.Parse(parts[1]), null);
         }
 
-        public Task ExecuteAsync(
+        public Task<OutboxEntry?> ExecuteAsync(
             OutboxEntry entry,
             IStreamProvider streamProvider,
-            Func<EdictEvent, Task>? deferredDispatch,
+            Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
             Type? consumerType,
             EdictEvent? liveWireEvent) =>
             // The drain calls ExecuteBatchAsync for every group — even
@@ -239,19 +239,19 @@ public sealed class OutboxHostTests
             // fan-out, which calls back into this method. The batch tests
             // assert the BATCH path, so per-entry fan-out is fine to ignore
             // here.
-            Task.CompletedTask;
+            Task.FromResult<OutboxEntry?>(null);
 
-        public Task ExecuteBatchAsync(
+        public Task<IReadOnlyList<OutboxEntry>> ExecuteBatchAsync(
             IReadOnlyList<OutboxEntry> entries,
             IStreamProvider streamProvider,
-            Func<EdictEvent, Task>? deferredDispatch,
+            Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
             Type? consumerType,
             IReadOnlyList<EdictEvent?> liveWireEvents)
         {
             var key = TryResolveBatchKey(entries[0], liveWireEvents[0])!.Value;
             _batchInvocations.Add(new BatchInvocation(
                 key.StreamName, key.RouteKey, entries.Select(e => e.EntryId).ToArray()));
-            return Task.CompletedTask;
+            return Task.FromResult<IReadOnlyList<OutboxEntry>>([]);
         }
 
         public sealed record BatchInvocation(string StreamName, Guid RouteKey, Guid[] EntryIds);

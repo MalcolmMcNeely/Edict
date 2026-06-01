@@ -53,8 +53,8 @@ sealed class InProcPublishExecutor(
         }
     }
 
-    public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+    public Task<OutboxEntry?> ExecuteAsync(
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
@@ -119,7 +119,7 @@ sealed class InProcPublishExecutor(
             }
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult<OutboxEntry?>(null);
     }
 
     /// <summary>

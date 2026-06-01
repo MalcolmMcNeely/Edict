@@ -42,8 +42,8 @@ public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
 
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    public Task ExecuteAsync(
-        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+    public Task<OutboxEntry?> ExecuteAsync(
+        OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         if (ShouldFail)
         {

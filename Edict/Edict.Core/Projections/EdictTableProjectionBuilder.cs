@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Contracts.TableStorage;
+using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
 using Edict.Core.TableStorage;
 using Edict.Telemetry;
@@ -32,10 +33,10 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     where T : class, IEdictPersistedState, new()
 {
     IEdictTableWriteStore<T>? _writeStore;
-    OutboxEntry? _pendingUpsert;
     Serializer? _cachedSerializer;
     TypeConverter? _cachedTypeConverter;
-    readonly TableProjectionRowSlot<T> _rowSlot = new();
+    readonly InvocationScope<ProjectionRowBox<T>> _row = new();
+    (string PartitionKey, string RowKey, T Row)? _lastWrittenRow;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -66,8 +67,8 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// </summary>
     protected T CurrentRow
     {
-        get => _rowSlot.CurrentRow;
-        set => _rowSlot.CurrentRow = value;
+        get => _row.Current.Row;
+        set => _row.Current.Row = value;
     }
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
@@ -79,34 +80,33 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// <summary>
     /// Wraps every handler call with load-apply-stage. The base
     /// <see cref="EdictProjectionBuilder.DispatchEventAsync{TEvent}"/> default is a
-    /// direct handler call; this override loads the row, runs the handler, then
-    /// stages the computed row as an <see cref="OutboxEffectKind.UpsertRow"/>
-    /// effect (the actual store write happens in the engine drain, atomic with
-    /// the dedup-ring commit).
+    /// direct handler call; this override loads the row into a per-invocation
+    /// box, runs the handler, then returns the computed row as an
+    /// <see cref="OutboxEffectKind.UpsertRow"/> effect (the actual store write
+    /// happens in the engine drain, atomic with the dedup-ring commit). The box
+    /// is invocation-scoped so a parallel deferred drain cannot cross-wire two
+    /// dispatches' working rows.
     /// </summary>
-    protected override async Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
+    protected override async Task<EdictDispatchOutcome> DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
     {
         var partitionKey = DefaultPartitionKey;
         var rowKey = GetRowKey(edictEvent);
 
-        await _rowSlot.EnsureLoadedAsync(_writeStore!, partitionKey, rowKey);
+        // Read-your-writes for consecutive events on the same row: the upsert is
+        // drained after the handler returns, so reading the store here would
+        // miss the just-computed row until that drain lands. Seed from the last
+        // row this grain computed for the same (pk, rk); any other key (or first
+        // touch) reads the store. The cache is keyed, so a stale entry from a
+        // different key falls through to a fresh read rather than misapplying.
+        var box = _row.Begin();
+        box.Row = _lastWrittenRow is { } cached && cached.PartitionKey == partitionKey && cached.RowKey == rowKey
+            ? cached.Row
+            : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new T();
 
         await handler(edictEvent);
 
-        _pendingUpsert = BuildUpsertEntry(partitionKey, rowKey, CurrentRow);
-    }
-
-    /// <inheritdoc />
-    protected override IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries()
-    {
-        if (_pendingUpsert is null)
-        {
-            return [];
-        }
-
-        var entry = _pendingUpsert;
-        _pendingUpsert = null;
-        return [entry];
+        _lastWrittenRow = (partitionKey, rowKey, box.Row);
+        return EdictDispatchOutcome.HandledWith(BuildUpsertEntry(partitionKey, rowKey, box.Row));
     }
 
     OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, T row)

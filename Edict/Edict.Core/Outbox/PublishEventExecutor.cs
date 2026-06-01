@@ -13,10 +13,10 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
-    public async Task ExecuteAsync(
+    public async Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         EdictEvent? liveWireEvent)
     {
@@ -40,6 +40,7 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         var stamped = Stamp(edictEvent, entry, publishActivity);
 
         await stream.OnNextAsync(stamped);
+        return null;
     }
 
     public (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
@@ -50,10 +51,10 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         return (streamName, routeKey, edictEvent);
     }
 
-    public async Task ExecuteBatchAsync(
+    public async Task<IReadOnlyList<OutboxEntry>> ExecuteBatchAsync(
         IReadOnlyList<OutboxEntry> entries,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         IReadOnlyList<EdictEvent?> liveWireEvents)
     {
@@ -95,6 +96,8 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
                 activities[i]?.Dispose();
             }
         }
+
+        return [];
     }
 
     static EdictEvent Stamp(EdictEvent edictEvent, OutboxEntry entry, Activity? publishActivity)

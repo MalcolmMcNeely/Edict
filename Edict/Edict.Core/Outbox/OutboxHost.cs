@@ -35,7 +35,7 @@ sealed class OutboxHost<TPayload>
     readonly EdictOptions _options;
     readonly TimeProvider _timeProvider;
     readonly IDeadLetterPromoter _promoter;
-    readonly Func<EdictEvent, Task>? _deferredDispatch;
+    readonly Func<EdictEvent, Task<OutboxEntry?>>? _deferredDispatch;
     readonly ClaimCheckPolicy? _claimCheckPolicy;
     readonly IEdictMetricsCache? _metricsCache;
     readonly string _grainKey;
@@ -59,7 +59,7 @@ sealed class OutboxHost<TPayload>
         IDeadLetterPromoter promoter,
         string grainKey,
         string grainTypeName,
-        Func<EdictEvent, Task>? deferredDispatch = null,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch = null,
         ClaimCheckPolicy? claimCheckPolicy = null,
         Type? consumerType = null,
         IEdictMetricsCache? metricsCache = null)
@@ -289,7 +289,7 @@ sealed class OutboxHost<TPayload>
 
             var groups = OutboxBatchGrouping.Group(ready, e => keyByEntry[e.EntryId]);
 
-            var groupTasks = new Task<Exception?>[groups.Count];
+            var groupTasks = new Task<GroupOutcome>[groups.Count];
             for (var i = 0; i < groups.Count; i++)
             {
                 groupTasks[i] = ExecuteGroupCapturingAsync(groups[i].Entries, liveByEntry);
@@ -298,10 +298,11 @@ sealed class OutboxHost<TPayload>
             var outcomes = await Task.WhenAll(groupTasks);
 
             var anyTailAppend = false;
+            var anyStagedEffect = false;
             for (var g = 0; g < groups.Count; g++)
             {
                 var groupEntries = groups[g].Entries;
-                var exception = outcomes[g];
+                var exception = outcomes[g].Failure;
 
                 if (exception is null)
                 {
@@ -309,6 +310,21 @@ sealed class OutboxHost<TPayload>
                     {
                         State.Outbox = State.Outbox.Ack(entry.EntryId);
                         dirty = true;
+                    }
+
+                    // A deferred saga / table-projection dispatch returns its
+                    // downstream effect; enqueue it so the ack of the
+                    // InvokeHandler entry and the staged effect commit in one
+                    // write (flushed below before the effect drains). The
+                    // InvokeHandler entry is the durability anchor — a crash
+                    // before that write re-runs the handler and regenerates the
+                    // effect; a crash after it leaves only the effect Pending,
+                    // so the effect drains exactly once.
+                    foreach (var staged in outcomes[g].StagedEffects)
+                    {
+                        State.Outbox = State.Outbox.Enqueue(staged with { EnqueuedAt = now });
+                        dirty = true;
+                        anyStagedEffect = true;
                     }
                     continue;
                 }
@@ -339,10 +355,24 @@ sealed class OutboxHost<TPayload>
                 }
             }
 
-            // Loop only if a Promote appended a tail entry that's ready now.
-            // Otherwise we're done — any backoff-gated entries wait for the
-            // reminder.
-            if (!anyTailAppend)
+            // Flush the composed ack-write (InvokeHandler acks + their staged
+            // effects) to durable storage before looping to drain those
+            // effects, so the ack is the durability boundary: a crash here
+            // re-runs the handler; a crash while the effect drains next pass
+            // leaves only the effect Pending. Without this the effect would
+            // execute before its own enqueue is durable.
+            if (anyStagedEffect && dirty)
+            {
+                await WriteStateAndReportAsync();
+                dirty = false;
+            }
+
+            // Loop if a Promote appended a tail entry that's ready now, or a
+            // deferred dispatch staged a downstream effect this pass — both are
+            // freshly-Pending and ready, so drain them in the same call rather
+            // than waiting for a reminder. Otherwise we're done; any
+            // backoff-gated entries wait for the reminder.
+            if (!anyTailAppend && !anyStagedEffect)
             {
                 break;
             }
@@ -373,7 +403,13 @@ sealed class OutboxHost<TPayload>
         }
     }
 
-    async Task<Exception?> ExecuteGroupCapturingAsync(
+    readonly record struct GroupOutcome(Exception? Failure, IReadOnlyList<OutboxEntry> StagedEffects)
+    {
+        public static readonly GroupOutcome NoEffects = new(null, []);
+        public static GroupOutcome Failed(Exception exception) => new(exception, []);
+    }
+
+    async Task<GroupOutcome> ExecuteGroupCapturingAsync(
         IReadOnlyList<OutboxEntry> entries,
         IReadOnlyDictionary<Guid, EdictEvent?> liveByEntry)
     {
@@ -385,13 +421,13 @@ sealed class OutboxHost<TPayload>
                 liveBatch[i] = liveByEntry[entries[i].EntryId];
             }
 
-            await _executors[entries[0].Kind].ExecuteBatchAsync(
+            var staged = await _executors[entries[0].Kind].ExecuteBatchAsync(
                 entries, _streamProvider, _deferredDispatch, _consumerType, liveBatch);
-            return null;
+            return staged.Count == 0 ? GroupOutcome.NoEffects : new GroupOutcome(null, staged);
         }
         catch (Exception exception)
         {
-            return exception;
+            return GroupOutcome.Failed(exception);
         }
     }
 

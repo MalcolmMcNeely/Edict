@@ -45,10 +45,9 @@ internal static class ProjectionGrainSpineEmitter
                 .Append(" __writers && __writers.TryGet(typeof(")
                 .Append(handler.EventFqn)
                 .Append("), out var __write)) { __write(typed, span); }\n")
-                .Append("                    await DispatchEventAsync(typed, ")
+                .Append("                    return await DispatchEventAsync(typed, ")
                 .Append(EdictWellKnownNames.HandleMethodName)
                 .Append(");\n")
-                .Append("                    return true;\n")
                 .Append("                }\n");
         }
 
@@ -66,14 +65,14 @@ internal static class ProjectionGrainSpineEmitter
             {{subscriptionAttrs.ToString().TrimEnd('\n')}}
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
-                    protected override async global::System.Threading.Tasks.Task<bool> DispatchAsync(
+                    protected override async {{EdictWellKnownNames.TaskOfEdictDispatchOutcomeFqn}} DispatchAsync(
                         global::Edict.Contracts.Events.EdictEvent edictEvent)
                     {
                         switch (edictEvent)
                         {
             {{dispatchArms.ToString().TrimEnd('\n')}}
                             default:
-                                return false;
+                                return {{EdictWellKnownNames.EdictDispatchOutcomeNotHandledFqn}};
                         }
                     }
                 }

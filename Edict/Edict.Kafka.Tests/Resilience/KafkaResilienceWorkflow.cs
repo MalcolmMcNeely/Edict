@@ -45,14 +45,14 @@ public sealed class KafkaResilienceTestConsumer : EdictIdempotencyBase, IKafkaRe
 
     protected override int WindowSize => 64;
 
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
         if (edictEvent is not KafkaResilienceTestEvent rEvt)
         {
-            return Task.FromResult(false);
+            return Task.FromResult(EdictDispatchOutcome.NotHandled);
         }
         _handledSequences.Add(rEvt.Sequence);
-        return Task.FromResult(true);
+        return Task.FromResult(EdictDispatchOutcome.HandledWithNoEffect);
     }
 
     public Task<IReadOnlyList<int>> GetHandledSequencesAsync() =>

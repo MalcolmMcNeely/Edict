@@ -1,6 +1,6 @@
 # Claim check
 
-Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store and the wire hop carries a small pointer string instead. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged.
+Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store and the wire hop carries a small pointer string instead. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged. This holds for every consumer role: event handlers, sagas, and table-projection builders all receive a claim-checked event identically to an in-band one, and a saga's dispatched command or a projection's row write is staged and delivered the same way.
 
 ```csharp
 public Task HandleAsync(LargeOrderEvent edictEvent)

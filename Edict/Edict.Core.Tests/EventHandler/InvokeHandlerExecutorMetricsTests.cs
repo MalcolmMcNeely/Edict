@@ -43,7 +43,11 @@ public sealed class InvokeHandlerExecutorMetricsTests
         var executor = new InvokeHandlerExecutor(Serializer, new ClaimCheckUnwrap(Serializer, store: null), NoWriters, TimeProvider.System);
         await executor.ExecuteAsync(
             entry, NullStreamProvider.Instance,
-            async e => await Task.Delay(TimeSpan.FromMilliseconds(5)),
+            async e =>
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(5));
+                return (OutboxEntry?)null;
+            },
             consumerType: typeof(SampleConsumer),
             liveWireEvent: null);
 

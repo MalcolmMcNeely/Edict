@@ -132,14 +132,14 @@ public sealed class ResilienceTestConsumer : EdictIdempotencyBase, IResilienceTe
 
     protected override int WindowSize => 16;
 
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
         if (edictEvent is not ResilienceTestEvent rEvt)
         {
-            return Task.FromResult(false);
+            return Task.FromResult(EdictDispatchOutcome.NotHandled);
         }
         _handledEventIds.Add(rEvt.EventId);
-        return Task.FromResult(true);
+        return Task.FromResult(EdictDispatchOutcome.HandledWithNoEffect);
     }
 
     public Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync() =>

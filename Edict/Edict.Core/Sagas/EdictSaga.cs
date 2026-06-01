@@ -40,8 +40,7 @@ namespace Edict.Core.Sagas;
 public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IEdictSaga
     where TProgress : IEdictPersistedState, new()
 {
-    readonly SagaDispatchBuffer _dispatchBuffer = new();
-    OutboxEntry? _stagedEntry;
+    readonly InvocationScope<SagaDispatchBuffer> _dispatch = new();
     Serializer? _cachedSerializer;
     IEdictMetricsCache? _cachedMetricsCache;
     TimeProvider? _cachedTimeProvider;
@@ -66,7 +65,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// handler throws — a saga that fans out commands is a coordination smell,
     /// and the single-command API shape makes that constraint structural.
     /// </summary>
-    protected void Dispatch(EdictCommand command) => _dispatchBuffer.Set(command);
+    protected void Dispatch(EdictCommand command) => _dispatch.Current.Set(command);
 
     /// <summary>
     /// Generator-only fast path called by the per-type saga Dispatch
@@ -78,34 +77,30 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// holds.
     /// </summary>
     public void DispatchFast<TCommand>(TCommand command) where TCommand : EdictCommand
-        => _dispatchBuffer.Set(command);
+        => _dispatch.Current.Set(command);
 
     /// <summary>
-    /// Resets the single outbound-command buffer before each handler so the
-    /// one-command-per-event limit is scoped to one Event, then runs the
-    /// handler. The buffered command is collected by
-    /// <see cref="CollectPendingOutboxEntries"/> after the handler succeeds.
+    /// Opens a fresh single-command buffer for this Event so the
+    /// one-command-per-event limit is scoped to one Event (and isolated from
+    /// any concurrently-draining dispatch), runs the handler, then returns the
+    /// buffered command as a <see cref="OutboxEffectKind.SendCommand"/> effect.
     /// </summary>
-    protected override async Task DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
+    protected override async Task<EdictDispatchOutcome> DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
     {
-        _dispatchBuffer.Reset();
-        _stagedEntry = null;
+        var buffer = _dispatch.Begin();
 
         await handler(edictEvent);
 
         // Build the SendCommand entry here, while the handle span is still
         // Activity.Current, so its captured traceparent makes the dispatched
         // command nest under the saga handle span as parent-child even when a
-        // crash-recovery drain runs much later. CollectPendingOutboxEntries
-        // runs after the span has been disposed, so capturing there would orphan
-        // the command span.
-        var command = _dispatchBuffer.Take();
-        if (command is not null)
-        {
-            _stagedEntry = BuildSendCommandEntry(command);
-        }
+        // crash-recovery drain runs much later.
+        var command = buffer.Take();
+        var effect = command is null ? null : BuildSendCommandEntry(command);
 
         ReportSagaProgress();
+
+        return EdictDispatchOutcome.HandledWith(effect);
     }
 
     void ReportSagaProgress()
@@ -120,19 +115,6 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             sagaType: _cachedSagaType ??= GetType().FullName ?? GetType().Name,
             sagaKey: _cachedSagaKey ??= this.GetPrimaryKey().ToString(),
             lastHandledAt: time.GetUtcNow());
-    }
-
-    /// <inheritdoc />
-    protected override IReadOnlyList<OutboxEntry> CollectPendingOutboxEntries()
-    {
-        if (_stagedEntry is null)
-        {
-            return [];
-        }
-
-        var entry = _stagedEntry;
-        _stagedEntry = null;
-        return [entry];
     }
 
     OutboxEntry BuildSendCommandEntry(EdictCommand command)

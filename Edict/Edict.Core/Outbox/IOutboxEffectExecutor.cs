@@ -14,11 +14,17 @@ interface IOutboxEffectExecutor
     /// in hand — the PublishEvent executor uses it to skip a serialise→deserialise
     /// round trip. Crash-recovery drains (activation, reminder) pass <c>null</c>
     /// and the executor falls back to deserialising <see cref="OutboxEntry.Payload"/>.
+    /// <para>
+    /// Returns a downstream effect the execution staged that must be enqueued in
+    /// the same grain-state write that acks this entry, or <c>null</c> for the
+    /// common case. Only <c>InvokeHandler</c> returns one: a deferred saga /
+    /// table-projection dispatch stages its <c>SendCommand</c> / <c>UpsertRow</c>.
+    /// </para>
     /// </summary>
-    Task ExecuteAsync(
+    Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         EdictEvent? liveWireEvent);
 
@@ -38,20 +44,33 @@ interface IOutboxEffectExecutor
     /// that have no native batch path (UpsertRow, SendCommand,
     /// InvokeHandler) keep their existing semantics. PublishEvent overrides
     /// this to call <c>IAsyncStream.OnNextBatchAsync</c> once per group.
+    /// Returns the downstream effects staged across the group (empty for every
+    /// kind but <c>InvokeHandler</c>) for the host to enqueue atomically with
+    /// the group's ack.
     /// </summary>
-    Task ExecuteBatchAsync(
+    async Task<IReadOnlyList<OutboxEntry>> ExecuteBatchAsync(
         IReadOnlyList<OutboxEntry> entries,
         IStreamProvider streamProvider,
-        Func<EdictEvent, Task>? deferredDispatch,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
         Type? consumerType,
         IReadOnlyList<EdictEvent?> liveWireEvents)
     {
-        var tasks = new Task[entries.Count];
+        var tasks = new Task<OutboxEntry?>[entries.Count];
         for (var i = 0; i < entries.Count; i++)
         {
             tasks[i] = ExecuteAsync(
                 entries[i], streamProvider, deferredDispatch, consumerType, liveWireEvents[i]);
         }
-        return Task.WhenAll(tasks);
+
+        var staged = await Task.WhenAll(tasks);
+        var effects = new List<OutboxEntry>();
+        foreach (var effect in staged)
+        {
+            if (effect is not null)
+            {
+                effects.Add(effect);
+            }
+        }
+        return effects;
     }
 }

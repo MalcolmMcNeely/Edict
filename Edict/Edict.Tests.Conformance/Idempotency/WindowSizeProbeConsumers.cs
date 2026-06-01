@@ -24,7 +24,7 @@ public interface IIdempotencyWindowSizeOverrideProbe : IGrainWithGuidKey
 /// </summary>
 public sealed class IdempotencyWindowSizeDefaultProbe : EdictIdempotencyBase, IIdempotencyWindowSizeDefaultProbe
 {
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent) => Task.FromResult(false);
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent) => Task.FromResult(EdictDispatchOutcome.NotHandled);
 
     public Task<int> GetEffectiveWindowSizeAsync() => Task.FromResult(WindowSize);
 }
@@ -38,7 +38,7 @@ public sealed class IdempotencyWindowSizeOverrideProbe : EdictIdempotencyBase, I
 {
     protected override int WindowSize => 7;
 
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent) => Task.FromResult(false);
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent) => Task.FromResult(EdictDispatchOutcome.NotHandled);
 
     public Task<int> GetEffectiveWindowSizeAsync() => Task.FromResult(WindowSize);
 }

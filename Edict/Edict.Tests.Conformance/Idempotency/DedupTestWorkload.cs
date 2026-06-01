@@ -56,11 +56,11 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
 
     protected override int WindowSize => 3;
 
-    protected override Task<bool> DispatchAsync(EdictEvent edictEvent)
+    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
         if (edictEvent is not DedupTestEvent dedupEvt)
         {
-            return Task.FromResult(false);
+            return Task.FromResult(EdictDispatchOutcome.NotHandled);
         }
 
         if (_throwOnNext)
@@ -70,7 +70,7 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
         }
 
         _handledEventIds.Add(dedupEvt.EventId);
-        return Task.FromResult(true);
+        return Task.FromResult(EdictDispatchOutcome.HandledWithNoEffect);
     }
 
     public Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync() =>
