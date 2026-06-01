@@ -1,0 +1,18 @@
+# The coverage number vouches for the shipping, consumer-facing framework.
+# Everything ignored below is either the demo app, test/bench harness, or the
+# tests themselves — none of it is the product the badge is meant to stand for.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+ignore:
+  - "Sample/**"                          # sales-demo app, not product
+  - "**/Edict.Benchmarks*/**"            # perf harness
+  - "**/Edict.Substrate*/**"             # bench/conformance substrate harness
+  - "**/Edict.Tests.Conformance/**"      # shared conformance battery (test code)
+  - "**/*.Tests/**"                      # the tests doing the measuring
