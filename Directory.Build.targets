@@ -9,8 +9,8 @@
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
     <Authors>Malcolm McNeely</Authors>
     <Company>Malcolm McNeely</Company>
-    <Copyright>Copyright (c) Malcolm McNeely</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright 2026 Malcolm McNeely</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/MalcolmMcNeely/Edict</PackageProjectUrl>
     <RepositoryUrl>https://github.com/MalcolmMcNeely/Edict</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
