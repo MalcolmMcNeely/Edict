@@ -75,7 +75,10 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnu
 
     public override int GetHashCode()
     {
-        if (array is null)
+        // A null backing array and a zero-length one are equal under Equals, so
+        // they must hash alike — otherwise default(EquatableArray) and Empty are
+        // equal values with different hash codes, and any hash-keyed cache breaks.
+        if (array is null || array.Length == 0)
         {
             return 0;
         }
