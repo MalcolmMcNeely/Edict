@@ -135,45 +135,6 @@ public sealed class CommitProgressAndDrainTests
         }
     }
 
-    sealed class FaultInjectingPersistentState : IPersistentState<GrainEnvelope<EdictUnit>>
-    {
-        int _writes;
-
-        public int FailOnWrite { get; init; }
-        public GrainEnvelope<EdictUnit> State { get; set; } = new();
-        public GrainEnvelope<EdictUnit> Durable { get; private set; } = new();
-
-        public string Etag => string.Empty;
-        public bool RecordExists => true;
-
-        public Task WriteStateAsync()
-        {
-            _writes++;
-            if (_writes == FailOnWrite)
-            {
-                throw new InvalidOperationException("simulated write fault");
-            }
-
-            Durable = Clone(State);
-            return Task.CompletedTask;
-        }
-
-        public Task ReadStateAsync() => Task.CompletedTask;
-        public Task ClearStateAsync() => Task.CompletedTask;
-
-        static GrainEnvelope<EdictUnit> Clone(GrainEnvelope<EdictUnit> source) => new()
-        {
-            Payload = source.Payload,
-            Outbox = source.Outbox,
-            Idempotency = new IdempotencyState
-            {
-                HandledEventIds = (Guid[])source.Idempotency.HandledEventIds.Clone(),
-                Head = source.Idempotency.Head,
-                Count = source.Idempotency.Count,
-            },
-        };
-    }
-
     sealed class NoopPromoter : IDeadLetterPromoter
     {
         public OutboxEntry Promote(OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now) =>

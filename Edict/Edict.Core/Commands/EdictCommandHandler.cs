@@ -223,7 +223,8 @@ public abstract class EdictCommandHandler<TState>
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
             claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
-            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
+            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
+            requestDeactivation: DeactivateOnIdle);
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test

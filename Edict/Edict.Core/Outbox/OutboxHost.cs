@@ -38,6 +38,7 @@ sealed class OutboxHost<TPayload>
     readonly Func<EdictEvent, Task<OutboxEntry?>>? _deferredDispatch;
     readonly ClaimCheckPolicy? _claimCheckPolicy;
     readonly IEdictMetricsCache? _metricsCache;
+    readonly Action? _requestDeactivation;
     readonly string _grainKey;
     readonly string _grainTypeName;
     readonly Type? _consumerType;
@@ -62,7 +63,8 @@ sealed class OutboxHost<TPayload>
         Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch = null,
         ClaimCheckPolicy? claimCheckPolicy = null,
         Type? consumerType = null,
-        IEdictMetricsCache? metricsCache = null)
+        IEdictMetricsCache? metricsCache = null,
+        Action? requestDeactivation = null)
     {
         _state = state;
         _streamProvider = streamProvider;
@@ -77,6 +79,7 @@ sealed class OutboxHost<TPayload>
         _claimCheckPolicy = claimCheckPolicy;
         _consumerType = consumerType;
         _metricsCache = metricsCache;
+        _requestDeactivation = requestDeactivation;
     }
 
     /// <summary>The persisted envelope <c>{ Payload, Outbox, Idempotency }</c>.</summary>
@@ -177,7 +180,23 @@ sealed class OutboxHost<TPayload>
 
     async Task WriteStateAndReportAsync()
     {
-        await _state.WriteStateAsync();
+        try
+        {
+            await _state.WriteStateAsync();
+        }
+        catch
+        {
+            // The write faulted, so the activation's in-memory view — this turn's
+            // consumer Payload / Progress mutation, the dedup ring, the mirror,
+            // the outbox — is now diverged from the last durable snapshot.
+            // Dropping the activation is the only thing that discards an arbitrary
+            // consumer mutation, so a redelivery reloads clean durable state and
+            // applies effectively-once rather than re-applying on top of a half-
+            // applied turn.
+            _requestDeactivation?.Invoke();
+            throw;
+        }
+
         ReportPendingToCache();
     }
 

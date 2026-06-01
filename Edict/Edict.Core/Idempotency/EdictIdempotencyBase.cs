@@ -374,7 +374,8 @@ public abstract class EdictIdempotencyBase<TPayload>
             grainTypeName: GetType().FullName ?? GetType().Name,
             deferredDispatch: async edictEvent => (await DispatchAsync(edictEvent)).StagedEffect,
             consumerType: GetType(),
-            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>());
+            metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
+            requestDeactivation: DeactivateOnIdle);
 }
 
 /// <summary>

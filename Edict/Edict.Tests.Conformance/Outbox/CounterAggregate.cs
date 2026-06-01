@@ -48,6 +48,7 @@ public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCoun
 public interface ICounterProbe : IGrainWithGuidKey
 {
     Task<int> GetCountAsync();
+    Task<Guid> GetActivationIdAsync();
     Task DeactivateAsync();
     Task ForceDrainViaReminderAsync();
     Task<int> GetPendingOutboxCountAsync();
@@ -56,6 +57,18 @@ public interface ICounterProbe : IGrainWithGuidKey
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
 {
+    Guid _activationId;
+
+    // Fresh per activation, so a scenario can poll until it changes to confirm
+    // the framework deactivated a dirty activation after a write fault.
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        _activationId = Guid.NewGuid();
+        await base.OnActivateAsync(cancellationToken);
+    }
+
+    public Task<Guid> GetActivationIdAsync() => Task.FromResult(_activationId);
+
     public Task<EdictCommandResult> HandleAsync(IncrementCounterCommand command)
     {
         State.Count++;
