@@ -103,4 +103,76 @@ public class EdictSendInterceptorGeneratorTests
 
         Assert.Empty(generated);
     }
+
+    [Fact]
+    public void EdictSendInterceptorGenerator_ShouldEmitNoInterceptor_WhenSendAsyncIsOnAnUnrelatedType()
+    {
+        // Keys on IEdictSender, not the method name. Intercepting a consumer's
+        // own SendAsync would inject a broken stub with no error surfaced.
+        const string consumer = """
+            using System;
+            using System.Threading.Tasks;
+
+            using Edict.Contracts.Commands;
+
+            namespace Sample;
+
+            public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+
+            public sealed class NotASender
+            {
+                public Task SendAsync(EdictCommand command) => Task.CompletedTask;
+            }
+
+            public sealed class Caller
+            {
+                public Task Use(NotASender notASender, Guid orderId) =>
+                    notASender.SendAsync(new PlaceOrder(orderId));
+            }
+            """;
+
+        var generated = GeneratorTestHarness.RunSendInterceptorGenerator(consumer);
+
+        Assert.DoesNotContain(generated, file => file.Key.EndsWith(".SendInterceptor.g.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EdictSendInterceptorGenerator_ShouldEmitNoInterceptor_WhenArgumentIsBaseTyped()
+    {
+        // A base-typed argument has no concrete command type to intercept on,
+        // so the site must fall through to the registrar. EDICT015 warns the
+        // consumer; the generator must agree by emitting nothing.
+        const string consumer = """
+            using System;
+            using System.Threading.Tasks;
+
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Sending;
+
+            namespace Sample;
+
+            public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+
+            public sealed class Caller
+            {
+                public Task<EdictCommandResult> Use(IEdictSender sender, Guid orderId)
+                {
+                    EdictCommand command = new PlaceOrder(orderId);
+                    return sender.SendAsync(command);
+                }
+            }
+            """;
+
+        var generated = GeneratorTestHarness.RunSendInterceptorGenerator(consumer);
+
+        Assert.DoesNotContain(generated, file => file.Key.EndsWith(".SendInterceptor.g.cs", StringComparison.Ordinal));
+    }
 }

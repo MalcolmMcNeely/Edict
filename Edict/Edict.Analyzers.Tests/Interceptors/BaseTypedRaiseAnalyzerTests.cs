@@ -76,8 +76,44 @@ public class BaseTypedRaiseAnalyzerTests
 
         var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedRaiseAnalyzer());
 
-        var d = Assert.Single(diagnostics);
-        Assert.Equal("EDICT016", d.Id);
-        Assert.Contains("EdictEvent", d.GetMessage());
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal("EDICT016", diagnostic.Id);
+        Assert.Contains("EdictEvent", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT016_ShouldNotRaise_WhenRaiseIsOnAnUnrelatedType()
+    {
+        // The analyzer keys on EdictCommandHandler, not on the method name alone.
+        // A consumer type that declares its own Raise must not trip EDICT016.
+        const string source = """
+            using System;
+            using Edict.Contracts.Events;
+            namespace Sample;
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlaced(Guid OrderId) : EdictEvent
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public sealed class NotAHandler
+            {
+                public void Raise(EdictEvent edictEvent)
+                {
+                }
+            }
+            public sealed class Caller
+            {
+                public void Use(NotAHandler notAHandler, Guid orderId)
+                {
+                    EdictEvent edictEvent = new OrderPlaced(orderId);
+                    notAHandler.Raise(edictEvent);
+                }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedRaiseAnalyzer());
+
+        Assert.Empty(diagnostics);
     }
 }
