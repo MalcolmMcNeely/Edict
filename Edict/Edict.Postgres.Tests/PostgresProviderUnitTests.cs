@@ -127,6 +127,26 @@ public sealed class PostgresProviderUnitTests
     }
 
     [Fact]
+    public async Task TableWriteStoreFactory_ShouldUpsertViaReflectionFallback_WhenConstructedWithoutServiceProvider()
+    {
+        // The two-arg ctor (no IServiceProvider) is the extension-call-time
+        // registration shape, and it drives the reflection-fallback serializer
+        // path rather than the DI-resolved Serializer<T>. Prove that path
+        // round-trips a real row end to end.
+        var tableName = $"unit_no_di_{Guid.NewGuid():N}";
+        var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer);
+
+        var partitionKey = Guid.NewGuid().ToString();
+        var rowKey = Guid.NewGuid().ToString();
+        await factory.UpsertRowAsync(tableName, partitionKey, rowKey, new OrderTableRow { OrderCount = 13 });
+
+        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var row = await repository.GetAsync(partitionKey, rowKey);
+        Assert.NotNull(row);
+        Assert.Equal(13, row!.OrderCount);
+    }
+
+    [Fact]
     public async Task TableRepository_ShouldReturnNullForMissingRow()
     {
         var tableName = $"unit_missing_{Guid.NewGuid():N}";

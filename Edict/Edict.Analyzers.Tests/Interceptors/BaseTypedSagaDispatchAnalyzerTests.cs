@@ -84,8 +84,44 @@ public class BaseTypedSagaDispatchAnalyzerTests
 
         var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedSagaDispatchAnalyzer());
 
-        var d = Assert.Single(diagnostics);
-        Assert.Equal("EDICT017", d.Id);
-        Assert.Contains("EdictCommand", d.GetMessage());
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal("EDICT017", diagnostic.Id);
+        Assert.Contains("EdictCommand", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT017_ShouldNotRaise_WhenDispatchIsOnAnUnrelatedType()
+    {
+        // The analyzer keys on EdictSaga, not on the method name alone. A
+        // consumer type that happens to declare its own base-typed Dispatch
+        // must not trip EDICT017.
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public sealed partial record AuthorizePayment(Guid OrderId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public sealed class NotASaga
+            {
+                public void Dispatch(EdictCommand command)
+                {
+                }
+            }
+            public sealed class Caller
+            {
+                public void Use(NotASaga notASaga, Guid orderId)
+                {
+                    EdictCommand command = new AuthorizePayment(orderId);
+                    notASaga.Dispatch(command);
+                }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedSagaDispatchAnalyzer());
+
+        Assert.Empty(diagnostics);
     }
 }

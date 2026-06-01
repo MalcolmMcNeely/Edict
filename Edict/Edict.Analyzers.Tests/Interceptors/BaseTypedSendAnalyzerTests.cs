@@ -58,9 +58,9 @@ public class BaseTypedSendAnalyzerTests
 
         var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedSendAnalyzer());
 
-        var d = Assert.Single(diagnostics);
-        Assert.Equal("EDICT015", d.Id);
-        Assert.Contains("EdictCommand", d.GetMessage());
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal("EDICT015", diagnostic.Id);
+        Assert.Contains("EdictCommand", diagnostic.GetMessage());
     }
 
     [Fact]
@@ -90,9 +90,44 @@ public class BaseTypedSendAnalyzerTests
 
         var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedSendAnalyzer());
 
-        var d = Assert.Single(diagnostics);
-        Assert.Equal("EDICT015", d.Id);
-        Assert.Contains("OrderCommandBase", d.GetMessage());
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal("EDICT015", diagnostic.Id);
+        Assert.Contains("OrderCommandBase", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public void EDICT015_ShouldNotRaise_WhenSendAsyncIsOnAnUnrelatedType()
+    {
+        // The analyzer keys on IEdictSender, not on the method name alone. A
+        // consumer type that happens to declare its own base-typed SendAsync
+        // must not trip EDICT015.
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public sealed class NotASender
+            {
+                public Task SendAsync(EdictCommand command) => Task.CompletedTask;
+            }
+            public sealed class Caller
+            {
+                public Task Use(NotASender notASender, Guid orderId)
+                {
+                    EdictCommand command = new PlaceOrder(orderId);
+                    return notASender.SendAsync(command);
+                }
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new BaseTypedSendAnalyzer());
+
+        Assert.Empty(diagnostics);
     }
 
     [Fact]

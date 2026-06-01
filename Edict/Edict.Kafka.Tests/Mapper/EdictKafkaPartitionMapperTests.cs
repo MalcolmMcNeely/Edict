@@ -92,6 +92,28 @@ public sealed class EdictKafkaPartitionMapperTests
     }
 
     [Fact]
+    public void Constructor_ShouldThrow_WhenAStreamsPartitionCountIsNotPositive()
+    {
+        var registry = RegistryOf("Alpha");
+        var options = new EdictKafkaStreamsOptions { PartitionCount = 4 };
+        options.PartitionCountByStream["Alpha"] = 0;
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new EdictKafkaPartitionMapper(options, registry));
+
+        Assert.Contains("Alpha", exception.Message);
+    }
+
+    [Fact]
+    public void TopicFor_ShouldThrow_WhenQueueIdIsNotAnEdictKafkaQueue()
+    {
+        var foreignQueue = QueueId.GetQueueId("some-other-provider", 0, 0);
+
+        Assert.Throws<EdictInternalInvariantException>(() =>
+            EdictKafkaPartitionMapper.TopicFor(foreignQueue));
+    }
+
+    [Fact]
     public void TopicAndPartitionFor_ShouldRoundTripThroughQueueId()
     {
         var registry = RegistryOf("Alpha");

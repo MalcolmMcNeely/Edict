@@ -15,6 +15,8 @@ using Orleans.Streams;
 
 using Xunit;
 
+using ErrorCode = Confluent.Kafka.ErrorCode;
+
 namespace Edict.Kafka.Tests.AdapterContract;
 
 /// <summary>
@@ -195,8 +197,102 @@ public sealed class EdictKafkaReceiverContractTests
         Assert.True(consumer.WasDisposed);
     }
 
+    [Fact]
+    public async Task GetQueueMessagesAsync_ShouldReturnEmpty_WhenCalledBeforeInitialize()
+    {
+        var consumer = new FakeKafkaConsumer();
+        var receiver = CreateReceiver(consumer);
+
+        var batch = await receiver.GetQueueMessagesAsync(maxCount: 32);
+
+        Assert.Empty(batch);
+    }
+
+    [Fact]
+    public async Task MessagesDeliveredAsync_ShouldNotThrow_WhenCalledBeforeInitialize()
+    {
+        var receiver = CreateReceiver(new FakeKafkaConsumer());
+
+        await receiver.MessagesDeliveredAsync(new IBatchContainer[] { BuildContainer(offset: 1) });
+    }
+
+    [Fact]
+    public async Task GetQueueMessagesAsync_ShouldSkipUndeserialisableRecord_AndStillYieldTheNext()
+    {
+        // A poison record (bytes that are not a KafkaWireEnvelope) must not
+        // stall the partition: the receiver logs and continues, so the next
+        // well-formed record is still delivered.
+        var consumer = new FakeKafkaConsumer();
+        consumer.EnqueueRecord(BuildPoisonRecord(offset: 41));
+        consumer.EnqueueRecord(BuildRecord("orders", "order-8", offset: 42, events: ["ok"]));
+        var receiver = CreateReceiver(consumer);
+        await receiver.Initialize(TimeSpan.FromSeconds(5));
+
+        var batch = await receiver.GetQueueMessagesAsync(maxCount: 32);
+
+        var container = (EdictKafkaBatchContainer)Assert.Single(batch);
+        Assert.Equal(42L, container.Offset);
+        Assert.Equal("order-8", container.StreamId.GetKeyAsString());
+    }
+
+    [Fact]
+    public async Task GetQueueMessagesAsync_ShouldStopBatching_WhenConsumeThrows()
+    {
+        var consumer = new FakeKafkaConsumer
+        {
+            ConsumeError = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fail)),
+        };
+        var receiver = CreateReceiver(consumer);
+        await receiver.Initialize(TimeSpan.FromSeconds(5));
+
+        var batch = await receiver.GetQueueMessagesAsync(maxCount: 32);
+
+        Assert.Empty(batch);
+    }
+
+    [Fact]
+    public async Task MessagesDeliveredAsync_ShouldSwallowCommitFailure_SoTheBrokerRedelivers()
+    {
+        // A failed commit must not propagate: Orleans would otherwise see the
+        // delivery callback fault. Leaving the offset uncommitted lets the
+        // broker redeliver, which the idempotency ring then dedups.
+        var consumer = new FakeKafkaConsumer { CommitError = new KafkaException(ErrorCode.Local_Fail) };
+        var receiver = CreateReceiver(consumer);
+        await receiver.Initialize(TimeSpan.FromSeconds(5));
+
+        await receiver.MessagesDeliveredAsync(new IBatchContainer[] { BuildContainer(offset: 5) });
+
+        Assert.Empty(consumer.CommittedOffsets);
+    }
+
+    [Fact]
+    public async Task Shutdown_CalledConcurrently_ClosesTheConsumerExactlyOnce()
+    {
+        // consumer.Close() is not re-entrant; Orleans and the adapter can both
+        // call Shutdown, so the close must run once no matter how many callers.
+        var consumer = new FakeKafkaConsumer();
+        var receiver = CreateReceiver(consumer);
+        await receiver.Initialize(TimeSpan.FromSeconds(5));
+
+        await Task.WhenAll(
+            receiver.Shutdown(TimeSpan.FromSeconds(5)),
+            receiver.Shutdown(TimeSpan.FromSeconds(5)));
+
+        Assert.Equal(1, consumer.CloseCallCount);
+        Assert.True(consumer.WasDisposed);
+    }
+
     static EdictKafkaBatchContainer BuildContainer(long offset, int partition = TestPartition) =>
         new(StreamId.Create("ns", $"stream-{offset}"), partition, offset, events: []);
+
+    static ConsumeResult<string, byte[]> BuildPoisonRecord(long offset) =>
+        new()
+        {
+            Topic = TestTopic,
+            Partition = new Partition(TestPartition),
+            Offset = new Offset(offset),
+            Message = new Message<string, byte[]> { Key = "poison", Value = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC } },
+        };
 
     static ConsumeResult<string, byte[]> BuildRecord(string streamNamespace, string streamKey, long offset, object[] events)
     {

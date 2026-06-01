@@ -18,21 +18,41 @@ sealed class FakeKafkaConsumer : IConsumer<string, byte[]>
 
     public List<TopicPartitionOffset> CommittedOffsets { get; } = new();
 
-    public bool WasClosed { get; private set; }
+    public int CloseCallCount { get; private set; }
+
+    public bool WasClosed => CloseCallCount > 0;
 
     public bool WasDisposed { get; private set; }
+
+    // When set, the matching call throws instead of recording — drives the
+    // receiver's consume-error and commit-error handling paths.
+    public ConsumeException? ConsumeError { get; set; }
+
+    public KafkaException? CommitError { get; set; }
 
     public void EnqueueRecord(ConsumeResult<string, byte[]> record) => _records.Enqueue(record);
 
     public void Assign(TopicPartition partition) => AssignCalls.Add(partition);
 
-    public ConsumeResult<string, byte[]>? Consume(TimeSpan timeout) =>
-        _records.Count == 0 ? null : _records.Dequeue();
+    public ConsumeResult<string, byte[]>? Consume(TimeSpan timeout)
+    {
+        if (ConsumeError is not null)
+        {
+            throw ConsumeError;
+        }
+        return _records.Count == 0 ? null : _records.Dequeue();
+    }
 
-    public void Commit(IEnumerable<TopicPartitionOffset> offsets) =>
+    public void Commit(IEnumerable<TopicPartitionOffset> offsets)
+    {
+        if (CommitError is not null)
+        {
+            throw CommitError;
+        }
         CommittedOffsets.AddRange(offsets);
+    }
 
-    public void Close() => WasClosed = true;
+    public void Close() => CloseCallCount++;
 
     public void Dispose() => WasDisposed = true;
 
