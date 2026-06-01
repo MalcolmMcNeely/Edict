@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans;
 using Orleans.Serialization;
+using Orleans.Serialization.TypeSystem;
 
 namespace Edict.Core.Tests.DeadLetter;
 
@@ -29,9 +30,49 @@ public sealed partial record NoRouteKeyCommand : EdictCommand
 }
 #pragma warning restore EDICT003, EDICT006
 
+// The Explode getter throws, but [IgnoreMember] keeps it off the MessagePack
+// wire so the message round-trips through the Orleans serializer; only the
+// promoter's JsonSerializer.Serialize pass invokes it, modelling a consumer
+// payload that defeats forensic JSON rendering.
+[EdictStream("PromoterNoThrowJsonFail")]
+public sealed partial record JsonUnserialisableEvent : EdictEvent
+{
+    [EdictRouteKey]
+    public Guid RouteKey { get; init; }
+
+    [IgnoreMember]
+    public string Explode => throw new InvalidOperationException("payload getter blew up during promotion");
+}
+
+public sealed partial record JsonUnserialisableCommand : EdictCommand
+{
+    [EdictRouteKey]
+    public Guid RouteKey { get; init; }
+
+    [IgnoreMember]
+    public string Explode => throw new InvalidOperationException("payload getter blew up during promotion");
+}
+
+// Orleans serializes only [Id]-marked members, so the throwing computed
+// property rides the row wire invisibly and resolves on drain; the promoter's
+// JsonSerializer.Serialize pass over the materialised row is the only caller
+// that invokes the getter.
+[GenerateSerializer]
+[Alias("DeadLetterPromoterNoThrowTests.JsonUnserialisableRow")]
+public sealed record JsonUnserialisableRow
+{
+    [Id(0)]
+    public string Value { get; init; } = "";
+
+    public string Explode => throw new InvalidOperationException("row getter blew up during promotion");
+}
+
 public sealed class DeadLetterPromoterNoThrowTests
 {
-    static readonly Serializer Serializer = BuildSerializer();
+    static readonly IServiceProvider SerializerProvider = BuildSerializerProvider();
+    static readonly Serializer Serializer = SerializerProvider.GetRequiredService<Serializer>();
+    static readonly ObjectSerializer RowSerializer = SerializerProvider.GetRequiredService<ObjectSerializer>();
+    static readonly TypeConverter TypeConverter = SerializerProvider.GetRequiredService<TypeConverter>();
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -100,6 +141,155 @@ public sealed class DeadLetterPromoterNoThrowTests
             measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
     }
 
+    [Fact]
+    public void Promote_ShouldNotThrow_AndReturnSyntheticRow_WhenUpsertRowTypeNoLongerResolves()
+    {
+        var marker = $"PromoterNoThrowTest_{Guid.NewGuid():N}";
+        var captures = StartFailureListener(marker);
+        var promoter = BuildPromoter();
+        var effect = new UpsertRowEffect
+        {
+            TableName = "orders-by-status",
+            PartitionKey = "pk",
+            RowKey = "rk",
+            RowAlias = "Edict.Tests.RenamedAwayRowAliasShouldNotResolve",
+            RowBytes = [1, 2, 3],
+        };
+        var upsertRowEntry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.UpsertRow,
+            Payload = Serializer.SerializeToArray(effect),
+            AttemptCount = 3,
+            TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        };
+
+        var promoted = promoter.Promote(
+            upsertRowEntry, new InvalidOperationException("table-write"),
+            sourceGrainKey: "grain-key",
+            sourceGrainType: marker,
+            now: Now);
+
+        Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
+        Assert.Equal(nameof(EdictPromotionSerializationException), raised.ExceptionType);
+
+        var measurement = Assert.Single(captures);
+        Assert.Equal(1L, measurement.Value);
+        Assert.Equal(
+            SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.SerializationFailure,
+            measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
+    }
+
+    [Fact]
+    public void Promote_ShouldNotThrow_AndReturnSyntheticRow_WhenPublishEventPayloadFailsJsonSerialisation()
+    {
+        var marker = $"PromoterNoThrowTest_{Guid.NewGuid():N}";
+        var captures = StartFailureListener(marker);
+        var promoter = BuildPromoter();
+        var edictEvent = new JsonUnserialisableEvent { RouteKey = Guid.NewGuid() };
+        var publishEventEntry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.PublishEvent,
+            Payload = Serializer.SerializeToArray<EdictEvent>(edictEvent),
+            AttemptCount = 3,
+            TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        };
+
+        var promoted = promoter.Promote(
+            publishEventEntry, new InvalidOperationException("stream-publish"),
+            sourceGrainKey: "grain-key",
+            sourceGrainType: marker,
+            now: Now);
+
+        Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
+        Assert.Equal(nameof(EdictPromotionSerializationException), raised.ExceptionType);
+        Assert.Null(raised.PayloadJson);
+
+        var measurement = Assert.Single(captures);
+        Assert.Equal(1L, measurement.Value);
+        Assert.Equal(
+            SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.SerializationFailure,
+            measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
+    }
+
+    [Fact]
+    public void Promote_ShouldNotThrow_AndReturnSyntheticRow_WhenSendCommandPayloadFailsJsonSerialisation()
+    {
+        var marker = $"PromoterNoThrowTest_{Guid.NewGuid():N}";
+        var captures = StartFailureListener(marker);
+        var promoter = BuildPromoter(WithRouteFor<JsonUnserialisableCommand>("Sample.UnserialisableHandler"));
+        var command = new JsonUnserialisableCommand { RouteKey = Guid.NewGuid() };
+        var sendCommandEntry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.SendCommand,
+            Payload = Serializer.SerializeToArray<EdictCommand>(command),
+            AttemptCount = 3,
+            TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        };
+
+        var promoted = promoter.Promote(
+            sendCommandEntry, new InvalidOperationException("downstream"),
+            sourceGrainKey: "grain-key",
+            sourceGrainType: marker,
+            now: Now);
+
+        Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
+        Assert.Equal(nameof(EdictPromotionSerializationException), raised.ExceptionType);
+        Assert.Null(raised.PayloadJson);
+
+        var measurement = Assert.Single(captures);
+        Assert.Equal(1L, measurement.Value);
+        Assert.Equal(
+            SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.SerializationFailure,
+            measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
+    }
+
+    [Fact]
+    public void Promote_ShouldNotThrow_AndReturnSyntheticRow_WhenUpsertRowPayloadFailsJsonSerialisation()
+    {
+        var marker = $"PromoterNoThrowTest_{Guid.NewGuid():N}";
+        var captures = StartFailureListener(marker);
+        var promoter = BuildPromoter();
+        var effect = new UpsertRowEffect
+        {
+            TableName = "orders-by-status",
+            PartitionKey = "pk",
+            RowKey = "rk",
+            RowAlias = TypeConverter.Format(typeof(JsonUnserialisableRow)),
+            RowBytes = Serializer.SerializeToArray<object>(new JsonUnserialisableRow { Value = "round-trip" }),
+        };
+        var upsertRowEntry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.UpsertRow,
+            Payload = Serializer.SerializeToArray(effect),
+            AttemptCount = 3,
+            TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+        };
+
+        var promoted = promoter.Promote(
+            upsertRowEntry, new InvalidOperationException("table-write"),
+            sourceGrainKey: "grain-key",
+            sourceGrainType: marker,
+            now: Now);
+
+        Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
+        Assert.Equal(nameof(EdictPromotionSerializationException), raised.ExceptionType);
+        Assert.Null(raised.PayloadJson);
+
+        var measurement = Assert.Single(captures);
+        Assert.Equal(1L, measurement.Value);
+        Assert.Equal(
+            SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.SerializationFailure,
+            measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
+    }
+
     static DeadLetterPromoter BuildPromoter(params CommandRoute[] routes)
     {
         var collection = new ServiceCollection();
@@ -111,6 +301,8 @@ public sealed class DeadLetterPromoterNoThrowTests
         var services = collection.BuildServiceProvider();
         return new DeadLetterPromoter(
             Serializer,
+            RowSerializer,
+            new RowTypeResolver(TypeConverter),
             new StubEdictEventStreamAccessors(),
             services,
             NullLogger<DeadLetterPromoter>.Instance);
@@ -153,7 +345,7 @@ public sealed class DeadLetterPromoterNoThrowTests
         return captures;
     }
 
-    static Serializer BuildSerializer()
+    static IServiceProvider BuildSerializerProvider()
     {
         var services = new ServiceCollection();
         services.AddSerializer(b =>
@@ -161,7 +353,7 @@ public sealed class DeadLetterPromoterNoThrowTests
             b.AddAssembly(typeof(DeadLetterPromoterNoThrowTests).Assembly);
             b.AddEdictContractSerializer();
         });
-        return services.BuildServiceProvider().GetRequiredService<Serializer>();
+        return services.BuildServiceProvider();
     }
 
     sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags)

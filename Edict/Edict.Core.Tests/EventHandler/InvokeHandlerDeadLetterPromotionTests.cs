@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans.Serialization;
+using Orleans.Serialization.TypeSystem;
 
 using static VerifyXunit.Verifier;
 
@@ -16,7 +17,8 @@ namespace Edict.Core.Tests.EventHandler;
 
 public sealed class InvokeHandlerDeadLetterPromotionTests
 {
-    static readonly Serializer Serializer = BuildSerializer();
+    static readonly IServiceProvider SerializerProvider = BuildSerializerProvider();
+    static readonly Serializer Serializer = SerializerProvider.GetRequiredService<Serializer>();
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -39,6 +41,8 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
         };
         var promoter = new DeadLetterPromoter(
             Serializer,
+            SerializerProvider.GetRequiredService<ObjectSerializer>(),
+            new RowTypeResolver(SerializerProvider.GetRequiredService<TypeConverter>()),
             new StubEdictEventStreamAccessors(),
             new ServiceCollection().BuildServiceProvider(),
             NullLogger<DeadLetterPromoter>.Instance);
@@ -55,7 +59,7 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
         await Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
-    static Serializer BuildSerializer()
+    static IServiceProvider BuildSerializerProvider()
     {
         var services = new ServiceCollection();
         services.AddSerializer(b =>
@@ -63,6 +67,6 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
             b.AddAssembly(typeof(InvokeHandlerDeadLetterPromotionTests).Assembly);
             b.AddEdictContractSerializer();
         });
-        return services.BuildServiceProvider().GetRequiredService<Serializer>();
+        return services.BuildServiceProvider();
     }
 }

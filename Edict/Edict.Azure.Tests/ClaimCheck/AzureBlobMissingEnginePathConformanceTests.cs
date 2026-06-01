@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans.Runtime;
 using Orleans.Serialization;
+using Orleans.Serialization.TypeSystem;
 using Orleans.Streams;
 
 namespace Edict.Azure.Tests.ClaimCheck;
@@ -26,6 +27,7 @@ namespace Edict.Azure.Tests.ClaimCheck;
 public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
 {
     BlobServiceClient _blobServiceClient = null!;
+    IServiceProvider _serializerProvider = null!;
     Serializer _serializer = null!;
     string _claimCheckContainerName = "";
 
@@ -41,7 +43,8 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
             b.AddAssembly(typeof(AzureBlobMissingEnginePathConformanceTests).Assembly);
             b.AddEdictContractSerializer();
         });
-        _serializer = services.BuildServiceProvider().GetRequiredService<Serializer>();
+        _serializerProvider = services.BuildServiceProvider();
+        _serializer = _serializerProvider.GetRequiredService<Serializer>();
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -83,6 +86,8 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         var reminders = new FakeReminderRegistrar();
         var promoter = new DeadLetterPromoter(
             _serializer,
+            _serializerProvider.GetRequiredService<ObjectSerializer>(),
+            new RowTypeResolver(_serializerProvider.GetRequiredService<TypeConverter>()),
             new StubEdictEventStreamAccessors(),
             new ServiceCollection().BuildServiceProvider(),
             NullLogger<DeadLetterPromoter>.Instance);

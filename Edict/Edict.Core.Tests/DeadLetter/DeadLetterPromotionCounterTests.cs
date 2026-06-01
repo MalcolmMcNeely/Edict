@@ -11,12 +11,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Orleans.Serialization;
+using Orleans.Serialization.TypeSystem;
 
 namespace Edict.Core.Tests.DeadLetter;
 
 public sealed class DeadLetterPromotionCounterTests
 {
-    static readonly Serializer Serializer = BuildSerializer();
+    static readonly IServiceProvider SerializerProvider = BuildSerializerProvider();
+    static readonly Serializer Serializer = SerializerProvider.GetRequiredService<Serializer>();
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -71,6 +73,8 @@ public sealed class DeadLetterPromotionCounterTests
         var services = new ServiceCollection().BuildServiceProvider();
         return new DeadLetterPromoter(
             Serializer,
+            SerializerProvider.GetRequiredService<ObjectSerializer>(),
+            new RowTypeResolver(SerializerProvider.GetRequiredService<TypeConverter>()),
             new StubEdictEventStreamAccessors(),
             services,
             NullLogger<DeadLetterPromoter>.Instance);
@@ -108,7 +112,7 @@ public sealed class DeadLetterPromotionCounterTests
         return captures;
     }
 
-    static Serializer BuildSerializer()
+    static IServiceProvider BuildSerializerProvider()
     {
         var services = new ServiceCollection();
         services.AddSerializer(b =>
@@ -116,7 +120,7 @@ public sealed class DeadLetterPromotionCounterTests
             b.AddAssembly(typeof(DeadLetterPromotionCounterTests).Assembly);
             b.AddEdictContractSerializer();
         });
-        return services.BuildServiceProvider().GetRequiredService<Serializer>();
+        return services.BuildServiceProvider();
     }
 
     sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags)

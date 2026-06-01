@@ -17,6 +17,8 @@ namespace Edict.Core.DeadLetter;
 
 sealed class DeadLetterPromoter(
     Serializer serializer,
+    ObjectSerializer rowSerializer,
+    RowTypeResolver rowTypeResolver,
     IEventStreamAccessors accessors,
     IServiceProvider services,
     ILogger<DeadLetterPromoter> logger)
@@ -37,18 +39,28 @@ sealed class DeadLetterPromoter(
         // Promote() runs outside the engine's per-group catch. A throw here
         // propagates up the grain drain, skips the state write, leaves the
         // failed entry Pending, and the next reminder fires the same throw —
-        // a poison-pill reminder loop. If the cause is itself unrepresentable
-        // (unknown effect kind, command missing [EdictRouteKey]), log + count +
-        // emit a synthetic row marked with a string-marker exception type
-        // instead of throwing.
-        var raised = failed.Kind switch
+        // a poison-pill reminder loop. The named-cause arms (unknown effect
+        // kind, command missing [EdictRouteKey]) already log + count + return a
+        // synthetic marker row rather than throw. The outer catch is the
+        // backstop for the unnamed cause: a body that cannot be materialised or
+        // JSON-serialised — a renamed/removed row type, or a consumer payload
+        // that defeats the serializer — which must degrade, never escape.
+        EdictDeadLetterRaised raised;
+        try
         {
-            OutboxEffectKind.PublishEvent => BuildFromPublishEvent(failed, exception, sourceGrainKey, sourceGrainType, now),
-            OutboxEffectKind.SendCommand => BuildFromSendCommand(failed, exception, sourceGrainKey, sourceGrainType, now),
-            OutboxEffectKind.UpsertRow => BuildFromUpsertRow(failed, exception, sourceGrainKey, sourceGrainType, now),
-            OutboxEffectKind.InvokeHandler => BuildFromInvokeHandler(failed, exception, sourceGrainKey, sourceGrainType, now),
-            _ => BuildForUnsupportedKind(failed, exception, sourceGrainKey, sourceGrainType, now),
-        };
+            raised = failed.Kind switch
+            {
+                OutboxEffectKind.PublishEvent => BuildFromPublishEvent(failed, exception, sourceGrainKey, sourceGrainType, now),
+                OutboxEffectKind.SendCommand => BuildFromSendCommand(failed, exception, sourceGrainKey, sourceGrainType, now),
+                OutboxEffectKind.UpsertRow => BuildFromUpsertRow(failed, exception, sourceGrainKey, sourceGrainType, now),
+                OutboxEffectKind.InvokeHandler => BuildFromInvokeHandler(failed, exception, sourceGrainKey, sourceGrainType, now),
+                _ => BuildForUnsupportedKind(failed, exception, sourceGrainKey, sourceGrainType, now),
+            };
+        }
+        catch (Exception promotionException)
+        {
+            raised = BuildForSerializationFailure(failed, promotionException, sourceGrainKey, sourceGrainType, now);
+        }
 
         PromotionCount.Add(1,
             new KeyValuePair<string, object?>(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString()),
@@ -134,12 +146,46 @@ sealed class DeadLetterPromoter(
         };
     }
 
+    EdictDeadLetterRaised BuildForSerializationFailure(
+        OutboxEntry failed, Exception promotionException, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
+    {
+        logger.LogWarning(
+            promotionException,
+            "Dead-letter promoter could not materialise the forensic body for a '{EffectKind}' effect from source grain '{SourceGrainType}'. Emitting synthetic dead-letter row without a payload snapshot.",
+            failed.Kind, sourceGrainType);
+        PromotionFailureCount.Add(1,
+            new KeyValuePair<string, object?>(
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReason,
+                SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.SerializationFailure),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Common.Tags.GrainType, sourceGrainType));
+        return new EdictDeadLetterRaised
+        {
+            EntryId = failed.EntryId,
+            Kind = failed.Kind.ToString(),
+            AttemptCount = failed.AttemptCount,
+            DeadLetteredAt = now,
+            SourceGrainKey = sourceGrainKey,
+            SourceGrainType = sourceGrainType,
+            EffectTarget = nameof(EdictPromotionSerializationException),
+            TraceParent = failed.TraceParent,
+            ExceptionType = nameof(EdictPromotionSerializationException),
+            Reason = promotionException.Message,
+            PayloadJson = null,
+        };
+    }
+
     EdictDeadLetterRaised BuildFromUpsertRow(
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {
         var effect = serializer.Deserialize<UpsertRowEffect>(failed.Payload);
-        var row = serializer.Deserialize<object>(effect.RowBytes);
-        var payloadJson = JsonSerializer.Serialize(row, row.GetType());
+        // Resolve the row's concrete type from its frozen [Alias] literal, the
+        // same decode the UpsertRowExecutor uses — so a row POCO rename that
+        // preserves the alias survives here too, instead of poison-looping the
+        // reminder via a Deserialize<object> type-id miss.
+        var rowType = rowTypeResolver.Resolve(effect.RowAlias);
+        var row = rowSerializer.Deserialize(effect.RowBytes, rowType);
+        var payloadJson = JsonSerializer.Serialize(row, rowType);
         return DeadLetterPromotion.Build(failed, effect, payloadJson, exception, sourceGrainKey, sourceGrainType, now);
     }
 

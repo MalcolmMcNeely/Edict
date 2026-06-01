@@ -177,12 +177,13 @@ public static class SemanticConventions
             /// exception that drove the original effect to dead-letter.</summary>
             public const string PromotionFailureReason = "edict.dead_letter.promotion_failure_reason";
 
-            /// <summary>The two allowlist values for <see cref="PromotionFailureReason"/>.
+            /// <summary>The allowlist values for <see cref="PromotionFailureReason"/>.
             /// The set is closed at compile time so the dimension stays bounded per ADR 0039.</summary>
             public static class PromotionFailureReasonValues
             {
                 public const string UnsupportedKind = "unsupported_kind";
                 public const string MissingRouteKey = "missing_route_key";
+                public const string SerializationFailure = "serialization_failure";
             }
         }
 
@@ -193,8 +194,9 @@ public static class SemanticConventions
             public const string PromotionCount = "edict.dead_letter.promotion.count";
 
             /// <summary>Counter of internal promoter faults that fell through to a
-            /// synthetic dead-letter row (an unsupported <c>OutboxEffectKind</c>
-            /// or a <c>SendCommand</c> whose command lacks <c>[EdictRouteKey]</c>).
+            /// synthetic dead-letter row (an unsupported <c>OutboxEffectKind</c>,
+            /// a <c>SendCommand</c> whose command lacks <c>[EdictRouteKey]</c>, or a
+            /// forensic body that could not be materialised or JSON-serialised).
             /// Partitioned by <see cref="Tags.PromotionFailureReason"/> and
             /// <see cref="Common.Tags.GrainType"/>. A non-zero rate means the safety net
             /// caught what would otherwise have been a poison-pill reminder loop;
