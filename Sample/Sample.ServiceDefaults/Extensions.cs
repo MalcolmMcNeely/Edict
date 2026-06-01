@@ -101,6 +101,11 @@ public static class Extensions
     // i.e. once the Orleans gateway port is accepting connections. AppHost's
     // WaitFor(silo) honors this so the Web Orleans client cannot race the
     // gateway-open moment on cold start.
+    //
+    // Tagged "ready", not "live": this gates whether the silo can serve grain
+    // calls, which is false for the whole startup window. Keeping it off the
+    // "live" set leaves /alive a pure liveness signal, so a restart probe never
+    // recycles a silo that is merely still starting.
     public static TBuilder AddOrleansSiloReadyHealthCheck<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddSingleton<OrleansReadyGate>();
@@ -108,7 +113,7 @@ public static class Extensions
             serviceProvider.GetRequiredService<OrleansReadyGate>());
         builder.Services.AddSingleton<OrleansReadyHealthCheck>();
         builder.Services.AddHealthChecks()
-            .AddCheck<OrleansReadyHealthCheck>("orleans-silo-ready", tags: ["live"]);
+            .AddCheck<OrleansReadyHealthCheck>("orleans-silo-ready", tags: ["ready"]);
 
         return builder;
     }
