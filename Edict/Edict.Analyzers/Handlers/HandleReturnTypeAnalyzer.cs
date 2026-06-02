@@ -37,8 +37,7 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (method.ContainingType.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                != EdictWellKnownNames.EdictCommandHandlerFqn)
+        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictCommandHandlerFqn))
         {
             return;
         }
@@ -70,4 +69,26 @@ public sealed class HandleReturnTypeAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
+    static bool DerivesFrom(INamedTypeSymbol type, string baseFqn)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            var fqn = current.IsGenericType
+                ? current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics)
+                : current.ToDisplayString(FullyQualified);
+            if (fqn == baseFqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static readonly SymbolDisplayFormat FullyQualified =
+        SymbolDisplayFormat.FullyQualifiedFormat;
+
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 }

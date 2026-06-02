@@ -47,8 +47,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var isCommandHandler = type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-            == EdictWellKnownNames.EdictCommandHandlerFqn;
+        var isCommandHandler = DerivesFrom(type, EdictWellKnownNames.EdictCommandHandlerFqn);
         var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderFqn);
 
         if (!isCommandHandler && !isProjectionBuilder)
@@ -68,12 +67,14 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    static bool DerivesFrom(INamedTypeSymbol type, string fqn)
+    static bool DerivesFrom(INamedTypeSymbol type, string baseFqn)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn
-                || current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn)
+            var fqn = current.IsGenericType
+                ? current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics)
+                : current.ToDisplayString(FullyQualified);
+            if (fqn == baseFqn)
             {
                 return true;
             }
@@ -81,4 +82,10 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
+    static readonly SymbolDisplayFormat FullyQualified =
+        SymbolDisplayFormat.FullyQualifiedFormat;
+
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 }

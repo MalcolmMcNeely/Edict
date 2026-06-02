@@ -37,8 +37,7 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
 
         foreach (var type in GetAllTypes(context.Compilation.GlobalNamespace))
         {
-            if (type.BaseType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    != EdictWellKnownNames.EdictCommandHandlerFqn)
+            if (type.IsAbstract || !DerivesFrom(type, EdictWellKnownNames.EdictCommandHandlerFqn))
             {
                 continue;
             }
@@ -100,4 +99,26 @@ public sealed class DuplicateCommandRouteAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
+    static bool DerivesFrom(INamedTypeSymbol type, string baseFqn)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            var fqn = current.IsGenericType
+                ? current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics)
+                : current.ToDisplayString(FullyQualified);
+            if (fqn == baseFqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static readonly SymbolDisplayFormat FullyQualified =
+        SymbolDisplayFormat.FullyQualifiedFormat;
+
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 }

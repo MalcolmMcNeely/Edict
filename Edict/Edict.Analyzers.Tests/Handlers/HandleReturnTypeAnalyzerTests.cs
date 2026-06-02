@@ -44,4 +44,37 @@ public class HandleReturnTypeAnalyzerTests
         // Line 12 (0-indexed): "public Task<bool> HandleAsync(PlaceOrder c) =>"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
+
+    [Fact]
+    public void EDICT002_ShouldRaiseOnMethod_WhenGenericBaseHandleReturnsWrongType()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
+            using Edict.Core.Commands;
+            namespace Sample;
+            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public sealed class OrderState : IEdictPersistedState;
+            public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
+            {
+                public Task<bool> HandleAsync(PlaceOrder c) =>
+                    Task.FromResult(true);
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new HandleReturnTypeAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT002", d.Id);
+        Assert.Contains("PlaceOrder", d.GetMessage());
+        Assert.Contains("OrderCommandHandler", d.GetMessage());
+        // Line 14 (0-indexed): "public Task<bool> HandleAsync(PlaceOrder c) =>"
+        Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
 }
