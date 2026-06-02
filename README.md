@@ -4,7 +4,7 @@
 
 Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
 
-![Edict Sample.Web dashboard processing live order traffic](docs/assets/traffic-demo.gif)
+<img src="docs/assets/live-metrics-demo.gif" alt="Edict live metrics dashboard: outbox depth, dead-letter rate, handler p99 and stream lag updating in real time" width="640">
 
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
@@ -174,11 +174,12 @@ dotnet run --project Sample/Sample.Azure.AppHost
 The Aspire dashboard prints a URL on startup. From there, follow two links:
 
 - **Sample.Azure.Web** — the demo at `/`. A paused dashboard of a live order-processing system. Press ▶ to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire. Click any row in the orders table to spotlight it; the right-hand timeline shows that order's state transitions with the span name beside each row, so you can navigate the Aspire trace by reading down the spotlight. Three injection buttons demonstrate the failure modes — poison, oversize-payload (claim check), and saga-rejected commands.
+
+  <img src="docs/assets/traffic-demo.gif" alt="Edict Sample.Web dashboard processing live order traffic" width="640">
+
 - **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
 
 Two spokes hang off the demo: `/dead-letter` lists outbox effects that exhausted their retry budget; `/metrics` shows live tiles for outbox depth, dead-letter rate, handler p99 and stream lag, each with its PromQL recipe inline.
-
-![Edict live metrics dashboard: outbox depth, dead-letter rate, handler p99 and stream lag updating in real time](docs/assets/live-metrics-demo.gif)
 
 Run the test suites with `dotnet test Edict/Edict.slnx`. On Windows, enable long paths first: `git config core.longpaths true`.
 
