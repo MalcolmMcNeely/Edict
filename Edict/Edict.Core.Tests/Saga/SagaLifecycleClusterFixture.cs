@@ -1,7 +1,9 @@
+using Edict.Contracts.ClaimCheck;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.ClaimCheck;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,12 @@ public sealed class SagaLifecycleClusterFixture : IAsyncLifetime
     // never sees a zero clock; advanced forward only.
     public static readonly FakeTimeProvider Time = new(new DateTimeOffset(2026, 6, 2, 9, 0, 0, TimeSpan.Zero));
 
+    // Shared in-process so a test can seed the inner-event body a pointer-bearing
+    // envelope points at, and the silo-side unwrap fetches the same bytes back —
+    // the in-memory cluster runs in this process, so one static instance is the
+    // store on both sides of the deferred-dispatch hop.
+    public static readonly InMemoryClaimCheckStore ClaimCheckStore = new();
+
     public TestCluster Cluster { get; private set; } = null!;
 
     public IGrainFactory GrainFactory => Cluster.GrainFactory;
@@ -63,6 +71,9 @@ public sealed class SagaLifecycleClusterFixture : IAsyncLifetime
             // Register the virtual clock before AddEdictOutbox so its
             // TryAddSingleton(TimeProvider.System) is skipped.
             siloBuilder.Services.AddSingleton<TimeProvider>(Time);
+            // Pointer-bearing envelopes the deferred-dispatch tests inject fetch
+            // their inner body from this store; plain events bypass it.
+            siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(ClaimCheckStore);
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
 

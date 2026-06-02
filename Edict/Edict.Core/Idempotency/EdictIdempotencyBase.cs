@@ -187,24 +187,48 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind
     /// and the original claim-check key.
     /// </summary>
-    async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
+    private protected virtual async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
     {
         EnsureWindowInitialized();
 
-        if (Contains(envelope.EventId))
+        if (IsDeferredRedelivery(envelope))
         {
-            EmitDedupSpan(envelope);
-            IdempotencyDedupMetrics.EmitDedupHit(envelope, GetType().FullName ?? GetType().Name);
             return;
         }
 
+        await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
+    }
+
+    /// <summary>
+    /// Dedup check for the pointer-envelope path: an already-handled wire-frame
+    /// <see cref="EdictEvent.EventId"/> is a redelivery — emit the dedup span and
+    /// metric and report it so the caller can suppress it before staging.
+    /// </summary>
+    private protected bool IsDeferredRedelivery(EdictEventEnvelope envelope)
+    {
+        if (!Contains(envelope.EventId))
+        {
+            return false;
+        }
+
+        EmitDedupSpan(envelope);
+        IdempotencyDedupMetrics.EmitDedupHit(envelope, GetType().FullName ?? GetType().Name);
+        return true;
+    }
+
+    /// <summary>
+    /// Builds the <see cref="OutboxEffectKind.InvokeHandler"/> entry that carries
+    /// the pointer envelope as its payload, preferring the envelope's embedded
+    /// trace ids (stamped by <c>PublishEventExecutor</c>) over
+    /// <see cref="Activity.Current"/> — Azure Queue streams do not propagate
+    /// <see cref="Activity.Current"/> across the hop, but the publish span's
+    /// identity rides on the event itself so the deferred handle span still nests
+    /// as parent-child.
+    /// </summary>
+    private protected OutboxEntry BuildInvokeHandlerEntry(EdictEventEnvelope envelope)
+    {
         var serializer = _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
-        // Prefer the envelope's embedded trace ids (stamped by
-        // PublishEventExecutor) over Activity.Current — Azure Queue streams do
-        // not propagate Activity.Current across the hop, but the publish span's
-        // identity rides on the event itself so the deferred handle span
-        // still nests as parent-child.
         string? traceParent;
         string? traceState;
         if (envelope.TraceId is { Length: 32 } eventTraceId && envelope.SpanId is { Length: 16 } eventSpanId)
@@ -223,7 +247,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             traceState = null;
         }
 
-        var entry = new OutboxEntry
+        return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.InvokeHandler,
@@ -231,8 +255,6 @@ public abstract class EdictIdempotencyBase<TPayload>
             TraceParent = traceParent,
             TraceState = traceState,
         };
-
-        await CommitAndPersistAsync(envelope.EventId, entry);
     }
 
     /// <summary>
@@ -245,6 +267,17 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// redelivers.
     /// </summary>
     protected abstract Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent);
+
+    /// <summary>
+    /// The deferred-dispatch callback the Outbox engine invokes when it drains an
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> entry: runs the handler on the
+    /// already-materialised event and returns the single downstream effect it
+    /// staged. <c>EdictSaga</c> overrides it to fold in the lifecycle a
+    /// <c>Complete()</c> implies, so terminalisation rides the engine's ack-write
+    /// for the entry rather than being lost on this off-stream path.
+    /// </summary>
+    private protected virtual async Task<OutboxEntry?> DispatchDeferredAsync(EdictEvent edictEvent) =>
+        (await DispatchAsync(edictEvent)).StagedEffect;
 
     /// <summary>
     /// The dedup-guarded stream callback. Invoked by the bifurcation for the
@@ -391,7 +424,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKey().ToString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
-            deferredDispatch: async edictEvent => (await DispatchAsync(edictEvent)).StagedEffect,
+            deferredDispatch: DispatchDeferredAsync,
             consumerType: GetType(),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
             requestDeactivation: DeactivateOnIdle);

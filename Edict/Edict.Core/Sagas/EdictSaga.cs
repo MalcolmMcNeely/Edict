@@ -181,6 +181,76 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     }
 
     /// <summary>
+    /// Deferred (pointer-envelope) intake: the same dedup-first → terminal-guard →
+    /// arm shape as <see cref="OnStreamEventAsync"/>, but the handler runs later
+    /// off the engine drain. The terminal guard and arming both fold into the
+    /// staging write — neither needs the oversized body, which is still in the
+    /// claim-check store — so an oversized first Event arms the absolute cap and
+    /// an oversized Event at a terminal saga dead-letters, exactly as the inline
+    /// path does. Arming anchors at receipt here (the handler runs after the
+    /// drain), and the cap reminder is registered once the staging commit and the
+    /// drain it triggers have settled, so a <see cref="Complete"/> the deferred
+    /// handler called wins over a needless registration.
+    /// </summary>
+    private protected override async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
+    {
+        EnsureWindowInitialized();
+
+        if (IsDeferredRedelivery(envelope))
+        {
+            return;
+        }
+
+        var lifecycle = State.Saga;
+        var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
+
+        if (SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
+        {
+            var terminalDeadLetter = BuildSagaDeadLetterEntry(new EdictSagaTerminalException(
+                $"Saga '{SagaType}' received an Event after it became terminal ({currentState})."));
+            _pendingLifecycle = null;
+            await CommitAndPersistAsync(envelope.EventId, terminalDeadLetter);
+            return;
+        }
+
+        var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false);
+        _pendingLifecycle = newLifecycle;
+        await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
+        _pendingLifecycle = null;
+
+        if (State.Saga?.State == SagaLifecycleState.Completed)
+        {
+            // The deferred handler called Complete() during the drain the staging
+            // commit kicked off; the terminal write is durable, so count it and
+            // disarm (a no-op if the cap was never registered).
+            SagaLifecycleMetrics.EmitCompleted(SagaType);
+            await CapReminders.UnregisterReminderAsync(CapReminderName);
+        }
+        else if (capAction == CapAction.Register && State.Saga is { State: SagaLifecycleState.Live } live)
+        {
+            await ApplyCapReminderActionAsync(CapAction.Register, live);
+        }
+    }
+
+    /// <summary>
+    /// Deferred-dispatch callback: runs the handler off the engine drain and, when
+    /// it called <see cref="Complete"/>, terminalises the lifecycle slot in place
+    /// so the <see cref="SagaLifecycleState.Completed"/> write rides the engine's
+    /// <see cref="OutboxEffectKind.InvokeHandler"/> ack-write alongside any
+    /// compensating Command. The staging caller emits the completed metric and
+    /// disarms the cap once that write is durable.
+    /// </summary>
+    private protected override async Task<OutboxEntry?> DispatchDeferredAsync(EdictEvent edictEvent)
+    {
+        var outcome = await DispatchAsync(edictEvent);
+        if (outcome.CompleteRequested && State.Saga is { State: not SagaLifecycleState.Completed } current)
+        {
+            State.Saga = current with { State = SagaLifecycleState.Completed };
+        }
+        return outcome.StagedEffect;
+    }
+
+    /// <summary>
     /// Opens a fresh single-command buffer for this Event so the
     /// one-command-per-event limit is scoped to one Event (and isolated from
     /// any concurrently-draining dispatch), runs the handler, then returns the
