@@ -64,6 +64,15 @@ A Task-returning method literally named `Handle` on a class deriving from one of
 ### EDICT019 — `DuplicateCommandValidatorAnalyzer` (Error, compilation-end)
 Two `EdictCommandValidator<TCommand>` derivatives bound to the same `TCommand`. Validators are auto-discovered via FluentValidation's `AddValidatorsFromAssemblies`, so a duplicate registration is last-wins at DI build time — the silent winner ships dead code. The rule turns that into a build error.
 
+### EDICT020 — `SagaTimeoutDurationAnalyzer` (Error)
+The `[EdictSagaTimeout("...")]` duration literal must parse (invariant culture) to a `TimeSpan` greater than zero. A typo arms nothing; a zero or negative cap would fire immediately or never. The reader parses the same literal at runtime, so a bad value otherwise mis-arms the cap reminder silently.
+
+### EDICT021 — `SagaTimeoutUnboundedExclusivityAnalyzer` (Error)
+A `[EdictSagaTimeout]` that sets both a duration and `Unbounded = true` is self-contradictory — one declares a finite cap, the other declares none. The runtime resolves the conflict silently in favour of unbounded, so the rule refuses the build.
+
+### EDICT022 — `DeadSagaTimeoutHookAnalyzer` (Warning)
+Overriding `OnSagaTimeoutAsync` on a saga declared `[EdictSagaTimeout(Unbounded = true)]` is dead code: an unbounded saga never arms a cap, so the hook can never fire. Only the explicit-unbounded case is detectable — the analyzer cannot see the runtime silo-wide default.
+
 ---
 
 ## Numbering

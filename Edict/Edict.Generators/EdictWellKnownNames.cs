@@ -87,6 +87,10 @@ internal static class EdictWellKnownNames
     public const string IEdictSagaFqn =
         "global::Edict.Core.Sagas.IEdictSaga";
 
+    // ── Edict.Contracts.Sagas ────────────────────────────────────────────────
+    public const string EdictSagaTimeoutAttributeFqn =
+        "global::Edict.Contracts.Sagas.EdictSagaTimeoutAttribute";
+
     // ── Edict.Contracts.Persistence ──────────────────────────────────────────
     public const string IEdictPersistedStateFqn =
         "global::Edict.Contracts.Persistence.IEdictPersistedState";
