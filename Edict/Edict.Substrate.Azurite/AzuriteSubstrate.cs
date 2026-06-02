@@ -39,11 +39,16 @@ public sealed class AzuriteSubstrate : ISubstrate
 
     public string Name => "azure";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
+    public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
     {
         // Azure Queue streams poll on a timer; there is no Earliest/Latest
         // analogue. Saturation mode is accepted for harness uniformity.
         _ = mode;
+        return SubstrateBringUp.WithRetryAsync(Name, StartOnceAsync, cancellationToken);
+    }
+
+    static async Task<ISubstrateRuntime> StartOnceAsync(CancellationToken cancellationToken)
+    {
         var container = new AzuriteBuilder()
             .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
             .WithCreateParameterModifier(p =>
@@ -52,20 +57,38 @@ public sealed class AzuriteSubstrate : ISubstrate
                 p.Cmd.Add("--skipApiVersionCheck");
             })
             .Build();
-        await container.StartAsync(cancellationToken);
-        await WaitForHostEndpointsAsync(container, cancellationToken);
+        try
+        {
+            await container.StartAsync(cancellationToken);
+            await WaitForHostEndpointsAsync(container, cancellationToken);
 
-        var connectionString = container.GetConnectionString();
-        var tableClient = new TableServiceClient(connectionString);
-        var blobClient = new BlobServiceClient(connectionString);
-        var queueClient = new QueueServiceClient(connectionString);
+            var connectionString = container.GetConnectionString();
+            var tableClient = new TableServiceClient(connectionString);
+            var blobClient = new BlobServiceClient(connectionString);
+            var queueClient = new QueueServiceClient(connectionString);
 
-        return new AzuriteSubstrateRuntime(
-            container,
-            connectionString,
-            tableClient,
-            blobClient,
-            queueClient);
+            return new AzuriteSubstrateRuntime(
+                container,
+                connectionString,
+                tableClient,
+                blobClient,
+                queueClient);
+        }
+        catch
+        {
+            // Release the container before the retry: a stalled host-port
+            // forwarder never clears on the same mapping, so the next attempt
+            // must start from a freshly created container.
+            try
+            {
+                await container.DisposeAsync();
+            }
+            catch
+            {
+                // A teardown failure must not mask the bring-up failure that triggered it.
+            }
+            throw;
+        }
     }
 
     // Testcontainers' Azurite wait strategy keys off in-container readiness,

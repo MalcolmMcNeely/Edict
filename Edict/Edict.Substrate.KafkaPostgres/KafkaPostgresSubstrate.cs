@@ -38,7 +38,10 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
     public string Name => "kafkapostgres";
 
-    public async Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
+    public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop) =>
+        SubstrateBringUp.WithRetryAsync(Name, token => StartOnceAsync(token, mode), cancellationToken);
+
+    async Task<ISubstrateRuntime> StartOnceAsync(CancellationToken cancellationToken, SubstrateStartMode mode)
     {
         var postgresContainer = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
@@ -54,33 +57,58 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             .WithCommand("-c", "max_connections=1024")
             .Build();
         var kafkaContainer = new KafkaBuilder().Build();
-        await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));
+        try
+        {
+            await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));
 
-        var postgresConnectionString = postgresContainer.GetConnectionString();
-        var bootstrapAddress = kafkaContainer.GetBootstrapAddress();
-        // Confluent.Kafka clients reject the "PLAINTEXT://" scheme prefix —
-        // matches the strip in Edict.Kafka.Tests/KafkaAssemblyHost.
-        var bootstrapServers = bootstrapAddress.StartsWith("PLAINTEXT://", StringComparison.Ordinal)
-            ? bootstrapAddress["PLAINTEXT://".Length..]
-            : bootstrapAddress;
+            var postgresConnectionString = postgresContainer.GetConnectionString();
+            var bootstrapAddress = kafkaContainer.GetBootstrapAddress();
+            // Confluent.Kafka clients reject the "PLAINTEXT://" scheme prefix —
+            // matches the strip in Edict.Kafka.Tests/KafkaAssemblyHost.
+            var bootstrapServers = bootstrapAddress.StartsWith("PLAINTEXT://", StringComparison.Ordinal)
+                ? bootstrapAddress["PLAINTEXT://".Length..]
+                : bootstrapAddress;
 
-        await WaitForKafkaReadyAsync(bootstrapServers, cancellationToken);
-        var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
-        // Saturation pass measures count-at-window-end on a fresh consumer
-        // group; Latest avoids replaying warmup-window backlog into the
-        // measurement, which would inflate EPS. Closed-loop keeps Earliest so
-        // fresh-group consumers replay deterministically from offset 0.
-        var autoOffsetReset = mode == SubstrateStartMode.Saturation
-            ? AutoOffsetReset.Latest
-            : AutoOffsetReset.Earliest;
+            await WaitForKafkaReadyAsync(bootstrapServers, cancellationToken);
+            var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
+            // Saturation pass measures count-at-window-end on a fresh consumer
+            // group; Latest avoids replaying warmup-window backlog into the
+            // measurement, which would inflate EPS. Closed-loop keeps Earliest so
+            // fresh-group consumers replay deterministically from offset 0.
+            var autoOffsetReset = mode == SubstrateStartMode.Saturation
+                ? AutoOffsetReset.Latest
+                : AutoOffsetReset.Earliest;
 
-        return new KafkaPostgresSubstrateRuntime(
-            postgresContainer,
-            kafkaContainer,
-            postgresConnectionString,
-            bootstrapServers,
-            consumerGroupId,
-            autoOffsetReset);
+            return new KafkaPostgresSubstrateRuntime(
+                postgresContainer,
+                kafkaContainer,
+                postgresConnectionString,
+                bootstrapServers,
+                consumerGroupId,
+                autoOffsetReset);
+        }
+        catch
+        {
+            // Release both containers before the retry: a stalled host-port
+            // forwarder never clears on the same mapping, so the next attempt
+            // must start from freshly created containers (and their disposal
+            // keeps a doomed run from leaking Docker/Podman resources).
+            await DisposeQuietlyAsync(kafkaContainer);
+            await DisposeQuietlyAsync(postgresContainer);
+            throw;
+        }
+    }
+
+    static async Task DisposeQuietlyAsync(IAsyncDisposable container)
+    {
+        try
+        {
+            await container.DisposeAsync();
+        }
+        catch
+        {
+            // A teardown failure must not mask the bring-up failure that triggered it.
+        }
     }
 
     // Mirrors AzuriteSubstrate.WaitForHostEndpointsAsync: Testcontainers'
