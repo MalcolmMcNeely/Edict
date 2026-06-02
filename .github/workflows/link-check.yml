@@ -1,9 +1,16 @@
 name: Link check
 
+# Scope rule: link-check every consumer-facing doc folder. Internal folders
+# (docs/adr, docs/theorycrafting) are deliberately out — they are not a
+# consumer's contract with the framework. New consumer-facing folders must be
+# added to both the paths filter and the lychee args below by hand.
 on:
   pull_request:
     paths:
       - 'docs/usage/**'
+      - 'docs/configuration/**'
+      - 'docs/operations/**'
+      - 'docs/benchmarks/**'
       - 'AGENTS.md'
       - 'README.md'
       - 'Edict/Edict.*/README.md'
@@ -14,6 +21,9 @@ on:
       - main
     paths:
       - 'docs/usage/**'
+      - 'docs/configuration/**'
+      - 'docs/operations/**'
+      - 'docs/benchmarks/**'
       - 'AGENTS.md'
       - 'README.md'
       - 'Edict/Edict.*/README.md'
@@ -36,5 +46,8 @@ jobs:
             README.md
             AGENTS.md
             'docs/usage/**/*.md'
+            'docs/configuration/**/*.md'
+            'docs/operations/**/*.md'
+            'docs/benchmarks/**/*.md'
             'Edict/Edict.*/README.md'
           fail: true
