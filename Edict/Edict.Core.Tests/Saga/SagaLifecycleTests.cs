@@ -8,7 +8,8 @@ namespace Edict.Core.Tests.Saga;
 // only — no Azurite). Events drive through the in-process delivery seam and the
 // cap fires through a probe, so the FakeTimeProvider can be advanced
 // deterministically without waiting on Orleans' one-minute reminder floor.
-public sealed class SagaLifecycleTests : IClassFixture<SagaLifecycleClusterFixture>
+[Collection(SagaLifecycleCollection.Name)]
+public sealed class SagaLifecycleTests
 {
     readonly SagaLifecycleClusterFixture _fixture;
 

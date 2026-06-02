@@ -135,12 +135,40 @@ public static class SemanticConventions
 
     public static class Sagas
     {
+        public static class Tags
+        {
+            /// <summary>How a fired absolute-lifetime cap resolved:
+            /// <see cref="OutcomeValues.Compensated"/> when the
+            /// <c>OnSagaTimeoutAsync</c> override dispatched a compensating Command,
+            /// <see cref="OutcomeValues.Deadlettered"/> otherwise.</summary>
+            public const string Outcome = "edict.saga.timeout.outcome";
+
+            /// <summary>The closed allowlist of values for <see cref="Outcome"/>.</summary>
+            public static class OutcomeValues
+            {
+                public const string Compensated = "compensated";
+                public const string Deadlettered = "deadlettered";
+            }
+        }
+
         public static class Meters
         {
             /// <summary>Observable gauge of seconds since the last event a saga handled,
             /// per saga type, taken as <c>max(now − lastHandledAt_i)</c> across every
             /// live saga on this silo. Sourced from the silo-local metrics cache.</summary>
             public const string ProgressAge = "edict.saga.progress.age";
+
+            /// <summary>Counter of fired absolute-lifetime caps, partitioned by saga type
+            /// (<see cref="Common.Tags.GrainType"/>) and <see cref="Tags.Outcome"/>.
+            /// With <see cref="Completed"/> it makes the health ratio
+            /// <c>fired / (fired + completed)</c> computable, separating a handful of
+            /// timeouts among millions from a rising failure trend.</summary>
+            public const string TimeoutFired = "edict.saga.timeout.fired";
+
+            /// <summary>Counter of sagas that reached <c>Completed</c> via <c>Complete()</c>,
+            /// partitioned by saga type (<see cref="Common.Tags.GrainType"/>). The
+            /// denominator companion to <see cref="TimeoutFired"/>.</summary>
+            public const string Completed = "edict.saga.completed";
         }
     }
 

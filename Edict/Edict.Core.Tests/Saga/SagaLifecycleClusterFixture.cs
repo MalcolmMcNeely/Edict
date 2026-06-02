@@ -12,6 +12,16 @@ using Orleans.TestingHost;
 
 namespace Edict.Core.Tests.Saga;
 
+// Binds every saga-lifecycle test class to one shared in-memory cluster and,
+// because xUnit runs classes in a collection serially, keeps the process-global
+// MeterListener in SagaLifecycleMetricsTests from seeing counters a sibling class
+// emits for the same saga types in parallel.
+[CollectionDefinition(Name)]
+public sealed class SagaLifecycleCollection : ICollectionFixture<SagaLifecycleClusterFixture>
+{
+    public const string Name = "SagaLifecycle";
+}
+
 // In-memory TestCluster for saga lifecycle: memory streams, reminders, and
 // grain storage — no Azurite, no Edict.Testing. A static FakeTimeProvider is
 // the silo's clock so a test arms a cap then advances past it deterministically;

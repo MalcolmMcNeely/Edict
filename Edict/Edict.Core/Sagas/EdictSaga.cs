@@ -170,6 +170,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
         _pendingLifecycle = null;
 
+        // Count the completion only once the terminal transition is durable; the
+        // dedup ring and terminal guard above make this exactly-once per saga.
+        if (newLifecycle?.State == SagaLifecycleState.Completed)
+        {
+            SagaLifecycleMetrics.EmitCompleted(SagaType);
+        }
+
         await ApplyCapReminderActionAsync(capAction, newLifecycle);
     }
 
@@ -262,6 +269,14 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         var timedOut = (lifecycle ?? new SagaLifecycle()) with { State = SagaLifecycleState.TimedOut };
 
         await CommitLifecycleOnlyAsync(timedOut, stagedEffect);
+
+        // The fired cap is now durable: count it with the outcome the hook chose —
+        // compensated when it dispatched a Command, deadlettered otherwise.
+        var outcome = command is not null
+            ? SemanticConventions.Sagas.Tags.OutcomeValues.Compensated
+            : SemanticConventions.Sagas.Tags.OutcomeValues.Deadlettered;
+        SagaLifecycleMetrics.EmitTimeoutFired(SagaType, outcome);
+
         await CapReminders.UnregisterReminderAsync(CapReminderName);
     }
 
