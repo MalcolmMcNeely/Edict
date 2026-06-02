@@ -78,7 +78,7 @@ The framework-provided read-only, persistence-neutral interface (`IEdictTableRep
 _Avoid_: writing through the repository; depending on the framework-internal write seam from application code.
 
 **Outbox**:
-The single durable-delivery engine, owned by both grain roots, that records pending effects (`PublishEvent`, `SendCommand`, `UpsertRow`, `InvokeHandler`) in the same grain-state write as the consumer payload.
+The single durable-delivery engine, owned by both grain roots, that records pending effects (`PublishEvent`, `SendCommand`, `UpsertRow`, `InvokeHandler`) in the same grain-state write as the consumer payload. A `PublishEvent` entry's `EventId` is stamped once as the event is enqueued and persisted on the payload, so a re-publish reuses the committed id rather than minting a new one.
 _Avoid_: an Outbox grain; a second store for entries; assuming exactly-once publish (it is at-least-once — consumer dedup makes it effectively-once); assuming per-aggregate causal order across multiple events once any entry has failed.
 
 **Dead Letter**:
@@ -94,7 +94,7 @@ The escape hatch for oversized events: the body is written to an append-only blo
 _Avoid_: deleting blobs from framework code (append-only is load-bearing); estimating event size by anything other than the serialised byte length; fetching the body into the dead-letter row; treating blobs as an event log.
 
 **Idempotency Base** (`EdictIdempotencyBase<TPayload>`):
-The abstract generic base that Event Handlers, Sagas, and Projection Builders inherit, providing a bounded per-grain window of recently handled `EventId`s that suppresses at-least-once redeliveries.
+The abstract generic base that Event Handlers, Sagas, and Projection Builders inherit, providing a bounded per-grain window of recently handled `EventId`s that suppresses at-least-once redeliveries. The dedup key is the `EventId` assigned once as the event enters the Outbox, so it stays constant across redeliveries and producer-side re-publishes (a crash-recovery re-drain ships the same id, not a fresh one).
 _Avoid_: implying it owns or configures stream subscription.
 
 **Substrate**:
