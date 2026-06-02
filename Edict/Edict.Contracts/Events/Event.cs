@@ -7,8 +7,8 @@ namespace Edict.Contracts.Events;
 /// stream after a Command Handler returns <c>Accepted</c>. Concrete events
 /// derive from this and carry only their domain payload; framework fields
 /// are stamped by the runtime — <c>OccurredAt</c> inside
-/// <c>EdictCommandHandler.Raise()</c>, <c>EventId</c> and trace context at
-/// drain by the outbox. W3C trace fields stitch the
+/// <c>EdictCommandHandler.Raise()</c>, <c>EventId</c> once as the event enters
+/// the outbox, and trace context per publish at drain. W3C trace fields stitch the
 /// <c>Command → Publish → Handle</c> chain as parent-child spans across the
 /// stream hop.
 /// </summary>

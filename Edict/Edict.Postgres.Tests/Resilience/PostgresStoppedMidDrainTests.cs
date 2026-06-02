@@ -12,24 +12,24 @@ namespace Edict.Postgres.Tests.Resilience;
 // Once Postgres restarts, a reminder tick reconnects, the ack persists, and the
 // outbox settles to empty with the reminder unregistered.
 //
-// This pins the producer-side recovery guarantee. It is deliberately NOT an
-// end-to-end exactly-once assertion: in DrainAsync the publish precedes the
-// Postgres ack-write, so a drain-window outage always lands post-publish and
-// the recovery re-drain re-publishes. PublishEventExecutor stamps a fresh
-// EventId per publish, so that re-publish is a distinct event the consumer
-// dedup ring cannot collapse — at-least-once, not exactly-once. That gap is
-// tracked separately.
+// Because the publish precedes the Postgres ack-write, a drain-window outage
+// always lands post-publish and the recovery re-drain re-publishes. EventId is
+// now assigned once as the event enters the Outbox and carried on the persisted
+// payload, so that re-publish carries the same id and the consumer dedup ring
+// collapses it: this pins effectively-once across the ack-write-window fault on
+// a real substrate, not just at-least-once.
 [Collection(PostgresResilienceCollection.Name)]
 public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixture fixture)
 {
     [Fact]
-    public async Task DrainRecovery_ReminderReconnectsAndDrainsToEmpty_WhenPostgresStoppedMidDrain()
+    public async Task DrainRecovery_AppliesExactlyOnce_WhenPostgresStoppedMidDrainForcesRepublish()
     {
         await fixture.EnsureRunningAsync();
         ControllableOutboxExecutor.Reset();
 
         var counterId = Guid.NewGuid();
         var probe = fixture.Cluster.GrainFactory.GetGrain<ICounterProbe>(counterId);
+        var applied = fixture.Cluster.GrainFactory.GetGrain<ICounterAppliedProbe>(counterId);
 
         // Arrange — the first publish fails, so the command commits state and
         // leaves the raised event as a durable pending outbox entry with the
@@ -49,9 +49,9 @@ public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixtur
         await Assert.ThrowsAnyAsync<Exception>(() => probe.ForceDrainViaReminderAsync());
 
         // Recover — once Postgres is back, a reminder tick reconnects through the
-        // existing data source and completes the drain. Every probe call here
-        // reactivates and reads durable state, so all of them must run after the
-        // backend is reachable again — hence both are inside the retry.
+        // existing data source and completes the drain. The recovery re-drain
+        // re-publishes the same event (a fresh publish over the still-pending
+        // entry).
         await fixture.StartPostgresAsync();
         await PostgresResilienceWaiters.WaitUntilAsync(async () =>
         {
@@ -66,9 +66,14 @@ public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixtur
             }
         });
 
-        // Assert — the reminder loop reconnected and drained the outbox to empty,
-        // unregistering the drain reminder.
+        // Assert — the outbox drained to empty and the reminder unregistered.
         Assert.Equal(0, await probe.GetPendingOutboxCountAsync());
         Assert.False(await probe.HasDrainReminderAsync());
+
+        // The re-published event carries the same EventId as the original
+        // publish, so the consumer's dedup ring collapses it: the handler applies
+        // exactly once across the publish / re-publish, not twice.
+        await PostgresResilienceWaiters.WaitUntilAsync(async () => await applied.GetAppliedCountAsync() >= 1);
+        Assert.Equal(1, await applied.GetAppliedCountAsync());
     }
 }

@@ -102,6 +102,12 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 
     static EdictEvent Stamp(EdictEvent edictEvent, OutboxEntry entry, Activity? publishActivity)
     {
+        // EventId is the event's delivery identity, assigned once as it enters
+        // the Outbox and carried on the payload — never re-minted here, so a
+        // producer re-publish keeps the same id and the consumer dedup ring
+        // collapses it. Trace context is stamped fresh per publish: a re-publish
+        // is a genuinely new wire attempt and deserves its own span.
+        //
         // Fall back to the entry's captured ids (null when the command ran with
         // no trace) — never a synthesised all-zero trace id, which a consumer's
         // ActivityTraceId.CreateFromString rejects.
@@ -109,7 +115,6 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 
         return edictEvent with
         {
-            EventId = Guid.NewGuid(),
             TraceId = publishActivity?.TraceId.ToHexString() ?? fallbackTraceId,
             SpanId = publishActivity?.SpanId.ToHexString() ?? fallbackSpanId,
             TraceState = publishActivity?.TraceStateString ?? entry.TraceState,

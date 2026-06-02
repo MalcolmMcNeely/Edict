@@ -54,9 +54,13 @@ public sealed class InvokeHandlerDeadLetterPromotionTests
             sourceGrainType: "Sample.OrderEmailHandler",
             now: Now);
 
-        var raised = Serializer.Deserialize<EdictEvent>(promoted.Payload);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
 
-        await Verify(raised).DontScrubGuids().DontScrubDateTimes();
+        // The notification gets its own fresh delivery identity at Promote; it is
+        // non-deterministic, so normalise it out of the shape snapshot and pin it
+        // with a targeted assertion instead.
+        Assert.NotEqual(Guid.Empty, raised.EventId);
+        await Verify(raised with { EventId = Guid.Empty }).DontScrubGuids().DontScrubDateTimes();
     }
 
     static IServiceProvider BuildSerializerProvider()

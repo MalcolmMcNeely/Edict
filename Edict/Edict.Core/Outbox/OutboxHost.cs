@@ -243,7 +243,13 @@ sealed class OutboxHost<TPayload>
         }
 
         var policy = _claimCheckPolicy!;
-        var results = await Task.WhenAll(events.Select(edictEvent => policy.ApplyAsync(edictEvent, cancellationToken)));
+        // Assign EventId once, as the event enters the Outbox, before the policy
+        // serialises the payload — so the persisted bytes carry the stable
+        // identity and a re-drain deserialises the same id. OccurredAt was
+        // already stamped at Raise; this is the delivery identity, not the
+        // intent stamp.
+        var results = await Task.WhenAll(events.Select(edictEvent =>
+            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid() }, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);

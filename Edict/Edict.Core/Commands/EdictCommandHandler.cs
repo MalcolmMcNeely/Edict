@@ -105,8 +105,8 @@ public abstract class EdictCommandHandler<TState>
     /// Stamped with <c>OccurredAt</c> at this call (via the framework's
     /// <see cref="TimeProvider"/>) so the timestamp reflects the moment the
     /// consumer's handler decided to publish and is preserved across any
-    /// subsequent outbox delay. <c>EventId</c> and trace context are stamped
-    /// at drain by the outbox.
+    /// subsequent outbox delay. <c>EventId</c> is stamped once as the event
+    /// enters the outbox; trace context is stamped per publish at drain.
     /// </summary>
     protected void Raise(EdictEvent theEvent)
     {

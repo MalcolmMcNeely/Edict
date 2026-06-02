@@ -1,12 +1,16 @@
 using Edict.Contracts;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
+using Edict.Core.Serialization;
 using Edict.Core.Tests.TestSupport;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
+using Orleans.Serialization;
 using Orleans.Streams;
 
 using static VerifyXunit.Verifier;
@@ -132,6 +136,46 @@ public sealed class OutboxHostTests
         await Verify(executor.BatchInvocations).DontScrubGuids();
     }
 
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldPersistNonEmptyEventId_WhenRaisedEventHasEmptyId()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new RecordingExecutor();
+        var host = BuildHostWithClaimCheck(state, log, executor);
+
+        // A consumer's Raise leaves EventId default — identity is assigned as the
+        // event enters the Outbox, not at the call site.
+        var raised = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
+        Assert.Equal(Guid.Empty, raised.EventId);
+
+        await host.EnqueueRaisedEventsAndDrainAsync([raised], traceParent: null, traceState: null);
+
+        var persisted = Serializer.Deserialize<EdictEvent>(Assert.Single(executor.Invocations).Payload);
+        Assert.NotEqual(Guid.Empty, persisted.EventId);
+    }
+
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldAssignDistinctIds_WhenTwoEventsRaisedInOneTurn()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new RecordingExecutor();
+        var host = BuildHostWithClaimCheck(state, log, executor);
+
+        var first = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
+        var second = new OrderPlacedEvent(FixedOrderId, "SKU-2") { OccurredAt = Now };
+
+        await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null);
+
+        var ids = executor.Invocations
+            .Select(entry => Serializer.Deserialize<EdictEvent>(entry.Payload).EventId)
+            .ToArray();
+        Assert.Equal(2, ids.Length);
+        Assert.DoesNotContain(Guid.Empty, ids);
+        Assert.NotEqual(ids[0], ids[1]);
+    }
+
     static OutboxHost<EdictUnit> BuildHost(
         CountingPersistentState<GrainEnvelope<EdictUnit>> state,
         CallLog log,
@@ -149,6 +193,47 @@ public sealed class OutboxHostTests
             new NoopPromoter(),
             grainKey: "test-grain",
             grainTypeName: "TestGrain");
+    }
+
+    // EnqueueRaisedEventsAndDrainAsync routes raised events through the policy
+    // before staging, so a host driven down that path needs a real one. A high
+    // threshold with no store keeps every event inline (no claim-check wrap), so
+    // the persisted payload is the serialised inner event the assertions read.
+    static OutboxHost<EdictUnit> BuildHostWithClaimCheck(
+        CountingPersistentState<GrainEnvelope<EdictUnit>> state,
+        CallLog log,
+        IOutboxEffectExecutor executor)
+    {
+        var time = new FakeTimeProvider(Now);
+        var reminders = new RecordingReminderRegistrar(log);
+        var policy = new ClaimCheckPolicy(
+            Serializer, thresholdBytes: 1_000_000, store: null, new StubEdictEventStreamAccessors());
+        return new OutboxHost<EdictUnit>(
+            state,
+            NullStreamProvider.Instance,
+            reminders,
+            [executor],
+            Options,
+            time,
+            new NoopPromoter(),
+            grainKey: "test-grain",
+            grainTypeName: "TestGrain",
+            claimCheckPolicy: policy);
+    }
+
+    static readonly Guid FixedOrderId = new("22222222-2222-2222-2222-222222222222");
+
+    static readonly Serializer Serializer = BuildSerializer();
+
+    static Serializer BuildSerializer()
+    {
+        var services = new ServiceCollection();
+        services.AddSerializer(builder =>
+        {
+            builder.AddAssembly(typeof(OutboxHostTests).Assembly);
+            builder.AddEdictContractSerializer();
+        });
+        return services.BuildServiceProvider().GetRequiredService<Serializer>();
     }
 
     static OutboxEntry Entry(int seed) => new()

@@ -20,8 +20,9 @@ namespace Edict.Testing.Internal;
 /// deliver to referenced-assembly consumers. Same effect from the engine's
 /// point of view (Kind = <see cref="OutboxEffectKind.PublishEvent"/>), so the
 /// rest of the Outbox pipeline is unchanged. Also records the event on the
-/// timeline and stamps identity / time / trace exactly as the real
-/// <c>PublishEventExecutor</c> does. Orchestrates over <see cref="ChaosRoller"/>
+/// timeline and stamps trace context per publish exactly as the real
+/// <c>PublishEventExecutor</c> does, carrying the payload's already-assigned
+/// <c>EventId</c> unchanged. Orchestrates over <see cref="ChaosRoller"/>
 /// (per-arrival reorder rolls, per-emission duplicate rolls) and
 /// <see cref="HeldQueue"/> (per-subscriber K-counter holds) so every consumer
 /// test exercises both the dedup ring and the reorder-tolerance contract.
@@ -80,9 +81,11 @@ sealed class InProcPublishExecutor(
 
         var (fallbackTraceId, fallbackSpanId) = SplitTraceParent(entry.TraceParent);
 
+        // Matches production: EventId is assigned once as the event enters the
+        // Outbox and carried on the payload, never re-minted per publish. Trace
+        // context is stamped fresh per publish.
         var stamped = edictEvent with
         {
-            EventId = Guid.NewGuid(),
             TraceId = publishActivity?.TraceId.ToHexString() ?? fallbackTraceId,
             SpanId = publishActivity?.SpanId.ToHexString() ?? fallbackSpanId,
             TraceState = publishActivity?.TraceStateString ?? entry.TraceState,

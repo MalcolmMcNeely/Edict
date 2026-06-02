@@ -67,11 +67,16 @@ sealed class DeadLetterPromoter(
             new KeyValuePair<string, object?>(SemanticConventions.DeadLetter.Tags.FailureReason, DeadLetterFailureClassifier.Classify(exception)),
             new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, sourceGrainType));
 
+        // The forensic notification is its own event with its own identity. The
+        // drain no longer mints one, so stamp it here at the single choke point
+        // that covers every promoter path. A fresh id (never the source event's)
+        // keeps two distinct failures of one source event as two dead-letter
+        // rows. Guid.NewGuid cannot throw, so the safety-net no-throw rule holds.
         return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),
             Kind = OutboxEffectKind.PublishEvent,
-            Payload = serializer.SerializeToArray<EdictEvent>(raised),
+            Payload = serializer.SerializeToArray<EdictEvent>(raised with { EventId = Guid.NewGuid() }),
             TraceParent = failed.TraceParent,
             TraceState = failed.TraceState,
             AttemptCount = 0,

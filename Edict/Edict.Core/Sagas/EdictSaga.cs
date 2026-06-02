@@ -496,6 +496,10 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // outbox promoter emits, keyed on the stable Edict* exception type.
         var raised = new EdictDeadLetterRaised
         {
+            // Own delivery identity, stamped here at origination — the drain no
+            // longer mints one, and a fresh id keeps each lifecycle dead-letter a
+            // distinct row in the singleton projection's dedup ring.
+            EventId = Guid.NewGuid(),
             EntryId = Guid.NewGuid(),
             Kind = cause is EdictSagaTimeoutException
                 ? SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout
