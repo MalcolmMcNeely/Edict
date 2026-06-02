@@ -63,6 +63,11 @@ internal sealed class ClaimCheckPolicy
         var (innerStreamName, innerRouteKey) = _accessors.Resolve(edictEvent);
         var envelope = EnvelopeCodec.WrapPointer(key) with
         {
+            // Mirror the inner event's already-stamped delivery identity so the
+            // receiver's pre-fetch dedup keys on the same id the handler sees
+            // after unwrap; only EventId is mirrored (OccurredAt stays the inner
+            // event's intent stamp, trace context is stamped fresh at drain).
+            EventId = edictEvent.EventId,
             InnerEventStreamName = innerStreamName,
             InnerEventRouteKey = innerRouteKey,
         };

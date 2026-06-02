@@ -4,6 +4,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -72,6 +73,26 @@ public sealed class ClaimCheckUnwrapTests
         Assert.Equal(inner.OrderId, materialised.OrderId);
         Assert.Equal(inner.Sku, materialised.Sku);
         Assert.Equal(inner.EventId, materialised.EventId);
+    }
+
+    [Fact]
+    public async Task WrapThenUnwrap_ShouldMaterialiseInnerEventWithIdEqualToEnvelopeId_WhenOversized()
+    {
+        var store = new InMemoryClaimCheckStore();
+        var stampedId = Guid.NewGuid();
+        var inner = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256)) { EventId = stampedId };
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
+
+        var wrapped = await policy.ApplyAsync(inner, CancellationToken.None);
+        var envelope = Assert.IsType<EdictEventEnvelope>(wrapped.WireEvent);
+        var unwrap = new ClaimCheckUnwrap(Serializer, store);
+
+        var materialised = await unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None);
+
+        // The dedup-committed id (envelope) and the handler-visible id (unwrapped
+        // inner) are one identity for life: non-empty, and equal across the wrap.
+        Assert.NotEqual(Guid.Empty, materialised.EventId);
+        Assert.Equal(envelope.EventId, materialised.EventId);
     }
 
     [Fact]

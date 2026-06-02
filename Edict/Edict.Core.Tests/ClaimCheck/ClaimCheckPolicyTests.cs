@@ -55,6 +55,26 @@ public sealed class ClaimCheckPolicyTests
     }
 
     [Fact]
+    public async Task ApplyAsync_ShouldMirrorInnerEventIdOntoPointerEnvelope_WhenOverThreshold()
+    {
+        var store = new RecordingStore();
+        // The id the event already carries by enqueue time, before the policy runs.
+        var stampedId = Guid.NewGuid();
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256)) { EventId = stampedId };
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
+
+        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
+
+        // The receiver dedups on the envelope id before fetching the blob, so it
+        // must equal the inner event's stamped id — otherwise every oversized
+        // event dedups against Guid.Empty and the second is wrongly suppressed.
+        var envelope = Assert.IsType<EdictEventEnvelope>(Serializer.Deserialize<EdictEvent>(result.Payload));
+        Assert.Equal(stampedId, envelope.EventId);
+        var storedInner = Serializer.Deserialize<EdictEvent>(store.Puts[0].Payload.ToArray());
+        Assert.Equal(stampedId, storedInner.EventId);
+    }
+
+    [Fact]
     public async Task ApplyAsync_ShouldThrowEnvelopeOverflow_WhenWrappedBytesExceedMaxEnvelopeBytes()
     {
         // Stub store returns an extremely long key so the serialized envelope
