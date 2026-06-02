@@ -59,6 +59,23 @@ public sealed class DeadLetterFailureClassifierTests
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated, bucket);
     }
 
+    [Theory]
+    [InlineData(typeof(SyntheticNpgsqlException))]
+    [InlineData(typeof(SyntheticPostgresException))]
+    [InlineData(typeof(SyntheticEdictPostgresStorageException))]
+    public void Classify_ShouldMapPostgresDriverFault_ToSubstrate(Type exceptionType)
+    {
+        // Core cannot reference Npgsql or Edict.Postgres, so the real
+        // NpgsqlException / PostgresException and the EdictPostgresStorageException
+        // wrapper the provider rethrows are matched by type-name. These synthetics
+        // stand in for those names.
+        var exception = (Exception)Activator.CreateInstance(exceptionType)!;
+
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate, bucket);
+    }
+
     [Fact]
     public void Classify_ShouldMapUnknownExceptionType_ToUnhandled()
     {
@@ -166,5 +183,20 @@ public sealed class DeadLetterFailureClassifierTests
     sealed class SyntheticSaturatedException : Exception
     {
         public SyntheticSaturatedException() : base("simulated saturation") { }
+    }
+
+    sealed class SyntheticNpgsqlException : Exception
+    {
+        public SyntheticNpgsqlException() : base("simulated connection drop") { }
+    }
+
+    sealed class SyntheticPostgresException : Exception
+    {
+        public SyntheticPostgresException() : base("simulated 53300 too many clients") { }
+    }
+
+    sealed class SyntheticEdictPostgresStorageException : Exception
+    {
+        public SyntheticEdictPostgresStorageException() : base("simulated WriteStateAsync fault") { }
     }
 }

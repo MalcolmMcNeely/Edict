@@ -35,6 +35,8 @@ static class DeadLetterFailureClassifier
             EdictInternalInvariantException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug,
             _ when ContainsSaturated(exception.GetType().Name) =>
                 SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated,
+            _ when IsPostgresDriverFault(exception.GetType().Name) =>
+                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             _ => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,
         };
     }
@@ -44,4 +46,13 @@ static class DeadLetterFailureClassifier
     // doesn't ship yet.
     static bool ContainsSaturated(string typeName) =>
         typeName.Contains("Saturated", StringComparison.OrdinalIgnoreCase);
+
+    // Core cannot reference Npgsql or Edict.Postgres, so a Postgres connection
+    // drop or pool exhaustion is recognised by type-name: the raw driver
+    // NpgsqlException / PostgresException, and the EdictPostgresStorageException
+    // wrapper the provider rethrows so Orleans can serialise it back across the
+    // grain boundary. All are substrate faults, not consumer bugs.
+    static bool IsPostgresDriverFault(string typeName) =>
+        typeName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)
+        || typeName.Contains("Postgres", StringComparison.OrdinalIgnoreCase);
 }
