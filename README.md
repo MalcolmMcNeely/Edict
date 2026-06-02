@@ -4,6 +4,8 @@
 
 Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
 
+![Edict Sample.Web dashboard processing live order traffic](docs/assets/traffic-demo.gif)
+
 New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
 
 Using Claude Code? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
@@ -175,6 +177,8 @@ The Aspire dashboard prints a URL on startup. From there, follow two links:
 - **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
 
 Two spokes hang off the demo: `/dead-letter` lists outbox effects that exhausted their retry budget; `/metrics` shows live tiles for outbox depth, dead-letter rate, handler p99 and stream lag, each with its PromQL recipe inline.
+
+![Edict live metrics dashboard: outbox depth, dead-letter rate, handler p99 and stream lag updating in real time](docs/assets/live-metrics-demo.gif)
 
 Run the test suites with `dotnet test Edict/Edict.slnx`. On Windows, enable long paths first: `git config core.longpaths true`.
 
