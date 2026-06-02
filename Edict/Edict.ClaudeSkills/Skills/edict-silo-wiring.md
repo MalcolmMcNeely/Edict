@@ -28,6 +28,8 @@ This is the load-bearing trigger for this skill: call `edict_describe_silo_wirin
 | `AddEdictPostgresPersistence(...)` | `Edict.Postgres` | PostgreSQL as the grain-state provider. |
 | `AddEdictKafkaStreams(...)` | `Edict.Kafka` | Kafka as the stream provider. |
 
+Each `AddEdict*` extension that takes a `(...)` argument accepts an `Action<T>` over its options class. The canonical reference for every options property, its default, and its validation rule is the `docs/configuration` folder in the Edict repository — `core.md` for the provider-agnostic knobs, plus the page matching your streaming and persistence choice. Reach for it before hand-tuning a literal in `Program.cs`.
+
 Command Validators (`EdictCommandValidator<TCommand>` subclasses) are auto-discovered by `AddEdict(assembly)` through FluentValidation's `AddValidatorsFromAssemblies`. No manual DI registration is needed; adding a validator class to the consumer assembly is enough.
 
 ## Supported pairings
@@ -50,3 +52,4 @@ The client only needs `AddEdict()` plus the contract-assembly registration on th
 - For the contract attributes the silo's generator pipeline reads: see the `edict-contracts` skill.
 - For the grain roles wired into the silo: see the `edict-authoring` skill.
 - For testing the wired silo: see the `edict-testing` skill.
+- For the options each `AddEdict*` call accepts, their defaults, and their validation rules: see the `docs/configuration` folder in the Edict repository.

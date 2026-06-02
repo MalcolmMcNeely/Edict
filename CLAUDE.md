@@ -84,6 +84,7 @@ When the conversation touches these topics, read the linked depth before answeri
 | Table projection, read models | `docs/usage/concepts/table-projections.md` + ADR-0011, 0013 |
 | Source generation, codegen ordering | `csharp` skill body + ADR-0005, 0033 |
 | Substrate, harness, conformance | ADR-0027, 0030 |
+| Configuration, options, tuning | `docs/configuration` + ADR-0023 |
 | Agentic tooling, skill ↔ MCP interlock | ADR-0044, the interlock test in `Edict.AgenticTooling.Architecture.Tests` |
 
 ## Before you touch the repo

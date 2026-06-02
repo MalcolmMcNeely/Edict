@@ -1,6 +1,6 @@
 ---
 name: surface-config
-description: Use this skill when introducing a tunable value (TimeSpan, int, magic string) in Edict.Core / Edict.Azure / Edict.Contracts framework code, or when authoring a new ISiloBuilder.AddEdict* extension. Surfaces the five-step ADR-0028 checklist so a new knob lands as an options property — never a literal in mechanism code.
+description: Use this skill when introducing a tunable value (TimeSpan, int, magic string) in Edict.Core / Edict.Azure / Edict.Contracts framework code, or when authoring a new ISiloBuilder.AddEdict* extension. Surfaces the six-step ADR-0028 checklist so a new knob lands as an options property — never a literal in mechanism code.
 ---
 
 # Surface-config
@@ -18,9 +18,9 @@ Trigger this skill the moment you:
 
 If the literal is a frozen wire identity (alias values, OTel source name, dead-letter partition key), it stays a constant — see "When the principle does NOT apply" below.
 
-## The five-step checklist
+## The six-step checklist
 
-When a new knob surfaces, all five steps land in the same PR:
+When a new knob surfaces, all six steps land in the same PR:
 
 1. **Options property.** Add a property to `EdictOptions` (core), `EdictAzureStreamsOptions` (streams, wire-cap concerns), or `EdictAzurePersistenceOptions` (persistence, storage concerns). Flat, no nesting — IntelliSense surfaces every knob without a category-discovery step.
 
@@ -31,6 +31,8 @@ When a new knob surfaces, all five steps land in the same PR:
 4. **Sample line.** Add a line to `Sample.Azure.Silo/Program.cs` under the appropriate `silo.AddEdict*` lambda showing the literal default. The sample doubles as the config catalogue; a consumer who wants to learn what's tunable reads this file first.
 
 5. **Provider marker (if applicable).** If the new knob lives on a brand-new provider extension (e.g. a Postgres persistence provider), register an `IEdictWiringMarker` implementation in `Edict.Contracts.Configuration` so the startup validator can detect the missing-provider call.
+
+6. **Documentation row.** Add a row for the property to its configuration page — `docs/configuration/core.md` for a provider-agnostic knob, or the matching `docs/configuration/{provider}.md` (e.g. `kafka.md`, `postgres.md`) for a provider-specific one. The row carries the property name, its default, and a one-line purpose. The reflection-backed drift guard `EveryPublicGetterProperty_IsDocumentedInItsConfigurationPage` in `Edict.Architecture.Tests` fails CI when an options property has no documented row, so this step is not optional.
 
 ## CI enforcement
 

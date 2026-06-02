@@ -18,7 +18,7 @@ public sealed partial class HighThroughputEventHandler : EdictEventHandler
 ## Surface
 
 - **`EdictIdempotencyBase<TPayload>`** (`Edict.Core.Idempotency`) where `TPayload : IEdictPersistedState, new()`. The non-generic shim `EdictIdempotencyBase` closes the generic on `EdictUnit` for payload-free roles.
-- **`WindowSize`** (`protected virtual int`) — the maximum number of distinct `EventId`s remembered in the dedup window for this grain type. The default reads `EdictOptions.IdempotencyWindowSize` once per activation and caches the value.
+- **`WindowSize`** (`protected virtual int`) — the maximum number of distinct `EventId`s remembered in the dedup window for this grain type. The default reads `EdictOptions.IdempotencyWindowSize` once per activation and caches the value. The silo-wide knob is owned by [configuration/core.md](../../configuration/core.md) — this page teaches the mechanism; the configuration page is the canonical reference for the property and its default.
 - **Dedup is per consuming grain, not global.** The same event delivered to an event handler and to a projection builder commits one ring slot on each — both consumers run. A redelivery to either consumer is suppressed by that consumer's own ring.
 - **Dedup is keyed by `EventId`,** the framework-assigned Guid stamped at outbox drain. The route key does not deduplicate; only `EventId` does.
 - A suppressed redelivery emits an `edict.event.deduplicated` span (no payload tags) so a forensic dedup hit is visible in traces.
@@ -34,4 +34,5 @@ The dedup ring slot, the consumer's payload mutation, and any staged outbox effe
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Idempotency Base`, `Event`, `Event Handler`, `Saga`, `Projection Builder`.
+- Configuration — [core.md](../../configuration/core.md) — the canonical reference for `IdempotencyWindowSize`.
 - Concepts — [events.md](events.md), [event-handlers.md](event-handlers.md), [sagas.md](sagas.md), [projection-builders.md](projection-builders.md), [telemetry.md](telemetry.md).
