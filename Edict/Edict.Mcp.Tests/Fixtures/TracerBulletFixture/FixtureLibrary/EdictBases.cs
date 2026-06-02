@@ -38,6 +38,18 @@ namespace Edict.Core.EventHandler
     public abstract class EdictEventHandler { }
 }
 
+namespace Edict.Contracts.Sagas
+{
+    [System.AttributeUsage(System.AttributeTargets.Class)]
+    public sealed class EdictSagaTimeoutAttribute : System.Attribute
+    {
+        public EdictSagaTimeoutAttribute() { }
+        public EdictSagaTimeoutAttribute(string duration) { Duration = duration; }
+        public string? Duration { get; }
+        public bool Unbounded { get; set; }
+    }
+}
+
 namespace Edict.Core.Sagas
 {
     using Edict.Contracts.Persistence;

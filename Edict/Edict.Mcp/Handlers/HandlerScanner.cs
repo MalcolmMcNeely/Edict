@@ -15,6 +15,7 @@ sealed class HandlerScanner
     const string CommandBase = "Edict.Contracts.Commands.EdictCommand";
     const string EventBase = "Edict.Contracts.Events.EdictEvent";
     const string RouteKeyAttributeFullName = "Edict.Contracts.Commands.EdictRouteKeyAttribute";
+    const string SagaTimeoutAttributeFullName = "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute";
 
     public HandlerInventory Scan(IEnumerable<Compilation> compilations, string? solutionDirectory)
     {
@@ -70,12 +71,14 @@ sealed class HandlerScanner
     {
         var boundContracts = CollectBoundContracts(handlerSymbol, role, resolver);
         var sourceLocation = ResolveSourceLocation(handlerSymbol, solutionDirectory);
+        var sagaTimeoutCap = role == HandlerRole.Saga ? ReadSagaTimeoutCap(handlerSymbol) : null;
         return new HandlerEntry(
             DeclaringTypeName: handlerSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)),
             Role: role,
             BoundContracts: boundContracts,
             DeclaringAssembly: handlerSymbol.ContainingAssembly.Name,
-            SourceLocation: sourceLocation);
+            SourceLocation: sourceLocation,
+            SagaTimeoutCap: sagaTimeoutCap);
     }
 
     static IReadOnlyList<BoundContractInfo> CollectBoundContracts(INamedTypeSymbol handlerSymbol, HandlerRole role, BaseTypeResolver resolver)
@@ -142,6 +145,41 @@ sealed class HandlerScanner
             }
         }
         return null;
+    }
+
+    // Mirrors SagaTimeoutAttributeReader's runtime three-way resolution: Unbounded wins,
+    // then a non-empty duration literal, otherwise the saga inherits the silo-wide default.
+    // The scanner reports the source-declared cap; it cannot read EdictSagaOptions.DefaultTimeout,
+    // so an un-annotated saga surfaces as Default rather than a concrete value.
+    static SagaTimeoutCap ReadSagaTimeoutCap(INamedTypeSymbol sagaSymbol)
+    {
+        for (var current = sagaSymbol; current is not null; current = current.BaseType)
+        {
+            foreach (var attribute in current.GetAttributes())
+            {
+                if (attribute.AttributeClass is not { } attributeClass ||
+                    attributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)) != SagaTimeoutAttributeFullName)
+                {
+                    continue;
+                }
+
+                var isUnbounded = attribute.NamedArguments
+                    .Any(namedArgument => namedArgument.Key == "Unbounded" && namedArgument.Value.Value is true);
+                if (isUnbounded)
+                {
+                    return SagaTimeoutCap.Unbounded;
+                }
+
+                var duration = attribute.ConstructorArguments.Length == 1 ? attribute.ConstructorArguments[0].Value as string : null;
+                if (!string.IsNullOrEmpty(duration))
+                {
+                    return SagaTimeoutCap.ForDuration(duration);
+                }
+
+                return SagaTimeoutCap.InheritsDefault;
+            }
+        }
+        return SagaTimeoutCap.InheritsDefault;
     }
 
     static SourceLocationInfo? ResolveSourceLocation(INamedTypeSymbol symbol, string? solutionDirectory)

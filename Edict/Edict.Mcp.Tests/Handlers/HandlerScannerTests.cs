@@ -184,6 +184,109 @@ public class HandlerScannerTests
     }
 
     [Fact]
+    public void Scan_SagaWithTimeoutAttribute_SurfacesDurationCap()
+    {
+        // Arrange
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, SagaSource("[EdictSagaTimeout(\"24:00:00\")]"));
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Equal(HandlerRole.Saga, entry.Role);
+        Assert.NotNull(entry.SagaTimeoutCap);
+        Assert.Equal(SagaTimeoutCapKind.Duration, entry.SagaTimeoutCap!.Kind);
+        Assert.Equal("24:00:00", entry.SagaTimeoutCap.Duration);
+    }
+
+    [Fact]
+    public void Scan_SagaWithUnboundedTimeoutAttribute_SurfacesUnboundedCap()
+    {
+        // Arrange
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, SagaSource("[EdictSagaTimeout(Unbounded = true)]"));
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.NotNull(entry.SagaTimeoutCap);
+        Assert.Equal(SagaTimeoutCapKind.Unbounded, entry.SagaTimeoutCap!.Kind);
+        Assert.Null(entry.SagaTimeoutCap.Duration);
+    }
+
+    [Fact]
+    public void Scan_SagaWithoutTimeoutAttribute_SurfacesDefaultCap()
+    {
+        // Arrange
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, SagaSource(attribute: ""));
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.NotNull(entry.SagaTimeoutCap);
+        Assert.Equal(SagaTimeoutCapKind.Default, entry.SagaTimeoutCap!.Kind);
+        Assert.Null(entry.SagaTimeoutCap.Duration);
+    }
+
+    [Fact]
+    public void Scan_NonSagaHandler_HasNoTimeoutCap()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Events;
+            using Edict.Core.EventHandler;
+
+            namespace Acme.Notifications
+            {
+                [EdictStream("Orders")]
+                public sealed record OrderPlaced : EdictEvent;
+
+                public sealed partial class OrderPlacedEmailHandler : EdictEventHandler
+                {
+                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Null(entry.SagaTimeoutCap);
+    }
+
+    static string SagaSource(string attribute) => $$"""
+        using Edict.Contracts.Events;
+        using Edict.Contracts.Persistence;
+        using Edict.Contracts.Sagas;
+        using Edict.Core.Sagas;
+
+        namespace Acme.Shipping
+        {
+            public sealed record ShipmentProgress : IEdictPersistedState;
+
+            [EdictStream("Orders")]
+            public sealed record OrderPlaced : EdictEvent;
+
+            {{attribute}}
+            public sealed partial class ShipmentSaga : EdictSaga<ShipmentProgress>
+            {
+                public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+            }
+        }
+        """;
+
+    [Fact]
     public void Scan_CommandValidatorSubclass_ReportsCommandValidatorRoleWithBoundCommand()
     {
         // Arrange
@@ -433,6 +536,18 @@ public class HandlerScannerTests
         namespace Edict.Core.EventHandler
         {
             public abstract class EdictEventHandler { }
+        }
+
+        namespace Edict.Contracts.Sagas
+        {
+            [AttributeUsage(AttributeTargets.Class)]
+            public sealed class EdictSagaTimeoutAttribute : Attribute
+            {
+                public EdictSagaTimeoutAttribute() { }
+                public EdictSagaTimeoutAttribute(string duration) { Duration = duration; }
+                public string? Duration { get; }
+                public bool Unbounded { get; set; }
+            }
         }
 
         namespace Edict.Core.Sagas

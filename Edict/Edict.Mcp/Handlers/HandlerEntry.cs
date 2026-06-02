@@ -5,4 +5,5 @@ sealed record HandlerEntry(
     HandlerRole Role,
     IReadOnlyList<BoundContractInfo> BoundContracts,
     string DeclaringAssembly,
-    SourceLocationInfo? SourceLocation);
+    SourceLocationInfo? SourceLocation,
+    SagaTimeoutCap? SagaTimeoutCap = null);

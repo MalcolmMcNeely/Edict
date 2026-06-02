@@ -30,7 +30,7 @@
     },
     {
       "name": "edict_list_handlers",
-      "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location."
+      "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location. Saga handlers also carry their effective [EdictSagaTimeout] cap: a duration literal, unbounded, or default (inherits the silo-wide EdictSagaOptions.DefaultTimeout)."
     },
     {
       "name": "edict_list_route_keys",

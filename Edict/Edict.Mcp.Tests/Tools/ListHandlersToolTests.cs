@@ -35,6 +35,36 @@ public class ListHandlersToolTests
                 ],
                 DeclaringAssembly: "Acme.Notifications",
                 SourceLocation: new SourceLocationInfo("Acme.Notifications/OrderPlacedEmailHandler.cs", 8, 5)),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Shipping.ShipmentSaga",
+                Role: HandlerRole.Saga,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Shipping.OrderPlaced", "OrderId"),
+                ],
+                DeclaringAssembly: "Acme.Shipping",
+                SourceLocation: new SourceLocationInfo("Acme.Shipping/ShipmentSaga.cs", 6, 5),
+                SagaTimeoutCap: SagaTimeoutCap.ForDuration("24:00:00")),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Loans.LoanApplicationSaga",
+                Role: HandlerRole.Saga,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Loans.ApplicationReceived", "ApplicationId"),
+                ],
+                DeclaringAssembly: "Acme.Loans",
+                SourceLocation: new SourceLocationInfo("Acme.Loans/LoanApplicationSaga.cs", 9, 5),
+                SagaTimeoutCap: SagaTimeoutCap.Unbounded),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Returns.ReturnSaga",
+                Role: HandlerRole.Saga,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Returns.ReturnRequested", "ReturnId"),
+                ],
+                DeclaringAssembly: "Acme.Returns",
+                SourceLocation: new SourceLocationInfo("Acme.Returns/ReturnSaga.cs", 7, 5),
+                SagaTimeoutCap: SagaTimeoutCap.InheritsDefault),
         ]);
         var tool = new ListHandlersTool(_ => Task.FromResult(inventory), StubVersionReportProvider.Clean());
 

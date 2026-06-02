@@ -90,7 +90,7 @@ sealed class McpToolRegistry
                 InvokeAsync: lookupAdr.InvokeAsync),
             new McpToolDescriptor(
                 Name: "edict_list_handlers",
-                Description: "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location.",
+                Description: "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location. Saga handlers also carry their effective [EdictSagaTimeout] cap: a duration literal, unbounded, or default (inherits the silo-wide EdictSagaOptions.DefaultTimeout).",
                 InputSchema: EmptyInputSchema,
                 InvokeAsync: listHandlers.InvokeAsync),
             new McpToolDescriptor(

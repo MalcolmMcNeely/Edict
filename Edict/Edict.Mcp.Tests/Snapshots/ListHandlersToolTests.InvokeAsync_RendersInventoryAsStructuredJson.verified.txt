@@ -35,6 +35,64 @@
         "line": 8,
         "column": 5
       }
+    },
+    {
+      "declaringTypeName": "Acme.Shipping.ShipmentSaga",
+      "role": "saga",
+      "boundContracts": [
+        {
+          "fullTypeName": "Acme.Shipping.OrderPlaced",
+          "routeKeyPropertyName": "OrderId"
+        }
+      ],
+      "declaringAssembly": "Acme.Shipping",
+      "sourceLocation": {
+        "filePath": "Acme.Shipping/ShipmentSaga.cs",
+        "line": 6,
+        "column": 5
+      },
+      "sagaTimeoutCap": {
+        "kind": "duration",
+        "duration": "24:00:00"
+      }
+    },
+    {
+      "declaringTypeName": "Acme.Loans.LoanApplicationSaga",
+      "role": "saga",
+      "boundContracts": [
+        {
+          "fullTypeName": "Acme.Loans.ApplicationReceived",
+          "routeKeyPropertyName": "ApplicationId"
+        }
+      ],
+      "declaringAssembly": "Acme.Loans",
+      "sourceLocation": {
+        "filePath": "Acme.Loans/LoanApplicationSaga.cs",
+        "line": 9,
+        "column": 5
+      },
+      "sagaTimeoutCap": {
+        "kind": "unbounded"
+      }
+    },
+    {
+      "declaringTypeName": "Acme.Returns.ReturnSaga",
+      "role": "saga",
+      "boundContracts": [
+        {
+          "fullTypeName": "Acme.Returns.ReturnRequested",
+          "routeKeyPropertyName": "ReturnId"
+        }
+      ],
+      "declaringAssembly": "Acme.Returns",
+      "sourceLocation": {
+        "filePath": "Acme.Returns/ReturnSaga.cs",
+        "line": 7,
+        "column": 5
+      },
+      "sagaTimeoutCap": {
+        "kind": "default"
+      }
     }
   ],
   "driftStatus": "no-edict-references"
