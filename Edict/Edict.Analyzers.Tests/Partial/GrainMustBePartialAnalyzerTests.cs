@@ -21,36 +21,6 @@ public class GrainMustBePartialAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
-            using Edict.Core.Commands;
-            namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId) : EdictCommand
-            {
-                [EdictRouteKey]
-                public Guid OrderId { get; init; } = OrderId;
-            }
-            public class OrderCommandHandler : EdictCommandHandler
-            {
-                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
-                    Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
-            }
-            """;
-
-        var diagnostics = AnalyzerTestHarness.Run(source, new GrainMustBePartialAnalyzer());
-
-        var d = Assert.Single(diagnostics);
-        Assert.Equal("EDICT001", d.Id);
-        Assert.Contains("OrderCommandHandler", d.GetMessage());
-        // Line 10 (0-indexed): "public class OrderCommandHandler : EdictCommandHandler"
-        Assert.Equal(10, d.Location.GetLineSpan().StartLinePosition.Line);
-    }
-
-    [Fact]
-    public void EDICT001_ShouldRaiseOnClassIdentifier_WhenGenericBaseGrainIsNotPartial()
-    {
-        const string source = """
-            using System;
-            using System.Threading.Tasks;
-            using Edict.Contracts.Commands;
             using Edict.Contracts.Persistence;
             using Edict.Core.Commands;
             namespace Sample;
@@ -62,7 +32,7 @@ public class GrainMustBePartialAnalyzerTests
             public sealed class OrderState : IEdictPersistedState;
             public class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;

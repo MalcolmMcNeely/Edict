@@ -14,6 +14,7 @@ public class BaseTypedRaiseAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
@@ -27,11 +28,12 @@ public class BaseTypedRaiseAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderHandler : EdictCommandHandler
+            public sealed class OrderState : IEdictPersistedState;
+            public partial class OrderHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> Handle(PlaceOrder c)
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder command)
                 {
-                    Raise(new OrderPlaced(c.OrderId));
+                    Raise(new OrderPlaced(command.OrderId));
                     return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
                 }
             }
@@ -50,6 +52,7 @@ public class BaseTypedRaiseAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
@@ -63,11 +66,12 @@ public class BaseTypedRaiseAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderHandler : EdictCommandHandler
+            public sealed class OrderState : IEdictPersistedState;
+            public partial class OrderHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> Handle(PlaceOrder c)
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder command)
                 {
-                    EdictEvent edictEvent = new OrderPlaced(c.OrderId);
+                    EdictEvent edictEvent = new OrderPlaced(command.OrderId);
                     Raise(edictEvent);
                     return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
                 }

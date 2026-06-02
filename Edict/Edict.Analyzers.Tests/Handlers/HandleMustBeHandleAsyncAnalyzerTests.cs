@@ -15,6 +15,7 @@ public class HandleMustBeHandleAsyncAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
@@ -22,9 +23,10 @@ public class HandleMustBeHandleAsyncAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderCommandHandler : EdictCommandHandler
+            public sealed class OrderState : IEdictPersistedState;
+            public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> Handle(PlaceOrder c) =>
+                public Task<EdictCommandResult> Handle(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
@@ -136,6 +138,7 @@ public class HandleMustBeHandleAsyncAnalyzerTests
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Commands;
             namespace Sample;
             public sealed record PlaceOrder(Guid OrderId) : EdictCommand
@@ -143,9 +146,10 @@ public class HandleMustBeHandleAsyncAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderCommandHandler : EdictCommandHandler
+            public sealed class OrderState : IEdictPersistedState;
+            public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
+                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
