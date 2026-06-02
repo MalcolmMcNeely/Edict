@@ -32,4 +32,9 @@ sealed class SagaDispatchBuffer
     public bool CompleteRequested { get; private set; }
 
     public void RequestComplete() => CompleteRequested = true;
+
+    /// <summary>Set when the default timeout hook ran; the fire path stages a dead-letter rather than a compensating Command.</summary>
+    public bool DeadLetterRequested { get; private set; }
+
+    public void RequestDeadLetter() => DeadLetterRequested = true;
 }

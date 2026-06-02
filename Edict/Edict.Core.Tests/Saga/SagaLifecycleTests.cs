@@ -16,6 +16,7 @@ public sealed class SagaLifecycleTests : IClassFixture<SagaLifecycleClusterFixtu
     {
         _fixture = fixture;
         CapturingPublishEventExecutor.Reset();
+        CapturingSendCommandExecutor.Reset();
     }
 
     static LifecycleTriggerEvent Trigger(Guid workflowId) =>
@@ -91,6 +92,53 @@ public sealed class SagaLifecycleTests : IClassFixture<SagaLifecycleClusterFixtu
         Assert.Equal(typeof(EdictSagaTimeoutException).FullName, deadLetter.ExceptionType);
     }
 
+    // The static capture queue is shared by the whole class; filter to this
+    // saga's own key so one test never sees another's compensating command.
+    static IReadOnlyList<SagaTrackerCommand> CompensationsFor(Guid workflowId) =>
+        CapturingSendCommandExecutor.Captured
+            .OfType<SagaTrackerCommand>()
+            .Where(command => command.WorkflowId == workflowId)
+            .ToList();
+
+    [Fact]
+    public async Task FiredCap_WithOverride_CompensatesAndTimesOut()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetCompensatingSaga(workflowId);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
+        await saga.FireCapAsync();
+
+        // The fired cap ran the override: the saga is terminal, the hook's
+        // Progress mutation is durable, and exactly one compensating Command was
+        // dispatched — all observed through the durable outcome, not internals.
+        Assert.Equal(SagaLifecycleState.TimedOut, await saga.GetLifecycleStateAsync());
+        Assert.Equal(-1, await saga.GetHandledAsync());
+        Assert.Single(CompensationsFor(workflowId));
+
+        // An override compensates; it does not also dead-letter.
+        Assert.Empty(DeadLettersFor(workflowId));
+    }
+
+    [Fact]
+    public async Task DoubleCapFire_WithOverride_CompensatesOnce()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetCompensatingSaga(workflowId);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
+
+        await saga.FireCapAsync();
+        await saga.FireCapAsync();
+
+        // The terminal-state guard from slice 1 holds for the compensation path:
+        // the second fire is a clean no-op against the now-TimedOut saga.
+        Assert.Single(CompensationsFor(workflowId));
+        Assert.Equal(SagaLifecycleState.TimedOut, await saga.GetLifecycleStateAsync());
+    }
+
     [Fact]
     public async Task TerminalSaga_DeadLettersNewEvent_ButSuppressesRedelivery()
     {
@@ -153,4 +201,8 @@ public sealed class SagaLifecycleTests : IClassFixture<SagaLifecycleClusterFixtu
     ISagaLifecycleProbe GetCappedSaga(Guid workflowId) =>
         _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
             workflowId, grainClassNamePrefix: typeof(CappedSaga).FullName);
+
+    ISagaLifecycleProbe GetCompensatingSaga(Guid workflowId) =>
+        _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
+            workflowId, grainClassNamePrefix: typeof(CompensatingSaga).FullName);
 }

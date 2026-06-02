@@ -64,6 +64,14 @@ public sealed class SagaLifecycleClusterFixture : IAsyncLifetime
             siloBuilder.Services.Remove(publishDescriptor);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, CapturingPublishEventExecutor>();
 
+            // Likewise capture the compensating Command a fired cap dispatches,
+            // without standing up a real IEdictSender.
+            var sendDescriptor = siloBuilder.Services.Single(descriptor =>
+                descriptor.ServiceType == typeof(IOutboxEffectExecutor)
+                && descriptor.ImplementationType == typeof(SendCommandExecutor));
+            siloBuilder.Services.Remove(sendDescriptor);
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, CapturingSendCommandExecutor>();
+
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");

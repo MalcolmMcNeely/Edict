@@ -104,6 +104,39 @@ public partial class CappedSaga : EdictSaga<LifecycleProgress>, ISagaLifecyclePr
     }
 }
 
+// Explicit short finite cap with an OnSagaTimeoutAsync override: the fired cap
+// runs compensation (mutates Progress, dispatches one compensating Command)
+// instead of dead-lettering.
+[EdictSagaTimeout("00:01:00")]
+public partial class CompensatingSaga : EdictSaga<LifecycleProgress>, ISagaLifecycleProbe
+{
+    public Task HandleAsync(LifecycleTriggerEvent edictEvent)
+    {
+        Progress.Handled++;
+        return Task.CompletedTask;
+    }
+
+    protected override Task OnSagaTimeoutAsync()
+    {
+        // A sentinel the test reads back to prove the hook saw and mutated the
+        // durable Progress, and one compensating Command carrying the saga key.
+        Progress.Handled = -1;
+        Dispatch(new SagaTrackerCommand(this.GetPrimaryKey()));
+        return Task.CompletedTask;
+    }
+
+    public Task DeliverAsync(EdictEvent edictEvent) => OnEdictEventAsync(edictEvent);
+    public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
+    public Task<SagaLifecycleState?> GetLifecycleStateAsync() => Task.FromResult(State.Saga?.State);
+    public Task<DateTimeOffset?> GetDeadlineAsync() => Task.FromResult(State.Saga?.DeadlineAt);
+    public Task FireCapAsync() => ReceiveCapReminderAsync();
+    public Task RequestDeactivationAsync()
+    {
+        DeactivateOnIdle();
+        return Task.CompletedTask;
+    }
+}
+
 // Replaces the real PublishEventExecutor in the lifecycle cluster so the
 // EdictDeadLetterRaised the saga stages is captured directly — a deterministic,
 // table-free observation of the dead-letter the lifecycle paths emit.
@@ -127,6 +160,29 @@ sealed class CapturingPublishEventExecutor(Serializer serializer) : IOutboxEffec
         {
             Captured.Enqueue(raised);
         }
+        return Task.FromResult<OutboxEntry?>(null);
+    }
+}
+
+// Replaces the real SendCommandExecutor in the lifecycle cluster so the
+// compensating Command a fired cap dispatches is captured directly, without
+// wiring a real IEdictSender — the durable observation of the compensation path.
+sealed class CapturingSendCommandExecutor(Serializer serializer) : IOutboxEffectExecutor
+{
+    public static readonly ConcurrentQueue<EdictCommand> Captured = new();
+
+    public static void Reset() => Captured.Clear();
+
+    public OutboxEffectKind Kind => OutboxEffectKind.SendCommand;
+
+    public Task<OutboxEntry?> ExecuteAsync(
+        OutboxEntry entry,
+        IStreamProvider streamProvider,
+        Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch,
+        Type? consumerType,
+        EdictEvent? liveWireEvent)
+    {
+        Captured.Enqueue(serializer.Deserialize<EdictCommand>(entry.Payload));
         return Task.FromResult<OutboxEntry?>(null);
     }
 }

@@ -198,17 +198,35 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         return EdictDispatchOutcome.HandledWith(effect, buffer.CompleteRequested);
     }
 
+    /// <summary>
+    /// Compensation hook invoked when the absolute lifetime cap fires. Override
+    /// to run compensation with full access to <see cref="Progress"/>: mutate it
+    /// and <see cref="Dispatch"/> exactly one compensating Command, both of which
+    /// commit atomically with the <see cref="SagaLifecycleState.TimedOut"/>
+    /// terminal write. The default implementation routes the fired cap to
+    /// dead-letter, so a forgotten timeout surfaces loudly rather than silently
+    /// stranding the workflow.
+    /// </summary>
+    protected virtual Task OnSagaTimeoutAsync()
+    {
+        _dispatch.Current.RequestDeadLetter();
+        return Task.CompletedTask;
+    }
+
     /// <inheritdoc />
     public override Task ReceiveReminder(string reminderName, TickStatus status) =>
         reminderName == CapReminderName ? ReceiveCapReminderAsync() : base.ReceiveReminder(reminderName, status);
 
     /// <summary>
-    /// The cap reminder tick. Terminalises a live saga (this slice always
-    /// dead-letters — the <c>OnSagaTimeoutAsync</c> compensation override is the
-    /// next slice) and is an idempotent no-op against an already-terminal saga,
-    /// so a non-transactional reminder double-fire cannot double-act.
-    /// Internal so an in-memory lifecycle test can drive the fire deterministically
-    /// without waiting on Orleans' one-minute reminder floor.
+    /// The cap reminder tick. Terminalises a live saga: it opens a fresh dispatch
+    /// buffer from the cap branch (no incoming Event, so no dedup-ring slot),
+    /// invokes <see cref="OnSagaTimeoutAsync"/>, and commits the
+    /// <see cref="SagaLifecycleState.TimedOut"/> write atomically with whichever
+    /// effect the hook implied — the override's single compensating Command, or
+    /// the default's dead-letter. It is an idempotent no-op against an
+    /// already-terminal saga, so a non-transactional reminder double-fire cannot
+    /// double-act. Internal so an in-memory lifecycle test can drive the fire
+    /// deterministically without waiting on Orleans' one-minute reminder floor.
     /// </summary>
     internal async Task ReceiveCapReminderAsync()
     {
@@ -228,11 +246,22 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             return;
         }
 
-        var timeoutDeadLetter = BuildSagaDeadLetterEntry(new EdictSagaTimeoutException(
-            $"Saga '{SagaType}' hit its absolute lifetime cap with no OnSagaTimeoutAsync override; the timeout was dead-lettered."));
+        var buffer = _dispatch.Begin();
+        await OnSagaTimeoutAsync();
+        var command = buffer.Take();
+
+        // The override dispatched a compensating Command; otherwise the default
+        // hook requested a dead-letter; otherwise (an override that only mutated
+        // Progress) the terminal write rides alone.
+        var stagedEffect =
+            command is not null ? BuildSendCommandEntry(command)
+            : buffer.DeadLetterRequested ? BuildSagaDeadLetterEntry(new EdictSagaTimeoutException(
+                $"Saga '{SagaType}' hit its absolute lifetime cap with no OnSagaTimeoutAsync override; the timeout was dead-lettered."))
+            : null;
+
         var timedOut = (lifecycle ?? new SagaLifecycle()) with { State = SagaLifecycleState.TimedOut };
 
-        await CommitLifecycleOnlyAsync(timedOut, timeoutDeadLetter);
+        await CommitLifecycleOnlyAsync(timedOut, stagedEffect);
         await CapReminders.UnregisterReminderAsync(CapReminderName);
     }
 
@@ -304,10 +333,11 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         }
     }
 
-    Task CommitLifecycleOnlyAsync(SagaLifecycle newLifecycle, OutboxEntry stagedEffect)
+    Task CommitLifecycleOnlyAsync(SagaLifecycle newLifecycle, OutboxEntry? stagedEffect)
     {
         // No incoming Event, so no dedup-ring slot: just the lifecycle write and
-        // the staged dead-letter, atomic in one grain-state write.
+        // any staged effect (compensating Command or dead-letter), plus any
+        // in-place Progress mutation the hook made, atomic in one grain-state write.
         var previous = State.Saga;
         return Host.CommitProgressAndDrainAsync(
             applyProgress: () => State.Saga = newLifecycle,
