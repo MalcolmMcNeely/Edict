@@ -61,14 +61,9 @@ builder.Services.AddEdict();
 
 A consumer reading projection or dead-letter rows from the client process must also register the read-side `IEdictTableRepository<T>` for each row type — see the dead-letter gotcha below.
 
-## `EdictAzurePersistenceOptions`
+## Configuration
 
-| Property | Default | Purpose |
-| --- | --- | --- |
-| `GrainStateContainerName` | `"edict-state"` | Azure Blob container holding the Edict grain-state slot. Single-blob ETag atomicity covers the `[PersistentState("state", "edict-state")]` slot every framework grain base writes through. |
-| `DeadLetterTableName` | `"edict-dead-letter"` | Backs the `IEdictTableRepository<EdictDeadLetterEntry>` registered by this extension. Does **not** drive where the projection writes — see the gotcha below. |
-| `TableServiceClient` | `null` | Optional `TableServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
-| `BlobServiceClient` | `null` | Optional `BlobServiceClient` for grain-state blobs. Same DI-precedence rule. |
+`EdictAzurePersistenceOptions` (the grain-state container, the dead-letter table name, and the optional service-client overrides) and the connection-string precedence rules are documented in [configuration/azure-persistence.md](../../configuration/azure-persistence.md).
 
 The extension wires four Orleans pieces internally that the consumer does not configure directly:
 
@@ -76,16 +71,6 @@ The extension wires four Orleans pieces internally that the consumer does not co
 - `AddAzureBlobGrainStorage("edict-state")` — the framework grain-state slot, on Blob (per ADR 0021).
 - `UseAzureTableReminderService` — the reminder-tick substrate the outbox drain rides on.
 - `IEdictTableStoreFactory` → `AzureTableWriteStoreFactory` — the per-table write seam projection builders use.
-
-## Connection strings
-
-Both clients (`TableServiceClient`, `BlobServiceClient`) can come from three places — whichever is set wins, in this order:
-
-1. A DI-registered singleton client instance.
-2. The matching `*Client` property on `EdictAzurePersistenceOptions`.
-3. Neither — wiring throws `EdictWiringException` at `silo.AddEdictAzurePersistence`.
-
-Local development uses Azurite via `UseDevelopmentStorage=true`. Production uses an Azure Storage account connection string or a `TokenCredential`-authenticated client. The two clients can point at the same account or split across accounts — table-storage limits (e.g. partition-throughput throttling) and blob-storage limits are independent, so a hot system can scale them separately.
 
 ## Gotchas
 
@@ -114,5 +99,6 @@ Azurite's table emulator is close enough that the conformance battery runs again
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `Table Projection Builder`, `Table Repository`.
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [projection-builders.md](../concepts/projection-builders.md), [idempotency.md](../concepts/idempotency.md).
+- Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).
 - ADRs — [0021 — Grain state on blob substrate](../../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0018 — Dead letter (forensic-only)](../../adr/0018-dead-letter-forensic-only.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md).

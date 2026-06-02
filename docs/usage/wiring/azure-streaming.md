@@ -64,32 +64,9 @@ builder.UseOrleansClient(client =>
 builder.Services.AddEdict();
 ```
 
-## `EdictAzureStreamsOptions`
+## Configuration
 
-| Property | Default | Purpose |
-| --- | --- | --- |
-| `StreamProviderName` | `"edict"` | Orleans stream-provider name. The runtime is pinned to `"edict"`; do not change. |
-| `ClaimCheckThresholdBytes` | `30 720` | Serialised inner-event byte length above which the outbox uploads the body to the claim-check store and ships a pointer envelope on the wire. Default is ~2 KB of headroom under the 32 KB Azure Queue per-property cap. |
-| `QueuePollingPeriod` | `10 ms` | Azure Queue pulling-agent poll period. Hard floor on per-event latency. Orleans' own default is `100 ms`; Edict ships `10 ms` so interactive workloads aren't pinned to the floor. Each tick is a billed queue `GET` per consumer queue. |
-| `NumQueues` | `16` | Number of Azure queues the stream provider fans out across. Orleans' own default is `8`; Edict ships `16` to lift the consumer-parallelism ceiling. Each queue is polled independently at `QueuePollingPeriod`, so this is a direct cost-vs-parallelism trade-off — at the `10 ms` default the per-queue GET cost runs roughly $3–6/day per silo per 8 queues. |
-| `QueueServiceClient` | `null` | Optional `QueueServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
-
-## `EdictAzureBlobClaimCheckOptions`
-
-| Property | Default | Purpose |
-| --- | --- | --- |
-| `ContainerName` | `"edict-claim-check"` | Container backing the claim-check escape hatch. |
-| `BlobServiceClient` | `null` | Optional `BlobServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
-
-## Connection strings
-
-Both extensions take Azure SDK clients, not raw connection strings. The clients can come from three places — whichever is set wins, in this order:
-
-1. A DI-registered singleton `QueueServiceClient` / `BlobServiceClient` (the `AddAzureClients()` or `services.AddSingleton(client)` path).
-2. The `QueueServiceClient` / `BlobServiceClient` property on the options object.
-3. Neither — wiring throws `EdictWiringException` at `silo.AddEdictAzureStreams` / `silo.AddEdictAzureBlobClaimCheck`.
-
-Local development uses Azurite via the `UseDevelopmentStorage=true` connection string. Production uses an Azure Storage account connection string or a `TokenCredential`-authenticated client. Edict does not surface either string directly; the consumer constructs the SDK client and the extension consumes it.
+`EdictAzureStreamsOptions` (the claim-check threshold and the queue fan-out / poll knobs), `EdictAzureBlobClaimCheckOptions` (the claim-check container), the connection-string precedence rules, and the cost-vs-latency tuning guidance are documented in [configuration/azure-streaming.md](../../configuration/azure-streaming.md).
 
 ## Gotchas
 
@@ -105,5 +82,6 @@ The Azure Queue Storage stream substrate carries no W3C trace-context headers. E
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Event`, `Event Envelope`, `Claim Check`, `Outbox`.
 - Concepts — [events.md](../concepts/events.md), [claim-check.md](../concepts/claim-check.md), [telemetry.md](../concepts/telemetry.md).
+- Configuration — [azure-streaming.md](../../configuration/azure-streaming.md) — the options tables, tuning guidance, and connection-string rules.
 - Wiring — [azure-persistence.md](azure-persistence.md), [postgres.md](postgres.md).
 - ADRs — [0019 — Deferred dispatch](../../adr/0019-deferred-dispatch.md), [0020 — Claim check for oversized events](../../adr/0020-claim-check.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md).
