@@ -22,16 +22,24 @@ namespace Edict.Core.Idempotency;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public readonly struct EdictDispatchOutcome
 {
-    internal EdictDispatchOutcome(bool handled, OutboxEntry? stagedEffect)
+    internal EdictDispatchOutcome(bool handled, OutboxEntry? stagedEffect, bool completeRequested = false)
     {
         Handled = handled;
         StagedEffect = stagedEffect;
+        CompleteRequested = completeRequested;
     }
 
     /// <summary><c>true</c> if the event type matched a handler arm.</summary>
     public bool Handled { get; }
 
     internal OutboxEntry? StagedEffect { get; }
+
+    /// <summary>
+    /// <c>true</c> if the saga handler called <c>Complete()</c>. Rides the return
+    /// value rather than a grain field so a parallel deferred dispatch cannot
+    /// cross-wire one handler's completion onto another's commit.
+    /// </summary>
+    internal bool CompleteRequested { get; }
 
     /// <summary>A matched dispatch that staged no downstream effect.</summary>
     public static EdictDispatchOutcome HandledWithNoEffect { get; } = new(handled: true, stagedEffect: null);
@@ -40,4 +48,7 @@ public readonly struct EdictDispatchOutcome
     public static EdictDispatchOutcome NotHandled { get; } = new(handled: false, stagedEffect: null);
 
     internal static EdictDispatchOutcome HandledWith(OutboxEntry? stagedEffect) => new(handled: true, stagedEffect);
+
+    internal static EdictDispatchOutcome HandledWith(OutboxEntry? stagedEffect, bool completeRequested) =>
+        new(handled: true, stagedEffect, completeRequested);
 }

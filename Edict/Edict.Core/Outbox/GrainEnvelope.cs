@@ -1,6 +1,7 @@
 using System.ComponentModel;
 
 using Edict.Core.Idempotency;
+using Edict.Core.Sagas;
 
 namespace Edict.Core.Outbox;
 
@@ -40,4 +41,13 @@ public sealed class GrainEnvelope<TPayload>
 
     [Id(2)]
     public IdempotencyState Idempotency { get; set; } = new();
+
+    /// <summary>
+    /// The saga terminal-state + absolute-deadline slot. Null for every
+    /// non-saga consumer (event handlers, projection builders, command
+    /// handlers) — the cost is one empty reference. A saga populates it on its
+    /// first handled Event.
+    /// </summary>
+    [Id(3)]
+    public SagaLifecycle? Saga { get; set; }
 }

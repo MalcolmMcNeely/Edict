@@ -26,7 +26,8 @@ public static class OutboxServiceCollectionExtensions
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static IServiceCollection AddEdictOutbox(
         this IServiceCollection services,
-        Action<EdictOptions>? configure = null)
+        Action<EdictOptions>? configure = null,
+        Action<EdictSagaOptions>? configureSaga = null)
     {
         if (configure is not null)
         {
@@ -35,6 +36,15 @@ public static class OutboxServiceCollectionExtensions
         else
         {
             services.AddOptions<EdictOptions>();
+        }
+
+        if (configureSaga is not null)
+        {
+            services.AddOptions<EdictSagaOptions>().Configure(configureSaga);
+        }
+        else
+        {
+            services.AddOptions<EdictSagaOptions>();
         }
 
         services.TryAddSingleton(TimeProvider.System);

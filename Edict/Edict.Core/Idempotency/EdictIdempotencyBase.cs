@@ -121,7 +121,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     }
 
     /// <inheritdoc />
-    public Task ReceiveReminder(string reminderName, TickStatus status) =>
+    public virtual Task ReceiveReminder(string reminderName, TickStatus status) =>
         Host.ReceiveReminderAsync();
 
     /// <summary>
@@ -342,13 +342,32 @@ public abstract class EdictIdempotencyBase<TPayload>
             {
                 revert = DedupRing.Apply(Idempotency, WindowSize, eventId);
                 _dedupMirror!.Commit(eventId);
+                ApplyConsumerProgress();
             },
             rollbackProgress: () =>
             {
+                RollbackConsumerProgress();
                 DedupRing.RollBack(Idempotency, revert);
                 _dedupMirror!.Activate(Idempotency.HandledEventIds, Idempotency.Head, Idempotency.Count);
             },
             stagedEffect: stagedEffect);
+    }
+
+    /// <summary>
+    /// Folds a role-specific in-memory state mutation into the same atomic
+    /// commit as the dedup-ring slot. Default no-op; <c>EdictSaga</c> overrides
+    /// it to arm or terminalise its lifecycle slot so the lifecycle write, the
+    /// ring slot, and any staged effect land in one grain-state write. Runs
+    /// synchronously inside the host's commit boundary, after the ring slot is
+    /// advanced and before the write.
+    /// </summary>
+    private protected virtual void ApplyConsumerProgress()
+    {
+    }
+
+    /// <summary>Restores what <see cref="ApplyConsumerProgress"/> mutated when the commit write faults.</summary>
+    private protected virtual void RollbackConsumerProgress()
+    {
     }
 
     private protected static void EmitDedupSpan(EdictEvent edictEvent)

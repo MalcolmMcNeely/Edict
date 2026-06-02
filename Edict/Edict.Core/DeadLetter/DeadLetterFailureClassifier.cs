@@ -30,6 +30,8 @@ static class DeadLetterFailureClassifier
             EdictClaimCheckFetchException { FetchReason: EdictClaimCheckFetchException.Reason.PayloadMissing } =>
                 SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             EdictSagaCoordinationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
+            EdictSagaTimeoutException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout,
+            EdictSagaTerminalException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal,
             EdictInternalInvariantException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug,
             _ when ContainsSaturated(exception.GetType().Name) =>
                 SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated,

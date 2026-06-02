@@ -58,6 +58,12 @@ builder.Host.UseOrleans((context, silo) =>
         o.OutboxMaxAttempts         = 3;
         o.OutboxJitterFraction      = 0.2;
         o.OutboxDrainReminderPeriod = TimeSpan.FromMinutes(1);
+    },
+    saga =>
+    {
+        // The absolute lifetime cap for any saga without its own
+        // [EdictSagaTimeout]. Ships finite at 7 days; null is fully opt-in.
+        saga.DefaultTimeout = TimeSpan.FromDays(7);
     });
 
     silo.AddEdictAzureStreams(o =>

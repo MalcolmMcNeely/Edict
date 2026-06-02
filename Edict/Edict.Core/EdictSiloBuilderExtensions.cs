@@ -21,14 +21,17 @@ public static class EdictSiloBuilderExtensions
     /// projection, sender, idempotency dedup window, claim-check policy seam)
     /// plus the startup wiring validator. Knobs in
     /// <see cref="EdictOptions"/> default to the values previously hardcoded
-    /// in mechanism code; the lambda lets a consumer override any subset.
+    /// in mechanism code; the lambda lets a consumer override any subset. The
+    /// optional <paramref name="configureSaga"/> lambda tunes the silo-wide
+    /// saga knobs in <see cref="EdictSagaOptions"/> (the 7-day default cap).
     /// </summary>
     public static ISiloBuilder AddEdict(
         this ISiloBuilder silo,
-        Action<EdictOptions>? configure = null)
+        Action<EdictOptions>? configure = null,
+        Action<EdictSagaOptions>? configureSaga = null)
     {
         silo.Services.AddEdict();
-        silo.Services.AddEdictOutbox(configure);
+        silo.Services.AddEdictOutbox(configure, configureSaga);
         silo.Services.AddHostedService<EdictWiringValidator>();
         return silo;
     }

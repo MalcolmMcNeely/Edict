@@ -27,4 +27,9 @@ sealed class SagaDispatchBuffer
         _pending = null;
         return command;
     }
+
+    /// <summary>Set when the handler called <c>Complete()</c>; read back by the dispatch after the handler returns.</summary>
+    public bool CompleteRequested { get; private set; }
+
+    public void RequestComplete() => CompleteRequested = true;
 }

@@ -118,10 +118,14 @@ public class TypePlacementTests
     [Fact]
     public void EdictSaga_ShouldResideInEdictCoreSagas()
     {
-        // Exception types live alongside the other dead-letter-runtime types,
-        // not with consumer saga bases.
+        // The saga runtime types in Edict.Core belong in Edict.Core.Sagas.
+        // Exception types live alongside the other dead-letter-runtime types;
+        // and the consumer-facing surface (the [EdictSagaTimeout] attribute,
+        // EdictSagaOptions) lives in Edict.Contracts, so scope this guard to
+        // Edict.Core to avoid policing the contracts placement here.
         var rule = Classes().That().HaveNameStartingWith("EdictSaga")
             .And().DoNotHaveNameEndingWith("Exception")
+            .And().ResideInNamespaceMatching(@"^Edict\.Core(\..*)?$")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Sagas$");
 
         rule.Check(Architecture);

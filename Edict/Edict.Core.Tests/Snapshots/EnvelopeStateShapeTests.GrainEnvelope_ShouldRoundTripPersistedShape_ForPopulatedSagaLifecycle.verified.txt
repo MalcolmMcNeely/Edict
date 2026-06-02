@@ -1,0 +1,8 @@
+﻿{
+  Outbox: {},
+  Idempotency: {},
+  Saga: {
+    State: TimedOut,
+    DeadlineAt: 2026-05-19 12:00 +0
+  }
+}

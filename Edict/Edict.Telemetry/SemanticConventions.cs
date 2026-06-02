@@ -155,9 +155,12 @@ public static class SemanticConventions
             /// <see cref="FailureReasonValues.InternalBug"/>, or <see cref="FailureReasonValues.Unhandled"/>.</summary>
             public const string FailureReason = "edict.dead_letter.failure_reason";
 
-            /// <summary>The eight allowlist values for <see cref="FailureReason"/>. Anything the classifier
+            /// <summary>The allowlist values for <see cref="FailureReason"/>. Anything the classifier
             /// can't bucket lands in <see cref="Unhandled"/> rather than leaking the exception type name.
-            /// The set is closed at compile time so the dimension stays bounded.</summary>
+            /// The set is closed at compile time so the dimension stays bounded. <see cref="SagaTimeout"/>
+            /// (an un-overridden cap fired) and <see cref="SagaTerminal"/> (a new Event at a terminal saga)
+            /// are distinct from <see cref="ConsumerBug"/> so the two saga-lifecycle failures read apart on
+            /// the dead-letter projection.</summary>
             public static class FailureReasonValues
             {
                 public const string Timeout = "Timeout";
@@ -167,6 +170,8 @@ public static class SemanticConventions
                 public const string Wiring = "Wiring";
                 public const string ConsumerBug = "ConsumerBug";
                 public const string InternalBug = "InternalBug";
+                public const string SagaTimeout = "SagaTimeout";
+                public const string SagaTerminal = "SagaTerminal";
                 public const string Unhandled = "Unhandled";
             }
 

@@ -1,6 +1,7 @@
 using Edict.Contracts;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
+using Edict.Core.Sagas;
 using Edict.Core.Serialization;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +71,26 @@ public sealed class EnvelopeStateShapeTests
                 HandledEventIds = [HandledEventId, Guid.Empty, Guid.Empty],
                 Head = 1,
                 Count = 1,
+            },
+        };
+
+        var bytes = serializer.SerializeToArray(envelope);
+        var roundTripped = serializer.Deserialize<GrainEnvelope<EdictUnit>>(bytes);
+
+        return Verify(roundTripped).DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public Task GrainEnvelope_ShouldRoundTripPersistedShape_ForPopulatedSagaLifecycle()
+    {
+        var serializer = BuildSerializer();
+        var envelope = new GrainEnvelope<EdictUnit>
+        {
+            Payload = default,
+            Saga = new SagaLifecycle
+            {
+                State = SagaLifecycleState.TimedOut,
+                DeadlineAt = Now,
             },
         };
 

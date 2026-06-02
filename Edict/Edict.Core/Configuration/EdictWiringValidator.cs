@@ -22,6 +22,12 @@ sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
             problems.AddRange(EdictOptionsValidator.Validate(edictOptions.Value));
         }
 
+        var sagaOptions = services.GetService<IOptions<EdictSagaOptions>>();
+        if (sagaOptions is not null)
+        {
+            problems.AddRange(EdictSagaOptionsValidator.Validate(sagaOptions.Value));
+        }
+
         if (markers.Any(m => m is EdictStreamsProviderMarker)
             && services.GetService<IEdictClaimCheckStore>() is null)
         {

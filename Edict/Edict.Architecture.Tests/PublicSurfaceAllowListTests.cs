@@ -77,6 +77,8 @@ public class PublicSurfaceAllowListTests
             ("Edict.Core.Outbox.OutboxEffectKind", typeof(OutboxEffectKind)),
             ("Edict.Core.Outbox.UpsertRowEffect", typeof(UpsertRowEffect)),
             ("Edict.Core.Idempotency.IdempotencyState", typeof(IdempotencyState)),
+            ("Edict.Core.Sagas.SagaLifecycle", typeof(Edict.Core.Sagas.SagaLifecycle)),
+            ("Edict.Core.Sagas.SagaLifecycleState", typeof(Edict.Core.Sagas.SagaLifecycleState)),
             ("Edict.Core.TableStorage.IEdictTableStoreFactory", typeof(IEdictTableStoreFactory)),
             ("Edict.Contracts.TableStorage.IEdictTableWriteStore<T>", typeof(IEdictTableWriteStore<>)),
         };
@@ -260,6 +262,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Commands.EdictRejectionReason",
         "Edict.Contracts.Commands.EdictRouteKeyAttribute",
         "Edict.Contracts.Configuration.EdictOptions",
+        "Edict.Contracts.Configuration.EdictSagaOptions",
         "Edict.Contracts.Configuration.EdictPersistenceProviderMarker",
         "Edict.Contracts.Configuration.EdictStreamsProviderMarker",
         "Edict.Contracts.Configuration.IEdictWiringMarker",
@@ -276,6 +279,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Routing.EdictEventStreamsAttribute",
         "Edict.Contracts.Routing.EdictEventTagWritersAttribute",
         "Edict.Contracts.Routing.EdictRoutesAttribute",
+        "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute",
         "Edict.Contracts.Sending.IEdictSender",
         "Edict.Contracts.TableStorage.IEdictTableRepository`1",
         "Edict.Contracts.TableStorage.IEdictTableWriteStore`1",
@@ -296,6 +300,8 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.DeadLetter.EdictDeadLetterTable",
         "Edict.Core.DeadLetter.EdictInternalInvariantException",
         "Edict.Core.DeadLetter.EdictSagaCoordinationException",
+        "Edict.Core.DeadLetter.EdictSagaTerminalException",
+        "Edict.Core.DeadLetter.EdictSagaTimeoutException",
         "Edict.Core.DeadLetter.EdictUnregisteredTypeException",
         "Edict.Core.EdictServiceCollectionExtensions",
         "Edict.Core.EdictSiloBuilderExtensions",
@@ -317,6 +323,8 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Projections.IEdictProjectionBuilder",
         "Edict.Core.Sagas.EdictSaga`1",
         "Edict.Core.Sagas.IEdictSaga",
+        "Edict.Core.Sagas.SagaLifecycle", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Sagas.SagaLifecycleState", // ADR 0045: persisted-state slot enum on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
         "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictTableProjectionBuilder<T> — permanent resident.
         "OrleansCodeGen.Edict.Core.Commands.Codec_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
@@ -335,6 +343,8 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxEntry",
         "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxSlice",
         "OrleansCodeGen.Edict.Core.Outbox.Copier_UpsertRowEffect",
+        "OrleansCodeGen.Edict.Core.Sagas.Codec_SagaLifecycle",
+        "OrleansCodeGen.Edict.Core.Sagas.Copier_SagaLifecycle",
         "OrleansCodeGen.Edict.Core.Sagas.Codec_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Copier_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Invokable_IEdictSaga_GrainReference_747818AD",

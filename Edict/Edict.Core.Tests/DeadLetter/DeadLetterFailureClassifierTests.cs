@@ -69,6 +69,26 @@ public sealed class DeadLetterFailureClassifierTests
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled, bucket);
     }
 
+    [Fact]
+    public void Classify_ShouldMapEdictSagaTimeoutException_ToSagaTimeout()
+    {
+        var exception = new EdictSagaTimeoutException("cap fired");
+
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout, bucket);
+    }
+
+    [Fact]
+    public void Classify_ShouldMapEdictSagaTerminalException_ToSagaTerminal()
+    {
+        var exception = new EdictSagaTerminalException("new event at terminal saga");
+
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal, bucket);
+    }
+
     [Theory]
     [InlineData(EdictUnregisteredTypeException.Kind.Event)]
     [InlineData(EdictUnregisteredTypeException.Kind.RowAlias)]
