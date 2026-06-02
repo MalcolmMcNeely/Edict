@@ -2,6 +2,7 @@ using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.DeadLetter;
+using Edict.Tests.Conformance.ClaimCheck;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
@@ -12,10 +13,12 @@ public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDead
     public async Task MissingBlob_ShouldDeadLetterAtMaxAttempts_WithBlobMissingFailureKindAndClaimCheckKey()
     {
         var grainId = Guid.NewGuid();
-        var consumer = fixture.Cluster.GrainFactory.GetGrain<IAzureBlobMissingConsumer>(grainId);
+        var consumer = fixture.Cluster.GrainFactory.GetGrain<IClaimCheckBlobMissingConsumer>(grainId);
 
-        // Key that the Azurite blob container does NOT contain — every
-        // fetch attempt throws RequestFailedException with status 404.
+        // Key that the Azurite blob container does NOT contain — every fetch
+        // attempt surfaces the store's typed EdictClaimCheckFetchException,
+        // which the same classifier arm the Postgres store rides into the
+        // Substrate failure bucket.
         var missingKey = $"missing/{Guid.NewGuid():N}";
         var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: missingKey)
         {
@@ -38,8 +41,8 @@ public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDead
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, entry.FailureKind);
         Assert.Equal(missingKey, entry.ClaimCheckKey);
         Assert.Equal(grainId.ToString(), entry.SourceGrainKey);
-        Assert.Contains("AzureBlobMissingConsumer", entry.SourceGrainType);
-        Assert.Equal("Azure.RequestFailedException", entry.ExceptionType);
+        Assert.Contains("ClaimCheckBlobMissingConsumer", entry.SourceGrainType);
+        Assert.Equal(typeof(EdictClaimCheckFetchException).FullName, entry.ExceptionType);
     }
 
     async Task<EdictDeadLetterEntry?> WaitForBlobMissingRowAsync(string key)

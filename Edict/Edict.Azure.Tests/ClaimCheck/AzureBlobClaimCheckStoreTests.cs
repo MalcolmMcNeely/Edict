@@ -1,8 +1,8 @@
-using Azure;
 using Azure.Storage.Blobs;
 
 using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts.ClaimCheck;
+using Edict.Core.DeadLetter;
 using Edict.Tests.Conformance;
 
 namespace Edict.Azure.Tests.ClaimCheck;
@@ -34,16 +34,31 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetAsync_ShouldThrowRequestFailed_WhenBlobMissing()
+    public async Task GetAsync_ShouldThrowPayloadMissing_WhenBlobMissing()
     {
-        // The receiver-side dead-letter promotion path keys on RequestFailed
-        // with status 404 to fold a missing blob into the IDeadLetterPromoter
-        // pipeline — this asserts the exception shape that path recognises.
+        // A well-formed key whose blob is absent is the same logical failure the
+        // Postgres store raises as PayloadMissing — surfacing the shared typed
+        // exception lets both substrates classify into the same Substrate bucket
+        // instead of leaking the Azure SDK's concrete RequestFailedException.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
 
-        var exception = await Assert.ThrowsAsync<RequestFailedException>(
+        var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
             () => store.GetAsync("missing-blob-key", CancellationToken.None));
-        Assert.Equal(404, exception.Status);
+        Assert.Equal(EdictClaimCheckFetchException.Reason.PayloadMissing, exception.FetchReason);
+        Assert.Equal("missing-blob-key", exception.Key);
+    }
+
+    [Fact]
+    public async Task GetAsync_ShouldThrowKeyMalformed_WhenKeyIsBlank()
+    {
+        // Parity with the Postgres store's pre-fetch guard: a key the store
+        // cannot even attempt a lookup with surfaces as KeyMalformed, which the
+        // classifier routes to Serialization rather than Substrate.
+        var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
+
+        var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
+            () => store.GetAsync("   ", CancellationToken.None));
+        Assert.Equal(EdictClaimCheckFetchException.Reason.KeyMalformed, exception.FetchReason);
     }
 
     [Fact]

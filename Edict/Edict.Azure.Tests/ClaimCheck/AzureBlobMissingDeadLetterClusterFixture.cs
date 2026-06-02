@@ -7,28 +7,26 @@ using Edict.Azure.Persistence.TableStorage;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
-using Edict.Contracts.Events;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
-using Edict.Core.Idempotency;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.ClaimCheck;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 
 using Orleans;
-using Orleans.Runtime;
 using Orleans.Serialization;
 using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
+public sealed class AzureBlobMissingDeadLetterClusterFixture : ConformanceFixture
 {
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
@@ -38,8 +36,16 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
-    public IEdictSender Sender =>
+    public override IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public override IGrainFactory GrainFactory => Cluster.GrainFactory;
+
+    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
+        new AzureTableRepository<T>(_tableServiceClient, tableName);
+
+    public override IEdictTableStoreFactory TableStoreFactory =>
+        new AzureTableWriteStoreFactory(_tableServiceClient);
 
     public TableServiceClient TableServiceClient => _tableServiceClient;
 
@@ -49,7 +55,7 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
 
     public string DeadLetterTableName { get; private set; } = "";
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _tableServiceClient = new TableServiceClient(_connectionString);
@@ -86,7 +92,7 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
         await Cluster.DeployAsync();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         if (Cluster is not null)
         {
@@ -98,6 +104,7 @@ public sealed class AzureBlobMissingDeadLetterClusterFixture : IAsyncLifetime
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
         serializer
             .AddAssembly(typeof(AzureBlobMissingDeadLetterClusterFixture).Assembly)
+            .AddAssembly(typeof(ClaimCheckBlobMissingConsumer).Assembly)
             .AddAssembly(typeof(IEdictCommandHandler).Assembly)
             .AddEdictContractSerializer();
 
@@ -175,25 +182,4 @@ public sealed class AzureBlobMissingDeadLetterCollection
     : ICollectionFixture<AzureBlobMissingDeadLetterClusterFixture>
 {
     public const string Name = "AzureBlobMissingDeadLetter";
-}
-
-// Exposes OnEdictEventAsync and reminder-tick as remote methods so a test
-// can stage a pointer envelope and drive the drain deterministically without
-// Orleans' in-memory reminder service flooring due-time at one minute.
-public interface IAzureBlobMissingConsumer : IGrainWithGuidKey
-{
-    Task DeliverAsync(EdictEvent edictEvent);
-    Task ForceDrainViaReminderAsync();
-}
-
-[ImplicitStreamSubscription("AzureBlobMissingDeadLetter")]
-public sealed class AzureBlobMissingConsumer : EdictIdempotencyBase, IAzureBlobMissingConsumer
-{
-    public Task DeliverAsync(EdictEvent edictEvent) => OnEdictEventAsync(edictEvent);
-
-    public Task ForceDrainViaReminderAsync() =>
-        ReceiveReminder("edict-outbox-drain", new TickStatus());
-
-    protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent) =>
-        Task.FromResult(EdictDispatchOutcome.NotHandled);
 }

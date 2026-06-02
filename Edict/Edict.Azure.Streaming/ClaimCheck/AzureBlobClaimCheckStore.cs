@@ -1,7 +1,8 @@
+using Azure;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 
 using Edict.Contracts.ClaimCheck;
+using Edict.Core.DeadLetter;
 
 namespace Edict.Azure.Streaming.ClaimCheck;
 
@@ -36,8 +37,26 @@ sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore
 
     public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new EdictClaimCheckFetchException(
+                EdictClaimCheckFetchException.Reason.KeyMalformed,
+                key,
+                $"Claim-check key '{key}' is empty or whitespace.");
+        }
+
         var blob = _container.GetBlobClient(key);
-        var response = await blob.DownloadContentAsync(cancellationToken);
-        return response.Value.Content.ToMemory();
+        try
+        {
+            var response = await blob.DownloadContentAsync(cancellationToken);
+            return response.Value.Content.ToMemory();
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            throw new EdictClaimCheckFetchException(
+                EdictClaimCheckFetchException.Reason.PayloadMissing,
+                key,
+                $"Claim-check payload not found for key '{key}'.");
+        }
     }
 }

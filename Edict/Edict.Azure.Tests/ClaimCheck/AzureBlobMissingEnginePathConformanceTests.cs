@@ -117,7 +117,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         var raised = Assert.Single(publishExecutor.Published);
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, raised.FailureKind);
         Assert.Equal(missingKey, raised.ClaimCheckKey);
-        Assert.Equal("Azure.RequestFailedException", raised.ExceptionType);
+        Assert.Equal(typeof(EdictClaimCheckFetchException).FullName, raised.ExceptionType);
         Assert.Equal("Sample.OrderEmailHandler", raised.SourceGrainType);
     }
 
