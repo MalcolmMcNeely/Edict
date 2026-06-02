@@ -22,7 +22,8 @@ static class DeadLetterPromotion
         var (streamName, _) = accessors.Resolve(edictEvent);
         var effectTarget = $"{streamName}/{edictEvent.GetType().Name}";
         var payloadJson = JsonSerializer.Serialize(edictEvent, edictEvent.GetType());
-        return Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+        var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
+        return raised with { SourceEventId = edictEvent.EventId };
     }
 
     public static EdictDeadLetterRaised Build(
@@ -75,6 +76,7 @@ static class DeadLetterPromotion
         return raised with
         {
             ClaimCheckKey = envelope.ClaimCheckKey,
+            SourceEventId = envelope.EventId,
         };
     }
 
@@ -118,6 +120,7 @@ static class DeadLetterPromotion
             PayloadJson = null,
             ClaimCheckKey = envelope.ClaimCheckKey,
             FailureKind = EdictDeadLetterFailureKind.BlobMissing,
+            SourceEventId = envelope.EventId,
         };
     }
 

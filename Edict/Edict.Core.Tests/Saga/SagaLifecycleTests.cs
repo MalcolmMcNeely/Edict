@@ -91,6 +91,10 @@ public sealed class SagaLifecycleTests
         Assert.Equal(SagaLifecycleState.TimedOut, await saga.GetLifecycleStateAsync());
         var deadLetter = Assert.Single(DeadLettersFor(workflowId));
         Assert.Equal(typeof(EdictSagaTimeoutException).FullName, deadLetter.ExceptionType);
+        // The saga lifecycle dead-letter originates its own delivery identity at
+        // BuildSagaDeadLetterEntry — the drain no longer mints one, and a fresh id
+        // keeps each lifecycle dead-letter a distinct row in the singleton ring.
+        Assert.NotEqual(Guid.Empty, deadLetter.EventId);
     }
 
     // The static capture queue is shared by the whole class; filter to this

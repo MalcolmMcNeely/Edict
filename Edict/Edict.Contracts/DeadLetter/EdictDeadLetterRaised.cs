@@ -83,9 +83,11 @@ public sealed record EdictDeadLetterRaised : EdictEvent
 
     /// <summary>
     /// <see cref="EdictEvent.EventId"/> of the source event that triggered the
-    /// failing effect — populated only for <c>InvokeHandler</c> promotions,
-    /// null otherwise. Pairs with <see cref="SourceEventType"/> to
-    /// uniquely identify the originating event for RCA.
+    /// failing effect — populated for every effect that carries one
+    /// (<c>InvokeHandler</c>, <c>PublishEvent</c>, and the receiver-side
+    /// claim-check failure paths), null for the <c>SendCommand</c> and
+    /// <c>UpsertRow</c> effects that have no source event. Lets operators
+    /// trace a dead-letter row back to the originating event for RCA.
     /// </summary>
     public Guid? SourceEventId { get; init; }
 

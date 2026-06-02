@@ -12,6 +12,7 @@ public sealed class DeadLetterPromotionTests
 {
     static readonly Guid FixedEntryId = new("11111111-1111-1111-1111-111111111111");
     static readonly Guid FixedOrderId = new("22222222-2222-2222-2222-222222222222");
+    static readonly Guid FixedSourceEventId = new("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
     static readonly DateTimeOffset FixedDeadLetteredAt =
         new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
@@ -64,6 +65,8 @@ public sealed class DeadLetterPromotionTests
         Assert.Equal(
             $"Sample.PaymentCommandHandler/{FixedOrderId:D}",
             raised.EffectTarget);
+        // A SendCommand effect has no source Event, so SourceEventId stays null.
+        Assert.Null(raised.SourceEventId);
     }
 
     [Fact]
@@ -92,6 +95,8 @@ public sealed class DeadLetterPromotionTests
         Assert.Equal(
             $"OrderSummary/orders/{FixedOrderId:N}",
             raised.EffectTarget);
+        // An UpsertRow effect has no source Event, so SourceEventId stays null.
+        Assert.Null(raised.SourceEventId);
     }
 
     [Fact]
@@ -168,12 +173,15 @@ public sealed class DeadLetterPromotionTests
     public Task Build_ShouldProduceFullyPopulatedRaisedEvent_WhenPublishEvent()
     {
         var entry = PublishEventEntry();
-        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1") { EventId = FixedSourceEventId };
 
         var raised = DeadLetterPromotion.Build(
             entry, edictEvent, Accessors, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
+        // The forensic row carries the source event's own id so operators can
+        // trace a publish-failure row back to the event that produced it.
+        Assert.Equal(FixedSourceEventId, raised.SourceEventId);
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
@@ -188,6 +196,7 @@ public sealed class DeadLetterPromotionTests
             inlinePayload: null,
             claimCheckKey: "edict-claim-check/abc123")
         {
+            EventId = FixedSourceEventId,
             InnerEventStreamName = "Orders",
             InnerEventRouteKey = FixedOrderId,
         };
@@ -196,6 +205,33 @@ public sealed class DeadLetterPromotionTests
             entry, envelope, new InvalidOperationException("downstream unavailable"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
+        // The envelope mirrors the inner event's id, so the forensic row recovers
+        // the source event id even though the oversized body never inlines here.
+        Assert.Equal(FixedSourceEventId, raised.SourceEventId);
+        return Verify(raised).DontScrubGuids().DontScrubDateTimes();
+    }
+
+    // The receiver-side BlobMissing row carries the claim-check key and the
+    // BlobMissing failure-kind, and recovers the source event id from the
+    // envelope even though the body it pointed at is gone.
+    [Fact]
+    public Task BuildForBlobMissing_ShouldCarrySourceEventIdAndClaimCheckKey()
+    {
+        var entry = PublishEventEntry();
+        var envelope = new EdictEventEnvelope(
+            inlinePayload: null,
+            claimCheckKey: "edict-claim-check/abc123")
+        {
+            EventId = FixedSourceEventId,
+            InnerEventStreamName = "Orders",
+            InnerEventRouteKey = FixedOrderId,
+        };
+
+        var raised = DeadLetterPromotion.BuildForBlobMissing(
+            entry, envelope, new KeyNotFoundException("blob not found"),
+            SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
+
+        Assert.Equal(FixedSourceEventId, raised.SourceEventId);
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 }
