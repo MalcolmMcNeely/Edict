@@ -24,6 +24,12 @@ internal static class SagaGrainSpineEmitter
                 .Append("\")]\n");
         }
 
+        var handledTypeArms = new StringBuilder();
+        foreach (var eventFqn in grain.Handlers.Select(h => h.EventFqn).Distinct(System.StringComparer.Ordinal))
+        {
+            handledTypeArms.Append("                    case ").Append(eventFqn).Append(":\n");
+        }
+
         var dispatchArms = new StringBuilder();
         foreach (var handler in grain.Handlers)
         {
@@ -73,6 +79,18 @@ internal static class SagaGrainSpineEmitter
             {{dispatchArms.ToString().TrimEnd('\n')}}
                             default:
                                 return {{EdictWellKnownNames.EdictDispatchOutcomeNotHandledFqn}};
+                        }
+                    }
+
+                    protected override bool HandlesEventType(
+                        global::Edict.Contracts.Events.EdictEvent edictEvent)
+                    {
+                        switch (edictEvent)
+                        {
+            {{handledTypeArms.ToString().TrimEnd('\n')}}
+                                return true;
+                            default:
+                                return false;
                         }
                     }
                 }

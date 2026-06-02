@@ -32,6 +32,10 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
     {
         Progress.Stage = OrderPaymentStage.Confirmed;
         Dispatch(new ConfirmOrderCommand(edictEvent.OrderId));
+        // Authorisation confirms the order: the payment workflow is done. Both
+        // terminal arms (this and the compensation arm below) call Complete so
+        // the saga stops holding a cap and rejects any later Event.
+        Complete();
         return Task.CompletedTask;
     }
 
@@ -39,6 +43,7 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
     {
         Progress.Stage = OrderPaymentStage.Compensated;
         Dispatch(new CancelOrderCommand(edictEvent.OrderId, "payment_declined"));
+        Complete();
         return Task.CompletedTask;
     }
 }

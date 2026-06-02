@@ -35,6 +35,15 @@ For fleet-wide triage during a system-wide failure, use `ListAllAsync()` instead
 3. The auto-wired `EdictDeadLetterProjectionBuilder` consumes that stream and upserts the row.
 4. Operators read via `IEdictDeadLetterRepository`. The captured `TraceParent` lands on the row so trace continuity from the original effect is preserved.
 
+## Saga-lifecycle dead letters
+
+Two dead-letter causes do not come from an outbox effect exhausting `MaxAttempts`; they are promoted directly by a saga's lifecycle and land on the same projection:
+
+- **`EdictSagaTimeoutException`** (`edict.dead_letter.failure_reason = SagaTimeout`) — a saga's absolute lifetime cap fired and `OnSagaTimeoutAsync()` was **not** overridden, so the default routed the fired cap to dead-letter. The fix is on the saga: either give it an `OnSagaTimeoutAsync()` that compensates, or, if the workflow genuinely should run longer, raise its `[EdictSagaTimeout]` or declare it `Unbounded`.
+- **`EdictSagaTerminalException`** (`edict.dead_letter.failure_reason = SagaTerminal`) — a genuinely-new Event of a type the saga *handles* arrived at a saga that had already become terminal (`Completed` via `Complete()`, or `TimedOut`). An at-least-once redelivery of an already-handled Event still dedups silently, and an unrelated event type the saga receives off its shared stream is ignored; this row means a *new, handled* Event reached a finished saga, which usually points at an event the workflow did not expect to outlive `Complete()`.
+
+Both reasons are distinct from `ConsumerBug` so the two saga-lifecycle failures read apart from a thrown `HandleAsync`. See [sagas.md](sagas.md) for the lifecycle and ADR-0050 for the rationale.
+
 ## Per-substrate naming
 
 The dead-letter projection writes to a literal table named `"deadletter"`, partition-collapsed into one fleet-wide partition for cheap query. The physical artefact under that name follows the persistence substrate:

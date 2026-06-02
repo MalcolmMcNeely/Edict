@@ -52,14 +52,34 @@ public sealed class SagaDeferredLifecycleTests
         await saga.DeliverAsync(Trigger(workflowId));
         await saga.DeliverAsync(Finish(workflowId));
 
-        // A genuinely-new oversized Event at the now-Completed saga dead-letters
-        // at staging — the terminal guard fires without fetching the body.
+        // A genuinely-new oversized Event the saga handles, at the now-Completed
+        // saga: the body materialises on the drain, the terminal guard recognises
+        // it as a handled type, and it dead-letters.
         await saga.DeliverAsync(PointerEnvelope(Trigger(workflowId)));
 
         Assert.Equal(SagaLifecycleState.Completed, await saga.GetLifecycleStateAsync());
         var deadLetter = Assert.Single(DeadLettersFor(workflowId));
         Assert.Equal(typeof(EdictSagaTerminalException).FullName, deadLetter.ExceptionType);
         // The terminal guard ran instead of the handler, so the counter is unchanged.
+        Assert.Equal(2, await saga.GetHandledAsync());
+    }
+
+    [Fact]
+    public async Task DeferredUnhandledStreamEvent_AtTerminalSaga_IsIgnored()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetDefaultCapSaga(workflowId);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        await saga.DeliverAsync(Finish(workflowId));
+
+        // An oversized foreign event type the saga has no HandleAsync for: the
+        // terminal decision happens off the drain where the body is materialised,
+        // so an unhandled type is ignored rather than dead-lettered.
+        await saga.DeliverAsync(PointerEnvelope(new LifecycleUnrelatedEvent(workflowId) { EventId = Guid.NewGuid() }));
+
+        Assert.Empty(DeadLettersFor(workflowId));
+        Assert.Equal(SagaLifecycleState.Completed, await saga.GetLifecycleStateAsync());
         Assert.Equal(2, await saga.GetHandledAsync());
     }
 

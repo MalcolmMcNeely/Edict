@@ -127,9 +127,20 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     protected void Complete() => _dispatch.Current.RequestComplete();
 
     /// <summary>
+    /// Whether this saga declares a <c>HandleAsync</c> overload for the runtime
+    /// type of <paramref name="edictEvent"/>. The generator emits the override as
+    /// the same closed switch its <c>DispatchAsync</c> dispatches over. A saga
+    /// subscribes to a whole domain stream, so it receives event types it does
+    /// not handle; those are ignored on the live path (no matching arm) and must
+    /// be ignored at a terminal saga too: only handled types dead-letter there.
+    /// </summary>
+    protected abstract bool HandlesEventType(EdictEvent edictEvent);
+
+    /// <summary>
     /// Saga stream-callback path: dedup first (an already-handled redelivery is
     /// suppressed regardless of terminal state), then the terminal-state guard
-    /// (a genuinely-new Event at a terminal saga dead-letters), then the
+    /// (a genuinely-new Event the saga handles dead-letters at a terminal saga;
+    /// an unhandled event type off the shared stream is ignored), then the
     /// handler — whose commit also arms the cap on the first handle or
     /// terminalises it when the handler called <see cref="Complete"/>.
     /// </summary>
@@ -147,7 +158,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         var lifecycle = State.Saga;
         var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
 
-        if (SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
+        if (HandlesEventType(edictEvent)
+            && SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
         {
             // Consume the ring slot (so this exact event is not redelivered
             // forever) and stage a dead-letter in one write; the lifecycle
@@ -181,13 +193,14 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     }
 
     /// <summary>
-    /// Deferred (pointer-envelope) intake: the same dedup-first → terminal-guard →
-    /// arm shape as <see cref="OnStreamEventAsync"/>, but the handler runs later
-    /// off the engine drain. The terminal guard and arming both fold into the
-    /// staging write — neither needs the oversized body, which is still in the
-    /// claim-check store — so an oversized first Event arms the absolute cap and
-    /// an oversized Event at a terminal saga dead-letters, exactly as the inline
-    /// path does. Arming anchors at receipt here (the handler runs after the
+    /// Deferred (pointer-envelope) intake: dedup-first → arm → stage, with the
+    /// handler running later off the engine drain. Arming folds into the staging
+    /// write (it needs only the fact of receipt, not the oversized body), so an
+    /// oversized first Event still arms the absolute cap. The terminal guard,
+    /// unlike the inline path, runs in <see cref="DispatchDeferredAsync"/> once the
+    /// body is materialised: it has to know the event type to tell a handled
+    /// Event (dead-letter at a terminal saga) from a foreign one off the shared
+    /// stream (ignore). Arming anchors at receipt here (the handler runs after the
     /// drain), and the cap reminder is registered once the staging commit and the
     /// drain it triggers have settled, so a <see cref="Complete"/> the deferred
     /// handler called wins over a needless registration.
@@ -202,27 +215,24 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         }
 
         var lifecycle = State.Saga;
-        var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
+        var priorState = lifecycle?.State;
 
-        if (SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
-        {
-            var terminalDeadLetter = BuildSagaDeadLetterEntry(new EdictSagaTerminalException(
-                $"Saga '{SagaType}' received an Event after it became terminal ({currentState})."));
-            _pendingLifecycle = null;
-            await CommitAndPersistAsync(envelope.EventId, terminalDeadLetter);
-            return;
-        }
-
+        // The terminal guard cannot run here: the body is still in the claim-check
+        // store, so the event type is unknown until the InvokeHandler entry
+        // materialises it on the drain. Stage the entry unconditionally and let
+        // the type-aware terminal decision happen in DispatchDeferredAsync, where
+        // the body is in hand: an unhandled type off the shared stream is ignored
+        // rather than dead-lettered.
         var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false);
         _pendingLifecycle = newLifecycle;
         await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
         _pendingLifecycle = null;
 
-        if (State.Saga?.State == SagaLifecycleState.Completed)
+        if (State.Saga?.State == SagaLifecycleState.Completed && priorState != SagaLifecycleState.Completed)
         {
             // The deferred handler called Complete() during the drain the staging
-            // commit kicked off; the terminal write is durable, so count it and
-            // disarm (a no-op if the cap was never registered).
+            // commit kicked off; count and disarm only on that transition, not when
+            // the saga was already terminal before this event arrived.
             SagaLifecycleMetrics.EmitCompleted(SagaType);
             await CapReminders.UnregisterReminderAsync(CapReminderName);
         }
@@ -242,6 +252,20 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// </summary>
     private protected override async Task<OutboxEntry?> DispatchDeferredAsync(EdictEvent edictEvent)
     {
+        var currentState = State.Saga?.State ?? SagaLifecycleState.Live;
+
+        if (SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
+        {
+            // Terminal, and the body is now materialised: apply the same
+            // type-aware guard the inline path does. A handled type dead-letters;
+            // an unhandled type off the shared stream is ignored. The handler
+            // never runs either way.
+            return HandlesEventType(edictEvent)
+                ? BuildSagaDeadLetterEntry(new EdictSagaTerminalException(
+                    $"Saga '{SagaType}' received '{edictEvent.GetType().Name}' after it became terminal ({currentState})."))
+                : null;
+        }
+
         var outcome = await DispatchAsync(edictEvent);
         if (outcome.CompleteRequested && State.Saga is { State: not SagaLifecycleState.Completed } current)
         {

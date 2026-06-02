@@ -61,7 +61,7 @@ sum by (edict_outbox_effect_kind, edict_dead_letter_failure_reason) (
 **Suggested threshold.** `> 0.1` promotions/sec for 5 minutes. That's six promotions in five minutes — under a healthy system this is zero, so anything sustained is a real signal. Tighten for low-traffic systems, loosen for high-fan-out fleets.
 
 **Triage.**
-1. The `edict_dead_letter_failure_reason` tag is a closed allowlist (ADR-0039): `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Unhandled`. The slice tells you where to look — `Substrate` means [`observability.md`](observability.md); `Serialization` means a wire-shape regression (ADR-0007 drift); `Unhandled` means a consumer threw.
+1. The `edict_dead_letter_failure_reason` tag is a closed allowlist (ADR-0039): `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `SagaTimeout`, `SagaTerminal`, `Unhandled`. The slice tells you where to look: `Substrate` means [`observability.md`](observability.md); `Serialization` means a wire-shape regression (ADR-0007 drift); `ConsumerBug` means a consumer threw; `SagaTimeout` / `SagaTerminal` are saga-lifecycle stalls, cross-referenced from recipe 6.
 2. Query the dead-letter projection (`IEdictDeadLetterRepository.ListAllAsync()`) for full rows. Each row carries the exception type, source grain, and effect target.
 3. `Saturated` reasons specifically mean the dead-letter promoter hit `EdictOutboxOptions.MaxDeadLetterRetries`. The forensic surface itself is at capacity — escalate.
 
@@ -117,22 +117,35 @@ histogram_quantile(0.99,
 
 ---
 
-## 6. Saga stuck
+## 6. Saga stalling out
 
-**Symptom.** A saga is waiting on an event that hasn't arrived. Sagas don't have timeouts today (`saga timeouts` is on the "What's next" list); the metric is the observability prerequisite for the eventual feature.
+**Symptom.** Sagas are hitting their absolute lifetime cap: a workflow started and never reached `Complete()`. A fired cap is the definitive "this saga stalled" signal; `edict_saga_progress_age` is the leading indicator that catches a saga approaching its cap before it fires.
 
 **Expression.**
 
 ```promql
-max by (edict_grain_type) (edict_saga_progress_age_seconds) > 3600
+sum by (edict_grain_type, edict_saga_timeout_outcome) (
+  rate(edict_saga_timeout_fired[5m])
+) > 0
 ```
 
-**Suggested threshold.** `> 3600` seconds (one hour). This is workflow-shape-specific — a saga that expects a downstream confirmation in minutes wants a tight threshold; a saga waiting on human approval wants a loose one. Per-saga thresholds are the honest shape (use a `bysaga` label match).
+For the health ratio (what fraction of finished sagas timed out rather than completing), alert on:
+
+```promql
+sum by (edict_grain_type) (rate(edict_saga_timeout_fired[30m]))
+/
+sum by (edict_grain_type) (
+  rate(edict_saga_timeout_fired[30m]) + rate(edict_saga_completed[30m])
+) > 0.01
+```
+
+**Suggested threshold.** Any sustained `timeout.fired` rate `> 0` is worth a look: under a healthy system every saga reaches `Complete()` well before its cap, so fired caps should be near zero. The `edict_saga_timeout_outcome` slice tells you the shape: `deadlettered` means the saga had no `OnSagaTimeoutAsync` override and the stall is now a dead-letter row; `compensated` means the override ran and unwound the workflow. For the ratio, `> 1%` is a placeholder; tune to the workflow's expected completion rate.
 
 **Triage.**
-1. Identify the saga type from `edict_grain_type`. The metric is `max(now − lastHandledAt)` per type — one stuck saga grain is enough to trip it.
-2. Look at the upstream event the saga is waiting on. If `edict_event_handle_lag` for that event type is *also* high, the saga isn't stuck — it's waiting on a stream that's behind. Resolve the lag (recipe 4) first.
-3. If the upstream stream is healthy and the saga is still stuck, the producer aggregate may have stopped raising. Check the source command handler's traffic — sagas are coordination, they reflect what the rest of the system is doing.
+1. Slice the fired-cap rate by `edict_grain_type` and `edict_saga_timeout_outcome`. A rising `deadlettered` rate means workflows are stalling with no compensation path; query the dead-letter projection for `SagaTimeout` rows (recipe 3) to see which.
+2. Use `max by (edict_grain_type) (edict_saga_progress_age_seconds)` as the early-warning lead: a saga type whose `progress.age` is climbing toward its configured `[EdictSagaTimeout]` will start firing caps soon. A saga expecting a downstream confirmation in minutes whose age is in hours is already stalled.
+3. Look at the upstream event the saga is waiting on. If `edict_event_handle_lag` for that event type is *also* high, the saga isn't stalled; it's waiting on a stream that's behind. Resolve the lag (recipe 4) first.
+4. If the upstream stream is healthy, the producer aggregate may have stopped raising. Check the source command handler's traffic: sagas are coordination, they reflect what the rest of the system is doing.
 
 ---
 

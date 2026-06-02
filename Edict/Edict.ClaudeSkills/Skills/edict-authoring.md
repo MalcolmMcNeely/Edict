@@ -57,6 +57,36 @@ RuleFor(c => c).Custom((command, ctx) =>
 
 Decide between Validator and `HandleAsync` by the mutation line: if the rejection is knowable from current state alone, it belongs in the Validator; if it is only knowable mid-mutation (a derived value computed during the handler), it stays in `HandleAsync` and returns its own `Rejected`. Validators are stateless and have no `Raise`, no `Dispatch`, and no access to streams or the outbox.
 
+## Authoring a Saga
+
+Derive from `EdictSaga<TProgress>` in `Edict.Core.Sagas` and write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event. Each handler mutates the durable `Progress` and issues at most one Command via `Dispatch`. Beyond that, a saga has a lifecycle every author has to decide about.
+
+**Every saga has an absolute lifetime cap.** It is armed once, on the saga's first handled Event, and never reset by later activity: it bounds total workflow lifetime, not idle time and not per step. The default is finite: a saga inherits the silo-wide `EdictSagaOptions.DefaultTimeout`, which ships at 7 days. Override it per saga, or opt out entirely:
+
+```csharp
+[EdictSagaTimeout("1.00:00:00")]              // one day; the leading field is DAYS, so "24:00:00" is 24 days
+public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress> { /* ... */ }
+
+[EdictSagaTimeout(Unbounded = true)]          // no cap; use only for a genuinely open-ended coordinator
+public partial class LongRunningCoordinator : EdictSaga<CoordinatorProgress> { /* ... */ }
+```
+
+**Call `Complete()` when the workflow is genuinely finished**, from the terminal handler alongside the last `Dispatch`. It is hard-terminal: the lifecycle moves to `Completed` in the same atomic write, the cap reminder is dropped, and any later genuinely-new Event the saga *handles* dead-letters instead of restarting the workflow. Unrelated event types the saga receives off its shared domain stream stay ignored, so completing a saga that shares a stream is safe.
+
+**Decide deliberately whether to call `Complete()` at all.** A saga whose key may legitimately receive a later Event (a long-lived coordinator that keeps reacting) should *not* call it; leave it live and rely on the cap as its only terminal path. Calling `Complete()` on such a saga turns a normal later Event into a dead-letter. The rule: call `Complete()` only when no further Event for this key can be part of the workflow.
+
+**Override `OnSagaTimeoutAsync()` to compensate when the cap fires.** The override may mutate `Progress` and `Dispatch` exactly one compensating Command, both of which commit atomically with the timeout. The default (no override) dead-letters the fired cap, so a finite-capped saga that stalls surfaces loudly rather than vanishing.
+
+```csharp
+protected override Task OnSagaTimeoutAsync()
+{
+    Dispatch(new CancelOrderCommand(this.GetPrimaryKey(), "saga_timed_out"));
+    return Task.CompletedTask;
+}
+```
+
+`edict_list_handlers` reports each saga's effective cap (a duration, `unbounded`, or `default`) alongside its role, so the inventory check above also tells you which sagas already carry an explicit `[EdictSagaTimeout]`.
+
 ## When to look up a term
 
 When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.

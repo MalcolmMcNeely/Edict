@@ -10,9 +10,10 @@ namespace Edict.Tests.Conformance.Sagas;
 /// Event arriving after the saga called <c>Complete()</c> dead-letters with the
 /// <see cref="EdictSagaTerminalException"/> type on the row. The assertion
 /// observes the durable dead-letter row the projection writes, not the saga's
-/// internal state. The deferred fact proves the guard also fires at staging when
-/// the new Event arrives oversized (the claim-check pointer-envelope path),
-/// without fetching the body.
+/// internal state. The deferred fact proves the guard also fires when the new
+/// Event arrives oversized (the claim-check pointer-envelope path): the body
+/// materialises on the drain, the guard recognises it as a handled type, and it
+/// dead-letters.
 /// </summary>
 public abstract class SagaTimeoutTerminalDeadLetterScenarios<TFixture>
     where TFixture : ConformanceFixture

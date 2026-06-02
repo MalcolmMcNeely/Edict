@@ -37,7 +37,13 @@ When investigating a missing event or unrouted Command, the trace is what stitch
 - **`InvokeHandler` dead-lettered** — a consumer Event Handler threw past `MaxAttempts`. Read `Reason` and `ExceptionType` on the row; the failure is in the consumer's `HandleAsync` body.
 - **`SendCommand` dead-lettered** — a saga's follow-up Command exhausted attempts. The target aggregate is unavailable or its `HandleAsync` is rejecting durably. Saga progress is still readable via `GetSagaProgress` in tests; in production, query the saga grain directly.
 - **`UpsertRow` dead-lettered** — a Table Projection's write to the external store kept failing. Read the row's contents to repair the destination by hand.
+- **Saga dead-lettered with `ExceptionType = EdictSagaTimeoutException`** (`failure_reason = SagaTimeout`) — the saga's absolute lifetime cap fired and `OnSagaTimeoutAsync()` was not overridden, so the default routed the stall to dead-letter. The workflow started and never reached `Complete()`. The fix is on the saga: add an `OnSagaTimeoutAsync()` that compensates, or raise its `[EdictSagaTimeout]` / declare it `Unbounded` if it genuinely should run longer.
+- **Saga dead-lettered with `ExceptionType = EdictSagaTerminalException`** (`failure_reason = SagaTerminal`) — a genuinely-new Event of a type the saga *handles* arrived at a saga that had already gone terminal (`Completed` via `Complete()`, or `TimedOut`). A redelivery of an already-handled Event still dedups silently, and an unrelated event type the saga receives off its shared stream is ignored; this row means a *new, handled* Event reached a finished saga, usually an Event the workflow did not expect to outlive `Complete()`, or a `Complete()` that should not have been called for a re-openable coordinator.
 - **Aggregate intake is not blocked** — dead-lettering is forensic-only. A permanently failing effect does not stall its source aggregate. If a Command Handler appears stuck, the cause is not dead-lettering.
+
+## A stalled saga
+
+A saga that stalls (started and never reached `Complete()`) surfaces on two counters on the `"Edict"` Meter. `edict.saga.timeout.fired` (tagged `compensated` or `deadlettered`) is the definitive "this saga hit its cap" signal; `edict.saga.completed` is its denominator, so the ratio `fired / (fired + completed)` separates a handful of timeouts from a rising failure trend. `edict.saga.progress.age` is the leading indicator: a saga whose age is climbing toward its `[EdictSagaTimeout]` will start firing caps soon. A rising `deadlettered` fired-cap rate points straight at `SagaTimeout` rows in the Dead Letter projection.
 
 ## When to look up the why
 
@@ -49,6 +55,7 @@ For any "why does dead-letter behave this way?" or "why no redrive?" question, i
 - ADR-0020 — Claim check (and the `BlobMissing` failure kind).
 - ADR-0003 — Parent/child spans across the stream hop.
 - ADR-0041 — Exception policy.
+- ADR-0050 — Saga absolute lifetime cap (the `SagaTimeout` / `SagaTerminal` dead-letter causes).
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any dead-letter, outbox, or trace "why" question rather than guessing.
 

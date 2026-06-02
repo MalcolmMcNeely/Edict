@@ -67,6 +67,14 @@ The Verify-shaped `Timeline` is the default. A targeted probe (`GetSagaProgress`
 - A test asserts on metrics observability. `GetOutboxState` and `GetSagaState` read the same cache the observable gauges would scrape, so `Assert.Equal` on these reproduces what a `MeterListener` would see.
 - A test asserts a single value (one Guid, one count) where a full Verify snapshot would be noise.
 
+## Asserting saga completion and the cap
+
+A saga's terminal lifecycle (`Completed` after `Complete()`, `TimedOut` after the cap) is internal state, not a dedicated probe. What a consumer test asserts is the observable consequence:
+
+- **Completion** — `GetSagaProgress` reads the durable `Progress`, so the test asserts the workflow reached its terminal stage. `Complete()` itself does not touch `Progress`; it is the handler's own `Progress` mutation that the snapshot captures. The `OrderPaymentSaga` happy-path test, which pins `Progress` at `Confirmed`, is exactly this shape and is unaffected by the handler also calling `Complete()`.
+
+- **The fired cap is not drivable from the test clock.** The absolute cap fires on a per-grain Orleans reminder, which Orleans floors at one minute of wall-clock. `AdvanceClock` advances the `FakeTimeProvider` (which governs the cap's *deadline arithmetic* and outbox backoff) but does **not** drive Orleans reminder delivery, so advancing the clock past a saga's deadline will not fire its cap inside `EdictTestApp`. The framework proves the fired-cap path (compensation and the un-overridden dead-letter) in its own cross-substrate conformance suite through an internal saga probe. For a consumer, unit-test the `OnSagaTimeoutAsync` override's logic directly rather than trying to fire the cap through the harness.
+
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Saga`, `Projection Builder`, `Outbox`.

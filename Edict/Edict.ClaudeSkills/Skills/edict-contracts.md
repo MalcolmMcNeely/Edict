@@ -33,6 +33,7 @@ public sealed partial record OrderPlacedEvent(
 - **`[EdictStream("Name")]`** — on the concrete Event class. Names the domain stream the event belongs to; publisher and every subscriber are derived from this name. Required on every Event; omitting it is `EDICT008` at build time.
 - **`[EdictTelemeterized]`** — on a primitive property of a Command or Event subclass. The generator emits code writing the property as an OpenTelemetry tag on the active span — `edict.{snake_case_property_name}` on the Command span for a Command, on both publish and handle spans for an Event. The tag key is shared across declaring types so the same domain concept queries by one key.
 - **`partial`** — required on every concrete Command and Event; the generator emits the Orleans `[Alias]` into a second partial declaration (`EDICT007`). A concrete Event must have exactly one `[EdictRouteKey]` `Guid` property (`EDICT003`).
+- **`[EdictSagaTimeout]`** — not on a Command or Event but on a **saga class** (`Edict.Contracts.Sagas`), declaring that saga's absolute lifetime cap. Either a duration literal `[EdictSagaTimeout("1.00:00:00")]` (where the leading field is **days**, so `"24:00:00"` is 24 days, not 24 hours), or `[EdictSagaTimeout(Unbounded = true)]` to opt out; never both. Absent, the saga inherits the silo-wide default (ships at 7 days). EDICT020 rejects a non-positive or non-parseable literal, EDICT021 rejects setting both `Duration` and `Unbounded`, and EDICT022 warns on an `OnSagaTimeoutAsync` override of an `Unbounded` saga. The saga lifecycle itself is the `edict-authoring` skill's territory.
 
 ## When to look up a contract term
 
@@ -56,6 +57,7 @@ When a consumer asks "can we just use JSON?" or "why can't I add `[Union]`?" or 
 - ADR-0010 — Event addressing model.
 - ADR-0037 — `[EdictTelemeterized]` tag keys, no type prefix.
 - ADR-0046 — Canonical authoring shape for messages and persisted state.
+- ADR-0050 — Saga absolute lifetime cap (the `[EdictSagaTimeout]` attribute).
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any contract-attribute "why" question rather than guessing.
 

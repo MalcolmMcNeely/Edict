@@ -163,6 +163,26 @@ public sealed class SagaLifecycleTests
     }
 
     [Fact]
+    public async Task TerminalSaga_IgnoresUnhandledStreamEvent_WithoutDeadLettering()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetDefaultCapSaga(workflowId);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        await saga.DeliverAsync(Finish(workflowId));
+
+        // A foreign event type the saga receives off the shared stream but has no
+        // HandleAsync for. Live, it is silently ignored; terminal, it must still be
+        // ignored: only events the saga actually handles dead-letter at a terminal
+        // saga.
+        await saga.DeliverAsync(new LifecycleUnrelatedEvent(workflowId) { EventId = Guid.NewGuid() });
+
+        Assert.Empty(DeadLettersFor(workflowId));
+        Assert.Equal(SagaLifecycleState.Completed, await saga.GetLifecycleStateAsync());
+        Assert.Equal(2, await saga.GetHandledAsync());
+    }
+
+    [Fact]
     public async Task DoubleCapFire_IsCleanNoOp()
     {
         var workflowId = Guid.NewGuid();

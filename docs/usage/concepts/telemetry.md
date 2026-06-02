@@ -46,7 +46,8 @@ Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 - `edict.event.type`, `edict.event.size_bytes`, `edict.event.claim_checked` — on event spans.
 - `edict.claim_check.key`, `edict.claim_check.payload.size` — on claim-check spans.
 - `edict.outbox.effect_kind` — on outbox drain spans and metrics.
-- `edict.dead_letter.failure_reason` — on dead-letter metrics. A closed allowlist: `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `Unhandled`.
+- `edict.dead_letter.failure_reason` — on dead-letter metrics. A closed allowlist: `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `SagaTimeout`, `SagaTerminal`, `Unhandled`.
+- `edict.saga.timeout.outcome` — on the saga timeout-fired counter. A closed allowlist: `compensated`, `deadlettered`.
 
 The full set lives in `Edict.Telemetry.SemanticConventions`.
 
@@ -57,7 +58,9 @@ Instrument names follow OpenTelemetry semantic-convention suffixes (`.count`, `.
 - `edict.command.handle.duration` — command handler latency.
 - `edict.event.handle.duration` / `edict.event.handle.lag` — consumer handler latency and stream-to-handle end-to-end delay.
 - `edict.outbox.pending.count` / `edict.outbox.oldest_entry.age` — outbox depth and stuck-aggregate detection. Observable gauges; pushed from each grain into a silo-local cache.
-- `edict.saga.progress.age` — time since the saga last advanced.
+- `edict.saga.progress.age` — time since the saga last advanced; the leading indicator of a saga approaching its absolute cap.
+- `edict.saga.timeout.fired` — count of fired absolute lifetime caps, tagged `edict.saga.timeout.outcome` (`compensated` when the `OnSagaTimeoutAsync` override dispatched a Command, else `deadlettered`).
+- `edict.saga.completed` — count of sagas that reached `Completed` via `Complete()`. With `timeout.fired` it makes the health ratio `fired / (fired + completed)` computable, separating a handful of timeouts among millions from a rising failure trend. Both counters are tagged by saga type (`edict.grain.type`), so they join `progress.age` on one dimension.
 - `edict.dead_letter.promotion.count` / `edict.dead_letter.promotion.failure.count` — dead-letter rate and promotion failures.
 - `edict.idempotency.duplicate.count` — dedup-ring hit rate.
 - `edict.claim_check.payload.size` — claim-check body size histogram.

@@ -45,6 +45,18 @@ _Avoid_: owning events; calling `Raise`/`Dispatch` from a handler; treating dedu
 A grain that coordinates a multi-step workflow by reacting to Events and issuing exactly one Command per Event via `Dispatch`.
 _Avoid_: dispatching more than one command per handled event; expecting `Dispatch` to buffer like `Raise`; reconstructing progress by replay.
 
+**Saga Timeout**:
+A saga's absolute lifetime cap: a deadline armed once when the saga handles its first Event and never reset by later activity, declared with `[EdictSagaTimeout]` (a duration literal or `Unbounded`) and otherwise inheriting the silo-wide default (ships finite at 7 days).
+_Avoid_: reading it as a per-step or idle deadline; writing `"24:00:00"` for one day (the leading field is days, so that is 24 days; use `"1.00:00:00"`).
+
+**Complete**:
+The hard-terminal signal a saga raises from a handler (`Complete()`) to mark its workflow successfully finished: the lifecycle moves to `Completed` in the same atomic write, the cap reminder is unregistered, and any later genuinely-new Event the saga handles dead-letters (unrelated event types off the shared stream are still ignored).
+_Avoid_: calling it on a saga whose key may legitimately receive a later Event (leave a re-openable coordinator live and rely on the cap); expecting it to mutate `Progress`.
+
+**Compensation**:
+The single Command a saga issues to undo or unwind partial work, either from a normal handler on a failure Event or from the `OnSagaTimeoutAsync()` hook when the cap fires; an un-overridden fired cap dead-letters instead.
+_Avoid_: dispatching more than one compensating Command; treating dead-letter as compensation.
+
 **Projection Builder**:
 A grain that consumes the live Event stream and maintains a current-state read model, processing the stream only forward.
 _Avoid_: implying replay, rehydration, or "rebuild the projection".

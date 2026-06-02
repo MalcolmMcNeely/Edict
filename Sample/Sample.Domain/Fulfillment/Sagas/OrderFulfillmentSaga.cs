@@ -30,6 +30,10 @@ public partial class OrderFulfillmentSaga : EdictSaga<OrderFulfillmentProgress>
     {
         Progress.Stage = OrderFulfillmentStage.Shipped;
         Dispatch(new MarkOrderShippedCommand(edictEvent.OrderId));
+        // Shipping is the terminal step: no further Event for this order can
+        // reopen the workflow, so mark it Complete. A genuinely-new Event after
+        // this dead-letters instead of silently restarting fulfillment.
+        Complete();
         return Task.CompletedTask;
     }
 }

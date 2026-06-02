@@ -4,7 +4,8 @@ namespace Edict.Contracts.Sagas;
 /// Declares a saga's absolute lifetime cap: a fixed deadline armed once when
 /// the saga starts (its first handled Event) and never reset by later activity.
 /// Either a <see cref="Duration"/> (a <c>TimeSpan</c>-parseable literal such as
-/// <c>"24:00:00"</c>) or <see cref="Unbounded"/> — never both. Absent, the saga
+/// <c>"1.00:00:00"</c> for one day — the leading field is days, so <c>"24:00:00"</c>
+/// is 24 days, not 24 hours) or <see cref="Unbounded"/> — never both. Absent, the saga
 /// inherits the silo-wide default (ships finite at 7 days). When the cap fires,
 /// the framework gives the saga one chance to compensate; an un-overridden
 /// timeout dead-letters so a stuck saga surfaces loudly. Consumer-facing, so
@@ -18,7 +19,7 @@ public sealed class EdictSagaTimeoutAttribute : Attribute
     {
     }
 
-    /// <summary>Declares a finite cap from a <c>TimeSpan</c>-parseable literal (e.g. <c>"24:00:00"</c>).</summary>
+    /// <summary>Declares a finite cap from a <c>TimeSpan</c>-parseable literal (e.g. <c>"1.00:00:00"</c> for one day; the leading field is days).</summary>
     public EdictSagaTimeoutAttribute(string duration)
     {
         Duration = duration;

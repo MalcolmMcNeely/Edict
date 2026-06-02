@@ -28,6 +28,16 @@ public sealed partial record LifecycleFinishEvent(Guid WorkflowId) : EdictEvent
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
+// On the same stream as the trigger/finish events but handled by no saga in this
+// workflow — the foreign event type a saga receives off a shared domain stream
+// and must ignore, terminal or not.
+[EdictStream("SagaLifecycleWorkflow")]
+public sealed partial record LifecycleUnrelatedEvent(Guid WorkflowId) : EdictEvent
+{
+    [EdictRouteKey]
+    public Guid WorkflowId { get; init; } = WorkflowId;
+}
+
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Saga.LifecycleProgress")]
 public sealed class LifecycleProgress : IEdictPersistedState

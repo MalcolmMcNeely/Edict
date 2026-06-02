@@ -148,12 +148,12 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **One trace per business flow.** Trace context propagated across every async stream hop.
 - **Operational metrics.** Outbox depth + oldest-entry age, dead-letter rate by failure kind, handler p99 by command/event type, stream lag, saga progress age, claim-check size distribution, drain-cycle stability — all on a single `Meter` named `"Edict"`. Vendor-neutral PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
+- **Saga timeouts.** Every saga carries an absolute lifetime cap: a shipped 7-day default, overridable per saga with `[EdictSagaTimeout]` or opted out entirely. A compensation hook runs on expiry and dead-letters by default, so a stalled workflow is bounded and visible, not immortal.
 - **Configurable.** Every knob is an options property with a default and startup validation.
 - **In-memory tests.** SendAsync → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
 ## What's next
 
-- **Saga timeouts.** Declarative deadlines per saga step with automatic compensation — today a saga that never gets its next event sits forever.
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
 - **External-work primitive.** Dispatch a slow out-of-grain operation (API call, batch job, external process), park via reminder, resume with the result to issue a command. Orleans grain turns should stay short, and there is no framework-shape way to do this today.
 - **Read-your-writes cursor.** Commands return a cursor identifying the event they raised; queries accept an `after: X` parameter and wait briefly until the projection has applied X before answering. Today consumers poll-and-retry or hand-track sequences to give users the obvious experience of seeing their own writes.
