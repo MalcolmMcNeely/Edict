@@ -1,18 +1,19 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Commands;
+using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
 using Xunit;
 
-namespace Edict.Tests.Conformance.Commands;
+namespace Edict.Core.Tests.Commands;
 
-public abstract class CommandValidatorScenarios<TFixture>
-    where TFixture : ConformanceFixture
+[Collection(SubstrateIndependentCollection.Name)]
+public sealed class CommandValidatorTests
 {
-    readonly TFixture _fixture;
+    readonly SubstrateIndependentClusterFixture _fixture;
 
-    protected CommandValidatorScenarios(TFixture fixture)
+    public CommandValidatorTests(SubstrateIndependentClusterFixture fixture)
     {
         _fixture = fixture;
     }
@@ -20,7 +21,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     [Fact]
     public async Task Validator_ShouldReturnRejectedWithMappedReasons_WhenValidationFails()
     {
-        var result = await _fixture.Sender.SendAsync(new ValidateSkuCommand(Guid.NewGuid(), string.Empty));
+        var result = await _fixture.Sender.SendAsync(new CheckSkuCommand(Guid.NewGuid(), string.Empty));
 
         var rejected = Assert.IsType<EdictCommandResult.Rejected>(result);
         var reason = Assert.Single(rejected.Reasons);
@@ -30,7 +31,7 @@ public abstract class CommandValidatorScenarios<TFixture>
     [Fact]
     public async Task Validator_ShouldAllowHandleToRunAndReturnAccepted_WhenValidationPasses()
     {
-        var result = await _fixture.Sender.SendAsync(new ValidateSkuCommand(Guid.NewGuid(), "SKU-1"));
+        var result = await _fixture.Sender.SendAsync(new CheckSkuCommand(Guid.NewGuid(), "SKU-1"));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
     }
@@ -56,7 +57,7 @@ public abstract class CommandValidatorScenarios<TFixture>
         ActivitySource.AddActivityListener(listener);
 
         var orderId = Guid.NewGuid();
-        await _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, string.Empty));
+        await _fixture.Sender.SendAsync(new CheckSkuCommand(orderId, string.Empty));
 
         var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Unset, span.Status);
@@ -76,10 +77,10 @@ public abstract class CommandValidatorScenarios<TFixture>
     public async Task ConcurrentCommands_ShouldCompleteWithoutInterleaving_WhenTargetingSameGrain()
     {
         var orderId = Guid.NewGuid();
-        var t1 = _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, "SKU-A"));
-        var t2 = _fixture.Sender.SendAsync(new ValidateSkuCommand(orderId, "SKU-B"));
-        var results = await Task.WhenAll(t1, t2);
+        var firstSend = _fixture.Sender.SendAsync(new CheckSkuCommand(orderId, "SKU-A"));
+        var secondSend = _fixture.Sender.SendAsync(new CheckSkuCommand(orderId, "SKU-B"));
+        var results = await Task.WhenAll(firstSend, secondSend);
 
-        Assert.All(results, r => Assert.IsType<EdictCommandResult.Accepted>(r));
+        Assert.All(results, result => Assert.IsType<EdictCommandResult.Accepted>(result));
     }
 }

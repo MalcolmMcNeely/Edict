@@ -1,17 +1,18 @@
 using System.Diagnostics;
 
+using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
 using Xunit;
 
-namespace Edict.Tests.Conformance.Idempotency;
+namespace Edict.Core.Tests.Idempotency;
 
-public abstract class DedupSpanEmissionScenarios<TFixture>
-    where TFixture : ConformanceFixture
+[Collection(SubstrateIndependentCollection.Name)]
+public sealed class DedupSpanEmissionTests
 {
-    readonly TFixture _fixture;
+    readonly SubstrateIndependentClusterFixture _fixture;
 
-    protected DedupSpanEmissionScenarios(TFixture fixture)
+    public DedupSpanEmissionTests(SubstrateIndependentClusterFixture fixture)
     {
         _fixture = fixture;
     }
@@ -20,8 +21,8 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
     public async Task HandleAsync_ShouldEmitSpanTaggedDeduplicated_WhenRedeliveryIsSuppressed()
     {
         var grainId = Guid.NewGuid();
-        var publisher = _fixture.GrainFactory.GetGrain<IDedupPublisherGrain>(grainId);
-        var consumer = _fixture.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
+        var publisher = _fixture.GrainFactory.GetGrain<IDedupSpanPublisher>(grainId);
+        var consumer = _fixture.GrainFactory.GetGrain<IDedupSpanConsumer>(grainId);
 
         var stopped = new List<Activity>();
         using var listener = new ActivityListener
@@ -33,14 +34,14 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
         ActivitySource.AddActivityListener(listener);
 
         var sharedEventId = Guid.NewGuid();
-        var edictEvent = new DedupTestEvent(grainId, 1) with
+        var edictEvent = new DedupSpanTestEvent(grainId, 1) with
         {
             EventId = sharedEventId,
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
         await publisher.PublishAsync(edictEvent);
-        await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 1);
+        await DedupSpanWaiters.WaitForHandledCountAsync(consumer, expectedCount: 1);
 
         await publisher.PublishAsync(edictEvent);
 
@@ -49,7 +50,7 @@ public abstract class DedupSpanEmissionScenarios<TFixture>
         while (DateTimeOffset.UtcNow < deadline)
         {
             dedupSpan = stopped.FirstOrDefault(
-                a => a.OperationName == $"{SemanticConventions.Events.Spans.Deduplicated} DedupTestEvent");
+                a => a.OperationName == $"{SemanticConventions.Events.Spans.Deduplicated} DedupSpanTestEvent");
             if (dedupSpan is not null)
             {
                 break;
