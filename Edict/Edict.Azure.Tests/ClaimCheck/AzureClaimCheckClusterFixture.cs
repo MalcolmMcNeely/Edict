@@ -49,10 +49,10 @@ public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
     public override IEdictTableStoreFactory TableStoreFactory =>
         new AzureTableWriteStoreFactory(_tableServiceClient);
 
-    public override async Task<bool> ClaimCheckBlobExistsAsync(string key)
+    public override async Task<bool> ClaimCheckBlobExistsAsync(Guid eventId)
     {
         var container = _blobServiceClient.GetBlobContainerClient(ClaimCheckContainerName);
-        var blob = container.GetBlobClient(key);
+        var blob = container.GetBlobClient(eventId.ToString("N"));
         var response = await blob.ExistsAsync();
         return response.Value;
     }

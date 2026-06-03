@@ -91,10 +91,10 @@ sealed class DeadLetterPromoter(
     {
         var edictEvent = serializer.Deserialize<EdictEvent>(failed.Payload);
         // An oversized event rides as a pointer-bearing envelope on the
-        // wire. Lift the pointer onto the forensic row instead of trying
-        // to JSON-serialise the body into a 32 KB Azure Table property —
-        // the very failure mode claim-check exists to avoid.
-        if (edictEvent is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } envelope)
+        // wire (InlinePayload null). Carry its EventId onto the forensic row
+        // instead of trying to JSON-serialise the body into a 32 KB Azure Table
+        // property — the very failure mode claim-check exists to avoid.
+        if (edictEvent is EdictEventEnvelope { InlinePayload: null } envelope)
         {
             return DeadLetterPromotion.BuildForEnvelopeFailure(
                 failed, envelope, exception, sourceGrainKey, sourceGrainType, now);
@@ -201,11 +201,11 @@ sealed class DeadLetterPromoter(
     {
         var edictEvent = serializer.Deserialize<EdictEvent>(failed.Payload);
         // An InvokeHandler entry whose payload is a pointer-bearing envelope
-        // represents a receiver-side missing-blob exhaustion — route through
-        // the BlobMissing failure-kind mapping so the forensic row carries
-        // the claim-check key and the inline-payload envelope path stays
-        // unchanged.
-        if (edictEvent is EdictEventEnvelope { ClaimCheckKey: { Length: > 0 } } pointer)
+        // (InlinePayload null) represents a receiver-side missing-blob
+        // exhaustion — route through the BlobMissing failure-kind mapping so the
+        // forensic row carries the envelope's EventId and the inline-payload
+        // envelope path stays unchanged.
+        if (edictEvent is EdictEventEnvelope { InlinePayload: null } pointer)
         {
             return DeadLetterPromotion.BuildForBlobMissing(
                 failed, pointer, exception, sourceGrainKey, sourceGrainType, now);

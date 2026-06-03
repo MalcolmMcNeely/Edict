@@ -1,4 +1,4 @@
-{
+﻿{
   SingletonKey: d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1,
   EntryId: 11111111-1111-1111-1111-111111111111,
   Kind: PublishEvent,
@@ -10,6 +10,5 @@
   TraceParent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01,
   ExceptionType: System.InvalidOperationException,
   Reason: downstream unavailable,
-  SourceEventId: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee,
-  ClaimCheckKey: edict-claim-check/abc123
+  SourceEventId: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
 }

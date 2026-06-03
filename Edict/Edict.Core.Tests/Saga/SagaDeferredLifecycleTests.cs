@@ -143,20 +143,21 @@ public sealed class SagaDeferredLifecycleTests
             .Where(deadLetter => deadLetter.SourceGrainKey == workflowId.ToString())
             .ToList();
 
-    // Serialises the inner event into the shared claim-check store and returns a
-    // pointer-bearing wire-frame envelope with a fresh wire-frame EventId — the
-    // exact shape PublishEventExecutor.Stamp puts on the stream for an oversized
-    // event, minus the trace ids the in-process delivery seam does not need.
+    // Serialises the inner event into the shared claim-check store under its own
+    // EventId and returns a pointer-bearing wire-frame envelope carrying that
+    // same id — the exact shape PublishEventExecutor.Stamp puts on the stream for
+    // an oversized event, minus the trace ids the in-process delivery seam does
+    // not need.
     EdictEventEnvelope PointerEnvelope(EdictEvent inner)
     {
         var serializer = _fixture.Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
-        var key = SagaLifecycleClusterFixture.ClaimCheckStore
-            .PutAsync(serializer.SerializeToArray<EdictEvent>(inner), CancellationToken.None)
+        var stamped = inner.EventId == Guid.Empty ? inner with { EventId = Guid.NewGuid() } : inner;
+        SagaLifecycleClusterFixture.ClaimCheckStore
+            .PutAsync(stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None)
             .GetAwaiter().GetResult();
 
-        return new EdictEventEnvelope(null, key)
+        return new EdictEventEnvelope(null, stamped.EventId)
         {
-            EventId = Guid.NewGuid(),
             OccurredAt = SagaLifecycleClusterFixture.Time.GetUtcNow(),
             InnerEventStreamName = "SagaLifecycleWorkflow",
             InnerEventRouteKey = Guid.Empty,

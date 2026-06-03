@@ -156,12 +156,16 @@ public sealed class SagaTimeoutPublisher : Grain, ISagaTimeoutPublisher
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
         var store = ServiceProvider.GetRequiredService<IEdictClaimCheckStore>();
 
-        var key = await store.PutAsync(
-            serializer.SerializeToArray<EdictEvent>(innerEvent), CancellationToken.None);
+        // Single-identity model: the parked body is keyed by the inner event's
+        // own EventId, and the pointer envelope carries that same id.
+        var stamped = innerEvent.EventId == Guid.Empty
+            ? innerEvent with { EventId = Guid.NewGuid() }
+            : innerEvent;
+        await store.PutAsync(
+            stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None);
 
-        var envelope = new EdictEventEnvelope(null, key)
+        var envelope = new EdictEventEnvelope(null, stamped.EventId)
         {
-            EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = streamNamespace,
             InnerEventRouteKey = this.GetPrimaryKey(),

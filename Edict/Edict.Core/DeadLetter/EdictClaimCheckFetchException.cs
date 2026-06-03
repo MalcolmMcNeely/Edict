@@ -1,28 +1,20 @@
 namespace Edict.Core.DeadLetter;
 
 /// <summary>
-/// Runtime fault raised when a receiver-side claim-check lookup cannot
-/// produce a payload. <see cref="FetchReason"/> discriminates the two
-/// observable failure modes: a malformed key the store can't even attempt
-/// (Serialization bucket) versus a well-formed key whose blob is absent
-/// (Substrate bucket — typically a TTL'd or never-written row).
+/// Runtime fault raised when a receiver-side claim-check lookup cannot produce
+/// a payload for an event's <see cref="EventId"/>. The type's existence means
+/// "claim-check payload missing" — a body that was never written or was
+/// lifecycle-reaped — and the dead-letter classifier maps the whole type to
+/// the <c>Substrate</c> bucket. There is no "malformed key" mode: the key is
+/// the event's <see cref="Guid"/> id, which is always well-formed.
 /// </summary>
 public sealed class EdictClaimCheckFetchException : Exception
 {
-    public EdictClaimCheckFetchException(Reason reason, string key, string message)
+    public EdictClaimCheckFetchException(Guid eventId, string message)
         : base(message)
     {
-        FetchReason = reason;
-        Key = key;
+        EventId = eventId;
     }
 
-    public Reason FetchReason { get; }
-
-    public string Key { get; }
-
-    public enum Reason
-    {
-        KeyMalformed,
-        PayloadMissing,
-    }
+    public Guid EventId { get; }
 }

@@ -69,10 +69,10 @@ public sealed class EdictWiringValidatorTests
 
     sealed class NullClaimCheckStore : IEdictClaimCheckStore
     {
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
-            Task.FromResult("test");
+        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken) =>
             Task.FromResult<ReadOnlyMemory<byte>>(ReadOnlyMemory<byte>.Empty);
     }
 }

@@ -1,7 +1,6 @@
 using Azure.Storage.Blobs;
 
 using Edict.Azure.Streaming.ClaimCheck;
-using Edict.Contracts.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Tests.Conformance;
 
@@ -22,54 +21,45 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
-    public async Task PutAsync_ShouldReturnKeyThatRoundTripsViaGetAsync()
+    public async Task PutAsync_ShouldStoreBodyThatRoundTripsViaGetAsync()
     {
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
+        var eventId = Guid.NewGuid();
         byte[] payload = [0x10, 0x20, 0x30, 0x40, 0x50];
 
-        var key = await store.PutAsync(payload, CancellationToken.None);
-        var fetched = await store.GetAsync(key, CancellationToken.None);
+        await store.PutAsync(eventId, payload, CancellationToken.None);
+        var fetched = await store.GetAsync(eventId, CancellationToken.None);
 
         Assert.Equal(payload, fetched.ToArray());
     }
 
     [Fact]
-    public async Task GetAsync_ShouldThrowPayloadMissing_WhenBlobMissing()
+    public async Task GetAsync_ShouldThrowFetchException_WhenBodyMissing()
     {
-        // A well-formed key whose blob is absent is the same logical failure the
-        // Postgres store raises as PayloadMissing — surfacing the shared typed
-        // exception lets both substrates classify into the same Substrate bucket
-        // instead of leaking the Azure SDK's concrete RequestFailedException.
+        // A never-written EventId is the same logical failure the Postgres store
+        // raises — surfacing the shared typed exception lets both substrates
+        // classify into the same Substrate bucket instead of leaking the Azure
+        // SDK's concrete RequestFailedException.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
+        var eventId = Guid.NewGuid();
 
         var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
-            () => store.GetAsync("missing-blob-key", CancellationToken.None));
-        Assert.Equal(EdictClaimCheckFetchException.Reason.PayloadMissing, exception.FetchReason);
-        Assert.Equal("missing-blob-key", exception.Key);
+            () => store.GetAsync(eventId, CancellationToken.None));
+        Assert.Equal(eventId, exception.EventId);
     }
 
     [Fact]
-    public async Task GetAsync_ShouldThrowKeyMalformed_WhenKeyIsBlank()
+    public async Task PutAsync_ShouldThrow_WhenSameEventIdWrittenTwice()
     {
-        // Parity with the Postgres store's pre-fetch guard: a key the store
-        // cannot even attempt a lookup with surfaces as KeyMalformed, which the
-        // classifier routes to Serialization rather than Substrate.
+        // overwrite:false makes a duplicate write a loud collision-detector — a
+        // breach of the assign-once EventId-uniqueness invariant surfaces as a
+        // fault rather than silently overwriting the parked body.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
+        var eventId = Guid.NewGuid();
+        await store.PutAsync(eventId, new byte[] { 1 }, CancellationToken.None);
 
-        var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
-            () => store.GetAsync("   ", CancellationToken.None));
-        Assert.Equal(EdictClaimCheckFetchException.Reason.KeyMalformed, exception.FetchReason);
-    }
-
-    [Fact]
-    public async Task PutAsync_ShouldGenerateUniqueKeysAcrossCalls()
-    {
-        var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
-
-        var k1 = await store.PutAsync(new byte[] { 1 }, CancellationToken.None);
-        var k2 = await store.PutAsync(new byte[] { 2 }, CancellationToken.None);
-
-        Assert.NotEqual(k1, k2);
+        await Assert.ThrowsAnyAsync<Exception>(
+            () => store.PutAsync(eventId, new byte[] { 2 }, CancellationToken.None));
     }
 
     [Fact]

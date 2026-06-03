@@ -10,19 +10,18 @@ namespace Edict.Azure.Tests.ClaimCheck;
 public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDeadLetterClusterFixture fixture)
 {
     [Fact]
-    public async Task MissingBlob_ShouldDeadLetterAtMaxAttempts_WithBlobMissingFailureKindAndClaimCheckKey()
+    public async Task MissingBlob_ShouldDeadLetterAtMaxAttempts_WithBlobMissingFailureKindAndSourceEventId()
     {
         var grainId = Guid.NewGuid();
         var consumer = fixture.Cluster.GrainFactory.GetGrain<IClaimCheckBlobMissingConsumer>(grainId);
 
-        // Key that the Azurite blob container does NOT contain — every fetch
+        // An EventId the Azurite blob container does NOT contain — every fetch
         // attempt surfaces the store's typed EdictClaimCheckFetchException,
         // which the same classifier arm the Postgres store rides into the
         // Substrate failure bucket.
-        var missingKey = $"missing/{Guid.NewGuid():N}";
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: missingKey)
+        var missingEventId = Guid.NewGuid();
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: missingEventId)
         {
-            EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = "AzureBlobMissingDeadLetter",
             InnerEventRouteKey = grainId,
@@ -36,20 +35,20 @@ public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDead
         await Task.Delay(TimeSpan.FromMilliseconds(150));
         await consumer.ForceDrainViaReminderAsync();
 
-        var entry = await WaitForBlobMissingRowAsync(missingKey);
+        var entry = await WaitForBlobMissingRowAsync(missingEventId);
         Assert.NotNull(entry);
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, entry.FailureKind);
-        Assert.Equal(missingKey, entry.ClaimCheckKey);
+        Assert.Equal(missingEventId, entry.SourceEventId);
         Assert.Equal(grainId.ToString(), entry.SourceGrainKey);
         Assert.Contains("ClaimCheckBlobMissingConsumer", entry.SourceGrainType);
         Assert.Equal(typeof(EdictClaimCheckFetchException).FullName, entry.ExceptionType);
     }
 
-    async Task<EdictDeadLetterEntry?> WaitForBlobMissingRowAsync(string key)
+    async Task<EdictDeadLetterEntry?> WaitForBlobMissingRowAsync(Guid sourceEventId)
     {
         // The projection writes to its literal "deadletter" table — the
         // per-collection DeadLetterTableName only backs the operator-facing
-        // repository facade. The unique ClaimCheckKey isolates this row from
+        // repository facade. The unique SourceEventId isolates this row from
         // any sibling collection sharing the same Azurite.
         var table = new AzureTableRepository<EdictDeadLetterEntry>(
             fixture.TableServiceClient,
@@ -60,7 +59,7 @@ public sealed class AzureBlobMissingDeadLetterEndToEndTests(AzureBlobMissingDead
         {
             var rows = await table.QueryPartitionAsync(
                 EdictDeadLetterTable.Name);
-            var match = rows.FirstOrDefault(r => r.ClaimCheckKey == key);
+            var match = rows.FirstOrDefault(r => r.SourceEventId == sourceEventId);
             if (match is not null)
             {
                 return match;

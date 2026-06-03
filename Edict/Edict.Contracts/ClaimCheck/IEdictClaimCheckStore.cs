@@ -8,11 +8,13 @@ namespace Edict.Contracts.ClaimCheck;
 // evidence. No ExistsAsync because it would invite TOCTOU races between the
 // existence check and the subsequent fetch; missing blobs surface as a GetAsync
 // exception which the receiver pipeline funnels into the dead-letter promotion
-// path. Key generation is the store's responsibility — neither the publisher
-// nor the receiver attempts to derive or interpret the key string.
+// path. The store does not mint a key: the parked body is addressed by the
+// event's own EventId, so every store encodes that one well-known Guid as its
+// backend key (Azure blob name, Postgres uuid id, in-memory dictionary key)
+// rather than inventing a key shape that could disagree with another store.
 internal interface IEdictClaimCheckStore
 {
-    Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
+    Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
 
-    Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken);
+    Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken);
 }

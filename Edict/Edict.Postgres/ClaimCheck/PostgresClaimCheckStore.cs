@@ -18,22 +18,20 @@ sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
         _tableName = tableName;
     }
 
-    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+    public async Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
-        var id = Guid.NewGuid();
         try
         {
             await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText =
                 $"INSERT INTO {_tableName} (id, payload, created_at) VALUES (@id, @payload, now());";
-            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("id", eventId);
             command.Parameters.Add(new NpgsqlParameter("payload", NpgsqlDbType.Bytea)
             {
                 Value = payload.ToArray(),
             });
             await command.ExecuteNonQueryAsync(cancellationToken);
-            return id.ToString("N");
         }
         catch (NpgsqlException exception)
         {
@@ -42,36 +40,27 @@ sealed class PostgresClaimCheckStore : IEdictClaimCheckStore
         }
     }
 
-    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
+    public async Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
     {
-        if (!Guid.TryParseExact(key, "N", out var id))
-        {
-            throw new EdictClaimCheckFetchException(
-                EdictClaimCheckFetchException.Reason.KeyMalformed,
-                key,
-                $"Claim-check key '{key}' is not in the expected GUID-N format.");
-        }
-
         try
         {
             await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = $"SELECT payload FROM {_tableName} WHERE id = @id;";
-            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("id", eventId);
             var result = await command.ExecuteScalarAsync(cancellationToken);
             if (result is null || result is DBNull)
             {
                 throw new EdictClaimCheckFetchException(
-                    EdictClaimCheckFetchException.Reason.PayloadMissing,
-                    key,
-                    $"Claim-check payload not found for key '{key}'.");
+                    eventId,
+                    $"Claim-check payload not found for event '{eventId:N}'.");
             }
             return (byte[])result;
         }
         catch (NpgsqlException exception)
         {
             throw EdictPostgresStorageException.From(exception,
-                $"GetAsync failed for claim-check table {_tableName} (key {key})");
+                $"GetAsync failed for claim-check table {_tableName} (event {eventId:N})");
         }
     }
 }

@@ -56,11 +56,11 @@ public sealed class InvokeHandlerExecutorTests
         {
             EventId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
         };
-        var key = "edict-claim-check/oversized";
+        var pointerId = new Guid("eeeeeeee-1111-2222-3333-444444444444");
         var store = new InMemoryClaimCheckStore();
-        store.Blobs[key] = Serializer.SerializeToArray<EdictEvent>(inner);
+        store.Blobs[pointerId] = Serializer.SerializeToArray<EdictEvent>(inner);
 
-        var envelope = EnvelopeCodec.WrapPointer(key);
+        var envelope = EnvelopeCodec.WrapPointer(pointerId);
         var entry = new OutboxEntry
         {
             EntryId = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
@@ -115,8 +115,8 @@ public sealed class InvokeHandlerExecutorTests
     [Fact]
     public async Task ExecuteAsync_ShouldSurfaceFetchFailure_WhenPointerEnvelopeBlobMissing()
     {
-        var key = "edict-claim-check/missing";
-        var envelope = EnvelopeCodec.WrapPointer(key);
+        var pointerId = new Guid("dddddddd-9999-8888-7777-666666666666");
+        var envelope = EnvelopeCodec.WrapPointer(pointerId);
         var entry = new OutboxEntry
         {
             EntryId = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
@@ -216,16 +216,16 @@ public sealed class InvokeHandlerExecutorTests
 
     sealed class InMemoryClaimCheckStore : IEdictClaimCheckStore
     {
-        public Dictionary<string, byte[]> Blobs { get; } = [];
+        public Dictionary<Guid, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("invoke-handler executor tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
+        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            if (!Blobs.TryGetValue(key, out var bytes))
+            if (!Blobs.TryGetValue(eventId, out var bytes))
             {
-                throw new KeyNotFoundException($"Claim-check blob '{key}' not found.");
+                throw new KeyNotFoundException($"Claim-check blob '{eventId:N}' not found.");
             }
             return Task.FromResult<ReadOnlyMemory<byte>>(bytes);
         }

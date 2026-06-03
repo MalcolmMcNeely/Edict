@@ -94,8 +94,8 @@ The universal wire-format wrapper carried on every Edict stream hop, holding eit
 _Avoid_: deriving consumer event types from `EdictEventEnvelope`; reading it on a consumer `HandleAsync` signature; treating it as solely a claim-check vehicle.
 
 **Claim Check**:
-The escape hatch for oversized events: the body is written to an append-only blob store and every wire hop carries a small pointer string instead.
-_Avoid_: deleting blobs from framework code (append-only is load-bearing); estimating event size by anything other than the serialised byte length; fetching the body into the dead-letter row; treating blobs as an event log.
+The escape hatch for oversized events: the body is written to an append-only store keyed by the event's `EventId`, and the wire hop carries no separate pointer — the envelope's `EventId` **is** the key. The receiver fetches by `EventId`. `PutAsync` runs exactly once at the outbox enqueue boundary with a freshly-minted unique `EventId` and is never re-called on re-drain, so a duplicate-key write is a loud collision-detector (Postgres PK conflict, Azure 409 on `overwrite:false`), not an idempotent rewrite.
+_Avoid_: minting a separate claim-check key (the EventId is the key — the store does not generate or return one); deleting blobs from framework code (append-only is load-bearing); estimating event size by anything other than the serialised byte length; fetching the body into the dead-letter row; treating blobs as an event log.
 
 **Idempotency Base** (`EdictIdempotencyBase<TPayload>`):
 The abstract generic base that Event Handlers, Sagas, and Projection Builders inherit, providing a bounded per-grain window of recently handled `EventId`s that suppresses at-least-once redeliveries. The dedup key is the `EventId` assigned once as the event enters the Outbox, so it stays constant across redeliveries and producer-side re-publishes (a crash-recovery re-drain ships the same id, not a fresh one).

@@ -165,7 +165,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// </summary>
     async Task UnwrapAndDispatchAsync(EdictEvent incoming, StreamSequenceToken? token)
     {
-        if (incoming is EdictEventEnvelope envelope && envelope.ClaimCheckKey is { Length: > 0 })
+        if (incoming is EdictEventEnvelope { InlinePayload: null } envelope)
         {
             await StagePointerEnvelopeForDeferredDispatchAsync(envelope);
             return;
@@ -184,8 +184,8 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// retry runs the fetch via <see cref="ClaimCheckUnwrap"/> inside
     /// <c>InvokeHandlerExecutor</c>; on <see cref="EdictOptions.OutboxMaxAttempts"/>
     /// exhaustion the standard dead-letter promotion synthesises an
-    /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind
-    /// and the original claim-check key.
+    /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind,
+    /// the envelope's <see cref="EdictEvent.EventId"/> locating the parked body.
     /// </summary>
     private protected virtual async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
     {

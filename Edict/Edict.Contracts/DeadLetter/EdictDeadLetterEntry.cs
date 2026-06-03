@@ -63,23 +63,15 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     public string? SourceEventType { get; init; }
 
     /// <summary>
-    /// <c>EventId</c> of the source event that triggered the failing effect —
-    /// populated only for <c>InvokeHandler</c> promotions, null
-    /// otherwise. Pairs with <see cref="SourceEventType"/> to uniquely identify
-    /// the originating event for RCA.
+    /// <c>EventId</c> of the source event that triggered the failing effect.
+    /// Pairs with <see cref="SourceEventType"/> to identify the originating
+    /// event for RCA, and on a
+    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/> row it is also the
+    /// claim-check key — the locator for the (likely lifecycle-reaped) parked
+    /// body. Null only for the <c>SendCommand</c> / <c>UpsertRow</c> effects
+    /// that have no source event.
     /// </summary>
     public Guid? SourceEventId { get; init; }
-
-    /// <summary>
-    /// Claim-check store key for the inbound event whose blob could not
-    /// be fetched at the receiver. Populated only when
-    /// <see cref="FailureKind"/> is
-    /// <see cref="EdictDeadLetterFailureKind.BlobMissing"/>; null on the
-    /// existing publisher-side <see cref="EdictDeadLetterFailureKind.EffectFailure"/>
-    /// path. Lets operators click through to the (likely lifecycle-reaped)
-    /// blob to diagnose the misconfiguration.
-    /// </summary>
-    public string? ClaimCheckKey { get; init; }
 
     /// <summary>
     /// Discriminator over the two dead-letter failure modes.

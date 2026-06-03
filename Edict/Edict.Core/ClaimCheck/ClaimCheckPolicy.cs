@@ -58,16 +58,15 @@ internal sealed class ClaimCheckPolicy
             return new ClaimCheckApplyResult(innerBytes, edictEvent);
         }
 
-        var key = await PutAsync(edictEvent, innerBytes, cancellationToken);
+        await PutAsync(edictEvent, innerBytes, cancellationToken);
 
         var (innerStreamName, innerRouteKey) = _accessors.Resolve(edictEvent);
-        var envelope = EnvelopeCodec.WrapPointer(key) with
+        // The pointer envelope IS keyed by the inner event's already-stamped
+        // EventId — the receiver dedups on that id before fetching, and fetches
+        // the parked body by it after. OccurredAt stays the inner event's intent
+        // stamp; trace context is stamped fresh at drain.
+        var envelope = EnvelopeCodec.WrapPointer(edictEvent.EventId) with
         {
-            // Mirror the inner event's already-stamped delivery identity so the
-            // receiver's pre-fetch dedup keys on the same id the handler sees
-            // after unwrap; only EventId is mirrored (OccurredAt stays the inner
-            // event's intent stamp, trace context is stamped fresh at drain).
-            EventId = edictEvent.EventId,
             InnerEventStreamName = innerStreamName,
             InnerEventRouteKey = innerRouteKey,
         };
@@ -95,15 +94,14 @@ internal sealed class ClaimCheckPolicy
     /// </summary>
     public readonly record struct ClaimCheckApplyResult(byte[] Payload, EdictEvent WireEvent);
 
-    async Task<string> PutAsync(EdictEvent edictEvent, byte[] innerBytes, CancellationToken cancellationToken)
+    async Task PutAsync(EdictEvent edictEvent, byte[] innerBytes, CancellationToken cancellationToken)
     {
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
             SemanticConventions.ClaimCheck.Spans.Put, ActivityKind.Client);
         span?.SetTag(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, innerBytes.Length);
+        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, edictEvent.EventId.ToString());
 
-        var key = await _store!.PutAsync(innerBytes, cancellationToken);
-        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
-        return key;
+        await _store!.PutAsync(edictEvent.EventId, innerBytes, cancellationToken);
     }
 }

@@ -16,9 +16,8 @@ public sealed class EnvelopeWireShapeTests
     [Fact]
     public Task EdictEventEnvelope_ShouldHaveStableWireShape_OnInlineBranch()
     {
-        var envelope = new EdictEventEnvelope(inlinePayload: [0x01, 0x02, 0x03], claimCheckKey: null)
+        var envelope = new EdictEventEnvelope(inlinePayload: [0x01, 0x02, 0x03], eventId: FixedEventId)
         {
-            EventId = FixedEventId,
             OccurredAt = FixedOccurredAt,
             TraceId = FixedTraceId,
             SpanId = FixedSpanId,
@@ -33,9 +32,8 @@ public sealed class EnvelopeWireShapeTests
     [Fact]
     public Task EdictEventEnvelope_ShouldHaveStableWireShape_OnPointerBranch()
     {
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob/abcdef")
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: FixedEventId)
         {
-            EventId = FixedEventId,
             OccurredAt = FixedOccurredAt,
             TraceId = FixedTraceId,
             SpanId = FixedSpanId,

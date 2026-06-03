@@ -10,5 +10,5 @@ namespace Edict.Tests.Conformance.ClaimCheck;
 /// </summary>
 public abstract class ClaimCheckFixture : ConformanceFixture
 {
-    public abstract Task<bool> ClaimCheckBlobExistsAsync(string key);
+    public abstract Task<bool> ClaimCheckBlobExistsAsync(Guid eventId);
 }

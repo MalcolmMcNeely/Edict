@@ -39,14 +39,15 @@ public sealed class ClaimCheckUnwrapTests
             OccurredAt = DateTimeOffset.UtcNow,
         };
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(inner);
+        var fetchId = Guid.NewGuid();
         var store = new RecordingStore();
-        store.Blobs["blob-key-fetch"] = innerBytes;
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob-key-fetch");
+        store.Blobs[fetchId] = innerBytes;
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: fetchId);
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
         var result = await unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None);
 
-        Assert.Equal(["blob-key-fetch"], store.Gets.Select(g => g.Key));
+        Assert.Equal([fetchId], store.Gets.Select(g => g.EventId));
         var materialised = Assert.IsType<OrderPlacedEvent>(result);
         Assert.Equal(inner.OrderId, materialised.OrderId);
         Assert.Equal(inner.Sku, materialised.Sku);
@@ -62,7 +63,7 @@ public sealed class ClaimCheckUnwrapTests
             OccurredAt = DateTimeOffset.UtcNow,
         };
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(inner);
-        var envelope = new EdictEventEnvelope(inlinePayload: innerBytes, claimCheckKey: null);
+        var envelope = new EdictEventEnvelope(inlinePayload: innerBytes, eventId: Guid.NewGuid());
         var store = new RecordingStore();
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
@@ -98,7 +99,7 @@ public sealed class ClaimCheckUnwrapTests
     [Fact]
     public async Task ApplyAsync_ShouldReturnEnvelopeUnfetched_WhenPredicateSuppressesFetchForConsumerType()
     {
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob-suppressed");
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: Guid.NewGuid());
         var store = new RecordingStore();
         var unwrap = new ClaimCheckUnwrap(
             Serializer,
@@ -131,9 +132,10 @@ public sealed class ClaimCheckUnwrapTests
             OccurredAt = DateTimeOffset.UtcNow,
         };
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(inner);
+        var fetchId = Guid.NewGuid();
         var store = new RecordingStore();
-        store.Blobs["blob-key-span"] = innerBytes;
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob-key-span");
+        store.Blobs[fetchId] = innerBytes;
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: fetchId);
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
         await unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None);
@@ -141,7 +143,7 @@ public sealed class ClaimCheckUnwrapTests
         var get = stopped.Single(a => a.OperationName == SemanticConventions.ClaimCheck.Spans.Get);
         Assert.Equal(nameof(OrderPlacedEvent), get.GetTagItem(SemanticConventions.Events.Tags.Type));
         Assert.Equal(innerBytes.Length, get.GetTagItem(SemanticConventions.Events.Tags.SizeBytes));
-        Assert.Equal("blob-key-span", get.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
+        Assert.Equal(fetchId.ToString(), get.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
     }
 
     [Fact]
@@ -168,7 +170,7 @@ public sealed class ClaimCheckUnwrapTests
         // skip the fetch span: it advertises a store I/O event that didn't happen.
         await unwrap.ApplyAsync(inner, consumerType: typeof(object), CancellationToken.None);
         await unwrap.ApplyAsync(
-            new EdictEventEnvelope(inlinePayload: innerBytes, claimCheckKey: null),
+            new EdictEventEnvelope(inlinePayload: innerBytes, eventId: Guid.NewGuid()),
             consumerType: typeof(object),
             CancellationToken.None);
 
@@ -180,14 +182,15 @@ public sealed class ClaimCheckUnwrapTests
     {
         // The unwrap must not catch — EdictIdempotencyBase is what funnels a
         // missing blob into receiver-side dead-letter promotion.
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "blob-missing");
+        var missingId = Guid.NewGuid();
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: missingId);
         var store = new RecordingStore();
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
 
         var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
             () => unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None));
 
-        Assert.Contains("blob-missing", exception.Message);
+        Assert.Contains(missingId.ToString("N"), exception.Message);
     }
 
     static Serializer BuildSerializer()
@@ -201,22 +204,22 @@ public sealed class ClaimCheckUnwrapTests
         return services.BuildServiceProvider().GetRequiredService<Serializer>();
     }
 
-    sealed record GetCall(string Key);
+    sealed record GetCall(Guid EventId);
 
     sealed class RecordingStore : IEdictClaimCheckStore
     {
         public List<GetCall> Gets { get; } = [];
-        public Dictionary<string, byte[]> Blobs { get; } = [];
+        public Dictionary<Guid, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("receiver-side tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
+        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            Gets.Add(new GetCall(key));
-            if (!Blobs.TryGetValue(key, out var bytes))
+            Gets.Add(new GetCall(eventId));
+            if (!Blobs.TryGetValue(eventId, out var bytes))
             {
-                throw new KeyNotFoundException($"Claim-check blob '{key}' not found.");
+                throw new KeyNotFoundException($"Claim-check blob '{eventId:N}' not found.");
             }
             return Task.FromResult<ReadOnlyMemory<byte>>(bytes);
         }

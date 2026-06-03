@@ -17,7 +17,7 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
     public async Task ApplyAsync_ShouldReturnEnvelopeUnfetched_WhenConsumerIsDeadLetterProjectionBuilder()
     {
         var unwrap = BuildUnwrap(out var store);
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "edict-claim-check/oversized");
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: Guid.NewGuid());
 
         var result = await unwrap.ApplyAsync(
             envelope,
@@ -38,15 +38,16 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
             OccurredAt = DateTimeOffset.UtcNow,
         };
         var serializer = BuildServices(store).GetRequiredService<Serializer>();
-        store.Blobs["edict-claim-check/other"] = serializer.SerializeToArray<EdictEvent>(inner);
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: "edict-claim-check/other");
+        var fetchId = Guid.NewGuid();
+        store.Blobs[fetchId] = serializer.SerializeToArray<EdictEvent>(inner);
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: fetchId);
 
         var result = await unwrap.ApplyAsync(
             envelope,
             consumerType: typeof(SomeOtherProjection),
             CancellationToken.None);
 
-        Assert.Equal(["edict-claim-check/other"], store.Gets.Select(g => g.Key));
+        Assert.Equal([fetchId], store.Gets.Select(g => g.EventId));
         var materialised = Assert.IsType<OrderPlacedEvent>(result);
         Assert.Equal(inner.OrderId, materialised.OrderId);
     }
@@ -73,22 +74,22 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
         return services.BuildServiceProvider();
     }
 
-    sealed record GetCall(string Key);
+    sealed record GetCall(Guid EventId);
 
     sealed class RecordingStore : IEdictClaimCheckStore
     {
         public List<GetCall> Gets { get; } = [];
-        public Dictionary<string, byte[]> Blobs { get; } = [];
+        public Dictionary<Guid, byte[]> Blobs { get; } = [];
 
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("predicate tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
+        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
         {
-            Gets.Add(new GetCall(key));
-            if (!Blobs.TryGetValue(key, out var bytes))
+            Gets.Add(new GetCall(eventId));
+            if (!Blobs.TryGetValue(eventId, out var bytes))
             {
-                throw new KeyNotFoundException($"Claim-check blob '{key}' not found.");
+                throw new KeyNotFoundException($"Claim-check blob '{eventId:N}' not found.");
             }
             return Task.FromResult<ReadOnlyMemory<byte>>(bytes);
         }

@@ -11,6 +11,5 @@
   ExceptionType: System.Collections.Generic.KeyNotFoundException,
   Reason: blob not found,
   SourceEventId: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee,
-  ClaimCheckKey: edict-claim-check/abc123,
   FailureKind: BlobMissing
 }

@@ -41,12 +41,12 @@ internal sealed class ClaimCheckUnwrap
             return envelope;
         }
 
-        var key = envelope.ClaimCheckKey!;
+        var eventId = envelope.EventId;
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
             SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client);
-        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, key);
+        span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, eventId.ToString());
 
-        var bytes = await _store!.GetAsync(key, cancellationToken);
+        var bytes = await _store!.GetAsync(eventId, cancellationToken);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, bytes.Length);
 
         var inner = _serializer.Deserialize<EdictEvent>(bytes.ToArray());

@@ -70,16 +70,12 @@ public sealed class KafkaClaimCheckClusterFixture : ClaimCheckFixture
             _dataSource,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
-    public override async Task<bool> ClaimCheckBlobExistsAsync(string key)
+    public override async Task<bool> ClaimCheckBlobExistsAsync(Guid eventId)
     {
-        if (!Guid.TryParseExact(key, "N", out var id))
-        {
-            return false;
-        }
         await using var connection = await _dataSource.OpenConnectionAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT 1 FROM edict_claim_check WHERE id = @id;";
-        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("id", eventId);
         var result = await command.ExecuteScalarAsync();
         return result is not null && result is not DBNull;
     }

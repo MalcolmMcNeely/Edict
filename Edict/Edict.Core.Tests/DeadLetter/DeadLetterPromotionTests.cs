@@ -185,18 +185,17 @@ public sealed class DeadLetterPromotionTests
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
-    // A pointer-bearing envelope must lift ClaimCheckKey onto the dead-letter
-    // event and leave PayloadJson null — the >32 KB body never tries to fit
-    // into the Azure Table property.
+    // A pointer-bearing envelope must recover the source event id onto the
+    // dead-letter event and leave PayloadJson null — the >32 KB body never tries
+    // to fit into the Azure Table property.
     [Fact]
-    public Task BuildForEnvelopeFailure_ShouldCarryClaimCheckKeyAndOmitPayloadJson()
+    public Task BuildForEnvelopeFailure_ShouldCarrySourceEventIdAndOmitPayloadJson()
     {
         var entry = PublishEventEntry();
         var envelope = new EdictEventEnvelope(
             inlinePayload: null,
-            claimCheckKey: "edict-claim-check/abc123")
+            eventId: FixedSourceEventId)
         {
-            EventId = FixedSourceEventId,
             InnerEventStreamName = "Orders",
             InnerEventRouteKey = FixedOrderId,
         };
@@ -211,18 +210,17 @@ public sealed class DeadLetterPromotionTests
         return Verify(raised).DontScrubGuids().DontScrubDateTimes();
     }
 
-    // The receiver-side BlobMissing row carries the claim-check key and the
-    // BlobMissing failure-kind, and recovers the source event id from the
-    // envelope even though the body it pointed at is gone.
+    // The receiver-side BlobMissing row carries the BlobMissing failure-kind and
+    // recovers the source event id from the envelope — that id is the claim-check
+    // locator for the body it pointed at, even though the body is gone.
     [Fact]
-    public Task BuildForBlobMissing_ShouldCarrySourceEventIdAndClaimCheckKey()
+    public Task BuildForBlobMissing_ShouldCarrySourceEventId()
     {
         var entry = PublishEventEntry();
         var envelope = new EdictEventEnvelope(
             inlinePayload: null,
-            claimCheckKey: "edict-claim-check/abc123")
+            eventId: FixedSourceEventId)
         {
-            EventId = FixedSourceEventId,
             InnerEventStreamName = "Orders",
             InnerEventRouteKey = FixedOrderId,
         };

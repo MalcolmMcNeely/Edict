@@ -58,10 +58,9 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         var invokeExecutor = new InvokeHandlerExecutor(_serializer, unwrap, noWriters, TimeProvider.System);
         var publishExecutor = new RecordingPublishEventExecutor(_serializer);
 
-        var missingKey = $"edict-claim-check/{Guid.NewGuid():N}";
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: missingKey)
+        var missingEventId = Guid.NewGuid();
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: missingEventId)
         {
-            EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = "AzureBlobMissingConformance",
             InnerEventRouteKey = Guid.NewGuid(),
@@ -116,7 +115,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
 
         var raised = Assert.Single(publishExecutor.Published);
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, raised.FailureKind);
-        Assert.Equal(missingKey, raised.ClaimCheckKey);
+        Assert.Equal(missingEventId, raised.SourceEventId);
         Assert.Equal(typeof(EdictClaimCheckFetchException).FullName, raised.ExceptionType);
         Assert.Equal("Sample.OrderEmailHandler", raised.SourceGrainType);
     }

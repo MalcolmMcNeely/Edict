@@ -63,10 +63,7 @@ static class DeadLetterFailureClassifier
             SocketException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             IOException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             EdictUnregisteredTypeException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Wiring,
-            EdictClaimCheckFetchException { FetchReason: EdictClaimCheckFetchException.Reason.KeyMalformed } =>
-                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Serialization,
-            EdictClaimCheckFetchException { FetchReason: EdictClaimCheckFetchException.Reason.PayloadMissing } =>
-                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
+            EdictClaimCheckFetchException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             EdictSagaCoordinationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
             EdictSagaTimeoutException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout,
             EdictSagaTerminalException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal,

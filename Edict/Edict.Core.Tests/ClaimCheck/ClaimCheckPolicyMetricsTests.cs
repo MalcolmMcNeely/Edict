@@ -46,7 +46,8 @@ public sealed class ClaimCheckPolicyMetricsTests
     {
         // Unique payload size per-test as above.
         var sku = "SKU-MetricsOver-" + Guid.NewGuid().ToString("N") + new string('x', 128);
-        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), sku);
+        // EventId is already stamped by enqueue time, before the policy runs.
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), sku) { EventId = Guid.NewGuid() };
         var innerSize = Serializer.SerializeToArray<EdictEvent>(edictEvent).Length;
 
         var captures = new List<Capture>();
@@ -104,10 +105,10 @@ public sealed class ClaimCheckPolicyMetricsTests
 
     sealed class InMemoryStore : IEdictClaimCheckStore
     {
-        public Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
-            Task.FromResult($"k-{Guid.NewGuid():N}");
+        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 }

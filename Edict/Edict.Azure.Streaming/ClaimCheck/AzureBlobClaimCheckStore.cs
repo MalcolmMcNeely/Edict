@@ -27,25 +27,15 @@ sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore
         return new AzureBlobClaimCheckStore(container);
     }
 
-    public async Task<string> PutAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+    public async Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
-        var key = $"{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid():N}";
-        var blob = _container.GetBlobClient(key);
+        var blob = _container.GetBlobClient(eventId.ToString("N"));
         await blob.UploadAsync(BinaryData.FromBytes(payload), overwrite: false, cancellationToken: cancellationToken);
-        return key;
     }
 
-    public async Task<ReadOnlyMemory<byte>> GetAsync(string key, CancellationToken cancellationToken)
+    public async Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            throw new EdictClaimCheckFetchException(
-                EdictClaimCheckFetchException.Reason.KeyMalformed,
-                key,
-                $"Claim-check key '{key}' is empty or whitespace.");
-        }
-
-        var blob = _container.GetBlobClient(key);
+        var blob = _container.GetBlobClient(eventId.ToString("N"));
         try
         {
             var response = await blob.DownloadContentAsync(cancellationToken);
@@ -54,9 +44,8 @@ sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore
         catch (RequestFailedException exception) when (exception.Status == 404)
         {
             throw new EdictClaimCheckFetchException(
-                EdictClaimCheckFetchException.Reason.PayloadMissing,
-                key,
-                $"Claim-check payload not found for key '{key}'.");
+                eventId,
+                $"Claim-check payload not found for event '{eventId:N}'.");
         }
     }
 }

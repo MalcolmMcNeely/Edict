@@ -112,8 +112,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
         // non-envelopes as-is, so the wrap was redundant — one serialise
         // and one deserialise per handled event. The pointer-branch path
         // (StagePointerEnvelopeForDeferredDispatchAsync) keeps the
-        // envelope because the ClaimCheckKey is what drives the deferred
-        // blob fetch.
+        // envelope because its EventId is what drives the deferred blob fetch.
         return new OutboxEntry
         {
             EntryId = Guid.NewGuid(),

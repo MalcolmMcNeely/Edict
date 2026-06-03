@@ -75,7 +75,6 @@ static class DeadLetterPromotion
         var raised = Compose(entry, effectTarget, payloadJson: null, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
         return raised with
         {
-            ClaimCheckKey = envelope.ClaimCheckKey,
             SourceEventId = envelope.EventId,
         };
     }
@@ -118,7 +117,6 @@ static class DeadLetterPromotion
             ExceptionType = exception.GetType().FullName ?? nameof(KeyNotFoundException),
             Reason = exception.Message,
             PayloadJson = null,
-            ClaimCheckKey = envelope.ClaimCheckKey,
             FailureKind = EdictDeadLetterFailureKind.BlobMissing,
             SourceEventId = envelope.EventId,
         };

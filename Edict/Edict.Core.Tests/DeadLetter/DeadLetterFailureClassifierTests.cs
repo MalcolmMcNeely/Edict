@@ -147,21 +147,12 @@ public sealed class DeadLetterFailureClassifierTests
     }
 
     [Fact]
-    public void Classify_ShouldMapEdictClaimCheckFetchException_KeyMalformed_ToSerialization()
+    public void Classify_ShouldMapEdictClaimCheckFetchException_ToSubstrate()
     {
-        var exception = new EdictClaimCheckFetchException(
-            EdictClaimCheckFetchException.Reason.KeyMalformed, "bad-key", "not a guid");
-
-        var bucket = DeadLetterFailureClassifier.Classify(exception);
-
-        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Serialization, bucket);
-    }
-
-    [Fact]
-    public void Classify_ShouldMapEdictClaimCheckFetchException_PayloadMissing_ToSubstrate()
-    {
-        var exception = new EdictClaimCheckFetchException(
-            EdictClaimCheckFetchException.Reason.PayloadMissing, "abc123", "no row");
+        // The whole type maps to Substrate — a claim-check fetch fault is always
+        // a missing body (the key is the event's Guid, never malformed), so there
+        // is no Serialization arm for any claim-check fetch fault.
+        var exception = new EdictClaimCheckFetchException(Guid.NewGuid(), "no row");
 
         var bucket = DeadLetterFailureClassifier.Classify(exception);
 

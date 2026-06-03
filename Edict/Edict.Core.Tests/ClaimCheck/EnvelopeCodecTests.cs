@@ -13,7 +13,6 @@ public sealed class EnvelopeCodecTests
         var envelope = EnvelopeCodec.WrapInline(payload);
 
         Assert.Same(payload, envelope.InlinePayload);
-        Assert.Null(envelope.ClaimCheckKey);
     }
 
     [Fact]
@@ -25,22 +24,18 @@ public sealed class EnvelopeCodecTests
     [Fact]
     public void WrapPointer_ShouldReturnEnvelopeCarryingThePointerBranch()
     {
-        var envelope = EnvelopeCodec.WrapPointer("blob-key-1");
+        var eventId = Guid.NewGuid();
 
-        Assert.Equal("blob-key-1", envelope.ClaimCheckKey);
+        var envelope = EnvelopeCodec.WrapPointer(eventId);
+
+        Assert.Equal(eventId, envelope.EventId);
         Assert.Null(envelope.InlinePayload);
     }
 
     [Fact]
-    public void WrapPointer_ShouldThrow_WhenKeyIsNull()
+    public void WrapPointer_ShouldThrow_WhenEventIdIsEmpty()
     {
-        Assert.Throws<ArgumentNullException>(() => EnvelopeCodec.WrapPointer(null!));
-    }
-
-    [Fact]
-    public void WrapPointer_ShouldThrow_WhenKeyIsEmpty()
-    {
-        Assert.Throws<ArgumentException>(() => EnvelopeCodec.WrapPointer(string.Empty));
+        Assert.Throws<ArgumentException>(() => EnvelopeCodec.WrapPointer(Guid.Empty));
     }
 
     [Fact]
@@ -69,22 +64,8 @@ public sealed class EnvelopeCodecTests
     }
 
     [Fact]
-    public void TryGetPointer_ShouldReturnKey_WhenPointerBranch()
+    public void Constructor_ShouldThrow_WhenPointerBranchHasEmptyEventId()
     {
-        var envelope = EnvelopeCodec.WrapPointer("blob/123");
-
-        Assert.Equal("blob/123", EnvelopeCodec.TryGetPointer(envelope));
-    }
-
-    [Fact]
-    public void Constructor_ShouldThrow_WhenBothBranchesAreSet()
-    {
-        Assert.Throws<ArgumentException>(() => new EdictEventEnvelope([1], "blob"));
-    }
-
-    [Fact]
-    public void Constructor_ShouldThrow_WhenNeitherBranchIsSet()
-    {
-        Assert.Throws<ArgumentException>(() => new EdictEventEnvelope(null, null));
+        Assert.Throws<ArgumentException>(() => new EdictEventEnvelope(null, Guid.Empty));
     }
 }

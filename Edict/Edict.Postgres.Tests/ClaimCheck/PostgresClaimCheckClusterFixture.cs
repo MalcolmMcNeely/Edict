@@ -61,19 +61,15 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
             _dataSource,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());
 
-    public override async Task<bool> ClaimCheckBlobExistsAsync(string key)
+    public override async Task<bool> ClaimCheckBlobExistsAsync(Guid eventId)
     {
-        // The Postgres claim-check store generates GUID-N keys and stores the
-        // payload in a single bytea column. "Blob existence" maps to "row exists
-        // in edict_claim_check for this id".
-        if (!Guid.TryParseExact(key, "N", out var id))
-        {
-            return false;
-        }
+        // The Postgres claim-check store keys the payload by the event's EventId
+        // in a single bytea column. "Blob existence" maps to "row exists in
+        // edict_claim_check for this id".
         await using var connection = await _dataSource.OpenConnectionAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT 1 FROM edict_claim_check WHERE id = @id;";
-        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("id", eventId);
         var result = await command.ExecuteScalarAsync();
         return result is not null && result is not DBNull;
     }

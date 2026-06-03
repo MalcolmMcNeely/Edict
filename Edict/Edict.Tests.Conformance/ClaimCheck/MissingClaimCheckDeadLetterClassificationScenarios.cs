@@ -32,16 +32,12 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         var grainId = Guid.NewGuid();
         var consumer = _fixture.GrainFactory.GetGrain<IClaimCheckBlobMissingConsumer>(grainId);
 
-        // A pointer envelope whose payload the substrate's claim-check store
-        // does not hold — every fetch attempt raises EdictClaimCheckFetchException
-        // (PayloadMissing), which the classifier maps to the Substrate bucket.
-        // The key is a bare GUID-N so it is well-formed for both stores (the
-        // Postgres store rejects a non-GUID key as KeyMalformed before lookup);
-        // a well-formed-but-absent key is what isolates the PayloadMissing path.
-        var missingKey = Guid.NewGuid().ToString("N");
-        var envelope = new EdictEventEnvelope(inlinePayload: null, claimCheckKey: missingKey)
+        // A pointer envelope whose body the substrate's claim-check store does
+        // not hold — every fetch attempt (by the envelope's EventId) raises
+        // EdictClaimCheckFetchException, which the classifier maps to the
+        // Substrate bucket. A never-written EventId is what isolates that path.
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: Guid.NewGuid())
         {
-            EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = "ConformanceClaimCheckBlobMissing",
             InnerEventRouteKey = grainId,
