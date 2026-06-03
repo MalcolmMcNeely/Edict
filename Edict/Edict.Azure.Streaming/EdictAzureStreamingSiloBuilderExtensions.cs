@@ -6,6 +6,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Configuration;
+using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +88,13 @@ public static class EdictAzureStreamingSiloBuilderExtensions
             options.ClaimCheckThresholdBytes,
             serviceProvider.GetService<IEdictClaimCheckStore>(),
             serviceProvider.GetRequiredService<IEventStreamAccessors>()));
+
+        // Contribute Azure storage fault classification (Queue publish + Blob
+        // claim-check) to the dead-letter RCA dimension. TryAddEnumerable keeps
+        // the agreeing persistence-side entry a harmless overlap rather than a
+        // duplicate when both Azure providers are wired.
+        silo.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IDeadLetterFaultClassifier, AzureStreamingDeadLetterFaultClassifier>());
 
         return silo;
     }

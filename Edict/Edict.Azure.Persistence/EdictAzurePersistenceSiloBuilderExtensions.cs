@@ -6,9 +6,11 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core.Configuration;
+using Edict.Core.DeadLetter;
 using Edict.Core.TableStorage;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Orleans.Hosting;
 
@@ -78,6 +80,13 @@ public static class EdictAzurePersistenceSiloBuilderExtensions
         var deadLetterTable = options.DeadLetterTableName;
         silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
             new AzureTableRepository<EdictDeadLetterEntry>(tableClient, deadLetterTable));
+
+        // Contribute Azure storage fault classification (Table writes) to the
+        // dead-letter RCA dimension. TryAddEnumerable keeps the agreeing
+        // streaming-side entry a harmless overlap rather than a duplicate when
+        // both Azure providers are wired.
+        silo.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IDeadLetterFaultClassifier, AzurePersistenceDeadLetterFaultClassifier>());
 
         return silo;
     }

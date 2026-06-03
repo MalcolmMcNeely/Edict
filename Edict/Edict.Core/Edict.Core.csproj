@@ -46,10 +46,13 @@
              ClaimCheckPolicy as the publisher-side singleton; the policy stays
              internal so its conditional-wrap shape can refactor freely. -->
         <InternalsVisibleTo Include="Edict.Azure.Streaming" />
-        <!-- Edict.Postgres ships a PostgresDeadLetterFaultClassifier
-             implementing the internal IDeadLetterFaultClassifier seam and
-             registers it from AddEdictPostgresPersistence. -->
+        <!-- Edict.Postgres, Edict.Kafka, and Edict.Azure.Persistence each ship a
+             *DeadLetterFaultClassifier implementing the internal
+             IDeadLetterFaultClassifier seam and register it from their
+             AddEdict* extension. Edict.Azure.Streaming's entry is above. -->
         <InternalsVisibleTo Include="Edict.Postgres" />
+        <InternalsVisibleTo Include="Edict.Kafka" />
+        <InternalsVisibleTo Include="Edict.Azure.Persistence" />
     </ItemGroup>
 
     <ItemGroup>

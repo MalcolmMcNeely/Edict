@@ -1,5 +1,6 @@
 using Edict.Contracts.Configuration;
 using Edict.Core.Configuration;
+using Edict.Core.DeadLetter;
 using Edict.Kafka.Internal;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,12 @@ public static class EdictKafkaSiloBuilderExtensions
         silo.Services.AddSingleton(options);
         silo.Services.AddSingleton(_ => EdictKafkaStreamRegistry.FromAppDomain());
         silo.Services.AddHostedService<EdictKafkaTopicProvisioner>();
+
+        // Contribute Kafka driver-fault classification to the dead-letter RCA
+        // dimension. TryAddEnumerable keeps a second wiring (or a substrate
+        // combination that registers it twice) a no-op rather than a duplicate.
+        silo.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IDeadLetterFaultClassifier, KafkaDeadLetterFaultClassifier>());
 
         silo.AddPersistentStreams(options.StreamProviderName, EdictKafkaAdapterFactory.Create, builder =>
         {
