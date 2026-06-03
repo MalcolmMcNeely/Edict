@@ -72,12 +72,18 @@ gap is tracked as a separate framework finding.
 
 ## Classifier fix
 
-`DeadLetterFailureClassifier` previously had no case for `NpgsqlException` /
-`PostgresException` / `EdictPostgresStorageException`, so a Postgres substrate
-fault routed to `Unhandled` instead of `Substrate`. The classifier now matches
-those by type-name (Edict.Core cannot reference Npgsql or Edict.Postgres),
-mirroring the existing `Saturated` forward-compat hook. Pinned in
-`DeadLetterFailureClassifierTests`.
+A Postgres substrate fault once routed to the catch-all `Unhandled` bucket
+instead of `Substrate`, because `Edict.Core` cannot reference Npgsql to
+recognise the type. Fault classification is now a registered extension point:
+`Edict.Core` classifies framework causes first in a privileged switch, and only
+on fallthrough consults the `IDeadLetterFaultClassifier` instances each provider
+registers. `Edict.Postgres` ships `PostgresDeadLetterFaultClassifier`, which
+matches `NpgsqlException` (the base that also covers `PostgresException`) and
+the rethrown `EdictPostgresStorageException` wrapper and maps both to
+`Substrate`; it is registered in `AddEdictPostgresPersistence`. The match is by
+real exception type, not a type-name string, so it is compile-checked and
+survives a driver rename. Pinned in `PostgresDeadLetterFaultClassifierTests` and
+in the Core composition tests (`DeadLetterFailureClassifierTests`).
 
 ## Serial collections
 

@@ -159,7 +159,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Read-your-writes cursor.** Commands return a cursor identifying the event they raised; queries accept an `after: X` parameter and wait briefly until the projection has applied X before answering. Today consumers poll-and-retry or hand-track sequences to give users the obvious experience of seeing their own writes.
 - **Keyed projection builder.** A second species of projection builder whose read model lives in grain state — sibling to today's table projection. Reads stay fast for per-id "give me the record for {id}" shapes; consumers today either over-design a table projection or hand-roll a stateful grain.
 - **Tenant-scoped substrate.** A tenant scope carried on the message envelope that every storage provider honours, so one deployment can serve many customers with isolation enforced at the store, not just hoped for in queries. Today the only safe multi-tenant path is a separate deployment per customer; pooled compute would leak, because grain state, projections, claim-check blobs, and the dead-letter pool all share partitions.
-- **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider — no framework changes needed.
+- **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider: no public-API changes, and provider-specific fault classification is a registered extension point.
 
 ## Running locally
 
