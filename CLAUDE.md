@@ -112,6 +112,7 @@ When the conversation touches these topics, read the linked depth before answeri
 - Don't pre-wrap lines; ~170 columns is fine. Gratuitous carriage returns hurt readability.
 - One top-level type per file. A file with many classes is a smell — split it.
 - When a project grows past a handful of files, fold by concept (or feature) into subfolders. Namespace follows folder.
+- Place a file (test or type) where its subject conceptually belongs, never in whichever project happens to already reference what it needs. Reference-convenience placement — e.g. a cross-provider test dropped into one provider's test project "because it references everything" — confuses readers and usually signals the file has no real conceptual owner (it may be redundant, or belong in a cross-cutting project like `Edict.Architecture.Tests`).
 - Logging is `ILogger<T>`, structured, no custom logging abstraction. Do **not** log-narrate the command/event flow — spans are the observability mechanism. A thrown handler logs `Error` with the `EventId`. No `Console.WriteLine`.
 - No commercially licensed dependencies (FluentAssertions is banned for this reason).
 
