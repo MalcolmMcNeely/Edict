@@ -58,19 +58,6 @@ public sealed class PostgresProviderUnitTests
     }
 
     [Fact]
-    public async Task ClaimCheckStore_ShouldRoundTripBytes()
-    {
-        var store = new PostgresClaimCheckStore(_dataSource, "edict_claim_check");
-        var eventId = Guid.NewGuid();
-        var payload = new byte[] { 0xDE, 0xAD, 0xBE, 0xEF, 0x10, 0x20, 0x30, 0x40 };
-
-        await store.PutAsync(eventId, payload, CancellationToken.None);
-
-        var roundTripped = await store.GetAsync(eventId, CancellationToken.None);
-        Assert.Equal(payload, roundTripped.ToArray());
-    }
-
-    [Fact]
     public async Task TableRepository_ShouldRoundTripRowViaMessagePackPayload()
     {
         var tableName = $"unit_round_trip_{Guid.NewGuid():N}";

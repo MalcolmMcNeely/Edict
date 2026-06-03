@@ -6,6 +6,13 @@ using Edict.Tests.Conformance;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
+// This is the only claim-check test that runs without a TestCluster — just Azurite
+// and a BlobServiceClient. The cross-substrate conformance battery already asserts the
+// round-trip and the missing-key fetch exception, so the two GetAsync tests below look
+// redundant. They stay: this is the sole cluster-free exercise of GetAsync, where the
+// Azure-SDK 404-to-typed-exception translation lives and an SDK bump can break it
+// silently. A green here against a red battery test isolates the fault to the silo
+// wiring, not the store. Do not fold these into the battery.
 public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
 {
     BlobServiceClient _blobServiceClient = null!;
