@@ -33,7 +33,7 @@ using Orleans.TestingHost;
 
 namespace Edict.Postgres.Tests.ClaimCheck;
 
-public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
+public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture, IClaimCheckStoreFixture
 {
     string _databaseConnectionString = "";
     string _azuriteConnectionString = "";
@@ -41,6 +41,7 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
     QueueServiceClient _queueServiceClient = null!;
+    IEdictClaimCheckStore _claimCheckStore = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -73,6 +74,12 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
         var result = await command.ExecuteScalarAsync();
         return result is not null && result is not DBNull;
     }
+
+    public Task PutClaimCheckAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        _claimCheckStore.PutAsync(eventId, payload, cancellationToken);
+
+    public Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(Guid eventId, CancellationToken cancellationToken) =>
+        _claimCheckStore.GetAsync(eventId, cancellationToken);
 
     public string DeadLetterTableName { get; private set; } = "edict_dead_letter";
 
@@ -108,6 +115,10 @@ public sealed class PostgresClaimCheckClusterFixture : ClaimCheckFixture
         builder.AddClientBuilderConfigurator<ClientConfigurator>();
         Cluster = builder.Build();
         await Cluster.DeployAsync();
+
+        // The persistence wiring provisions edict_claim_check during deploy, so
+        // the seam store is constructed here against the same data source.
+        _claimCheckStore = new PostgresClaimCheckStore(_dataSource, ClaimCheckTableName);
     }
 
     public override async Task DisposeAsync()

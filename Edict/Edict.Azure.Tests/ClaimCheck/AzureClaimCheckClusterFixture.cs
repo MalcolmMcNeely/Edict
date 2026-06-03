@@ -28,12 +28,13 @@ using Orleans.TestingHost;
 
 namespace Edict.Azure.Tests.ClaimCheck;
 
-public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
+public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture, IClaimCheckStoreFixture
 {
     string _connectionString = "";
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
     QueueServiceClient _queueServiceClient = null!;
+    IEdictClaimCheckStore _claimCheckStore = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -56,6 +57,12 @@ public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
         var response = await blob.ExistsAsync();
         return response.Value;
     }
+
+    public Task PutClaimCheckAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        _claimCheckStore.PutAsync(eventId, payload, cancellationToken);
+
+    public Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(Guid eventId, CancellationToken cancellationToken) =>
+        _claimCheckStore.GetAsync(eventId, cancellationToken);
 
     public BlobServiceClient BlobServiceClient => _blobServiceClient;
 
@@ -82,6 +89,7 @@ public sealed class AzureClaimCheckClusterFixture : ClaimCheckFixture
         // the grain task scheduler deadlocks first-time container creation.
         var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
             _blobServiceClient, ClaimCheckContainerName);
+        _claimCheckStore = claimCheckStore;
 
         var context = new AzureClusterContext(
             _connectionString,

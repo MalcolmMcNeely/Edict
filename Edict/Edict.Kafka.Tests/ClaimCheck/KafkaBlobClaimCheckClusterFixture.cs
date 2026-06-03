@@ -41,7 +41,7 @@ namespace Edict.Kafka.Tests.ClaimCheck;
 /// container directly — same shape as <c>AzureClaimCheckClusterFixture</c>,
 /// only the streams provider changes.
 /// </summary>
-public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
+public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture, IClaimCheckStoreFixture
 {
     string _azureConnectionString = "";
     string _bootstrapServers = "";
@@ -49,6 +49,7 @@ public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
     string _contextKey = "";
     TableServiceClient _tableServiceClient = null!;
     BlobServiceClient _blobServiceClient = null!;
+    IEdictClaimCheckStore _claimCheckStore = null!;
 
     public TestCluster Cluster { get; private set; } = null!;
 
@@ -77,6 +78,12 @@ public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
         return response.Value;
     }
 
+    public Task PutClaimCheckAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        _claimCheckStore.PutAsync(eventId, payload, cancellationToken);
+
+    public Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(Guid eventId, CancellationToken cancellationToken) =>
+        _claimCheckStore.GetAsync(eventId, cancellationToken);
+
     public override async Task InitializeAsync()
     {
         _azureConnectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
@@ -93,6 +100,7 @@ public sealed class KafkaBlobClaimCheckClusterFixture : ClaimCheckFixture
 
         var claimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
             _blobServiceClient, ClaimCheckContainerName);
+        _claimCheckStore = claimCheckStore;
 
         var context = new KafkaAzureClusterContext(
             _bootstrapServers,
