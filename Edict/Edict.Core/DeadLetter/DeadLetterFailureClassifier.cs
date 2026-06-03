@@ -10,6 +10,44 @@ namespace Edict.Core.DeadLetter;
 
 static class DeadLetterFailureClassifier
 {
+    // Composition overload. The built-in switch is privileged: it runs first
+    // and a non-Unhandled result always wins, so no provider classifier can
+    // re-bucket a framework cause. Only where the built-in defers (Unhandled)
+    // are the registered classifiers consulted, in registration order, first
+    // non-null winning. Each call is individually wrapped so a throwing
+    // classifier degrades to a defer and consultation continues: Promote()
+    // runs outside the engine's per-group catch and must never throw.
+    public static string Classify(Exception exception, IEnumerable<IDeadLetterFaultClassifier> registeredClassifiers)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentNullException.ThrowIfNull(registeredClassifiers);
+
+        var builtIn = Classify(exception);
+        if (builtIn != SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled)
+        {
+            return builtIn;
+        }
+
+        foreach (var classifier in registeredClassifiers)
+        {
+            string? bucket;
+            try
+            {
+                bucket = classifier.Classify(exception);
+            }
+            catch
+            {
+                continue;
+            }
+            if (bucket is not null)
+            {
+                return bucket;
+            }
+        }
+
+        return SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled;
+    }
+
     public static string Classify(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -35,8 +73,6 @@ static class DeadLetterFailureClassifier
             EdictInternalInvariantException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug,
             _ when ContainsSaturated(exception.GetType().Name) =>
                 SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated,
-            _ when IsPostgresDriverFault(exception.GetType().Name) =>
-                SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             _ => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,
         };
     }
@@ -46,13 +82,4 @@ static class DeadLetterFailureClassifier
     // doesn't ship yet.
     static bool ContainsSaturated(string typeName) =>
         typeName.Contains("Saturated", StringComparison.OrdinalIgnoreCase);
-
-    // Core cannot reference Npgsql or Edict.Postgres, so a Postgres connection
-    // drop or pool exhaustion is recognised by type-name: the raw driver
-    // NpgsqlException / PostgresException, and the EdictPostgresStorageException
-    // wrapper the provider rethrows so Orleans can serialise it back across the
-    // grain boundary. All are substrate faults, not consumer bugs.
-    static bool IsPostgresDriverFault(string typeName) =>
-        typeName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)
-        || typeName.Contains("Postgres", StringComparison.OrdinalIgnoreCase);
 }

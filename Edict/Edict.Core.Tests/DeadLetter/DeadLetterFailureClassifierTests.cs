@@ -59,29 +59,55 @@ public sealed class DeadLetterFailureClassifierTests
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Saturated, bucket);
     }
 
-    [Theory]
-    [InlineData(typeof(SyntheticNpgsqlException))]
-    [InlineData(typeof(SyntheticPostgresException))]
-    [InlineData(typeof(SyntheticEdictPostgresStorageException))]
-    public void Classify_ShouldMapPostgresDriverFault_ToSubstrate(Type exceptionType)
-    {
-        // Core cannot reference Npgsql or Edict.Postgres, so the real
-        // NpgsqlException / PostgresException and the EdictPostgresStorageException
-        // wrapper the provider rethrows are matched by type-name. These synthetics
-        // stand in for those names.
-        var exception = (Exception)Activator.CreateInstance(exceptionType)!;
-
-        var bucket = DeadLetterFailureClassifier.Classify(exception);
-
-        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate, bucket);
-    }
-
     [Fact]
     public void Classify_ShouldMapUnknownExceptionType_ToUnhandled()
     {
         var exception = new ApplicationException("nope");
 
         var bucket = DeadLetterFailureClassifier.Classify(exception);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled, bucket);
+    }
+
+    [Fact]
+    public void Classify_WithRegisteredClassifiers_ShouldLetBuiltInWin_OverAProviderClassifier()
+    {
+        // A framework cause must keep its built-in bucket even when a provider
+        // classifier would re-bucket it: a TimeoutException stays Timeout, not
+        // the Substrate the greedy classifier returns.
+        var greedyClassifier = new StubFaultClassifier(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate);
+
+        var bucket = DeadLetterFailureClassifier.Classify(new TimeoutException("boom"), [greedyClassifier]);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Timeout, bucket);
+    }
+
+    [Fact]
+    public void Classify_WithRegisteredClassifiers_ShouldConsultProviders_OnBuiltInFallthrough_FirstNonNullWinning()
+    {
+        // A fault Core does not recognise falls through to the registered
+        // classifiers in registration order: the first deferring classifier is
+        // skipped, the next non-null result wins.
+        var deferringClassifier = new StubFaultClassifier(null);
+        var matchingClassifier = new StubFaultClassifier(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate);
+
+        var bucket = DeadLetterFailureClassifier.Classify(
+            new ApplicationException("driver fault Core can't name"), [deferringClassifier, matchingClassifier]);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate, bucket);
+    }
+
+    [Fact]
+    public void Classify_WithRegisteredClassifiers_ShouldSwallowAThrowingClassifier_AndContinue()
+    {
+        // A throwing classifier must not escape the promoter path: it is
+        // treated as a defer, consultation continues to the next classifier,
+        // and a fault no one classifies still degrades to Unhandled.
+        var throwingClassifier = new ThrowingFaultClassifier();
+        var deferringClassifier = new StubFaultClassifier(null);
+
+        var bucket = DeadLetterFailureClassifier.Classify(
+            new ApplicationException("nobody owns this"), [throwingClassifier, deferringClassifier]);
 
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled, bucket);
     }
@@ -180,23 +206,18 @@ public sealed class DeadLetterFailureClassifierTests
         Assert.Equal("InternalBug", SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug);
     }
 
+    sealed class StubFaultClassifier(string? result) : IDeadLetterFaultClassifier
+    {
+        public string? Classify(Exception exception) => result;
+    }
+
+    sealed class ThrowingFaultClassifier : IDeadLetterFaultClassifier
+    {
+        public string? Classify(Exception exception) => throw new InvalidOperationException("classifier bug");
+    }
+
     sealed class SyntheticSaturatedException : Exception
     {
         public SyntheticSaturatedException() : base("simulated saturation") { }
-    }
-
-    sealed class SyntheticNpgsqlException : Exception
-    {
-        public SyntheticNpgsqlException() : base("simulated connection drop") { }
-    }
-
-    sealed class SyntheticPostgresException : Exception
-    {
-        public SyntheticPostgresException() : base("simulated 53300 too many clients") { }
-    }
-
-    sealed class SyntheticEdictPostgresStorageException : Exception
-    {
-        public SyntheticEdictPostgresStorageException() : base("simulated WriteStateAsync fault") { }
     }
 }

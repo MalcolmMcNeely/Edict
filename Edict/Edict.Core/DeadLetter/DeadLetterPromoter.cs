@@ -64,7 +64,9 @@ sealed class DeadLetterPromoter(
 
         PromotionCount.Add(1,
             new KeyValuePair<string, object?>(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString()),
-            new KeyValuePair<string, object?>(SemanticConventions.DeadLetter.Tags.FailureReason, DeadLetterFailureClassifier.Classify(exception)),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.DeadLetter.Tags.FailureReason,
+                DeadLetterFailureClassifier.Classify(exception, services.GetServices<IDeadLetterFaultClassifier>())),
             new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, sourceGrainType));
 
         // The forensic notification is its own event with its own identity. The

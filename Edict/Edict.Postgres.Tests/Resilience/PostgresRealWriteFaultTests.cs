@@ -10,7 +10,7 @@ namespace Edict.Postgres.Tests.Resilience;
 // surfaces a genuine NpgsqlException (rethrown as EdictPostgresStorageException)
 // mid-WriteStateAsync, and the uncommitted statement rolls back. The
 // classifier's mapping of that shape to Substrate is pinned separately in
-// DeadLetterFailureClassifierTests.
+// PostgresDeadLetterFaultClassifierTests.
 [Collection(PostgresResilienceCollection.Name)]
 public sealed class PostgresRealWriteFaultTests(PostgresResilienceClusterFixture fixture)
 {
