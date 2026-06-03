@@ -24,6 +24,7 @@
              provider conformance suites need to drive them directly. -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Streaming.Tests" />
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />
         <InternalsVisibleTo Include="Edict.Kafka.Tests" />
         <!-- Conformance harness swaps the internal PublishEventExecutor for
