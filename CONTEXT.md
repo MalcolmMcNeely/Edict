@@ -85,6 +85,10 @@ _Avoid_: an Outbox grain; a second store for entries; assuming exactly-once publ
 The terminal, forensic-only tail of the Outbox: a permanently failing effect is recorded into a fleet-wide dead-letter projection without blocking aggregate intake.
 _Avoid_: an in-grain dead-letter slice or cap; blocking aggregate intake when downstreams fail; expecting a redrive affordance; treating dead-lettering as a recovery mechanism rather than an RCA surface; reading the dead-letter table directly instead of via `IEdictDeadLetterRepository`.
 
+**Fault Classification**:
+Mapping a dead-lettered failure to one of a closed allow-list of failure-reason buckets (an RCA dimension on the dead-letter metrics): framework causes are classified in `Edict.Core`, while each persistence/streaming provider recognises its own driver faults through a registered `IDeadLetterFaultClassifier` consulted only when no framework cause matched.
+_Avoid_: inventing a new bucket value (the set is closed for metric cardinality); name-matching a provider's exception types inside `Edict.Core`; letting a provider classifier override a framework cause or throw on the promoter's no-throw path.
+
 **Event Envelope** (`EdictEventEnvelope`):
 The universal wire-format wrapper carried on every Edict stream hop, holding either an inline payload or a Claim Check pointer and unwrapped before dispatch.
 _Avoid_: deriving consumer event types from `EdictEventEnvelope`; reading it on a consumer `HandleAsync` signature; treating it as solely a claim-check vehicle.
