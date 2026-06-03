@@ -1,6 +1,6 @@
 # Claim check
 
-Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store and the wire hop carries a small pointer string instead. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged. This holds for every consumer role: event handlers, sagas, and table-projection builders all receive a claim-checked event identically to an in-band one, and a saga's dispatched command or a projection's row write is staged and delivered the same way.
+Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store keyed by the event's `EventId`, and the wire hop carries no separate pointer — the envelope's `EventId` **is** the key. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged. This holds for every consumer role: event handlers, sagas, and table-projection builders all receive a claim-checked event identically to an in-band one, and a saga's dispatched command or a projection's row write is staged and delivered the same way.
 
 ```csharp
 public Task HandleAsync(LargeOrderEvent edictEvent)
@@ -11,7 +11,7 @@ public Task HandleAsync(LargeOrderEvent edictEvent)
 
 ## Engagement
 
-- The publish-time decision happens at the outbox commit boundary, not inside `Raise`. The serialised event is measured; if its size exceeds the configured threshold, the body is written to the claim-check store and the queued wire frame is an `EdictEventEnvelope` carrying a `ClaimCheckKey` pointer.
+- The publish-time decision happens at the outbox commit boundary, not inside `Raise`. The serialised event is measured; if its size exceeds the configured threshold, the body is written to the claim-check store under the event's `EventId` and the queued wire frame is an `EdictEventEnvelope` with no inline payload. The envelope carries no separate pointer: the receiver detects the claim-checked branch by the absent inline body and fetches by the envelope's `EventId`.
 - The threshold is a streaming-substrate option — every substrate's own caps differ (Azure Queue Storage messages are limited to ~48 KB; Azure Table single-string properties to 32 KB). The default leaves ~2 KB framing headroom under the relevant cap. See the wiring page for your streaming substrate for the exact knob and default.
 - If the wrapped envelope still exceeds the storage per-property cap after wrapping, the framework throws `EdictEnvelopeOverflowException` (`Edict.Contracts.ClaimCheck`) at the commit boundary, surfacing a designed framework failure rather than a deep-substrate error.
 
@@ -29,7 +29,7 @@ public Task HandleAsync(LargeOrderEvent edictEvent)
 
 ## Surface
 
-- **`IEdictClaimCheckStore`** (`Edict.Contracts.ClaimCheck`) — `PutAsync(payload, cancellationToken)` and `GetAsync(key, cancellationToken)` only. Framework-internal seam; consumers do not call it.
+- **`IEdictClaimCheckStore`** (`Edict.Contracts.ClaimCheck`) — `PutAsync(eventId, payload, cancellationToken)` and `GetAsync(eventId, cancellationToken)` only; the seam is `Guid`-keyed, so the store encodes the supplied `EventId` as its backend key rather than minting or returning one of its own. Framework-internal seam; consumers do not call it.
 - **`EdictEventEnvelope`** (`Edict.Contracts.Events`) — the universal wire-format wrapper. Consumers never derive from it and never see it on a `HandleAsync` signature.
 - **`EdictEnvelopeOverflowException`** (`Edict.Contracts.ClaimCheck`) — thrown at the commit boundary when the wrapped bytes still exceed the storage per-property cap. Carries `RouteKey`, `EventType`, and `MeasuredBytes`.
 
@@ -41,4 +41,4 @@ None — claim-check engagement is a runtime decision driven by event size again
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Claim Check`, `Event Envelope`, `Event`, `Outbox`.
 - Concepts — [events.md](events.md), [dead-letter.md](dead-letter.md), [telemetry.md](telemetry.md).
-- ADR — [0020 — Claim check for oversized events](../../adr/0020-claim-check.md).
+- ADR — [0020 — Claim check for oversized events](../../adr/0020-claim-check.md), [0053 — Claim-check key is the event's EventId](../../adr/0053-claim-check-key-is-event-id.md).

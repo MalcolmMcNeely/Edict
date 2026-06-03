@@ -12,4 +12,4 @@ Dead-lettering is **observability, not back-pressure**: when an Outbox entry exh
 ## Consequences
 
 - Soundness downgrade: ADR 0015's claim that the Outbox closes the ADR-0011 double-apply gap stands **for the transient-failure case only**. Permanent `UpsertRow` failure now leaves the destination row missing and requires manual operator repair.
-- The `EdictDeadLetterRaised` event is widened with optional fields populated only for `InvokeHandler` and `BlobMissing` failures (`SourceEventType`, `SourceEventId`, `ClaimCheckKey`, `FailureKind`) so the operator can query the projection without parsing payload bytes.
+- The `EdictDeadLetterRaised` event is widened with optional fields populated only for `InvokeHandler` and `BlobMissing` failures (`SourceEventType`, `SourceEventId`, `FailureKind`) so the operator can query the projection without parsing payload bytes. On a `BlobMissing` row `SourceEventId` is also the claim-check locator — the key is the event's `EventId`, so no separate blob-key field is carried (ADR-0053).

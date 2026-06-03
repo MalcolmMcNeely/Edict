@@ -19,7 +19,7 @@ IReadOnlyList<EdictDeadLetterEntry> entries =
     await deadLetterRepository.ListAsync(grainKey: orderId.ToString());
 ```
 
-Each `EdictDeadLetterEntry` carries the failed `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), the `AttemptCount`, the `DeadLetteredAt`, the `SourceGrainKey` and `SourceGrainType`, the `EffectTarget` (encoded per kind), the captured `TraceParent`, the `ExceptionType`, the `Reason`, the `PayloadJson`, the `SourceEventId`, an optional `ClaimCheckKey`, and a `FailureKind` discriminator (`EffectFailure` vs `BlobMissing`).
+Each `EdictDeadLetterEntry` carries the failed `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), the `AttemptCount`, the `DeadLetteredAt`, the `SourceGrainKey` and `SourceGrainType`, the `EffectTarget` (encoded per kind), the captured `TraceParent`, the `ExceptionType`, the `Reason`, the `PayloadJson`, the `SourceEventId`, and a `FailureKind` discriminator (`EffectFailure` vs `BlobMissing`).
 
 There is **no `RedriveAsync`**. Recovery is manual: re-emit the source Command or saga step for `PublishEvent` and `SendCommand`; repair the destination row by hand for `UpsertRow`, informed by the row's contents. Dead-lettering is forensic surface, not back-pressure or retry — do not treat it as a recovery mechanism.
 
@@ -33,7 +33,7 @@ When investigating a missing event or unrouted Command, the trace is what stitch
 
 ## Common failure shapes
 
-- **`PublishEvent` dead-lettered with `FailureKind = BlobMissing`** — a claim-checked event's blob was reaped before delivery. The original `ClaimCheckKey` is preserved on the row; the event payload itself is gone. Claim-check blobs are append-only on purpose; if you see this, something is deleting blobs out-of-band.
+- **`PublishEvent` dead-lettered with `FailureKind = BlobMissing`** — a claim-checked event's blob was reaped before delivery. Read `SourceEventId` on the row: the claim-check key is the event's `EventId`, so that one id both identifies the event and locates the (now-gone) parked body. The event payload itself is gone. Claim-check blobs are append-only on purpose; if you see this, something is deleting blobs out-of-band.
 - **`InvokeHandler` dead-lettered** — a consumer Event Handler threw past `MaxAttempts`. Read `Reason` and `ExceptionType` on the row; the failure is in the consumer's `HandleAsync` body.
 - **`SendCommand` dead-lettered** — a saga's follow-up Command exhausted attempts. The target aggregate is unavailable or its `HandleAsync` is rejecting durably. Saga progress is still readable via `GetSagaProgress` in tests; in production, query the saga grain directly.
 - **`UpsertRow` dead-lettered** — a Table Projection's write to the external store kept failing. Read the row's contents to repair the destination by hand.
@@ -53,6 +53,7 @@ For any "why does dead-letter behave this way?" or "why no redrive?" question, i
 - ADR-0018 — Dead letter (forensic-only, table-projection-backed).
 - ADR-0019 — Deferred dispatch (why `SendCommand` is an Outbox effect, not an inline call).
 - ADR-0020 — Claim check (and the `BlobMissing` failure kind).
+- ADR-0053 — Claim-check key is the event's `EventId` (why `BlobMissing` points at `SourceEventId`).
 - ADR-0003 — Parent/child spans across the stream hop.
 - ADR-0041 — Exception policy.
 - ADR-0050 — Saga absolute lifetime cap (the `SagaTimeout` / `SagaTerminal` dead-letter causes).

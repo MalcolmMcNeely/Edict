@@ -22,10 +22,10 @@ For fleet-wide triage during a system-wide failure, use `ListAllAsync()` instead
 - **`IEdictDeadLetterRepository`** (`Edict.Contracts.DeadLetter`) — **strictly read-only**:
   - `ListAsync(string grainKey, CancellationToken)` — dead letters for a single source aggregate.
   - `ListAllAsync(CancellationToken)` — every row in the fleet-wide partition.
-- **`EdictDeadLetterEntry`** (`Edict.Contracts.DeadLetter`) — the projection row. Carries `EntryId`, `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), `AttemptCount`, `DeadLetteredAt`, `SourceGrainKey`, `SourceGrainType`, `EffectTarget` (encoded per kind — `"{stream}/{eventType}"` for `PublishEvent`, `"{targetGrainType}/{targetGrainKey}"` for `SendCommand`, `"{table}/{pk}/{rk}"` for `UpsertRow`), `TraceParent`, `ExceptionType`, `Reason`, `PayloadJson`, `SourceEventType`, `SourceEventId`, `ClaimCheckKey`, and `FailureKind`.
+- **`EdictDeadLetterEntry`** (`Edict.Contracts.DeadLetter`) — the projection row. Carries `EntryId`, `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), `AttemptCount`, `DeadLetteredAt`, `SourceGrainKey`, `SourceGrainType`, `EffectTarget` (encoded per kind — `"{stream}/{eventType}"` for `PublishEvent`, `"{targetGrainType}/{targetGrainKey}"` for `SendCommand`, `"{table}/{pk}/{rk}"` for `UpsertRow`), `TraceParent`, `ExceptionType`, `Reason`, `PayloadJson`, `SourceEventType`, `SourceEventId`, and `FailureKind`.
 - **`EdictDeadLetterFailureKind`** (`Edict.Contracts.DeadLetter`) — discriminator:
   - `EffectFailure` (default) — an outbound effect exhausted `MaxAttempts` at the publisher.
-  - `BlobMissing` — a receiver could not materialise a claim-checked event because its blob had been reaped. The original `ClaimCheckKey` is preserved.
+  - `BlobMissing` — a receiver could not materialise a claim-checked event because its blob had been reaped. `SourceEventId` is the locator for the (now-gone) parked body — the claim-check key is the event's `EventId`, so the same id that identifies the event also locates its blob.
 - **`EdictDeadLetterProjectionBuilder`** is auto-wired by `AddEdict()` as a fleet-wide singleton — consumers do not register or implement it.
 
 ## How a dead letter lands
