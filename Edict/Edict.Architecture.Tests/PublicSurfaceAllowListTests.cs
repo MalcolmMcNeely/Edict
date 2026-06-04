@@ -280,6 +280,8 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Routing.EdictEventTagWritersAttribute",
         "Edict.Contracts.Routing.EdictRoutesAttribute",
         "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute",
+        "Edict.Contracts.Schedules.EdictScheduleMessage",
+        "Edict.Contracts.Schedules.EdictScheduleResult",
         "Edict.Contracts.Sending.IEdictSender",
         "Edict.Contracts.TableStorage.IEdictTableRepository`1",
         "Edict.Contracts.TableStorage.IEdictTableWriteStore`1",
