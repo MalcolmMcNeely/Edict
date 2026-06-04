@@ -23,7 +23,6 @@
         <!-- Bare Outbox engine + PublishEventExecutor are internal; the unit and
              provider conformance suites need to drive them directly. -->
         <InternalsVisibleTo Include="Edict.Core.Tests" />
-        <InternalsVisibleTo Include="Edict.Azure.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Streaming.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Persistence.Tests" />
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />

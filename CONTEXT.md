@@ -102,7 +102,7 @@ The abstract generic base that Event Handlers, Sagas, and Projection Builders in
 _Avoid_: implying it owns or configures stream subscription.
 
 **Substrate**:
-The backend pairing — one streaming provider plus one persistence provider — an Edict silo runs on; the two reference pairings are Azure (`Azure.Streaming` + `Azure.Persistence`) and Kafka+Postgres. The `Edict.Substrate` library and its `Edict.Substrate.Azurite` / `Edict.Substrate.KafkaPostgres` implementations are a separate concept: harness infrastructure (ADR-0030) that the benchmark and conformance fixtures use to bring a backend up and tear it down — not a production runtime concept.
+The backend pairing — one streaming provider plus one persistence provider — an Edict silo runs on; the two reference pairings are Azure (`Azure.Streaming` + `Azure.Persistence`) and Kafka+Postgres. The `Edict.Substrate` library and its `Edict.Substrate.Azurite` / `Edict.Substrate.KafkaPostgres` implementations are a separate concept: harness infrastructure (ADR-0030) that the benchmark fixtures use to bring a backend up and tear it down — not a production runtime concept. Conformance no longer uses `Edict.Substrate`: the axis batteries host their backends directly (ADR-0054).
 _Avoid_: calling `Edict.Substrate.*` libraries a "production substrate" (they are harness implementations); treating "substrate" unqualified in code when streaming-vs-persistence is what matters.
 
 ## Relationships

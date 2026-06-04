@@ -21,7 +21,7 @@
         <InternalsVisibleTo Include="Edict.Core" />
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
-        <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Streaming.Tests" />
     </ItemGroup>
 
     <ItemGroup>

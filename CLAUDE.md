@@ -4,7 +4,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 
 ## Project map
 
-The repo has 45 `.csproj` files; they collapse into six logical groups. Per-project tests follow a uniform pattern (every shipping project has a paired `.Tests`, e.g. `Edict.Core.Tests`, `Edict.Kafka.Tests`) and are not listed individually — only the projects that break the pattern get their own row.
+The repo has 48 `.csproj` files; they collapse into six logical groups. Per-project tests follow a uniform pattern (every shipping project has a paired `.Tests`, e.g. `Edict.Core.Tests`, `Edict.Kafka.Tests`) and are not listed individually — only the projects that break the pattern get their own row. Conformance runs as **two axis batteries** (streaming + persistence, ADR-0054, supersedes 0027): Azure's paired tests split into `Edict.Azure.Streaming.Tests` + `Edict.Azure.Persistence.Tests` (mirroring ADR-0042), `Edict.Kafka.Tests` and `Edict.Postgres.Persistence.Tests` bind the other axis providers, and `Edict.Pairing.Tests` carries the cross-pairing smoke.
 
 ### Framework (consumer-facing, production)
 
@@ -57,7 +57,7 @@ See `CONTEXT.md` for the "substrate" disambiguation — this group is the harnes
 | `Edict.Substrate` | `ISubstrate` seam — harness-to-backend abstraction (ADR-0030) |
 | `Edict.Substrate.Azurite` | Local Azurite-backed substrate |
 | `Edict.Substrate.KafkaPostgres` | Kafka+Postgres-backed substrate |
-| `Edict.Tests.Conformance` | Shared substrate-conformance battery (ADR-0027) |
+| `Edict.Tests.Conformance` | Streaming + persistence axis-conformance batteries and their dumb references (ADR-0054) |
 | `Edict.Benchmarks` | Microbenchmarks |
 | `Edict.Benchmarks.Throughput` | Throughput harness |
 | `Edict.Benchmarks.Throughput.Tests` | xUnit wrapper — skip by default (slow, flaky) |
@@ -66,8 +66,9 @@ See `CONTEXT.md` for the "substrate" disambiguation — this group is the harnes
 
 | Project | Purpose |
 |---|---|
-| `Edict.Architecture.Tests` | Public-surface allow-list, type placement, boundary checks |
+| `Edict.Architecture.Tests` | Public-surface allow-list, type placement, boundary checks, conformance binding-completeness guard |
 | `Edict.AgenticTooling.Architecture.Tests` | Skill ↔ MCP-tool interlock drift guard |
+| `Edict.Pairing.Tests` | Bucket-4 cross-pairing smoke — composition boot + write-fault ∧ redelivery, per shipped pairing (ADR-0054) |
 
 ## Reference index
 
@@ -83,7 +84,7 @@ When the conversation touches these topics, read the linked depth before answeri
 | Saga, multi-step workflows | `docs/usage/concepts/sagas.md` + ADR-0016 |
 | Table projection, read models | `docs/usage/concepts/table-projections.md` + ADR-0011, 0013 |
 | Source generation, codegen ordering | `csharp` skill body + ADR-0005, 0033 |
-| Substrate, harness, conformance | ADR-0027, 0030 |
+| Substrate, harness, conformance | ADR-0054 (axis batteries, supersedes 0027), 0030 |
 | Configuration, options, tuning | `docs/configuration` + ADR-0023 |
 | Agentic tooling, skill ↔ MCP interlock | ADR-0044, the interlock test in `Edict.AgenticTooling.Architecture.Tests` |
 

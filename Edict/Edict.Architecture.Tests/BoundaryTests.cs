@@ -9,7 +9,7 @@ using Edict.Telemetry;
 
 using Sample.Contracts.Orders.Commands;
 
-using ConformanceFixture = Edict.Tests.Conformance.ConformanceFixture;
+using ConformanceAssemblyAnchor = Edict.Tests.Conformance.Streaming.StreamingConformanceFixture;
 
 using Xunit;
 
@@ -26,7 +26,7 @@ public class BoundaryTests
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
             typeof(EdictDiagnostics).Assembly,
-            typeof(ConformanceFixture).Assembly,
+            typeof(ConformanceAssemblyAnchor).Assembly,
             typeof(PlaceOrderCommand).Assembly)
         .Build();
 
@@ -112,13 +112,14 @@ public class BoundaryTests
         rule.Check(Architecture);
     }
 
-    // Conformance owns substrate-agnostic scenarios; pulling any provider SDK
-    // (Azure.*, Confluent.Kafka, Npgsql) into it would couple the harness to
-    // one substrate and defeat the inheritance pattern.
+    // Conformance owns substrate-agnostic scenarios and the axis batteries' dumb
+    // references; pulling any provider SDK (Azure.*, Confluent.Kafka, Npgsql) into
+    // it would couple the harness to one substrate, break reference purity, and
+    // defeat the axis-conformance inheritance pattern.
     [Fact]
     public void EdictTestsConformance_ShouldNotDependOnAnyProviderSdkPackages()
     {
-        var conformanceAssembly = typeof(ConformanceFixture).Assembly;
+        var conformanceAssembly = typeof(ConformanceAssemblyAnchor).Assembly;
         var referenced = conformanceAssembly.GetReferencedAssemblies();
         Assert.DoesNotContain(referenced,
             a => a.Name is not null

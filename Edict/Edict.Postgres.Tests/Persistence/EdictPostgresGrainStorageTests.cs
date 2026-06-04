@@ -23,14 +23,14 @@ namespace Edict.Postgres.Tests.Persistence;
 /// NpgsqlException-to-EdictPostgresStorageException translation that lets a
 /// connection fault survive the Orleans message-serializer hop.
 /// </summary>
-[Collection(PostgresClusterCollection.Name)]
+[Collection(PostgresProviderCollection.Name)]
 public sealed class EdictPostgresGrainStorageTests
 {
     readonly NpgsqlDataSource _dataSource;
     readonly Serializer _serializer;
     readonly IServiceProvider _services;
 
-    public EdictPostgresGrainStorageTests(PostgresClusterFixture fixture)
+    public EdictPostgresGrainStorageTests(PostgresProviderFixture fixture)
     {
         _dataSource = new NpgsqlDataSourceBuilder(fixture.PostgresConnectionString).Build();
         var services = new ServiceCollection();

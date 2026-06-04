@@ -5,10 +5,8 @@
         <PackageReference Include="MessagePack" />
         <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" />
         <PackageReference Include="Microsoft.Orleans.Reminders.AdoNet" />
-        <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" />
         <PackageReference Include="Npgsql" />
-        <PackageReference Include="Testcontainers.Azurite" />
         <PackageReference Include="Testcontainers.PostgreSql" />
         <PackageReference Include="Verify.Xunit" />
     </ItemGroup>
@@ -18,7 +16,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Edict.Azure.Streaming\Edict.Azure.Streaming.csproj" />
         <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
         <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
         <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />

@@ -20,7 +20,7 @@ namespace Edict.Postgres.Tests;
 /// DDL idempotency, the claim-check store, or the table repository surfaces
 /// without dragging the whole conformance battery along.
 /// </summary>
-[Collection(PostgresClusterCollection.Name)]
+[Collection(PostgresProviderCollection.Name)]
 public sealed class PostgresProviderUnitTests
 {
     readonly string _connectionString;
@@ -28,7 +28,7 @@ public sealed class PostgresProviderUnitTests
     readonly Serializer _serializer;
     readonly IServiceProvider _services;
 
-    public PostgresProviderUnitTests(PostgresClusterFixture fixture)
+    public PostgresProviderUnitTests(PostgresProviderFixture fixture)
     {
         _connectionString = fixture.PostgresConnectionString;
         _dataSource = new NpgsqlDataSourceBuilder(_connectionString).Build();

@@ -15,7 +15,7 @@ The four rules most often blown past during TDD — check each on every cycle:
 2. **Verify over Assert chains.** When the GREEN outcome has more than one field, the assertion is a single `Verify(...)` snapshot — not a stack of `Assert.Equal`. Use targeted `Assert`s only for a single behavioural fact (e.g. exception type) or for a semantically load-bearing Guid alongside the `Verify`. Contract-surface round-trips **are** the ADR 0007 drift guard. (`testing` skill.)
 3. **Project placement (ADR 0016).** Pick the test project deliberately *before* writing the test:
    - Mechanism logic, in-memory only → `Edict.Core.Tests`. **No Testcontainers, no Azurite here.**
-   - Real-infra battery (at-least-once, dedup realism, table-projection persistence) → `Edict.Azure.Tests` / `Edict.Postgres.Tests` / `Edict.Kafka.Tests` via Testcontainers.
+   - Real-infra conformance, by axis (ADR-0054): streaming scenarios → `Edict.Azure.Streaming.Tests` / `Edict.Kafka.Tests` (real broker + reference persistence); persistence scenarios → `Edict.Azure.Persistence.Tests` / `Edict.Postgres.Persistence.Tests` (real store + dumb `MemoryStreams`); cross-pairing smoke → `Edict.Pairing.Tests`. All via Testcontainers.
    - Span tree / `edict.*` tags → `Edict.Telemetry.Tests`.
    - Generator output shape → `Edict.Generators.Tests` (Verify snapshots).
    - `EDICT00x` diagnostics → `Edict.Analyzers.Tests` (assert diagnostic line positions).

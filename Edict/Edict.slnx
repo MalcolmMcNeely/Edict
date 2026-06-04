@@ -24,7 +24,6 @@
     <Project Path="Edict.Architecture.Tests/Edict.Architecture.Tests.csproj" />
     <Project Path="Edict.Core.Tests/Edict.Core.Tests.csproj" />
     <Project Path="Edict.Telemetry.Tests/Edict.Telemetry.Tests.csproj" />
-    <Project Path="Edict.Azure.Tests/Edict.Azure.Tests.csproj" />
     <Project Path="Edict.Azure.Streaming.Tests/Edict.Azure.Streaming.Tests.csproj" />
     <Project Path="Edict.Azure.Persistence.Tests/Edict.Azure.Persistence.Tests.csproj" />
     <Project Path="Edict.Postgres.Tests/Edict.Postgres.Tests.csproj" />

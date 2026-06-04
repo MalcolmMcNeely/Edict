@@ -29,7 +29,6 @@
         <InternalsVisibleTo Include="Edict.Testing" />
         <InternalsVisibleTo Include="Edict.Core.Tests" />
         <InternalsVisibleTo Include="Edict.Architecture.Tests" />
-        <InternalsVisibleTo Include="Edict.Azure.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Streaming.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Persistence.Tests" />
         <InternalsVisibleTo Include="Edict.Postgres.Tests" />

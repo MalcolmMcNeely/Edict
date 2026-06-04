@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="Edict.Azure.Tests" />
+        <InternalsVisibleTo Include="Edict.Azure.Streaming.Tests" />
         <InternalsVisibleTo Include="Edict.Azure.Persistence.Tests" />
         <InternalsVisibleTo Include="Edict.Kafka.Tests" />
         <InternalsVisibleTo Include="Edict.Substrate.Azurite" />

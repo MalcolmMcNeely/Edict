@@ -18,6 +18,13 @@
         <!-- Needed for the TelemeterizedTagPrefix parity test. -->
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" ReferenceOutputAssembly="true" />
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
+        <!-- The axis-provider binding projects, referenced so the
+             conformance-binding-completeness drift guard can reflect over their
+             scenario bindings. Reflection-only — no battery is run from here. -->
+        <ProjectReference Include="..\Edict.Azure.Streaming.Tests\Edict.Azure.Streaming.Tests.csproj" />
+        <ProjectReference Include="..\Edict.Azure.Persistence.Tests\Edict.Azure.Persistence.Tests.csproj" />
+        <ProjectReference Include="..\Edict.Kafka.Tests\Edict.Kafka.Tests.csproj" />
+        <ProjectReference Include="..\Edict.Postgres.Persistence.Tests\Edict.Postgres.Persistence.Tests.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Contracts\Sample.Contracts.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Domain\Sample.Domain.csproj" />
         <ProjectReference Include="..\..\Sample\Sample.Web.Components\Sample.Web.Components.csproj" />
