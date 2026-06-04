@@ -64,7 +64,8 @@ public sealed class KafkaStreamingFixture : StreamingConformanceFixture
             bootstrapServers,
             $"edict-kafka-streaming-{Guid.NewGuid():N}",
             _claimCheckStore,
-            new ReferenceTableStoreFactory());
+            new ReferenceTableStoreFactory(),
+            StorageFault);
         _contextKey = KafkaStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -131,9 +132,9 @@ public sealed class KafkaStreamingFixture : StreamingConformanceFixture
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             // Wrap the reference grain storage so RedeliverAfterThrow can fault a
-            // consumer turn; transparent (passes writes through) while the static
-            // toggle is off, which it is for every other scenario.
-            ControllableGrainStorage.Decorate(siloBuilder.Services, "edict-state");
+            // consumer turn; transparent (passes writes through) while the fixture's
+            // switch is off, which it is for every other scenario.
+            ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault, "edict-state");
         }
     }
 

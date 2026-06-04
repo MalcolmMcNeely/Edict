@@ -48,7 +48,8 @@ public sealed class AzurePairingFixture : PairingFixture
         var connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         var context = new AzurePairingContext(
             connectionString,
-            ClaimCheckContainerName: $"edict-claim-check-{Guid.NewGuid():N}");
+            ClaimCheckContainerName: $"edict-claim-check-{Guid.NewGuid():N}",
+            StorageFault: StorageFault);
         _contextKey = PairingContextRegistry<AzurePairingContext>.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -118,8 +119,9 @@ public sealed class AzurePairingFixture : PairingFixture
                 o.ContainerName = ctx.ClaimCheckContainerName;
             });
             // Wrap the real Azure Blob edict-state store so the conjunction can
-            // fault a real grain-state write; transparent while the toggle is off.
-            ControllableGrainStorage.Decorate(siloBuilder.Services, "edict-state");
+            // fault a real grain-state write; transparent while the fixture's
+            // switch is off.
+            ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault, "edict-state");
         }
     }
 
@@ -135,7 +137,8 @@ public sealed class AzurePairingFixture : PairingFixture
     }
 }
 
-sealed record AzurePairingContext(string ConnectionString, string ClaimCheckContainerName);
+sealed record AzurePairingContext(
+    string ConnectionString, string ClaimCheckContainerName, StorageFaultState StorageFault);
 
 [CollectionDefinition(Name)]
 public sealed class AzurePairingCollection : ICollectionFixture<AzurePairingFixture>

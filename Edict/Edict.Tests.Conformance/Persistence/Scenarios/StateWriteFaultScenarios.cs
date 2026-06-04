@@ -31,24 +31,24 @@ public abstract class StateWriteFaultScenarios<TFixture>
     [Fact]
     public async Task CommandWriteFault_ThrowsToSender_DropsDirtyActivation_AndAppliesExactlyOnceOnRetry()
     {
-        ControllableGrainStorage.Reset();
+        _fixture.StorageFault.Reset();
         var counterId = Guid.NewGuid();
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         var initialActivationId = await probe.GetActivationIdAsync();
 
         // Arrange — the next grain-state write faults.
-        ControllableGrainStorage.ShouldFailWrites = true;
+        _fixture.StorageFault.ShouldFailWrites = true;
 
         // Act — the handler increments in-memory state, then the commit write faults.
         await Assert.ThrowsAnyAsync<Exception>(
             () => _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId)));
 
         // Assert — the write faulted, so the command was not accepted and nothing committed.
-        Assert.True(ControllableGrainStorage.FailedWrites >= 1);
+        Assert.True(_fixture.StorageFault.FailedWrites >= 1);
 
         // Recover the substrate. The framework's deactivation drops the dirty
         // activation; wait for the reactivation that reloads clean durable state.
-        ControllableGrainStorage.ShouldFailWrites = false;
+        _fixture.StorageFault.ShouldFailWrites = false;
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetActivationIdAsync() != initialActivationId);
         Assert.NotEqual(initialActivationId, await probe.GetActivationIdAsync());
 

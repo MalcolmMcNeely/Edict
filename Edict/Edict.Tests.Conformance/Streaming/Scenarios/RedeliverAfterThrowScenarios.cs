@@ -29,7 +29,7 @@ public abstract class RedeliverAfterThrowScenarios<TFixture>
     [Fact]
     public async Task FaultedConsumerTurn_ShouldBeRedeliveredByStream_AndAppliedExactlyOnce()
     {
-        ControllableGrainStorage.Reset();
+        _fixture.StorageFault.Reset();
         var aggregateId = Guid.NewGuid();
         var publisher = _fixture.GrainFactory.GetGrain<IStateWriteFaultPublisher>(aggregateId);
         var consumer = _fixture.GrainFactory.GetGrain<IStateWriteFaultConsumer>(aggregateId);
@@ -42,17 +42,17 @@ public abstract class RedeliverAfterThrowScenarios<TFixture>
         };
 
         // Arrange — the commit write for this event's handling turn faults.
-        ControllableGrainStorage.ShouldFailWrites = true;
+        _fixture.StorageFault.ShouldFailWrites = true;
         await publisher.PublishAsync(edictEvent);
 
         // The handler mutates the payload, then the commit write faults out to the
         // stream layer, so the message is not acked.
-        await OutboxProbeWaiters.WaitUntilAsync(() => Task.FromResult(ControllableGrainStorage.FailedWrites >= 1));
-        Assert.True(ControllableGrainStorage.FailedWrites >= 1);
+        await OutboxProbeWaiters.WaitUntilAsync(() => Task.FromResult(_fixture.StorageFault.FailedWrites >= 1));
+        Assert.True(_fixture.StorageFault.FailedWrites >= 1);
 
         // Heal the store. The framework dropped the dirty activation; the changed
         // activation id confirms the reload from clean durable state.
-        ControllableGrainStorage.ShouldFailWrites = false;
+        _fixture.StorageFault.ShouldFailWrites = false;
         await OutboxProbeWaiters.WaitUntilAsync(async () => await consumer.GetActivationIdAsync() != initialActivationId);
         Assert.NotEqual(initialActivationId, await consumer.GetActivationIdAsync());
 

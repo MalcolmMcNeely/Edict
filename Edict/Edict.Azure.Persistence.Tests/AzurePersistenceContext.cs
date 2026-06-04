@@ -5,6 +5,7 @@ using Azure.Storage.Blobs;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Tests.Conformance.Outbox;
 
 namespace Edict.Azure.Persistence.Tests;
 
@@ -18,7 +19,10 @@ namespace Edict.Azure.Persistence.Tests;
 /// (<see cref="ConfigureOptions"/>, <see cref="ReplacePublishExecutorWithControllable"/>,
 /// <see cref="DecorateGrainStorage"/>, <see cref="ClaimCheckThresholdBytes"/>)
 /// let one configurator stand up every persistence-axis fixture shape; a
-/// subclass picks the knobs, the configurator applies them.
+/// subclass picks the knobs, the configurator applies them. The fixture-owned
+/// <see cref="OutboxFault"/> / <see cref="StorageFault"/> instances are carried
+/// here so the configurator can wire the controllable executor and grain-storage
+/// decorator to the exact switches the fixture's scenarios flip.
 /// </summary>
 sealed record AzurePersistenceContext(
     TableServiceClient TableServiceClient,
@@ -29,7 +33,9 @@ sealed record AzurePersistenceContext(
     Action<EdictOptions>? ConfigureOptions,
     bool ReplacePublishExecutorWithControllable,
     bool DecorateGrainStorage,
-    int? ClaimCheckThresholdBytes);
+    int? ClaimCheckThresholdBytes,
+    OutboxFaultState OutboxFault,
+    StorageFaultState StorageFault);
 
 static class AzurePersistenceContextRegistry
 {

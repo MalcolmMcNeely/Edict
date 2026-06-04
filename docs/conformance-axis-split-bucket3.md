@@ -78,9 +78,11 @@ parameterised `AzurePersistenceFixtureBase` stands up every shape (dumb
 | `AzurePersistenceClaimCheckFixture` | 1-byte claim-check threshold; forwards `IClaimCheckStoreFixture` |
 | `AzurePersistenceBlobMissingFixture` | `OutboxMaxAttempts` = 3, tight backoff |
 
-`xunit.runner.json` runs collections serially, so the process-wide
-`ControllableOutboxExecutor` / `ControllableGrainStorage` static toggles cannot
-race across fixture shapes.
+`xunit.runner.json` runs collections serially because the per-shape fixtures each
+stand up an Orleans cluster on a single host and the silo-gateway bring-up races
+under that contention. The `ControllableOutboxExecutor` / `ControllableGrainStorage`
+fault switches are per-fixture instances (each fixture owns its own and wires it
+into its silo), so they are not a reason to serialise.
 
 ## The `Edict.Azure.Tests` split + SDK note
 

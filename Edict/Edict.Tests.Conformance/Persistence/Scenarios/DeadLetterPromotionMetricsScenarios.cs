@@ -27,8 +27,8 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
     public async Task PromotionCounter_ShouldFire_OnPoisonedOutboxEntry_WithAllowlistFailureReason()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         var captures = new List<Capture>();
         using var listener = new MeterListener
@@ -65,11 +65,11 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
         {
             await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
-            return ControllableOutboxExecutor.FailedAttempts >= 2;
+            return _fixture.OutboxFault.FailedAttempts >= 2;
         });
 
         // Heal so the promotion goes through the rest of the outbox path.
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.ShouldFail = false;
 
         await WaitUntilAsync(async () =>
         {

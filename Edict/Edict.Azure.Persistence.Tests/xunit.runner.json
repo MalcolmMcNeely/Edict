@@ -1,6 +1,6 @@
 {
   "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
-  "_comment_purpose": "The persistence conformance battery stands up real Azure Table/Blob (assembly-shared Azurite) behind a dumb MemoryStreams reference. Collections run serially so the process-wide ControllableOutboxExecutor / ControllableGrainStorage toggles cannot race across fixture shapes.",
+  "_comment_purpose": "The persistence conformance battery stands up real Azure Table/Blob (assembly-shared Azurite) behind a dumb MemoryStreams reference. Collections run serially because the per-shape fixtures each stand up an Orleans cluster on a single host and the silo-gateway bring-up races under that contention; the fault switches are now per-fixture instances, so they are not a reason to serialise.",
   "parallelizeAssembly": true,
   "parallelizeTestCollections": false,
   "methodDisplay": "method"

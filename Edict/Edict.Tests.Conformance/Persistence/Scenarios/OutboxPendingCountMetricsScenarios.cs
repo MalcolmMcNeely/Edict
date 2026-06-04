@@ -31,8 +31,8 @@ public abstract class OutboxPendingCountMetricsScenarios<TFixture>
     [Fact]
     public async Task PendingCountGauge_ShouldReportSumAcrossMultipleAggregatesOfTheSameType()
     {
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         try
         {
@@ -93,7 +93,7 @@ public abstract class OutboxPendingCountMetricsScenarios<TFixture>
         }
         finally
         {
-            ControllableOutboxExecutor.ShouldFail = false;
+            _fixture.OutboxFault.ShouldFail = false;
         }
     }
 

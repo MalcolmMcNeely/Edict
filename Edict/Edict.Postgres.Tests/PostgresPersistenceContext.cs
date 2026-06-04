@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using Edict.Contracts.Configuration;
+using Edict.Tests.Conformance.Outbox;
 
 namespace Edict.Postgres.Tests;
 
@@ -14,7 +15,10 @@ namespace Edict.Postgres.Tests;
 /// (<see cref="ConfigureOptions"/>, <see cref="ReplacePublishExecutorWithControllable"/>,
 /// <see cref="DecorateGrainStorage"/>, <see cref="ClaimCheckThresholdBytes"/>)
 /// let one configurator stand up every persistence-axis fixture shape; a
-/// subclass picks the knobs, the configurator applies them.
+/// subclass picks the knobs, the configurator applies them. The fixture-owned
+/// <see cref="OutboxFault"/> / <see cref="StorageFault"/> instances are carried
+/// here so the configurator can wire the controllable executor and grain-storage
+/// decorator to the exact switches the fixture's scenarios flip.
 /// </summary>
 sealed record PostgresPersistenceContext(
     string ConnectionString,
@@ -23,7 +27,9 @@ sealed record PostgresPersistenceContext(
     Action<EdictOptions>? ConfigureOptions,
     bool ReplacePublishExecutorWithControllable,
     bool DecorateGrainStorage,
-    int? ClaimCheckThresholdBytes);
+    int? ClaimCheckThresholdBytes,
+    OutboxFaultState OutboxFault,
+    StorageFaultState StorageFault);
 
 static class PostgresPersistenceContextRegistry
 {

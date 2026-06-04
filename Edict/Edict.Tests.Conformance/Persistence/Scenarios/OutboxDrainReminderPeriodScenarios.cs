@@ -24,8 +24,8 @@ public abstract class OutboxDrainReminderPeriodScenarios<TFixture>
     public async Task FailingDrain_ShouldRegisterLazyReminder()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         try
         {
@@ -38,7 +38,7 @@ public abstract class OutboxDrainReminderPeriodScenarios<TFixture>
         }
         finally
         {
-            ControllableOutboxExecutor.Reset();
+            _fixture.OutboxFault.Reset();
         }
     }
 }

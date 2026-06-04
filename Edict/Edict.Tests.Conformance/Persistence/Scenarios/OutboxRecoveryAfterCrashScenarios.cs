@@ -11,7 +11,8 @@ namespace Edict.Tests.Conformance.Persistence;
 /// drain finish the publish once the substrate recovers — the pending entry has
 /// to survive on real persistence. Bound against a fixture whose silo swaps the
 /// <c>PublishEventExecutor</c> for <see cref="ControllableOutboxExecutor"/>; the
-/// static <c>ShouldFail</c> toggle controls the simulated crash.
+/// fixture's <see cref="OutboxFaultState.ShouldFail"/> switch controls the
+/// simulated crash.
 /// </summary>
 public abstract class OutboxRecoveryAfterCrashScenarios<TFixture>
     where TFixture : PersistenceConformanceFixture
@@ -27,13 +28,13 @@ public abstract class OutboxRecoveryAfterCrashScenarios<TFixture>
     public async Task PostCommitPublishFailure_ShouldNotSurfaceOrRollBack_AndRecoverViaReminder()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         var result = await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
         Assert.IsType<EdictCommandResult.Accepted>(result);
-        Assert.True(ControllableOutboxExecutor.FailedAttempts >= 1);
+        Assert.True(_fixture.OutboxFault.FailedAttempts >= 1);
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
@@ -42,7 +43,7 @@ public abstract class OutboxRecoveryAfterCrashScenarios<TFixture>
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);
         Assert.True(await probe.HasDrainReminderAsync());
 
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.ShouldFail = false;
         await Task.Delay(TimeSpan.FromMilliseconds(500));
         await probe.ForceDrainViaReminderAsync();
 

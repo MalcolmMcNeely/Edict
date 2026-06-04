@@ -55,7 +55,7 @@ public sealed class AqsClaimCheckStreamingFixture : StreamingConformanceFixture
         _claimCheckStore = new ReferenceClaimCheckStore();
 
         var context = new AqsStreamingClusterContext(
-            connectionString, _claimCheckStore, new ReferenceTableStoreFactory());
+            connectionString, _claimCheckStore, new ReferenceTableStoreFactory(), StorageFault);
         _contextKey = AqsStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();

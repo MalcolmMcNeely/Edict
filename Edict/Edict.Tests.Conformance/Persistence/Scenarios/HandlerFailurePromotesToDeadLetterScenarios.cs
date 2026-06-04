@@ -28,8 +28,8 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
     public async Task Promotes_ShouldLandRowWithRcaFields()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
@@ -39,13 +39,13 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
         {
             await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
-            return ControllableOutboxExecutor.FailedAttempts >= 2;
+            return _fixture.OutboxFault.FailedAttempts >= 2;
         });
 
         // Heal the controllable so the promoted EdictDeadLetterRaised entry can
         // publish — otherwise it would loop on the same fail/promote cycle and
         // never land the row.
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.ShouldFail = false;
 
         await WaitUntilAsync(async () =>
         {

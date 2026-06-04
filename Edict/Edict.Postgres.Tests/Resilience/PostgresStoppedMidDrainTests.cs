@@ -26,7 +26,7 @@ public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixtur
     public async Task DrainRecovery_AppliesExactlyOnce_WhenPostgresStoppedMidDrainForcesRepublish()
     {
         await fixture.EnsureRunningAsync();
-        ControllableOutboxExecutor.Reset();
+        fixture.OutboxFault.Reset();
 
         var counterId = Guid.NewGuid();
         var probe = fixture.Cluster.GrainFactory.GetGrain<ICounterProbe>(counterId);
@@ -35,7 +35,7 @@ public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixtur
         // Arrange — the first publish fails, so the command commits state and leaves
         // the raised event as a durable pending outbox entry with the drain reminder
         // armed. State committed while Postgres was healthy.
-        ControllableOutboxExecutor.ShouldFail = true;
+        fixture.OutboxFault.ShouldFail = true;
         var result = await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         Assert.IsType<EdictCommandResult.Accepted>(result);
         Assert.Equal(1, await probe.GetCountAsync());
@@ -45,7 +45,7 @@ public sealed class PostgresStoppedMidDrainTests(PostgresResilienceClusterFixtur
         // Act — let the publish succeed, stop Postgres, then drive a reminder tick.
         // The publish reaches the stream but the ack write-back faults against the
         // stopped backend and rolls back, so the entry stays pending.
-        ControllableOutboxExecutor.ShouldFail = false;
+        fixture.OutboxFault.ShouldFail = false;
         await fixture.StopPostgresAsync();
         await Assert.ThrowsAnyAsync<Exception>(() => probe.ForceDrainViaReminderAsync());
 

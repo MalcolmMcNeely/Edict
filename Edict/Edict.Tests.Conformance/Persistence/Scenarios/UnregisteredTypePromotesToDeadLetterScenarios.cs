@@ -26,9 +26,9 @@ public abstract class UnregisteredTypePromotesToDeadLetterScenarios<TFixture>
     public async Task Promotes_ShouldNameTypedExceptionOnRow()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.FailureKind = ControllableFailureKind.UnregisteredEvent;
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.FailureKind = ControllableFailureKind.UnregisteredEvent;
+        _fixture.OutboxFault.ShouldFail = true;
 
         await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
@@ -38,10 +38,10 @@ public abstract class UnregisteredTypePromotesToDeadLetterScenarios<TFixture>
         {
             await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
-            return ControllableOutboxExecutor.FailedAttempts >= 2;
+            return _fixture.OutboxFault.FailedAttempts >= 2;
         });
 
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.ShouldFail = false;
 
         await WaitUntilAsync(async () =>
         {

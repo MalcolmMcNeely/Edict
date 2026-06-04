@@ -51,7 +51,8 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
         var context = new KafkaPostgresPairingContext(
             bootstrapServers,
             ConsumerGroup: $"edict-pairing-{Guid.NewGuid():N}",
-            ConnectionString: connectionString);
+            ConnectionString: connectionString,
+            StorageFault: StorageFault);
         _contextKey = PairingContextRegistry<KafkaPostgresPairingContext>.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -107,8 +108,8 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
                 o.ConnectionString = ctx.ConnectionString;
             });
             // Wrap the real Postgres edict-state store so the conjunction can fault
-            // a real grain-state write; transparent while the toggle is off.
-            ControllableGrainStorage.Decorate(siloBuilder.Services, "edict-state");
+            // a real grain-state write; transparent while the fixture's switch is off.
+            ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault, "edict-state");
         }
     }
 
@@ -124,7 +125,8 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
     }
 }
 
-sealed record KafkaPostgresPairingContext(string BootstrapServers, string ConsumerGroup, string ConnectionString);
+sealed record KafkaPostgresPairingContext(
+    string BootstrapServers, string ConsumerGroup, string ConnectionString, StorageFaultState StorageFault);
 
 [CollectionDefinition(Name)]
 public sealed class KafkaPostgresPairingCollection : ICollectionFixture<KafkaPostgresPairingFixture>

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 
+using Edict.Tests.Conformance.Outbox;
 using Edict.Tests.Conformance.Streaming.References;
 
 namespace Edict.Azure.Streaming.Tests;
@@ -19,7 +20,8 @@ namespace Edict.Azure.Streaming.Tests;
 sealed record AqsStreamingClusterContext(
     string ConnectionString,
     ReferenceClaimCheckStore ClaimCheckStore,
-    ReferenceTableStoreFactory TableStoreFactory);
+    ReferenceTableStoreFactory TableStoreFactory,
+    StorageFaultState StorageFault);
 
 static class AqsStreamingClusterContextRegistry
 {

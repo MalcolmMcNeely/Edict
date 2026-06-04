@@ -15,46 +15,37 @@ namespace Edict.Tests.Conformance.Outbox;
 /// outbox conformance scenarios to simulate a crash between the ring/outbox
 /// commit and the publish, then drive a recovery drain against the bound
 /// substrate. Delegates to the real <see cref="PublishEventExecutor"/> when
-/// not failing, so a successful drain actually publishes to the stream.
-/// The static <see cref="ShouldFail"/> flag is process-wide; every concrete
-/// fixture that wires this executor must serialise its tests via an xUnit
-/// collection so the toggle does not race across fixture shapes.
+/// not failing, so a successful drain actually publishes to the stream. The
+/// fault switch is the <see cref="OutboxFaultState"/> the owning fixture passes
+/// in: it is per-fixture instance state, so a scenario flips only its own
+/// fixture's executor and fixture shapes never race a shared toggle.
 /// </summary>
 public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
 {
     readonly PublishEventExecutor _inner;
+    readonly OutboxFaultState _fault;
 
-    public ControllableOutboxExecutor(IServiceProvider serviceProvider)
+    public ControllableOutboxExecutor(IServiceProvider serviceProvider, OutboxFaultState fault)
     {
         _inner = ActivatorUtilities.CreateInstance<PublishEventExecutor>(serviceProvider);
+        _fault = fault;
     }
-
-    public static volatile bool ShouldFail;
-    public static int FailedAttempts;
-
-    /// <summary>
-    /// Selects the exception kind raised on a failing pass. Defaults to the
-    /// historical <see cref="InvalidOperationException"/> so existing scenarios
-    /// stay green; new scenarios that need to verify the classifier-to-bucket
-    /// mapping for a typed runtime fault switch this to the relevant kind.
-    /// </summary>
-    public static volatile ControllableFailureKind FailureKind = ControllableFailureKind.InvalidOperation;
 
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
     public Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
-        if (ShouldFail)
+        if (_fault.ShouldFail)
         {
-            Interlocked.Increment(ref FailedAttempts);
+            Interlocked.Increment(ref _fault.FailedAttempts);
             throw BuildFailure();
         }
 
         return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType, liveWireEvent);
     }
 
-    static Exception BuildFailure() => FailureKind switch
+    Exception BuildFailure() => _fault.FailureKind switch
     {
         ControllableFailureKind.UnregisteredEvent => new EdictUnregisteredTypeException(
             EdictUnregisteredTypeException.Kind.Event,
@@ -65,11 +56,21 @@ public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
         _ => new InvalidOperationException("controllable publish failure (outbox conformance test)"),
     };
 
-    public static void Reset()
+    /// <summary>
+    /// Removes the <see cref="PublishEventExecutor"/> <c>AddEdict</c> registered
+    /// and registers this controllable executor in its place, wired to the
+    /// fixture's <paramref name="fault"/>. Appending instead of replacing would
+    /// make the outbox host's keyed lookup on <see cref="OutboxEffectKind"/>
+    /// throw on the duplicate <see cref="OutboxEffectKind.PublishEvent"/> key.
+    /// </summary>
+    public static void Replace(IServiceCollection services, OutboxFaultState fault)
     {
-        ShouldFail = false;
-        FailedAttempts = 0;
-        FailureKind = ControllableFailureKind.InvalidOperation;
+        var publish = services.Single(descriptor =>
+            descriptor.ServiceType == typeof(IOutboxEffectExecutor)
+            && descriptor.ImplementationType == typeof(PublishEventExecutor));
+        services.Remove(publish);
+        services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
+            new ControllableOutboxExecutor(serviceProvider, fault));
     }
 }
 

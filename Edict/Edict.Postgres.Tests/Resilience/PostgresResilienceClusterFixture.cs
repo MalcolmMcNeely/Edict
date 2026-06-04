@@ -6,7 +6,6 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
 using Edict.Core;
 using Edict.Core.Commands;
-using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Postgres;
 using Edict.Tests.Conformance.Outbox;
@@ -52,6 +51,11 @@ public sealed class PostgresResilienceClusterFixture : IAsyncLifetime
 
     public TestCluster Cluster { get; private set; } = null!;
 
+    // The fault switch the drain-recovery scenario flips to stage a durable
+    // pending entry. Fixture-owned, wired into this cluster's controllable
+    // executor.
+    public OutboxFaultState OutboxFault { get; } = new();
+
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
@@ -73,7 +77,7 @@ public sealed class PostgresResilienceClusterFixture : IAsyncLifetime
         }.ConnectionString;
         _dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
 
-        var context = new PostgresResilienceContext(connectionString);
+        var context = new PostgresResilienceContext(connectionString, OutboxFault);
         _contextKey = PostgresResilienceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -155,13 +159,7 @@ public sealed class PostgresResilienceClusterFixture : IAsyncLifetime
                 o.OutboxBaseDelay = TimeSpan.FromMilliseconds(200);
                 o.OutboxJitterFraction = 0;
             });
-            // Replace, not append — appending would make OutboxHost's ToDictionary
-            // on OutboxEffectKind throw on the duplicate key.
-            var publish = siloBuilder.Services.Single(d =>
-                d.ServiceType == typeof(IOutboxEffectExecutor)
-                && d.ImplementationType == typeof(PublishEventExecutor));
-            siloBuilder.Services.Remove(publish);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
+            ControllableOutboxExecutor.Replace(siloBuilder.Services, ctx.OutboxFault);
             // The dumb deliver-once reference stream.
             siloBuilder.AddMemoryStreams("edict");
             siloBuilder.AddEdictPostgresPersistence(o =>
@@ -182,7 +180,7 @@ public sealed class PostgresResilienceClusterFixture : IAsyncLifetime
     }
 }
 
-sealed record PostgresResilienceContext(string ConnectionString);
+sealed record PostgresResilienceContext(string ConnectionString, OutboxFaultState OutboxFault);
 
 static class PostgresResilienceContextRegistry
 {

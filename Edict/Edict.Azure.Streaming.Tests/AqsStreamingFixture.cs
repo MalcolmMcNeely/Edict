@@ -57,7 +57,7 @@ public sealed class AqsStreamingFixture : StreamingConformanceFixture
         _claimCheckStore = new ReferenceClaimCheckStore();
 
         var context = new AqsStreamingClusterContext(
-            connectionString, _claimCheckStore, new ReferenceTableStoreFactory());
+            connectionString, _claimCheckStore, new ReferenceTableStoreFactory(), StorageFault);
         _contextKey = AqsStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -105,9 +105,9 @@ public sealed class AqsStreamingFixture : StreamingConformanceFixture
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");
             // Wrap the reference grain storage so RedeliverAfterThrow can fault a
-            // consumer turn; transparent (passes writes through) while the static
-            // toggle is off, which it is for every other scenario.
-            ControllableGrainStorage.Decorate(siloBuilder.Services, "edict-state");
+            // consumer turn; transparent (passes writes through) while the fixture's
+            // switch is off, which it is for every other scenario.
+            ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault, "edict-state");
             siloBuilder.AddAzureQueueStreams("edict", configure =>
             {
                 configure.ConfigureAzureQueue(opt => opt.Configure(o =>

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using Edict.Contracts.Sending;
+using Edict.Tests.Conformance.Outbox;
 
 using Orleans;
 
@@ -24,6 +25,15 @@ public abstract class PairingFixture : IAsyncLifetime
     public abstract IEdictSender Sender { get; }
 
     public abstract IGrainFactory GrainFactory { get; }
+
+    /// <summary>
+    /// The fault switch this fixture's silo wires into the
+    /// <see cref="ControllableGrainStorage"/> over the real <c>edict-state</c>
+    /// store. The write-fault∧redelivery scenario
+    /// flips it to fault a real grain-state write; the instance is fixture-owned,
+    /// so peer pairings never see the flip.
+    /// </summary>
+    public StorageFaultState StorageFault { get; } = new();
 
     public abstract Task InitializeAsync();
 

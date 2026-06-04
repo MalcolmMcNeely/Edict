@@ -8,37 +8,32 @@ namespace Edict.Tests.Conformance.Outbox;
 
 /// <summary>
 /// Test-controllable <see cref="IGrainStorage"/> decorator that throws on
-/// <see cref="WriteStateAsync{T}"/> while <see cref="ShouldFailWrites"/> is set,
-/// faulting the real substrate's grain-state write so a scenario can prove the
-/// framework drops the dirty activation and a redelivery reloads clean durable
-/// state. Wraps the substrate's own provider (Postgres / Azure Blob) and
-/// forwards <see cref="ILifecycleParticipant{ISiloLifecycle}"/> so the inner
-/// provider still initialises during silo start. The static toggle is
-/// process-wide, so the fixture's collection must run serially.
+/// <see cref="WriteStateAsync{T}"/> while its <see cref="StorageFaultState.ShouldFailWrites"/>
+/// is set, faulting the real substrate's grain-state write so a scenario can prove
+/// the framework drops the dirty activation and a redelivery reloads clean durable
+/// state. Wraps the substrate's own provider (Postgres / Azure Blob) and forwards
+/// <see cref="ILifecycleParticipant{ISiloLifecycle}"/> so the inner provider still
+/// initialises during silo start. The fault switch is the
+/// <see cref="StorageFaultState"/> the owning fixture passes in: it is per-fixture
+/// instance state, so a scenario flips only its own fixture's storage and fixture
+/// shapes never race a shared toggle.
 /// </summary>
 public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
 {
     readonly IGrainStorage _inner;
+    readonly StorageFaultState _fault;
 
-    public ControllableGrainStorage(IGrainStorage inner)
+    public ControllableGrainStorage(IGrainStorage inner, StorageFaultState fault)
     {
         _inner = inner;
-    }
-
-    public static volatile bool ShouldFailWrites;
-    public static int FailedWrites;
-
-    public static void Reset()
-    {
-        ShouldFailWrites = false;
-        FailedWrites = 0;
+        _fault = fault;
     }
 
     public Task WriteStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
     {
-        if (ShouldFailWrites)
+        if (_fault.ShouldFailWrites)
         {
-            Interlocked.Increment(ref FailedWrites);
+            Interlocked.Increment(ref _fault.FailedWrites);
             throw new InvalidOperationException("Simulated grain-state write fault.");
         }
 
@@ -61,10 +56,11 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
 
     /// <summary>
     /// Wraps the <c>edict-state</c> grain-storage provider a fixture has already
-    /// registered with this controllable decorator, preserving the inner
-    /// provider's factory. Call after the substrate's persistence wiring.
+    /// registered with this controllable decorator, wired to the fixture's
+    /// <paramref name="fault"/> and preserving the inner provider's factory. Call
+    /// after the substrate's persistence wiring.
     /// </summary>
-    public static void Decorate(IServiceCollection services, string providerName = "edict-state")
+    public static void Decorate(IServiceCollection services, StorageFaultState fault, string providerName = "edict-state")
     {
         var original = services.Single(descriptor =>
             descriptor.ServiceType == typeof(IGrainStorage)
@@ -77,6 +73,6 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
 
         services.Remove(original);
         services.AddKeyedSingleton<IGrainStorage>(providerName, (serviceProvider, key) =>
-            new ControllableGrainStorage((IGrainStorage)innerFactory(serviceProvider, key)));
+            new ControllableGrainStorage((IGrainStorage)innerFactory(serviceProvider, key), fault));
     }
 }

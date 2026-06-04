@@ -1,6 +1,6 @@
 {
   "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
-  "_comment_purpose": "The streaming conformance battery binds on a real AQS stream (assembly-shared Azurite). It runs in one collection so the RedeliverAfterThrow scenario's process-wide ControllableGrainStorage toggle cannot race a peer test.",
+  "_comment_purpose": "The streaming conformance battery binds on a real AQS stream (assembly-shared Azurite). Collections run serially because the fixtures stand up Orleans clusters on a single host and the silo-gateway bring-up races under that contention; the RedeliverAfterThrow fault switch is now a per-fixture instance, so it is not a reason to serialise.",
   "parallelizeAssembly": true,
   "parallelizeTestCollections": false,
   "methodDisplay": "method"

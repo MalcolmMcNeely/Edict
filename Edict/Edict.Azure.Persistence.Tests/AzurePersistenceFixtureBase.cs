@@ -108,7 +108,9 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             ConfigureOptions,
             ReplacePublishExecutorWithControllable,
             DecorateGrainStorage,
-            ClaimCheckThresholdBytes);
+            ClaimCheckThresholdBytes,
+            OutboxFault,
+            StorageFault);
         _contextKey = AzurePersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -181,14 +183,7 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
             if (ctx.ReplacePublishExecutorWithControllable)
             {
-                // AddEdict registers PublishEventExecutor; appending the
-                // controllable one would make OutboxHost's ToDictionary on
-                // OutboxEffectKind throw on the duplicate key, so it is replaced.
-                var publish = siloBuilder.Services.Single(descriptor =>
-                    descriptor.ServiceType == typeof(IOutboxEffectExecutor)
-                    && descriptor.ImplementationType == typeof(PublishEventExecutor));
-                siloBuilder.Services.Remove(publish);
-                siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ControllableOutboxExecutor>();
+                ControllableOutboxExecutor.Replace(siloBuilder.Services, ctx.OutboxFault);
             }
 
             siloBuilder.UseInMemoryReminderService();
@@ -201,7 +196,7 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
             if (ctx.DecorateGrainStorage)
             {
-                ControllableGrainStorage.Decorate(siloBuilder.Services);
+                ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault);
             }
 
             // The dumb deliver-once reference stream: MemoryStreams delivers each

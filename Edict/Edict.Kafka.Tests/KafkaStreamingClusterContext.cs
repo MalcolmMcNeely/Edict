@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 
+using Edict.Tests.Conformance.Outbox;
 using Edict.Tests.Conformance.Streaming.References;
 
 namespace Edict.Kafka.Tests;
@@ -21,7 +22,8 @@ sealed record KafkaStreamingClusterContext(
     string BootstrapServers,
     string ConsumerGroup,
     ReferenceClaimCheckStore ClaimCheckStore,
-    ReferenceTableStoreFactory TableStoreFactory);
+    ReferenceTableStoreFactory TableStoreFactory,
+    StorageFaultState StorageFault);
 
 static class KafkaStreamingClusterContextRegistry
 {

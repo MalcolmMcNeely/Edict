@@ -23,8 +23,8 @@ public abstract class OutboxDrainOnActivationScenarios<TFixture>
     public async Task OnActivate_ShouldDrainPendingOutbox_AfterReactivation()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = true;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = true;
 
         await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
@@ -36,7 +36,7 @@ public abstract class OutboxDrainOnActivationScenarios<TFixture>
 
         // DeactivateOnIdle + delay alone is not reliable for activation-drain
         // coverage; the Reminder path exercises the same code deterministically.
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.ShouldFail = false;
         await probe.ForceDrainViaReminderAsync();
 
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 0);
@@ -47,8 +47,8 @@ public abstract class OutboxDrainOnActivationScenarios<TFixture>
     public async Task OnActivate_ShouldSkipDrain_WhenOutboxIsEmpty()
     {
         var counterId = Guid.NewGuid();
-        ControllableOutboxExecutor.Reset();
-        ControllableOutboxExecutor.ShouldFail = false;
+        _fixture.OutboxFault.Reset();
+        _fixture.OutboxFault.ShouldFail = false;
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 

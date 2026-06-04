@@ -1,6 +1,7 @@
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance.Outbox;
 
 using Orleans;
 
@@ -28,6 +29,22 @@ public abstract class PersistenceConformanceFixture : IAsyncLifetime
     public abstract IEdictSender Sender { get; }
 
     public abstract IGrainFactory GrainFactory { get; }
+
+    /// <summary>
+    /// The fault switch this fixture's silo wires into its
+    /// <see cref="ControllableOutboxExecutor"/> (when the fixture replaces the
+    /// publish executor). An outbox scenario flips it to stage a publish crash;
+    /// the instance is fixture-owned, so peer fixtures never see the flip.
+    /// </summary>
+    public OutboxFaultState OutboxFault { get; } = new();
+
+    /// <summary>
+    /// The fault switch this fixture's silo wires into its
+    /// <see cref="ControllableGrainStorage"/> (when the fixture decorates grain
+    /// storage). A write-fault scenario flips it to fault a grain-state write;
+    /// the instance is fixture-owned, so peer fixtures never see the flip.
+    /// </summary>
+    public StorageFaultState StorageFault { get; } = new();
 
     public abstract Task InitializeAsync();
 

@@ -1,4 +1,5 @@
 using Edict.Contracts.Sending;
+using Edict.Tests.Conformance.Outbox;
 
 using Orleans;
 
@@ -22,6 +23,15 @@ public abstract class StreamingConformanceFixture : IAsyncLifetime
     public abstract IEdictSender Sender { get; }
 
     public abstract IGrainFactory GrainFactory { get; }
+
+    /// <summary>
+    /// The fault switch this fixture's silo wires into the
+    /// <see cref="ControllableGrainStorage"/> over the reference grain storage.
+    /// The redeliver-after-throw scenario flips it to fault a consumer turn out
+    /// to the stream layer; the instance is fixture-owned, so peer tests in the
+    /// collection never see the flip.
+    /// </summary>
+    public StorageFaultState StorageFault { get; } = new();
 
     public abstract Task InitializeAsync();
 

@@ -61,7 +61,8 @@ public sealed class KafkaClaimCheckStreamingFixture : StreamingConformanceFixtur
             bootstrapServers,
             $"edict-kafka-claimcheck-streaming-{Guid.NewGuid():N}",
             _claimCheckStore,
-            new ReferenceTableStoreFactory());
+            new ReferenceTableStoreFactory(),
+            StorageFault);
         _contextKey = KafkaStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
