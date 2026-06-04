@@ -73,6 +73,25 @@ public sealed class PublishEventExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ShouldStampNullTraceIds_WhenNoCapturedTraceParentAndNoAmbientActivity()
+    {
+        var executor = BuildExecutor();
+        var stream = new CapturingStreamProvider();
+        // Captured traceparent is null — the command ran with no trace — and no
+        // ActivityListener is registered here, so the publish opens no activity.
+        var entry = PublishEntryWithoutTrace(new OrderPlacedEvent(OrderId, "SKU-1") { EventId = PayloadEventId });
+
+        await executor.ExecuteAsync(entry, stream, deferredDispatch: null, consumerType: null, liveWireEvent: null);
+
+        var published = Assert.Single(stream.Captured);
+        Assert.Null(published.TraceId);
+        Assert.Null(published.SpanId);
+        // Never a synthesised all-zero id, which a consumer's ActivityTraceId.CreateFromString rejects.
+        Assert.NotEqual(new string('0', 32), published.TraceId);
+        Assert.NotEqual(new string('0', 16), published.SpanId);
+    }
+
+    [Fact]
     public async Task ExecuteBatchAsync_ShouldPublishEachPayloadEventId()
     {
         var executor = BuildExecutor();
@@ -98,6 +117,14 @@ public sealed class PublishEventExecutorTests
         Kind = OutboxEffectKind.PublishEvent,
         Payload = Serializer.SerializeToArray<EdictEvent>(edictEvent),
         TraceParent = TraceParent,
+    };
+
+    static OutboxEntry PublishEntryWithoutTrace(OrderPlacedEvent edictEvent) => new()
+    {
+        EntryId = Guid.NewGuid(),
+        Kind = OutboxEffectKind.PublishEvent,
+        Payload = Serializer.SerializeToArray<EdictEvent>(edictEvent),
+        TraceParent = null,
     };
 
     static PublishEventExecutor BuildExecutor() =>
