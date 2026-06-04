@@ -1,9 +1,11 @@
-namespace Edict.Azure.Tests.Resilience;
+using Xunit;
 
-// "Restart" is modelled as docker pause rather than stop+start: a true
-// restart re-binds Azurite to a new ephemeral port, invalidating the silo's
-// already-configured Azure clients (a host-side wiring failure unrelated to
-// what the test proves).
+namespace Edict.Azure.Streaming.Tests.Resilience;
+
+// "Restart" is modelled as docker pause rather than stop+start: a true restart
+// re-binds Azurite to a new ephemeral port, invalidating the silo's already-
+// configured Azure queue client (a host-side wiring failure unrelated to what the
+// test proves).
 [Collection(ResilienceCollection.Name)]
 public sealed class AzuriteRestartedMidSagaTests(ResilienceClusterFixture fixture)
 {
@@ -26,8 +28,8 @@ public sealed class AzuriteRestartedMidSagaTests(ResilienceClusterFixture fixtur
 
         await publisher.PublishSagaTriggerAsync(trigger);
 
-        // Span at least one queue visibility timeout (fixture: 5s) so any
-        // in-flight delivery requires redelivery after resume.
+        // Span at least one queue visibility timeout (fixture: 5s) so any in-flight
+        // delivery requires redelivery after resume.
         await fixture.PauseAzuriteAsync();
         await Task.Delay(TimeSpan.FromSeconds(7));
         await fixture.UnpauseAzuriteAsync();

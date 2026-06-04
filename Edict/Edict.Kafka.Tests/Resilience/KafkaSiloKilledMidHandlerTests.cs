@@ -1,20 +1,13 @@
-using Edict.Postgres.TableStorage;
-
-using Microsoft.Extensions.DependencyInjection;
-
-using Orleans.Serialization;
-
 namespace Edict.Kafka.Tests.Resilience;
 
-// KillSiloAsync (not StopSiloAsync) is used because graceful stop would wait
-// for the in-flight handler to complete, defeating the "mid-Handle" semantic.
-// After the kill, RestartSiloAsync brings up a fresh silo on the same
-// address; the new Edict.Kafka receiver re-Assigns its partition and reads
-// from the consumer-group's last committed offset — which is the offset
-// BEFORE the in-flight event, because MessagesDeliveredAsync never ran. The
-// EdictTableProjectionBuilder's atomic ring + UpsertRow commit guarantees
-// the row settles at Count = 1 even though Handle entered the projection
-// grain twice.
+// KillSiloAsync (not StopSiloAsync) is used because graceful stop would wait for
+// the in-flight handler to complete, defeating the "mid-Handle" semantic. After
+// the kill, RestartSiloAsync brings up a fresh silo on the same address; the new
+// Edict.Kafka receiver re-Assigns its partition and reads from the consumer
+// group's last committed offset — which is the offset BEFORE the in-flight event,
+// because MessagesDeliveredAsync never ran. The EdictTableProjectionBuilder's
+// atomic ring + UpsertRow commit guarantees the reference-store row settles at
+// Count = 1 even though Handle entered the projection grain twice.
 [Collection(KafkaSiloKillCollection.Name)]
 public sealed class KafkaSiloKilledMidHandlerTests(KafkaSiloKillClusterFixture fixture)
 {
@@ -41,13 +34,7 @@ public sealed class KafkaSiloKilledMidHandlerTests(KafkaSiloKillClusterFixture f
         await fixture.Cluster.KillSiloAsync(hostingSilo);
         await fixture.Cluster.RestartSiloAsync(hostingSilo);
 
-        var serializer = fixture.Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
-        var repository = new PostgresTableRepository<KafkaSiloKillTableRow>(
-            fixture.PostgresDataSource,
-            KafkaSiloKillProjectionBuilder.Table,
-            serializer);
-
-        var row = await WaitForRowAsync(repository, aggregateId);
+        var row = await WaitForRowAsync(aggregateId, expectedCount: 1);
 
         Assert.NotNull(row);
         Assert.Equal(1, row!.Count);
@@ -67,22 +54,20 @@ public sealed class KafkaSiloKilledMidHandlerTests(KafkaSiloKillClusterFixture f
             $"No SiloHandle in the cluster matches address {address}.");
     }
 
-    static async Task<KafkaSiloKillTableRow?> WaitForRowAsync(
-        PostgresTableRepository<KafkaSiloKillTableRow> repository,
-        Guid aggregateId)
+    async Task<KafkaSiloKillTableRow?> WaitForRowAsync(Guid aggregateId, int expectedCount)
     {
-        var pk = aggregateId.ToString();
-        var rk = aggregateId.ToString();
         var deadline = DateTimeOffset.UtcNow.AddMinutes(2);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var row = await repository.GetAsync(pk, rk);
-            if (row is not null && row.Count > 0)
+            var row = await fixture.GetProjectionRowAsync<KafkaSiloKillTableRow>(
+                KafkaSiloKillProjectionBuilder.Table, aggregateId);
+            if (row is not null && row.Count >= expectedCount)
             {
                 return row;
             }
             await Task.Delay(TimeSpan.FromMilliseconds(250));
         }
-        return await repository.GetAsync(pk, rk);
+        return await fixture.GetProjectionRowAsync<KafkaSiloKillTableRow>(
+            KafkaSiloKillProjectionBuilder.Table, aggregateId);
     }
 }

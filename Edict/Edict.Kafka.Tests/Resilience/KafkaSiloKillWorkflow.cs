@@ -9,11 +9,11 @@ using Orleans.Runtime;
 
 namespace Edict.Kafka.Tests.Resilience;
 
-// Dedicated event types for the Kafka silo-kill suite. The dead-letter and
-// projection rows live in Postgres (via AddEdictPostgresPersistence) so a
-// silo restart can prove redelivery + the EdictTableProjectionBuilder atomic
-// ring-equals-row commit holds the projection row at the same count even
-// when the handler is invoked twice end-to-end.
+// Dedicated event types for the Kafka silo-kill suite. The projection rows land
+// in the in-memory reference table store (the streaming binding fakes the
+// persistence axis) so a silo restart can prove redelivery + the
+// EdictTableProjectionBuilder atomic ring-equals-row commit holds the projection
+// row at the same count even when the handler is invoked twice end-to-end.
 //
 // Single-event stream for mid-handler crash; multi-event stream for
 // mid-batch crash. They share the projection state shape but ride different

@@ -31,6 +31,7 @@
     <Project Path="Edict.Postgres.Persistence.Tests/Edict.Postgres.Persistence.Tests.csproj" />
     <Project Path="Edict.Kafka.Tests/Edict.Kafka.Tests.csproj" />
     <Project Path="Edict.Tests.Conformance/Edict.Tests.Conformance.csproj" />
+    <Project Path="Edict.Pairing.Tests/Edict.Pairing.Tests.csproj" />
     <Project Path="Edict.Generators.Tests/Edict.Generators.Tests.csproj" />
     <Project Path="Edict.Analyzers.Tests/Edict.Analyzers.Tests.csproj" />
     <Project Path="Edict.Testing.Tests/Edict.Testing.Tests.csproj" />

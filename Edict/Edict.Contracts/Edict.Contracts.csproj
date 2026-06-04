@@ -36,6 +36,7 @@
         <InternalsVisibleTo Include="Edict.Postgres.Persistence.Tests" />
         <InternalsVisibleTo Include="Edict.Kafka.Tests" />
         <InternalsVisibleTo Include="Edict.Tests.Conformance" />
+        <InternalsVisibleTo Include="Edict.Pairing.Tests" />
         <InternalsVisibleTo Include="Edict.Telemetry.Tests" />
     </ItemGroup>
 

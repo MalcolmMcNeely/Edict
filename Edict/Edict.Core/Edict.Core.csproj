@@ -33,6 +33,7 @@
              ControllableOutboxExecutor so every provider's outbox conformance
              binding drives the real publish executor under test. -->
         <InternalsVisibleTo Include="Edict.Tests.Conformance" />
+        <InternalsVisibleTo Include="Edict.Pairing.Tests" />
         <!-- Shipped in-memory Test Framework wraps the bare Outbox engine
              (decorating the internal PublishEventExecutor) so consumer code
              runs the real engine under test. -->

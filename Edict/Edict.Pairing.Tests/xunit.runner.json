@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "_comment_purpose": "Bucket-4 pairing smoke stands up both real backends per shipped pairing. Collections run serially so the process-wide ControllableGrainStorage toggle the write-fault conjunction flips cannot race across pairings.",
+  "parallelizeAssembly": true,
+  "parallelizeTestCollections": false,
+  "methodDisplay": "method"
+}

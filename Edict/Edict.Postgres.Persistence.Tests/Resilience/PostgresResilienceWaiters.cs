@@ -1,4 +1,4 @@
-namespace Edict.Postgres.Tests.Resilience;
+namespace Edict.Postgres.Persistence.Tests.Resilience;
 
 static class PostgresResilienceWaiters
 {

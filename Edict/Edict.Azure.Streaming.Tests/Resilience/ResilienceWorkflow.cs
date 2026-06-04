@@ -11,13 +11,15 @@ using Orleans;
 using Orleans.Runtime;
 using Orleans.Streams;
 
-namespace Edict.Azure.Tests.Resilience;
+namespace Edict.Azure.Streaming.Tests.Resilience;
 
-// Dedicated event/saga types for the transport-fault suite. The resilience
-// cluster has its own Azurite container so it can be paused/restarted without
-// affecting other collections; these types route on their own stream so a
-// failure here does not contaminate the standard saga proof against the
-// assembly-shared Azurite.
+// Dedicated event/saga types for the Azure streaming-axis transport-fault suite.
+// The resilience cluster owns its Azurite container so it can be paused/restarted
+// without affecting other collections; these types route on their own streams so
+// a failure here does not contaminate the standard streaming proofs against the
+// assembly-shared Azurite. Persistence is the dumb reference (memory grain
+// storage + the in-memory reference table store) — the broker is the fault point
+// and the only axis asserted.
 [EdictStream("ResilienceEvents")]
 public sealed partial record ResilienceTestEvent(Guid AggregateId, int Sequence) : EdictEvent
 {
@@ -41,7 +43,7 @@ public sealed partial record ResilienceSagaTrackerCommand(Guid WorkflowId) : Edi
 }
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Resilience.ResilienceWorkflowProgress")]
+[Alias("Edict.Azure.Streaming.Tests.Resilience.ResilienceWorkflowProgress")]
 public sealed class ResilienceWorkflowProgress : IEdictPersistedState
 {
     [Id(0)]
@@ -49,7 +51,7 @@ public sealed class ResilienceWorkflowProgress : IEdictPersistedState
 }
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Resilience.ResilienceTrackerState")]
+[Alias("Edict.Azure.Streaming.Tests.Resilience.ResilienceTrackerState")]
 public sealed class ResilienceTrackerState : IEdictPersistedState
 {
     [Id(0)]
@@ -134,11 +136,11 @@ public sealed class ResilienceTestConsumer : EdictIdempotencyBase, IResilienceTe
 
     protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
-        if (edictEvent is not ResilienceTestEvent rEvt)
+        if (edictEvent is not ResilienceTestEvent resilienceEvent)
         {
             return Task.FromResult(EdictDispatchOutcome.NotHandled);
         }
-        _handledEventIds.Add(rEvt.EventId);
+        _handledEventIds.Add(resilienceEvent.EventId);
         return Task.FromResult(EdictDispatchOutcome.HandledWithNoEffect);
     }
 
@@ -149,8 +151,9 @@ public sealed class ResilienceTestConsumer : EdictIdempotencyBase, IResilienceTe
 // A slow projection whose first Handle invocation blocks long enough for the
 // test to KillSiloAsync the hosting silo mid-flight. The grain captures the
 // hosting silo's address into SiloKillCoordinator so the test can target the
-// kill at the silo that actually owns the activation. After redelivery the
-// projection row is written exactly once.
+// kill at the silo that actually owns the activation. The kill lands before the
+// atomic ring + UpsertRow commit, so the first turn writes nothing; after
+// redelivery the projection row is written exactly once into the reference store.
 [EdictStream("SiloKillProjection")]
 public sealed partial record SiloKillProjectionEvent(Guid AggregateId) : EdictEvent
 {
@@ -159,7 +162,7 @@ public sealed partial record SiloKillProjectionEvent(Guid AggregateId) : EdictEv
 }
 
 [GenerateSerializer]
-[Alias("Edict.Azure.Tests.Resilience.SiloKillTableRow")]
+[Alias("Edict.Azure.Streaming.Tests.Resilience.SiloKillTableRow")]
 public sealed class SiloKillTableRow : IEdictPersistedState
 {
     [Id(0)]
@@ -209,10 +212,10 @@ public sealed partial class SiloKillProjectionBuilder : EdictTableProjectionBuil
         {
             // First delivery: announce the hosting silo and block long enough
             // for the test to KillSiloAsync this silo before Handle returns.
-            // The kill tears down the activation so the upsert effect is
-            // never staged and the dedup ring never commits — the queue
-            // message returns to "visible" after the fixture's 5s visibility
-            // timeout and a surviving silo picks it up.
+            // The kill tears down the activation so the upsert effect is never
+            // staged and the dedup ring never commits — the queue message
+            // returns to "visible" after the fixture's 5s visibility timeout and
+            // a surviving silo picks it up.
             SiloKillCoordinator.HandlerEntered.TrySetResult(_siloDetails.SiloAddress);
             await Task.Delay(TimeSpan.FromSeconds(20));
         }

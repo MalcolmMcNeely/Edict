@@ -16,6 +16,7 @@
         <InternalsVisibleTo Include="Edict.Substrate.KafkaPostgres" />
         <InternalsVisibleTo Include="Edict.Testing" />
         <InternalsVisibleTo Include="Edict.Tests.Conformance" />
+        <InternalsVisibleTo Include="Edict.Pairing.Tests" />
     </ItemGroup>
 
     <ItemGroup>

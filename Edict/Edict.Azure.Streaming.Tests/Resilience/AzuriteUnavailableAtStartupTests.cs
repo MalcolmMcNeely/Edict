@@ -1,4 +1,6 @@
-namespace Edict.Azure.Tests.Resilience;
+using Xunit;
+
+namespace Edict.Azure.Streaming.Tests.Resilience;
 
 [Collection(ResilienceCollection.Name)]
 public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fixture)
@@ -18,13 +20,13 @@ public sealed class AzuriteUnavailableAtStartupTests(ResilienceClusterFixture fi
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
-        // Pausing before the first substrate-touching operation makes the
-        // silo's grain activation and stream publish both observe a downed
-        // substrate the moment they reach for it.
+        // Pausing before the first substrate-touching operation makes the silo's
+        // grain activation and stream publish both observe a downed broker the
+        // moment they reach for it.
         await fixture.PauseAzuriteAsync();
 
-        // Detached task so the test can unpause while PublishAsync is stuck
-        // inside the grain's Azure Queue write.
+        // Detached task so the test can unpause while PublishAsync is stuck inside
+        // the grain's Azure Queue write.
         var publishTask = Task.Run(() => publisher.PublishEventAsync(edictEvent));
 
         await Task.Delay(TimeSpan.FromSeconds(2));

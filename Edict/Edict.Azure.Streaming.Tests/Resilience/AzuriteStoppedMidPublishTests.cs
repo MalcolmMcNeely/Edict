@@ -1,4 +1,6 @@
-namespace Edict.Azure.Tests.Resilience;
+using Xunit;
+
+namespace Edict.Azure.Streaming.Tests.Resilience;
 
 [Collection(ResilienceCollection.Name)]
 public sealed class AzuriteStoppedMidPublishTests(ResilienceClusterFixture fixture)

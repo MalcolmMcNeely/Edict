@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" />
+        <PackageReference Include="Microsoft.Orleans.TestingHost" />
+        <PackageReference Include="Testcontainers.Kafka" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Edict.Azure.Streaming\Edict.Azure.Streaming.csproj" />
+        <ProjectReference Include="..\Edict.Azure.Persistence\Edict.Azure.Persistence.csproj" />
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+        <ProjectReference Include="..\Edict.Core\Edict.Core.csproj" />
+        <ProjectReference Include="..\Edict.Kafka\Edict.Kafka.csproj" />
+        <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
+        <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
+        <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />
+        <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>
