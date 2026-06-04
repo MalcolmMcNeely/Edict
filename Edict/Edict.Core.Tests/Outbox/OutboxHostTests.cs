@@ -176,6 +176,24 @@ public sealed class OutboxHostTests
         Assert.NotEqual(ids[0], ids[1]);
     }
 
+    [Fact]
+    public async Task WriteStateOnlyAsync_ShouldWriteOnce_WithoutEnqueueOrDrain()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new RecordingExecutor();
+        var host = BuildHost(state, log, executor);
+
+        // A completing handler that raised no event mutates nothing on the
+        // Outbox; the state-only commit must persist { Payload, Outbox } and stop
+        // there — no entry staged, nothing drained to an executor.
+        await host.WriteStateOnlyAsync();
+
+        Assert.Equal(1, log.Entries.Count(e => e.Method == "WriteStateAsync"));
+        Assert.Empty(executor.Invocations);
+        Assert.Empty(host.State.Outbox.Pending);
+    }
+
     static OutboxHost<EdictUnit> BuildHost(
         CountingPersistentState<GrainEnvelope<EdictUnit>> state,
         CallLog log,

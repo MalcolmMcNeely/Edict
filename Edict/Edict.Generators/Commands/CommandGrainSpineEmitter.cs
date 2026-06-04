@@ -31,30 +31,14 @@ internal static class CommandGrainSpineEmitter
 
                 public partial class {{grain.GrainName}} : {{interfaceName}}
                 {
-                    public override async {{EdictWellKnownNames.TaskOfEdictCommandResultFqn}} DispatchAsync(
-                        global::Edict.Contracts.Commands.EdictCommand command)
-                    {
-                        global::Edict.Contracts.Commands.EdictCommandResult result;
-                        try
+                    public override {{EdictWellKnownNames.TaskOfEdictCommandResultFqn}} DispatchAsync(
+                        global::Edict.Contracts.Commands.EdictCommand command) =>
+                        command switch
                         {
-                            result = await (command switch
-                            {
             {{arms.ToString().TrimEnd('\n')}}
-                                _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
-                                    command.GetType()),
-                            });
-                        }
-                        catch
-                        {
-                            this.DiscardRaisedEvents();
-                            throw;
-                        }
-                        if (result is global::Edict.Contracts.Commands.EdictCommandResult.Accepted)
-                            await this.CommitAndDrainRaisedEventsAsync();
-                        else
-                            this.DiscardRaisedEvents();
-                        return result;
-                    }
+                            _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
+                                command.GetType()),
+                        };
                 }
             }
 

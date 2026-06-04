@@ -178,6 +178,14 @@ sealed class OutboxHost<TPayload>
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// State-only commit: persists <c>{ Payload, Outbox }</c> with no enqueue and
+    /// no drain. The completing-handler path takes this when no event was raised,
+    /// so a consumer's <c>State</c> mutation is durable even when the Outbox stays
+    /// empty.
+    /// </summary>
+    public Task WriteStateOnlyAsync() => WriteStateAndReportAsync();
+
     async Task WriteStateAndReportAsync()
     {
         try

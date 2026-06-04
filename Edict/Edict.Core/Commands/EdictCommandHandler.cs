@@ -100,8 +100,10 @@ public abstract class EdictCommandHandler<TState>
         Host.ReceiveReminderAsync();
 
     /// <summary>
-    /// Buffers an event to be staged onto the Outbox after the current command
-    /// returns <c>Accepted</c>. Discarded on <c>Rejected</c> or handler throw.
+    /// Buffers an event to be staged onto the Outbox when the current command
+    /// completes — published on both <c>Accepted</c> and <c>Rejected</c>, since a
+    /// <see cref="Raise"/> call is the consumer's explicit intent to publish.
+    /// Discarded only when the handler throws.
     /// Stamped with <c>OccurredAt</c> at this call (via the framework's
     /// <see cref="TimeProvider"/>) so the timestamp reflects the moment the
     /// consumer's handler decided to publish and is preserved across any
@@ -131,11 +133,15 @@ public abstract class EdictCommandHandler<TState>
     }
 
     /// <summary>
-    /// Stages buffered events as <see cref="OutboxEffectKind.PublishEvent"/>
-    /// entries, commits <c>{ State, Outbox }</c> in one write, then awaits the
-    /// inline FIFO drain. Called by the generated <c>Dispatch</c> after
-    /// <c>HandleAsync</c> returns <c>Accepted</c>. A post-commit publish failure does
-    /// not roll back and does not surface — the Reminder retries.
+    /// The shared commit primitive for a completing handler. When events were
+    /// raised, stages them as <see cref="OutboxEffectKind.PublishEvent"/> entries,
+    /// commits <c>{ State, Outbox }</c> in one write, then awaits the inline FIFO
+    /// drain. When none were raised, commits <c>{ State, Outbox }</c> alone (no
+    /// enqueue, no drain) so a handler that mutated <c>State</c> and raised nothing
+    /// keeps the mutation across deactivation. Both the dispatch lifecycle and the
+    /// grain-timer escape hatch (<c>RegisterGrainTimer</c> callbacks) route through
+    /// here. A post-commit publish failure does not roll back and does not surface
+    /// — the Reminder retries.
     /// </summary>
     protected async Task CommitAndDrainRaisedEventsAsync()
     {
@@ -144,6 +150,7 @@ public abstract class EdictCommandHandler<TState>
 
         if (events is null || events.Count == 0)
         {
+            await Host.WriteStateOnlyAsync();
             return;
         }
 
@@ -157,15 +164,23 @@ public abstract class EdictCommandHandler<TState>
         await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState);
     }
 
-    /// <summary>Discards all buffered events. Called on <c>Rejected</c> or handler throw.</summary>
+    /// <summary>Discards all buffered events. Called when the handler throws.</summary>
     protected void DiscardRaisedEvents() => _raisedEvents = null;
 
     /// <summary>
-    /// Resolves <see cref="IValidator{TCommand}"/> from grain DI, runs it with
-    /// the current grain state in <c>ValidationContext.RootContextData</c>, and
-    /// short-circuits to <see cref="EdictCommandResult.Rejected"/> on failure.
-    /// Returns the result of <paramref name="handle"/> when validation passes or
-    /// no validator is registered. Called from the generated <c>Dispatch</c>.
+    /// Owns the command lifecycle the generated dispatch spine delegates to per
+    /// arm: validate, then handle, then commit. A Command Validator rejection
+    /// short-circuits before <paramref name="handle"/> runs and writes nothing —
+    /// the handler never executed, so there is no <c>State</c> mutation or event to
+    /// commit. Otherwise the handler runs and its <c>State</c> persists on
+    /// completion, on both <see cref="EdictCommandResult.Accepted"/> and
+    /// <see cref="EdictCommandResult.Rejected"/> and independent of whether an
+    /// event was raised; raised events publish whenever <see cref="Raise"/> was
+    /// called, regardless of the result. A handler throw discards the turn: the
+    /// buffered events are dropped and the partial <c>State</c> mutation is rolled
+    /// back by reloading the last durable snapshot within the same turn (no write
+    /// was attempted, so that snapshot is known-good), then the exception
+    /// propagates.
     /// </summary>
     protected async Task<EdictCommandResult> ValidateAndHandleAsync<TCommand>(
         TCommand command,
@@ -175,30 +190,44 @@ public abstract class EdictCommandHandler<TState>
         var grainTypeName = GetType().FullName ?? GetType().Name;
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
-        if (validator is null)
+        if (validator is not null)
         {
-            return await CommandHandleMetrics.RunAndRecordAsync<TCommand>(handle, grainTypeName);
+            var context = new ValidationContext<TCommand>(command);
+            var state = GetValidationState();
+            if (state is not null)
+            {
+                context.RootContextData[SemanticConventions.Validation.GrainStateKey] = state;
+            }
+
+            var validation = await validator.ValidateAsync(context);
+            if (!validation.IsValid)
+            {
+                return new EdictCommandResult.Rejected(
+                    validation.Errors
+                        .Select(static e => new EdictRejectionReason(
+                            e.ErrorCode ?? "validation_error",
+                            e.ErrorMessage))
+                        .ToArray());
+            }
         }
 
-        var context = new ValidationContext<TCommand>(command);
-        var state = GetValidationState();
-        if (state is not null)
+        EdictCommandResult result;
+        try
         {
-            context.RootContextData[SemanticConventions.Validation.GrainStateKey] = state;
+            result = await CommandHandleMetrics.RunAndRecordAsync<TCommand>(handle, grainTypeName);
+        }
+        catch
+        {
+            // Roll the partial mutation back to the last durable snapshot so a
+            // dirty activation never serves the next command; the buffered events
+            // are dropped with it. No write was attempted, so the snapshot is good.
+            DiscardRaisedEvents();
+            await ReadStateAsync();
+            throw;
         }
 
-        var result = await validator.ValidateAsync(context);
-        if (!result.IsValid)
-        {
-            return new EdictCommandResult.Rejected(
-                result.Errors
-                    .Select(static e => new EdictRejectionReason(
-                        e.ErrorCode ?? "validation_error",
-                        e.ErrorMessage))
-                    .ToArray());
-        }
-
-        return await CommandHandleMetrics.RunAndRecordAsync<TCommand>(handle, grainTypeName);
+        await CommitAndDrainRaisedEventsAsync();
+        return result;
     }
 
     /// <summary>

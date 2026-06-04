@@ -5,8 +5,11 @@ using Xunit;
 namespace Edict.Tests.Conformance.Streaming;
 
 /// <summary>
-/// Streaming-axis conformance for the publish-buffer drop on rejection: a
-/// Rejected command discards its buffered events; nothing reaches the stream.
+/// Streaming-axis conformance for a Rejected command that raises nothing: a
+/// handler can reject without publishing, so a rejection that raised no event
+/// puts nothing on the stream. (A rejection that <em>does</em> raise publishes
+/// the event — raising is the consumer's explicit intent, independent of the
+/// result.)
 /// </summary>
 public abstract class RejectedCommandPublishesNoEventScenarios<TFixture>
     where TFixture : StreamingConformanceFixture
