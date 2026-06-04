@@ -22,16 +22,16 @@ An attribute placed on a primitive property of a `Command`/`Event` subclass that
 _Avoid_: runtime reflection; auto-tagging properties that are not annotated; type-prefixing the tag key; tagging the `edict.event.deduplicated` span (forensic-only, no query story).
 
 **Command Handler**:
-The Guid-keyed aggregate grain that accepts Commands, performs the state change, and may raise Events, with framework-owned durable aggregate state.
-_Avoid_: holding aggregate state in plain grain fields; a non-generic stateless `EdictCommandHandler` as the consumer base.
+The Guid-keyed aggregate grain that accepts Commands, performs the state change, and may raise Events, with framework-owned durable aggregate state committed whenever a handler completes — independent of whether it raised an Event.
+_Avoid_: holding aggregate state in plain grain fields; a non-generic stateless `EdictCommandHandler` as the consumer base; assuming `State` persists only when an Event is raised (it persists on every completing `HandleAsync`, including one that returns `Rejected`); mutating `State` on a path that throws (the partial mutation is discarded and the activation dropped).
 
 **RouteKey**:
 The `[RouteKey]` attribute marking the single `Guid` property that addresses a message — on a Command it selects the aggregate grain, on an Event it selects the stream key.
 _Avoid_: `[Key]` (collides with `System.ComponentModel.DataAnnotations`); non-Guid keys; more than one per message; assuming the event key equals the command key.
 
 **Command Result**:
-The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with reasons), carrying no domain data.
-_Avoid_: returning domain payloads through a command; throwing for expected rejection.
+The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with reasons), carrying no domain data; it is the caller's answer only and does not gate persistence — a completing handler's `State` mutations and raised Events commit on both outcomes.
+_Avoid_: returning domain payloads through a command; throwing for expected rejection; treating `Rejected` as a rollback (it is not — what the handler did is still committed, only a throw discards).
 
 **Command Validator**:
 A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `HandleAsync`, answering whether the Command is admissible against current aggregate state. Authored as `{Name}CommandValidator : EdictCommandValidator<TCommand>` — an Edict-owned thin base over `FluentValidation.AbstractValidator<TCommand>`. Discovered automatically by `AddEdict()` from the same assemblies it scans for handlers; no manual DI registration.
