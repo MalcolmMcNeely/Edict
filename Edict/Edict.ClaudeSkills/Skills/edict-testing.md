@@ -23,6 +23,8 @@ await Verify(app.Timeline);
 
 The `Timeline` is the deterministic Verify-shaped view of every Command sent, Event raised, and consumer Invocation observed. Volatile envelope fields (ids, timestamps, W3C trace context) are scrubbed; the snapshot is the wire-format drift guard.
 
+A **state-only Command** — one that mutates the aggregate's `State` and raises no Event — has no Event on the `Timeline` of its own. Assert it through its *downstream* effect, not its private grain `State`: send the accumulating Commands, then send the Command that reads the accumulated state and raises an Event, and `Verify` that the Timeline shows the state-only Commands with no following Event plus the later Event whose payload was derived from what they accumulated. Reach a projection it drives with `GetProjectionRow`. Do not add a probe to read the grain's `State` directly — the observable surfaces are the contract.
+
 ## The EdictTestApp surface
 
 - **`EdictTestApp.StartAsync(configure)`** — boots the in-memory cluster. The `configure` callback uses `EdictTestAppBuilder`.

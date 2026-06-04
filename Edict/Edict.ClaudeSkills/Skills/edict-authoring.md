@@ -27,6 +27,29 @@ Before you write the new class, call **`edict_list_handlers`** to see every exis
 
 These two MCP tools are the load-bearing trigger for this skill: invoke `edict_list_handlers` and `edict_list_route_keys` when adding a feature, before suggesting code.
 
+## Authoring a Command Handler
+
+Derive from `EdictCommandHandler<TState>` in `Edict.Core.Commands` and write one `Task<EdictCommandResult> HandleAsync(TCommand command)` per handled Command. Mutate the durable `State` directly, return `Accepted` or `Rejected`, and `Raise` an Event when something the rest of the system cares about happened.
+
+**`State` persists whenever `HandleAsync` completes** — on both `Accepted` and `Rejected`, and independent of whether you raised an Event. You do not opt in to persistence and there is no `Save()`/`MarkChanged()` call: a completing handler's `State` is committed, full stop. This makes the accumulate-now-act-later pattern a first-class move — an `AddItemToCart` that mutates `State` and raises nothing builds up the basket durably, and a later `CheckoutCart` reads that accumulated state and raises the one Event that carries it. The `EdictCommandResult` is the caller's answer only; it gates nothing, and raised Events publish on the strength of `Raise` having been called, not on the result.
+
+**Never mutate `State` on a path that then throws.** A throw is the framework's only discard signal: it rolls the partial `State` mutation back to the last durable snapshot, drops any buffered Events, and dead-letters. So a handler that mutates a few fields and then throws loses *all* of that turn's mutation, not just the part after the throw. If a condition should reject, return `Rejected` — do not throw to "cancel" a mutation, and do not leave `State` half-written on a path that can throw downstream. Validate-then-mutate, never mutate-then-maybe-throw.
+
+```csharp
+public Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
+{
+    if (State.Skus.Count == 0)
+    {
+        // Reject — do NOT throw — to decline without committing anything this turn.
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+            [new EdictRejectionReason("cart_empty", "Cart has no items.")]));
+    }
+
+    Raise(new CartCheckedOutEvent(command.CartId, State.Skus.Count, State.Skus.ToArray()));
+    return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+}
+```
+
 ## Authoring a Command Validator
 
 Derive from `EdictCommandValidator<TCommand>` in `Edict.Core.Commands`. The base is a thin shim over FluentValidation's `AbstractValidator<TCommand>` — the rule DSL is unchanged. Author rules with `RuleFor(c => c.Property)`, gate them with `When(...)`, and attach a stable identifier with `WithErrorCode("snake_case_code")`. The framework copies each `ValidationFailure.ErrorCode` onto the resulting `EdictRejectionReason.Code` and ships the failure list back as `EdictCommandResult.Rejected` — failures are never thrown.
