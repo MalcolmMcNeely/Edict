@@ -329,6 +329,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Sagas.IEdictSaga",
         "Edict.Core.Sagas.SagaLifecycle", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Sagas.SagaLifecycleState", // ADR 0045: persisted-state slot enum on GrainEnvelope<TPayload> — permanent resident.
+        "Edict.Core.Schedules.EdictUnroutableScheduleMessageException",
         "Edict.Core.Schedules.ScheduleEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",

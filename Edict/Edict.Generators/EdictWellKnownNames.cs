@@ -25,6 +25,10 @@ internal static class EdictWellKnownNames
     public const string EdictStreamAttributeFqn =
         "global::Edict.Contracts.Events.EdictStreamAttribute";
 
+    // ── Edict.Contracts.Schedules ────────────────────────────────────────────
+    public const string EdictScheduleMessageFqn =
+        "global::Edict.Contracts.Schedules.EdictScheduleMessage";
+
     // ── Edict.Contracts.Telemetry ────────────────────────────────────────────
     public const string EdictTelemeterizedAttributeFqn =
         "global::Edict.Contracts.Telemetry.EdictTelemeterizedAttribute";
@@ -122,6 +126,9 @@ internal static class EdictWellKnownNames
 
     public const string TaskOfEdictDispatchOutcomeFqn =
         "global::System.Threading.Tasks.Task<global::Edict.Core.Idempotency.EdictDispatchOutcome>";
+
+    public const string TaskOfEdictScheduleResultFqn =
+        "global::System.Threading.Tasks.Task<global::Edict.Contracts.Schedules.EdictScheduleResult>";
 
     public const string EdictDispatchOutcomeNotHandledFqn =
         "global::Edict.Core.Idempotency.EdictDispatchOutcome.NotHandled";

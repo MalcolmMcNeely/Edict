@@ -61,6 +61,23 @@ public sealed class EdictGenerator : IIncrementalGenerator
             spc.AddSource($"{command.Namespace}.{command.SimpleName}.Alias.g.cs",
                 SourceText.From(SharedAliasEmitter.Emit(command.Namespace, command.SimpleName), Encoding.UTF8)));
 
+        // Schedule messages ─────────────────────────────────────────────────────
+        // A schedule persists its message and deserialises it by type identity on
+        // each fire, so the message rides the same [Alias] + MessagePack emission
+        // as a command, keeping the persisted shape rename-stable.
+        var scheduleMessageRecords = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                static (node, _) => node is RecordDeclarationSyntax { BaseList: not null } candidate
+                    && candidate.Modifiers.Any(static m => m.ValueText == "partial")
+                    && !candidate.Modifiers.Any(static m => m.ValueText == "abstract"),
+                static (ctx, _) => CommandDiscovery.MapScheduleMessageRecord((RecordDeclarationSyntax)ctx.Node, ctx.SemanticModel))
+            .Where(static model => model is not null)
+            .Select(static (model, _) => model!);
+
+        context.RegisterSourceOutput(scheduleMessageRecords, static (spc, message) =>
+            spc.AddSource($"{message.Namespace}.{message.SimpleName}.Alias.g.cs",
+                SourceText.From(SharedAliasEmitter.Emit(message.Namespace, message.SimpleName), Encoding.UTF8)));
+
         context.RegisterSourceOutput(commandHandlers.Collect(), static (spc, allGrains) =>
         {
             if (allGrains.Length == 0)

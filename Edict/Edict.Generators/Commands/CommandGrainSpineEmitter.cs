@@ -39,8 +39,43 @@ internal static class CommandGrainSpineEmitter
                             _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
                                 command.GetType()),
                         };
-                }
+            {{EmitScheduleDispatch(grain)}}    }
             }
+
+            """;
+    }
+
+    // Emits the schedule fire-dispatch type-switch — the parallel of DispatchAsync
+    // for the consumer's HandleAsync(TMessage) : Task<EdictScheduleResult> arms —
+    // only when the grain registers at least one schedule. An un-annotated grain
+    // emits nothing here, inheriting the throwing base default it can never reach.
+    static string EmitScheduleDispatch(CommandHandlerGrainModel grain)
+    {
+        if (grain.ScheduleMessages.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var arms = new StringBuilder();
+        foreach (var message in grain.ScheduleMessages)
+        {
+            arms.Append("                ")
+                .Append(message.Fqn)
+                .Append(" m => this.")
+                .Append(EdictWellKnownNames.HandleMethodName)
+                .Append("(m),\n");
+        }
+
+        return $$"""
+
+                    protected override {{EdictWellKnownNames.TaskOfEdictScheduleResultFqn}} DispatchScheduleFireAsync(
+                        global::Edict.Contracts.Schedules.EdictScheduleMessage message) =>
+                        message switch
+                        {
+            {{arms.ToString().TrimEnd('\n')}}
+                            _ => throw new global::Edict.Core.Schedules.EdictUnroutableScheduleMessageException(
+                                message.GetType()),
+                        };
 
             """;
     }

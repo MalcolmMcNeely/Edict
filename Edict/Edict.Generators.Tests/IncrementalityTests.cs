@@ -47,6 +47,12 @@ public class IncrementalityTests
         GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(SagaSource);
     }
 
+    [Fact]
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForSchedules()
+    {
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(ScheduleSource);
+    }
+
     const string CommandSource = """
         using System;
         using System.Threading.Tasks;
@@ -164,6 +170,34 @@ public class IncrementalityTests
                 Progress.Placed = true;
                 return Task.CompletedTask;
             }
+        }
+        """;
+
+    const string ScheduleSource = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Schedules;
+        using Edict.Core.Commands;
+
+        namespace Sample;
+
+        public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed partial record FulfillNextLine : EdictScheduleMessage;
+
+        public partial class OrderCommandHandler : EdictCommandHandler
+        {
+            public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+
+            public Task<EdictScheduleResult> HandleAsync(FulfillNextLine message) =>
+                Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
         }
         """;
 

@@ -12,6 +12,9 @@ internal sealed record CommandHandlerGrainModel(
     string GrainName,
     string GrainTypeName,
     string GrainFqn,
-    EquatableArray<CommandModel> Commands);
+    EquatableArray<CommandModel> Commands,
+    EquatableArray<ScheduleMessageModel> ScheduleMessages);
+
+internal sealed record ScheduleMessageModel(string Fqn, string SimpleName, string Namespace);
 
 internal sealed record TelemeterizedProperty(string PropertyName);

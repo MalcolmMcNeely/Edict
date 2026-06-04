@@ -25,6 +25,20 @@ internal static class CommandDiscovery
         return MapCommand(command);
     }
 
+    public static ScheduleMessageModel? MapScheduleMessageRecord(RecordDeclarationSyntax syntax, SemanticModel model)
+    {
+        if (model.GetDeclaredSymbol(syntax) is not INamedTypeSymbol message || !DerivesFromScheduleMessage(message))
+        {
+            return null;
+        }
+
+        var messageNamespace = message.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : message.ContainingNamespace.ToDisplayString();
+
+        return new ScheduleMessageModel(message.ToDisplayString(FullyQualified), message.Name, messageNamespace);
+    }
+
     public static CommandHandlerGrainModel? MapCommandHandler(ClassDeclarationSyntax syntax, SemanticModel model)
     {
         if (EdictTypeClassifier.Classify(syntax, model) != EdictTypeKind.CommandHandler)
@@ -38,6 +52,7 @@ internal static class CommandDiscovery
         }
 
         var commands = new List<CommandModel>();
+        var scheduleMessages = new List<ScheduleMessageModel>();
 
         foreach (var method in grain.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
         {
@@ -46,21 +61,37 @@ internal static class CommandDiscovery
                 continue;
             }
 
-            if (method.ReturnType.ToDisplayString(FullyQualified) != EdictWellKnownNames.TaskOfEdictCommandResultFqn)
-            {
-                continue;
-            }
+            var parameterType = method.Parameters[0].Type as INamedTypeSymbol;
+            var returnType = method.ReturnType.ToDisplayString(FullyQualified);
 
-            var commandType = method.Parameters[0].Type as INamedTypeSymbol;
-            if (commandType is null || !DerivesFromCommand(commandType))
+            if (returnType == EdictWellKnownNames.TaskOfEdictCommandResultFqn)
             {
-                continue;
-            }
+                if (parameterType is null || !DerivesFromCommand(parameterType))
+                {
+                    continue;
+                }
 
-            var command = MapCommand(commandType);
-            if (command is not null && commands.All(c => c.Fqn != command.Fqn))
+                var command = MapCommand(parameterType);
+                if (command is not null && commands.All(c => c.Fqn != command.Fqn))
+                {
+                    commands.Add(command);
+                }
+            }
+            else if (returnType == EdictWellKnownNames.TaskOfEdictScheduleResultFqn)
             {
-                commands.Add(command);
+                if (parameterType is null || !DerivesFromScheduleMessage(parameterType))
+                {
+                    continue;
+                }
+
+                var fqn = parameterType.ToDisplayString(FullyQualified);
+                if (scheduleMessages.All(m => m.Fqn != fqn))
+                {
+                    var messageNamespace = parameterType.ContainingNamespace.IsGlobalNamespace
+                        ? string.Empty
+                        : parameterType.ContainingNamespace.ToDisplayString();
+                    scheduleMessages.Add(new ScheduleMessageModel(fqn, parameterType.Name, messageNamespace));
+                }
             }
         }
 
@@ -70,6 +101,7 @@ internal static class CommandDiscovery
         }
 
         commands.Sort(static (a, b) => string.CompareOrdinal(a.SimpleName, b.SimpleName));
+        scheduleMessages.Sort(static (a, b) => string.CompareOrdinal(a.SimpleName, b.SimpleName));
 
         var grainNamespace = grain.ContainingNamespace.IsGlobalNamespace
             ? "Edict.Generated"
@@ -89,7 +121,8 @@ internal static class CommandDiscovery
                 ? grainFqn.Substring("global::".Length)
                 : grainFqn,
             grainFqn,
-            new EquatableArray<CommandModel>(commands));
+            new EquatableArray<CommandModel>(commands),
+            new EquatableArray<ScheduleMessageModel>(scheduleMessages));
     }
 
     static CommandModel? MapCommand(INamedTypeSymbol command)
@@ -162,6 +195,19 @@ internal static class CommandDiscovery
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
             if (current.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictCommandFqn)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static bool DerivesFromScheduleMessage(INamedTypeSymbol type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictScheduleMessageFqn)
             {
                 return true;
             }
