@@ -51,6 +51,21 @@ Structure every test Arrange / Act / Assert. The `// Arrange`, `// Act`, `// Ass
 - **Soft length cap:** if `{Class}.{Method}` would push a `.verified.txt` filename past ~90 chars, the test scope is too broad — split the test. Never truncate or hash snapshot filenames (they must stay greppable and rename-stable).
 - Never commit `.received.*` files — only `.verified.*`.
 
+## Metrics (`MeterListener`)
+
+A `MeterListener` is **process-global**: it observes every emit of the named instrument anywhere in the process, on whatever thread emits it. How you capture depends on where the emit runs.
+
+| Emit context | How to capture | Why |
+|---|---|---|
+| **Synchronous on the test thread** — system-under-test newed up as a plain object and driven inline (e.g. `OutboxDrainMetricsTests` constructs `OutboxHost` directly; `ClaimCheckPolicyMetricsTests` constructs `ClaimCheckPolicy`) | Plain `List<T>`, assert immediately | The measurement fires inline before the act returns — no second thread, no race. **Prefer this**: drive the emit through a directly-constructed unit, not a cluster. |
+| **Observable gauge** (`CreateObservableGauge`, ADR 0040) | Set state, call `listener.RecordObservableInstruments()`, then assert | The pull runs the gauge callback on the test thread, so you control exactly when the measurement is taken. |
+| **Push counter/histogram emitted inside a grain** in an in-process `TestCluster` (cross-thread) | Lock-guarded sink **and** a bounded poll for the expected capture — never an immediate `Assert.Single` on a plain `List` | The instrument fires on the grain-activation thread; the measurement can land a scheduler tick after the awaited grain call returns. Reading the list once races — this is the bug that bit `SagaLifecycleMetricsTests`. A push emit that is fully linearised by an awaited grain call (e.g. `IEdictSender.SendAsync`, a direct `DispatchAsync`) is the one cross-thread case where an immediate assert is safe, because the reply establishes happens-before; lock-guard the sink anyway. |
+
+Two rules regardless of shape:
+
+- **Filter captures by a per-test marker** — the `GrainType` tag, or a unique GUID baked into the instrument's tags. The process-global listener will otherwise see emits from parallel test classes and fail with "more than one element."
+- If sibling classes emit the *same* instrument, bind them into one `[Collection]` so they run serially. Serialisation prevents cross-class capture pollution; it does **not** substitute for the bounded poll, which guards the test's *own* emit landing in time.
+
 ## What not to do
 
 - Don't test that a method was called — verify outcomes, not interactions.

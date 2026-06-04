@@ -33,13 +33,13 @@ public sealed class SagaLifecycleMetricsTests
     {
         var workflowId = Guid.NewGuid();
         var saga = GetDefaultCapSaga(workflowId);
-        var captures = new List<Capture>();
+        var captures = new CaptureSink();
         using var listener = StartListener(SemanticConventions.Sagas.Meters.Completed, captures);
 
         await saga.DeliverAsync(Trigger(workflowId));
         await saga.DeliverAsync(Finish(workflowId));
 
-        var capture = Assert.Single(CapturesFor(captures, typeof(DefaultCapSaga)));
+        var capture = await captures.SingleForAsync(typeof(DefaultCapSaga));
         Assert.Equal(1L, capture.Value);
     }
 
@@ -48,14 +48,14 @@ public sealed class SagaLifecycleMetricsTests
     {
         var workflowId = Guid.NewGuid();
         var saga = GetCappedSaga(workflowId);
-        var captures = new List<Capture>();
+        var captures = new CaptureSink();
         using var listener = StartListener(SemanticConventions.Sagas.Meters.TimeoutFired, captures);
 
         await saga.DeliverAsync(Trigger(workflowId));
         SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
         await saga.FireCapAsync();
 
-        var capture = Assert.Single(CapturesFor(captures, typeof(CappedSaga)));
+        var capture = await captures.SingleForAsync(typeof(CappedSaga));
         Assert.Equal(1L, capture.Value);
         Assert.Equal(
             SemanticConventions.Sagas.Tags.OutcomeValues.Deadlettered,
@@ -67,26 +67,21 @@ public sealed class SagaLifecycleMetricsTests
     {
         var workflowId = Guid.NewGuid();
         var saga = GetCompensatingSaga(workflowId);
-        var captures = new List<Capture>();
+        var captures = new CaptureSink();
         using var listener = StartListener(SemanticConventions.Sagas.Meters.TimeoutFired, captures);
 
         await saga.DeliverAsync(Trigger(workflowId));
         SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
         await saga.FireCapAsync();
 
-        var capture = Assert.Single(CapturesFor(captures, typeof(CompensatingSaga)));
+        var capture = await captures.SingleForAsync(typeof(CompensatingSaga));
         Assert.Equal(1L, capture.Value);
         Assert.Equal(
             SemanticConventions.Sagas.Tags.OutcomeValues.Compensated,
             capture.Tag(SemanticConventions.Sagas.Tags.Outcome));
     }
 
-    static IReadOnlyList<Capture> CapturesFor(IEnumerable<Capture> captures, Type sagaType) =>
-        captures
-            .Where(capture => (capture.Tag(SemanticConventions.Common.Tags.GrainType) as string) == sagaType.FullName)
-            .ToList();
-
-    static MeterListener StartListener(string instrumentName, List<Capture> captures)
+    static MeterListener StartListener(string instrumentName, CaptureSink captures)
     {
         var listener = new MeterListener
         {
@@ -130,5 +125,50 @@ public sealed class SagaLifecycleMetricsTests
     sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags)
     {
         public object? Tag(string key) => Tags.TryGetValue(key, out var value) ? value : null;
+    }
+
+    // The counter fires on the grain-activation thread inside the in-process silo,
+    // so a measurement can land a scheduler tick after the awaited grain call has
+    // already returned to the test thread. The sink guards the list against that
+    // cross-thread write and SingleForAsync polls briefly for the saga-typed
+    // capture rather than reading once — the same async-observation tolerance the
+    // sibling span test applies to lagging ActivityStopped callbacks. The poll
+    // returns on the first match, so a healthy run pays nothing.
+    sealed class CaptureSink
+    {
+        readonly List<Capture> _captures = [];
+        readonly Lock _gate = new();
+
+        public void Add(Capture capture)
+        {
+            lock (_gate)
+            {
+                _captures.Add(capture);
+            }
+        }
+
+        public async Task<Capture> SingleForAsync(Type sagaType)
+        {
+            for (var attempt = 0; attempt < 100; attempt++)
+            {
+                var match = SnapshotFor(sagaType);
+                if (match.Count > 0)
+                {
+                    return Assert.Single(match);
+                }
+                await Task.Delay(TimeSpan.FromMilliseconds(20));
+            }
+            return Assert.Single(SnapshotFor(sagaType));
+        }
+
+        IReadOnlyList<Capture> SnapshotFor(Type sagaType)
+        {
+            lock (_gate)
+            {
+                return _captures
+                    .Where(capture => (capture.Tag(SemanticConventions.Common.Tags.GrainType) as string) == sagaType.FullName)
+                    .ToList();
+            }
+        }
     }
 }
