@@ -17,7 +17,7 @@ Each suite has a single, non-overlapping job. Putting a test in the wrong projec
 |---|---|---|
 | `Edict.Core.Tests` | Mechanism *logic*: dedup-ring semantics, projection orchestration, command routing | In-memory streams/stores. **No Testcontainers** — fast inner loop. Reaching for Azurite here is a smell. |
 | `Edict.Azure.Streaming.Tests` / `Edict.Kafka.Tests` | Streaming-axis conformance battery: real broker + reference persistence — at-least-once redelivery, dedup realism (the ADR-0002 proof), span stitch across the hop | **real AQS/Kafka via Testcontainers** (ADR-0054) |
-| `Edict.Azure.Persistence.Tests` / `Edict.Postgres.Persistence.Tests` | Persistence-axis conformance battery: real store + dumb `MemoryStreams` — outbox atomicity, table-projection persistence, dead-letter rows | **real Azure Table/Blob or Postgres via Testcontainers** (ADR-0054) |
+| `Edict.Azure.Persistence.Tests` / `Edict.Postgres.Tests` | Persistence-axis conformance battery: real store + dumb `MemoryStreams` — outbox atomicity, table-projection persistence, dead-letter rows | **real Azure Table/Blob or Postgres via Testcontainers** (ADR-0054) |
 | `Edict.Telemetry.Tests` | Span tree + `edict.*` tags | `ActivityListener` |
 | `Edict.Generators.Tests` | Generator output shape | Verify snapshots of emitted source |
 | `Edict.Analyzers.Tests` | `EDICT00x` diagnostic coverage | analyzer test harness; assert diagnostic **line** positions |
@@ -54,7 +54,7 @@ Structure every test Arrange / Act / Assert. The `// Arrange`, `// Act`, `// Ass
 ## What not to do
 
 - Don't test that a method was called — verify outcomes, not interactions.
-- Don't use **Moq** or any mocking library for infrastructure boundaries — use real containers in the axis-conformance suites (`Edict.Azure.Streaming.Tests`, `Edict.Azure.Persistence.Tests`, `Edict.Kafka.Tests`, `Edict.Postgres.Persistence.Tests`).
+- Don't use **Moq** or any mocking library for infrastructure boundaries — use real containers in the axis-conformance suites (`Edict.Azure.Streaming.Tests`, `Edict.Azure.Persistence.Tests`, `Edict.Kafka.Tests`, `Edict.Postgres.Tests`).
 - Don't mock away streams/stores in the conformance suites; don't pull Testcontainers into `Edict.Core.Tests`.
 - Don't share mutable state between tests.
 - Don't assert on log output or internal exception messages unless the message is part of the public contract.

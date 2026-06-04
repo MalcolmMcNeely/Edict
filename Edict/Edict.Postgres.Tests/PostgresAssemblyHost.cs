@@ -41,11 +41,12 @@ static class PostgresAssemblyHost
     {
         var container = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
-            // Default max_connections=100 is too tight for parallel xUnit
-            // collections: four cluster fixtures × up to 100 pooled per silo
-            // plus the unit-test data source can oversubscribe the cap and
-            // surface as `53300: sorry, too many clients already`. Mirror
-            // the pattern KafkaPostgresSubstrate uses for the same reason.
+            // Collections run serially, so the fixture shapes never deploy at
+            // once — but a single silo's pool plus its AdoNet PubSubStore and
+            // reminders, alongside the unit-test data source, can still oversubscribe
+            // the default 100 cap and surface as `53300: sorry, too many clients
+            // already`. Mirror the pattern KafkaPostgresSubstrate uses for the
+            // same reason.
             .WithCommand("-c", "max_connections=512")
             .Build();
         await container.StartAsync();

@@ -1,7 +1,7 @@
 {
   "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
-  "_comment_purpose": "Parallel model for Edict.Postgres.Tests. Mirrors Edict.Azure.Tests: assembly-shared Postgres + Azurite testcontainers; per-fixture Guid-suffixed resource names keep collections from racing on shared substrate.",
+  "_comment_purpose": "Parallel model for Edict.Postgres.Tests. Mirrors Edict.Kafka.Tests: an assembly-shared Postgres testcontainer with per-fixture per-collection database isolation. Cluster fixtures run serially within the assembly because the provider-seam fixture plus the per-shape persistence-axis conformance fixtures stand up many Orleans clusters on a single host, and the silo-gateway initialisation races under that pressure.",
   "parallelizeAssembly": true,
-  "parallelizeTestCollections": true,
+  "parallelizeTestCollections": false,
   "methodDisplay": "method"
 }

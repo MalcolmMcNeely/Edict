@@ -28,7 +28,7 @@ public class ConformanceBindingCompletenessTests
     static readonly Assembly[] PersistenceProviders =
     [
         typeof(Edict.Azure.Persistence.Tests.AzurePersistenceFixture).Assembly,
-        typeof(Edict.Postgres.Persistence.Tests.PostgresPersistenceFixture).Assembly,
+        typeof(Edict.Postgres.Tests.PostgresPersistenceFixture).Assembly,
     ];
 
     [Fact]

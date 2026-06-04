@@ -4,7 +4,7 @@ Edict is a CQRS, event-driven framework built on Microsoft Orleans. It is a **li
 
 ## Project map
 
-The repo has 48 `.csproj` files; they collapse into six logical groups. Per-project tests follow a uniform pattern (every shipping project has a paired `.Tests`, e.g. `Edict.Core.Tests`, `Edict.Kafka.Tests`) and are not listed individually — only the projects that break the pattern get their own row. Conformance runs as **two axis batteries** (streaming + persistence, ADR-0054, supersedes 0027): Azure's paired tests split into `Edict.Azure.Streaming.Tests` + `Edict.Azure.Persistence.Tests` (mirroring ADR-0042), `Edict.Kafka.Tests` and `Edict.Postgres.Persistence.Tests` bind the other axis providers, and `Edict.Pairing.Tests` carries the cross-pairing smoke.
+The repo has 47 `.csproj` files; they collapse into six logical groups. Per-project tests follow a uniform pattern (every shipping project has a paired `.Tests`, e.g. `Edict.Core.Tests`, `Edict.Kafka.Tests`) and are not listed individually — only the projects that break the pattern get their own row. Conformance runs as **two axis batteries** (streaming + persistence, ADR-0054, supersedes 0027): Azure's paired tests split into `Edict.Azure.Streaming.Tests` + `Edict.Azure.Persistence.Tests` (mirroring ADR-0042), while single-axis `Edict.Kafka.Tests` and `Edict.Postgres.Tests` each bind their one axis provider's conformance alongside their bespoke seam tests, and `Edict.Pairing.Tests` carries the cross-pairing smoke.
 
 ### Framework (consumer-facing, production)
 

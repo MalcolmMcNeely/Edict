@@ -1,7 +1,0 @@
-{
-  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
-  "_comment_purpose": "The persistence conformance battery stands up real Postgres (assembly-shared testcontainer) behind a dumb MemoryStreams reference. Collections run serially so the process-wide ControllableOutboxExecutor / ControllableGrainStorage toggles cannot race across fixture shapes.",
-  "parallelizeAssembly": true,
-  "parallelizeTestCollections": false,
-  "methodDisplay": "method"
-}
