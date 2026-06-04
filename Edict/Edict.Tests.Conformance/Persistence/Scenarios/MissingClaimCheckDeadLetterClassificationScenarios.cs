@@ -1,6 +1,8 @@
 using System.Diagnostics.Metrics;
 
+using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Core.DeadLetter;
 using Edict.Telemetry;
 using Edict.Tests.Conformance.ClaimCheck;
 
@@ -9,12 +11,16 @@ using Xunit;
 namespace Edict.Tests.Conformance.Persistence;
 
 /// <summary>
-/// A missing claim-check payload must dead-letter with the
-/// <c>edict.dead_letter.failure_reason</c> = <c>Substrate</c> classification: the
-/// real store surfaces an absent payload as the typed
+/// A missing claim-check payload must dead-letter on two fronts: the
+/// <c>edict.dead_letter.failure_reason</c> = <c>Substrate</c> metric (the real
+/// store surfaces an absent payload as the typed
 /// <c>EdictClaimCheckFetchException</c>, which the classifier buckets as
-/// <c>Substrate</c>. Bound against a fixture wiring the real claim-check store
-/// and an outbox tuned to dead-letter quickly.
+/// <c>Substrate</c>), and the persisted forensic row, which carries the
+/// <c>BlobMissing</c> failure kind, the pointer envelope's <c>EventId</c> as the
+/// parked-body locator, and the consumer grain key — promoted only after the
+/// deferred fetch exhausts its retries, not on the first failure. Bound against a
+/// fixture wiring the real claim-check store and an outbox tuned to dead-letter
+/// quickly.
 /// </summary>
 public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixture>
     where TFixture : PersistenceConformanceFixture
@@ -27,7 +33,7 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
     }
 
     [Fact]
-    public async Task MissingClaimCheck_ShouldDeadLetter_WithSubstrateFailureReason()
+    public async Task MissingClaimCheck_ShouldDeadLetter_WithBlobMissingRowAndSubstrateClassification()
     {
         var grainId = Guid.NewGuid();
         var consumer = _fixture.GrainFactory.GetGrain<IClaimCheckBlobMissingConsumer>(grainId);
@@ -94,6 +100,29 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
             failureReason = captures[0];
         }
         Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate, failureReason);
+
+        // The promotion metric fires the moment exhaustion is detected, but the
+        // forensic EdictDeadLetterRaised it stages is itself an outbox publish —
+        // keep draining the consumer until that publish lands and the projection
+        // upserts the row. The literal "deadletter" partition is shared across the
+        // assembly, so the pointer envelope's unique EventId isolates this row.
+        var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
+        EdictDeadLetterEntry? deadLetterRow = null;
+        await WaitUntilAsync(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+            await consumer.ForceDrainViaReminderAsync();
+            var entries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
+            deadLetterRow = entries.SingleOrDefault(entry => entry.SourceEventId == envelope.EventId);
+            return deadLetterRow is not null;
+        });
+
+        Assert.NotNull(deadLetterRow);
+        Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, deadLetterRow.FailureKind);
+        Assert.Equal(envelope.EventId, deadLetterRow.SourceEventId);
+        Assert.Equal(grainId.ToString(), deadLetterRow.SourceGrainKey);
+        // Promoted at the retry cap, not on the first failure.
+        Assert.True(deadLetterRow.AttemptCount > 1);
     }
 
     static async Task WaitUntilAsync(Func<Task<bool>> condition)
