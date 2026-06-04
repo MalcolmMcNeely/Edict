@@ -1,0 +1,15 @@
+﻿{
+  Outbox: {},
+  Idempotency: {},
+  Schedule: {
+    Active: [
+      {
+        ScheduleId: aaaaaaaa-0000-0000-0000-000000000001,
+        MessagePayload: BAUG,
+        Period: 00:00:02,
+        DueAt: 2026-05-19 12:00 +0
+      }
+    ],
+    SoonestDueAt: 2026-05-19 12:00 +0
+  }
+}

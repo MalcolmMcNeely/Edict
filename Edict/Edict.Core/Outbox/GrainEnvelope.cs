@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 using Edict.Core.Idempotency;
 using Edict.Core.Sagas;
+using Edict.Core.Schedules;
 
 namespace Edict.Core.Outbox;
 
@@ -50,4 +51,14 @@ public sealed class GrainEnvelope<TPayload>
     /// </summary>
     [Id(3)]
     public SagaLifecycle? Saga { get; set; }
+
+    /// <summary>
+    /// The durable recurring-schedule slot. Empty for every grain that never
+    /// calls <c>Schedule(...)</c> — the cost is one empty
+    /// <see cref="ScheduleSlice"/>. A schedule entry commits atomically with the
+    /// payload and outbox in one write, so a fire's state mutation, its raised
+    /// events, and the schedule's next-due advance all land together.
+    /// </summary>
+    [Id(4)]
+    public ScheduleSlice Schedule { get; set; } = new();
 }

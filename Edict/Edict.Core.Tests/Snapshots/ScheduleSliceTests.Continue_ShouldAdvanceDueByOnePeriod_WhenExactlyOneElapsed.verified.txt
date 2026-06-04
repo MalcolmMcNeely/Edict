@@ -1,0 +1,11 @@
+﻿{
+  Active: [
+    {
+      ScheduleId: aaaaaaaa-0000-0000-0000-000000000001,
+      MessagePayload: AQID,
+      Period: 00:00:02,
+      DueAt: 2026-01-01 00:00:04 +0
+    }
+  ],
+  SoonestDueAt: 2026-01-01 00:00:04 +0
+}
