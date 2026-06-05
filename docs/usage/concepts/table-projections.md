@@ -17,7 +17,7 @@ public sealed partial class OrdersByStatusTableProjectionBuilder
 
     protected override string GetRowKey(EdictEvent edictEvent) => "status";
 
-    public Task HandleAsync(OrderPlacedEvent edictEvent)
+    Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.Status = "Open";
         CurrentRow.PlacedAt = edictEvent.OccurredAt;

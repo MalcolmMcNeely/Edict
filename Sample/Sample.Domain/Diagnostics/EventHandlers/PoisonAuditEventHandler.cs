@@ -10,7 +10,7 @@ namespace Sample.Domain.Diagnostics.EventHandlers;
 // not live in Diagnostics/.
 public sealed partial class PoisonAuditEventHandler : EdictEventHandler
 {
-    public Task HandleAsync(OrderCancelledEvent edictEvent)
+    Task HandleAsync(OrderCancelledEvent edictEvent)
     {
         if (edictEvent.Reason.StartsWith("POISON:", StringComparison.Ordinal))
         {

@@ -40,7 +40,7 @@ public class CanonicalGenericBaseGuardTests
     const string WellFormedHandler = """
         public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         {
-            public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+            Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
         """;
@@ -73,7 +73,7 @@ public class CanonicalGenericBaseGuardTests
         const string nonPartialHandler = """
             public class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
@@ -90,7 +90,7 @@ public class CanonicalGenericBaseGuardTests
         const string wrongReturnHandler = """
             public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<bool> HandleAsync(PlaceOrder command) =>
+                Task<bool> HandleAsync(PlaceOrder command) =>
                     Task.FromResult(true);
             }
             """;
@@ -107,7 +107,7 @@ public class CanonicalGenericBaseGuardTests
         const string duplicateHandler = """
             public partial class SecondOrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;
@@ -169,7 +169,7 @@ public class CanonicalGenericBaseGuardTests
             }
             public class OrderCommandHandler : EdictCommandHandler
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;

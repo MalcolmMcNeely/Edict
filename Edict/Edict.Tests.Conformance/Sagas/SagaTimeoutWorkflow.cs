@@ -87,7 +87,7 @@ public interface ICompensationTrackerProbe : IGrainWithGuidKey
 [EdictSagaTimeout("00:00:01")]
 public partial class TimeoutCompensatingSaga : EdictSaga<TimeoutSagaProgress>, ITimeoutSagaProbe
 {
-    public Task HandleAsync(TimeoutTriggerEvent edictEvent)
+    Task HandleAsync(TimeoutTriggerEvent edictEvent)
     {
         Progress.Handled++;
         return Task.CompletedTask;
@@ -107,13 +107,13 @@ public partial class TimeoutCompensatingSaga : EdictSaga<TimeoutSagaProgress>, I
 // terminal-guard scenario (a genuinely-new Event after Complete dead-letters).
 public partial class TimeoutTerminalSaga : EdictSaga<TimeoutSagaProgress>, ITerminalSagaProbe
 {
-    public Task HandleAsync(TerminalTriggerEvent edictEvent)
+    Task HandleAsync(TerminalTriggerEvent edictEvent)
     {
         Progress.Handled++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(TerminalFinishEvent edictEvent)
+    Task HandleAsync(TerminalFinishEvent edictEvent)
     {
         Progress.Handled++;
         Complete();
@@ -125,7 +125,7 @@ public partial class TimeoutTerminalSaga : EdictSaga<TimeoutSagaProgress>, ITerm
 
 public partial class TimeoutCompensationCommandHandler : EdictCommandHandler<CompensationTrackerState>, ICompensationTrackerProbe
 {
-    public Task<EdictCommandResult> HandleAsync(TimeoutCompensationCommand command)
+    Task<EdictCommandResult> HandleAsync(TimeoutCompensationCommand command)
     {
         State.Received++;
         State.LastWorkflowId = command.WorkflowId;

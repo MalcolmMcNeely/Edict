@@ -20,7 +20,7 @@ namespace Sample.Domain.Countdown.CommandHandlers;
 /// </summary>
 public partial class CountdownCommandHandler : EdictCommandHandler<CountdownState>
 {
-    public Task<EdictCommandResult> HandleAsync(StartCountdownCommand command)
+    Task<EdictCommandResult> HandleAsync(StartCountdownCommand command)
     {
         if (State.Remaining > 0)
         {
@@ -34,7 +34,7 @@ public partial class CountdownCommandHandler : EdictCommandHandler<CountdownStat
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictScheduleResult> HandleAsync(CountdownTick message)
+    Task<EdictScheduleResult> HandleAsync(CountdownTick message)
     {
         State.Remaining--;
         Raise(new CountdownTickedEvent(State.CountdownId, State.Remaining));

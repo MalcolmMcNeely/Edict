@@ -18,45 +18,45 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
 
     protected override string GetRowKey(EdictEvent edictEvent) => "status";
 
-    public Task HandleAsync(OrderPlacedEvent edictEvent)
+    Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         CurrentRow.Status = "Open";
         CurrentRow.PlacedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(LineItemAddedEvent edictEvent)
+    Task HandleAsync(LineItemAddedEvent edictEvent)
     {
         CurrentRow.ItemCount++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(OrderSubmittedEvent edictEvent)
+    Task HandleAsync(OrderSubmittedEvent edictEvent)
     {
         CurrentRow.Status = "Submitted";
         CurrentRow.SubmittedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(OrderCancelledEvent edictEvent)
+    Task HandleAsync(OrderCancelledEvent edictEvent)
     {
         CurrentRow.Status = "Cancelled";
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(PaymentAuthorizedEvent edictEvent)
+    Task HandleAsync(PaymentAuthorizedEvent edictEvent)
     {
         CurrentRow.AuthorizedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(OrderFullyFulfilledEvent edictEvent)
+    Task HandleAsync(OrderFullyFulfilledEvent edictEvent)
     {
         CurrentRow.FulfilledAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(OrderShippedEvent edictEvent)
+    Task HandleAsync(OrderShippedEvent edictEvent)
     {
         CurrentRow.Status = "Shipped";
         CurrentRow.ShippedAt = edictEvent.OccurredAt;

@@ -21,7 +21,7 @@ public sealed partial class CounterAppliedEventHandler : EdictEventHandler, ICou
 {
     readonly List<Guid> _applied = [];
 
-    public Task HandleAsync(CounterIncrementedEvent edictEvent)
+    Task HandleAsync(CounterIncrementedEvent edictEvent)
     {
         _applied.Add(edictEvent.EventId);
         return Task.CompletedTask;

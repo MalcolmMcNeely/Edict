@@ -7,7 +7,7 @@ using Edict.Core.EventHandler;
 
 public sealed partial class OrderEmailEventHandler(IEmailNotifier notifier) : EdictEventHandler
 {
-    public Task HandleAsync(OrderPlacedEvent edictEvent) =>
+    Task HandleAsync(OrderPlacedEvent edictEvent) =>
         notifier.SendOrderPlacedAsync(edictEvent.OrderId, edictEvent.EventId);
 }
 ```

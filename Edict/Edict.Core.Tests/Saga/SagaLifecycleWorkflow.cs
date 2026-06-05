@@ -66,13 +66,13 @@ public interface ISagaLifecycleProbe : IGrainWithGuidKey
 // Complete() to terminalise it.
 public partial class DefaultCapSaga : EdictSaga<LifecycleProgress>, ISagaLifecycleProbe
 {
-    public Task HandleAsync(LifecycleTriggerEvent edictEvent)
+    Task HandleAsync(LifecycleTriggerEvent edictEvent)
     {
         Progress.Handled++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(LifecycleFinishEvent edictEvent)
+    Task HandleAsync(LifecycleFinishEvent edictEvent)
     {
         Progress.Handled++;
         Complete();
@@ -96,7 +96,7 @@ public partial class DefaultCapSaga : EdictSaga<LifecycleProgress>, ISagaLifecyc
 [EdictSagaTimeout("00:01:00")]
 public partial class CappedSaga : EdictSaga<LifecycleProgress>, ISagaLifecycleProbe
 {
-    public Task HandleAsync(LifecycleTriggerEvent edictEvent)
+    Task HandleAsync(LifecycleTriggerEvent edictEvent)
     {
         Progress.Handled++;
         return Task.CompletedTask;
@@ -120,7 +120,7 @@ public partial class CappedSaga : EdictSaga<LifecycleProgress>, ISagaLifecyclePr
 [EdictSagaTimeout("00:01:00")]
 public partial class CompensatingSaga : EdictSaga<LifecycleProgress>, ISagaLifecycleProbe
 {
-    public Task HandleAsync(LifecycleTriggerEvent edictEvent)
+    Task HandleAsync(LifecycleTriggerEvent edictEvent)
     {
         Progress.Handled++;
         return Task.CompletedTask;

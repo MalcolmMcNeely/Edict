@@ -23,7 +23,7 @@ namespace Sample.Domain.Fulfillment.CommandHandlers;
 /// </summary>
 public partial class FulfillmentCommandHandler : EdictCommandHandler<FulfillmentState>
 {
-    public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
+    Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
     {
         if (State.Lines.Count > 0)
         {
@@ -40,7 +40,7 @@ public partial class FulfillmentCommandHandler : EdictCommandHandler<Fulfillment
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
+    async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
     {
         var pendingIndex = State.Lines.FindIndex(candidate => candidate.Status == LineItemFulfillmentStatus.Pending);
         if (pendingIndex < 0)

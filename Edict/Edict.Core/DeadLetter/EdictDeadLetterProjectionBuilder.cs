@@ -24,7 +24,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task HandleAsync(EdictDeadLetterRaised raised)
+    Task HandleAsync(EdictDeadLetterRaised raised)
     {
         CurrentRow = new EdictDeadLetterEntry
         {

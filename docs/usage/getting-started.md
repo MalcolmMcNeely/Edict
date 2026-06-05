@@ -66,7 +66,7 @@ using Edict.Contracts.Commands;
 
 public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
-    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         State.Status         = OrderStatus.Open;
         State.CustomerReference = command.CustomerReference;

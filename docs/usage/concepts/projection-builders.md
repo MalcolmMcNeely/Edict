@@ -10,7 +10,7 @@ public sealed partial class OrderCountProjectionBuilder : EdictProjectionBuilder
 {
     int _ordersPlaced;
 
-    public Task HandleAsync(OrderPlacedEvent edictEvent)
+    Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         _ordersPlaced++;
         return Task.CompletedTask;

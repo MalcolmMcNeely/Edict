@@ -31,7 +31,7 @@ public class BaseTypedRaiseAnalyzerTests
             public sealed class OrderState : IEdictPersistedState;
             public partial class OrderHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command)
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command)
                 {
                     Raise(new OrderPlaced(command.OrderId));
                     return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -69,7 +69,7 @@ public class BaseTypedRaiseAnalyzerTests
             public sealed class OrderState : IEdictPersistedState;
             public partial class OrderHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command)
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command)
                 {
                     EdictEvent edictEvent = new OrderPlaced(command.OrderId);
                     Raise(edictEvent);

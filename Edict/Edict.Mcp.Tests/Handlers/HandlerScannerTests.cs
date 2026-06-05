@@ -44,7 +44,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -88,7 +88,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderCommandHandler : MyHandlerBase<OrderState>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -126,7 +126,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderPlacedEmailHandler : EdictEventHandler
                 {
-                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -167,7 +167,7 @@ public class HandlerScannerTests
 
                 public sealed partial class ShipmentSaga : EdictSaga<ShipmentProgress>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -250,7 +250,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderPlacedEmailHandler : EdictEventHandler
                 {
-                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -281,7 +281,7 @@ public class HandlerScannerTests
             {{attribute}}
             public sealed partial class ShipmentSaga : EdictSaga<ShipmentProgress>
             {
-                public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
             }
         }
         """;
@@ -310,8 +310,8 @@ public class HandlerScannerTests
 
                 public sealed partial class MeterCommandHandler : EdictCommandHandler<MeterState>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(StartMeteringCommand command) => System.Threading.Tasks.Task.CompletedTask;
-                    public System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(MeterTick tick) => null!;
+                    System.Threading.Tasks.Task HandleAsync(StartMeteringCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(MeterTick tick) => null!;
                 }
             }
             """;
@@ -349,7 +349,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -385,8 +385,8 @@ public class HandlerScannerTests
 
                 public sealed partial class SettlementSaga : EdictSaga<SettlementProgress>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(PaymentAuthorised edictEvent) => System.Threading.Tasks.Task.CompletedTask;
-                    public System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(PollSettlement poll) => null!;
+                    System.Threading.Tasks.Task HandleAsync(PaymentAuthorised edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(PollSettlement poll) => null!;
                 }
             }
             """;
@@ -455,12 +455,12 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderActivityProjection : EdictProjectionBuilder
                 {
-                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
 
                 public sealed partial class OrdersByStatusProjection : EdictTableProjectionBuilder<OrdersByStatusRow>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -504,7 +504,7 @@ public class HandlerScannerTests
 
                 public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 {
-                    public System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
@@ -513,7 +513,7 @@ public class HandlerScannerTests
             {
                 public sealed partial class OrderCommandHandler
                 {
-                    public System.Threading.Tasks.Task HandleAsync(CancelOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    System.Threading.Tasks.Task HandleAsync(CancelOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;

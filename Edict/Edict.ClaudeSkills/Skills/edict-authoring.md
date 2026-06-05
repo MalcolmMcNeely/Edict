@@ -36,7 +36,7 @@ Derive from `EdictCommandHandler<TState>` in `Edict.Core.Commands` and write one
 **Never mutate `State` on a path that then throws.** A throw is the framework's only discard signal: it rolls the partial `State` mutation back to the last durable snapshot, drops any buffered Events, and dead-letters. So a handler that mutates a few fields and then throws loses *all* of that turn's mutation, not just the part after the throw. If a condition should reject, return `Rejected` — do not throw to "cancel" a mutation, and do not leave `State` half-written on a path that can throw downstream. Validate-then-mutate, never mutate-then-maybe-throw.
 
 ```csharp
-public Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
+Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
 {
     if (State.Skus.Count == 0)
     {
@@ -124,7 +124,7 @@ public sealed record FulfillNextLine : EdictScheduleMessage;
 Start the schedule from a normal `HandleAsync` by calling the protected `Schedule(message, every, timeout)`. The cadence is declared once, here, as a single fixed `every:` interval (no jitter, no per-fire reschedule). The first fire is at `+every`:
 
 ```csharp
-public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
+Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
 {
     State.OrderId = command.OrderId;
     Schedule(new FulfillNextLine(), every: TimeSpan.FromSeconds(2));
@@ -135,7 +135,7 @@ public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
 Handle each fire with a `Task<EdictScheduleResult> HandleAsync(TMessage)` overload alongside your Command handlers. It re-enters the full handler lifecycle (mutate `State`, `Raise` events, `Dispatch` from a saga) and answers exactly one of two outcomes: keep firing on the cadence, or stop. On a **Command Handler** use the protected `Continue()` / `Complete()` helpers, which return the result already wrapped in a `Task`:
 
 ```csharp
-public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
+async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
 {
     var pendingIndex = State.Lines.FindIndex(line => line.Status == LineItemFulfillmentStatus.Pending);
     if (pendingIndex < 0)
@@ -152,7 +152,7 @@ public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
 A **Saga** has no `Continue()` / `Complete()` helpers (its own `Complete()` is the saga lifecycle terminal). Construct the result directly:
 
 ```csharp
-public Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
+Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
 {
     Progress.Polls++;
     if (Progress.Polls >= 2)
@@ -171,7 +171,7 @@ A one-shot delayed action is just `every: X` plus `Complete()` on the first fire
 To compensate when the cap fires, write an `OnScheduleTimeoutAsync(TMessage)` overload taking the same message type. It runs the compensation atomically with the schedule's removal. Without it, a fired cap dead-letters (loudly, never silently):
 
 ```csharp
-public Task OnScheduleTimeoutAsync(PollGatewayMessage message)
+Task OnScheduleTimeoutAsync(PollGatewayMessage message)
 {
     Dispatch(new AbandonSettlementCommand(Progress.PaymentId));
     return Task.CompletedTask;

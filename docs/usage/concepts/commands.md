@@ -41,14 +41,14 @@ A Command Handler owns durable aggregate `State` on `EdictCommandHandler<TState>
 public partial class CartCommandHandler : EdictCommandHandler<CartState>
 {
     // Mutates State, raises no Event: the accumulated basket survives deactivation.
-    public Task<EdictCommandResult> HandleAsync(AddItemToCartCommand command)
+    Task<EdictCommandResult> HandleAsync(AddItemToCartCommand command)
     {
         State.Skus.Add(command.Sku);
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
     // Reads the state the earlier Commands accumulated, then raises one Event.
-    public Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
+    Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
     {
         Raise(new CartCheckedOutEvent(command.CartId, State.Skus.Count, State.Skus.ToArray()));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());

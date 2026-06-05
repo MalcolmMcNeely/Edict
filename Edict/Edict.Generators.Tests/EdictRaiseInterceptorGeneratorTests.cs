@@ -36,7 +36,7 @@ public class EdictRaiseInterceptorGeneratorTests
 
         public partial class OrderCommandHandler : EdictCommandHandler
         {
-            public Task<EdictCommandResult> HandleAsync(PlaceOrder c)
+            Task<EdictCommandResult> HandleAsync(PlaceOrder c)
             {
                 Raise(new OrderPlacedEvent(c.OrderId));
                 Raise(new OrderCancelledEvent(c.OrderId));
@@ -129,7 +129,7 @@ public class EdictRaiseInterceptorGeneratorTests
 
             public partial class OrderCommandHandler : EdictCommandHandler
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder c)
+                Task<EdictCommandResult> HandleAsync(PlaceOrder c)
                 {
                     EdictEvent edictEvent = new OrderPlaced(c.OrderId);
                     Raise(edictEvent);

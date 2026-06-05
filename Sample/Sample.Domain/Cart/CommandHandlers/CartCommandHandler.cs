@@ -15,7 +15,7 @@ namespace Sample.Domain.Cart.CommandHandlers;
 // to.
 public partial class CartCommandHandler : EdictCommandHandler<CartState>
 {
-    public Task<EdictCommandResult> HandleAsync(AddItemToCartCommand command)
+    Task<EdictCommandResult> HandleAsync(AddItemToCartCommand command)
     {
         if (State.CheckedOut)
         {
@@ -27,7 +27,7 @@ public partial class CartCommandHandler : EdictCommandHandler<CartState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
+    Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
     {
         if (State.Skus.Count == 0)
         {

@@ -21,7 +21,7 @@ public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress
 {
     static readonly TimeSpan PollCadence = TimeSpan.FromMinutes(5);
 
-    public Task HandleAsync(GatewaySettlementBegunEvent edictEvent)
+    Task HandleAsync(GatewaySettlementBegunEvent edictEvent)
     {
         Progress.PaymentId = edictEvent.PaymentId;
 
@@ -37,7 +37,7 @@ public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress
         return Task.CompletedTask;
     }
 
-    public Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
+    Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
     {
         Progress.Polls++;
 
@@ -52,7 +52,7 @@ public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress
         return Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Continue());
     }
 
-    public Task OnScheduleTimeoutAsync(PollGatewayMessage message)
+    Task OnScheduleTimeoutAsync(PollGatewayMessage message)
     {
         Dispatch(new AbandonSettlementCommand(Progress.PaymentId));
         return Task.CompletedTask;

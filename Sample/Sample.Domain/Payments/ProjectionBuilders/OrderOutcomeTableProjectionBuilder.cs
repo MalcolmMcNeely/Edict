@@ -22,13 +22,13 @@ public sealed partial class OrderOutcomeTableProjectionBuilder : EdictTableProje
 
     protected override string GetRowKey(EdictEvent edictEvent) => "outcome";
 
-    public Task HandleAsync(OrderConfirmedEvent edictEvent)
+    Task HandleAsync(OrderConfirmedEvent edictEvent)
     {
         CurrentRow.Outcome = "Confirmed";
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(OrderCancelledEvent edictEvent)
+    Task HandleAsync(OrderCancelledEvent edictEvent)
     {
         CurrentRow.Outcome = "Cancelled";
         return Task.CompletedTask;

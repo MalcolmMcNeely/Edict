@@ -55,20 +55,20 @@ public sealed partial record StateCheckCommand(Guid OrderId) : EdictCommand
 
 public partial class OrderCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         Raise(new OrderPlacedEvent(command.OrderId, command.Sku));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(CancelOrderCommand command) =>
+    Task<EdictCommandResult> HandleAsync(CancelOrderCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
             [new EdictRejectionReason("already_shipped", "Order has already shipped.")]));
 
-    public Task<EdictCommandResult> HandleAsync(ValidateSkuCommand command) =>
+    Task<EdictCommandResult> HandleAsync(ValidateSkuCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-    public Task<EdictCommandResult> HandleAsync(StateCheckCommand command) =>
+    Task<EdictCommandResult> HandleAsync(StateCheckCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
     protected override object? GetValidationState() => "grain-active";

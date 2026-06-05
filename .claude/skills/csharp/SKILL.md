@@ -117,7 +117,7 @@ Comments are differentiated by kind. Each kind has a different bar.
 
 ## Other conventions
 
-- **No redundant `private`.** Members are private by default — omit the keyword. `.editorconfig` warns (`dotnet_style_require_accessibility_modifiers = never`). The one keep: `{ get; private set; }` where the property's getter is wider — there `private` changes accessibility and is required.
+- **No redundant `private`.** Members are private by default — omit the keyword. `.editorconfig` warns (`dotnet_style_require_accessibility_modifiers = never`). The one keep: `{ get; private set; }` where the property's getter is wider — there `private` changes accessibility and is required. This is also why a generator-discovered handler method — `HandleAsync(TCommand/TEvent/TMessage)`, `OnScheduleTimeoutAsync(TMessage)` — takes **no** modifier: the generated dispatch calls it from the same partial and Orleans only ever sees the generated grain interface, so `public` is redundant. (A `protected override OnSagaTimeoutAsync()` stays `protected` — an override cannot narrow.)
 - **Always use braces**, even for single-line `if`/`for`/`while` bodies (`csharp_prefer_braces`).
 - **Don't pre-wrap lines.** ~170 columns is fine; gratuitous carriage returns hurt readability. `using` directives and method chains do not need to be broken early.
 - **One top-level type per file.** A file holding several classes is a smell — split it; the only exception is tightly-coupled nested/private types of a single public type.

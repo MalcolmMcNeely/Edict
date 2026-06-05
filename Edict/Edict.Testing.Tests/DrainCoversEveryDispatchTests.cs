@@ -156,25 +156,25 @@ public sealed partial record TrackerCascadedEvent(Guid WidgetId) : EdictEvent
 
 public partial class TrackerAggregate : EdictCommandHandler<TrackerState>
 {
-    public Task<EdictCommandResult> HandleAsync(PlaceTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceTrackerCommand command)
     {
         Raise(new TrackerPlacedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(IncrementTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(IncrementTrackerCommand command)
     {
         Raise(new TrackerIncrementedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(FinalizeTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(FinalizeTrackerCommand command)
     {
         Raise(new TrackerFinalizedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(CascadeTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(CascadeTrackerCommand command)
     {
         Raise(new TrackerCascadedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -191,7 +191,7 @@ public sealed class TrackerSagaProgress : IEdictPersistedState
 
 public partial class TrackerSaga : Edict.Core.Sagas.EdictSaga<TrackerSagaProgress>
 {
-    public Task HandleAsync(TrackerFinalizedEvent edictEvent)
+    Task HandleAsync(TrackerFinalizedEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new CascadeTrackerCommand(edictEvent.WidgetId));
@@ -225,25 +225,25 @@ public sealed partial class TrackerProjectionBuilder : EdictTableProjectionBuild
 
     protected override string GetRowKey(EdictEvent edictEvent) => "tracker";
 
-    public Task HandleAsync(TrackerPlacedEvent edictEvent)
+    Task HandleAsync(TrackerPlacedEvent edictEvent)
     {
         CurrentRow.PlacedHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(TrackerIncrementedEvent edictEvent)
+    Task HandleAsync(TrackerIncrementedEvent edictEvent)
     {
         CurrentRow.IncrementHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(TrackerFinalizedEvent edictEvent)
+    Task HandleAsync(TrackerFinalizedEvent edictEvent)
     {
         CurrentRow.FinalizedHandlerCount++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(TrackerCascadedEvent edictEvent)
+    Task HandleAsync(TrackerCascadedEvent edictEvent)
     {
         CurrentRow.CascadedHandlerCount++;
         return Task.CompletedTask;

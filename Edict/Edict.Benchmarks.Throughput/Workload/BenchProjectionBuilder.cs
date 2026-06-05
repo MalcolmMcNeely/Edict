@@ -26,5 +26,5 @@ public sealed partial class BenchProjectionBuilder : EdictTableProjectionBuilder
         _ => edictEvent.EventId.ToString("D"),
     };
 
-    public Task HandleAsync(BenchEvent edictEvent) => Task.CompletedTask;
+    Task HandleAsync(BenchEvent edictEvent) => Task.CompletedTask;
 }

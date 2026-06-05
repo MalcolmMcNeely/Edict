@@ -7,14 +7,14 @@ using Edict.Core.Sagas;
 
 public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
 {
-    public Task HandleAsync(OrderSubmittedEvent edictEvent)
+    Task HandleAsync(OrderSubmittedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.PaymentRequested;
         Dispatch(new AuthorizePaymentCommand(edictEvent.OrderId, edictEvent.Amount));
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(PaymentAuthorizedEvent edictEvent)
+    Task HandleAsync(PaymentAuthorizedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.Confirmed;
         Dispatch(new ConfirmOrderCommand(edictEvent.OrderId));
@@ -44,7 +44,7 @@ using Edict.Core.Sagas;
 
 public partial class FulfilmentSaga : EdictSaga<FulfilmentProgress>
 {
-    public Task HandleAsync(ShipmentDispatchedEvent edictEvent)
+    Task HandleAsync(ShipmentDispatchedEvent edictEvent)
     {
         // Accumulate. No Command unless this is the shipment that completes the
         // order, so most of these handles mutate Progress and dispatch nothing.
@@ -52,7 +52,7 @@ public partial class FulfilmentSaga : EdictSaga<FulfilmentProgress>
         return Act(edictEvent.OrderId);
     }
 
-    public Task HandleAsync(OrderShipmentPlanEvent edictEvent)
+    Task HandleAsync(OrderShipmentPlanEvent edictEvent)
     {
         Progress.PlannedShipmentCount = edictEvent.ShipmentCount;
         return Act(edictEvent.OrderId);

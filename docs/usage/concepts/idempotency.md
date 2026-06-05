@@ -11,7 +11,7 @@ public sealed partial class HighThroughputEventHandler : EdictEventHandler
 {
     protected override int WindowSize => 4096;
 
-    public Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+    Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
 }
 ```
 

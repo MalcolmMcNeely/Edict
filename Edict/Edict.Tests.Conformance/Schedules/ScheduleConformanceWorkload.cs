@@ -61,19 +61,19 @@ public partial class ScheduleConformanceAggregate : EdictCommandHandler<Schedule
         await base.OnActivateAsync(cancellationToken);
     }
 
-    public Task<EdictCommandResult> HandleAsync(ArmScheduleCommand command)
+    Task<EdictCommandResult> HandleAsync(ArmScheduleCommand command)
     {
         Schedule(new ScheduleConformanceTick(), every: command.Period, timeout: command.Timeout);
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictScheduleResult> HandleAsync(ScheduleConformanceTick message)
+    Task<EdictScheduleResult> HandleAsync(ScheduleConformanceTick message)
     {
         State.TickCount++;
         return Continue();
     }
 
-    public Task OnScheduleTimeoutAsync(ScheduleConformanceTick message)
+    Task OnScheduleTimeoutAsync(ScheduleConformanceTick message)
     {
         State.TimeoutCount++;
         return Task.CompletedTask;

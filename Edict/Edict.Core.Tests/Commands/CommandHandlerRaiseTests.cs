@@ -1,64 +1,28 @@
-using System.Runtime.CompilerServices;
+using Edict.Core.Tests.Grains;
 
-using Microsoft.Extensions.Time.Testing;
+using Xunit;
 
 namespace Edict.Core.Tests.Commands;
 
-public sealed class CommandHandlerRaiseTests
+// Drives a command through the real engine and reads the published event off the
+// outbox seam, so Raise's OccurredAt stamp is asserted on the wire event a
+// consumer would receive — never by calling HandleAsync directly.
+[Collection(RaiseStampCollection.Name)]
+public sealed class CommandHandlerRaiseTests(RaiseStampClusterFixture fixture)
 {
-    static readonly Guid OrderId = new("33333333-3333-3333-3333-333333333333");
-    static readonly DateTimeOffset RaiseTime = new(2026, 5, 25, 10, 0, 0, TimeSpan.Zero);
+    static readonly Guid CounterId = new("33333333-3333-3333-3333-333333333333");
 
     [Fact]
-    public async Task Raise_ShouldStampOccurredAtAtRaiseTime_NotAtAnyLaterDrainTime()
+    public async Task Raise_ShouldStampOccurredAtFromTheClock_WhenHandlerRaisesAnEvent()
     {
-        var time = new FakeTimeProvider();
-        time.SetUtcNow(RaiseTime);
+        // Arrange
+        RaiseStampCapturingExecutor.Reset();
 
-        var handler = NewHandlerWithoutOrleans(time);
+        // Act
+        await fixture.Sender.SendAsync(new IncrementCounterCommand(CounterId));
 
-        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "WIDGET"));
-
-        // Simulate any subsequent outbox delay — the stamp must not change.
-        time.Advance(TimeSpan.FromMinutes(30));
-
-        var raised = handler._raisedEvents;
-        Assert.NotNull(raised);
-        var single = Assert.Single(raised);
-        Assert.Equal(RaiseTime, single.OccurredAt);
-    }
-
-    [Fact]
-    public async Task Raise_AcrossThreeCallsWith1msBetween_ShouldYieldStrictlyIncreasingOccurredAt()
-    {
-        var time = new FakeTimeProvider();
-        time.SetUtcNow(RaiseTime);
-
-        var handler = NewHandlerWithoutOrleans(time);
-
-        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "A"));
-        time.Advance(TimeSpan.FromMilliseconds(1));
-        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "B"));
-        time.Advance(TimeSpan.FromMilliseconds(1));
-        await handler.HandleAsync(new PlaceOrderCommand(OrderId, "C"));
-
-        var raised = handler._raisedEvents;
-        Assert.NotNull(raised);
-        Assert.Equal(3, raised.Count);
-        Assert.Equal(RaiseTime, raised[0].OccurredAt);
-        Assert.Equal(RaiseTime.AddMilliseconds(1), raised[1].OccurredAt);
-        Assert.Equal(RaiseTime.AddMilliseconds(2), raised[2].OccurredAt);
-    }
-
-    // Orleans' Grain constructor reads RuntimeContext.Current and NREs outside
-    // an activation. The TimeProvider seam on EdictCommandHandler is the only
-    // dependency Raise() pulls in this test, so bypass the constructor and
-    // inject the fake clock directly — Handle/Raise touch neither State nor
-    // ServiceProvider.
-    static OrderCommandHandler NewHandlerWithoutOrleans(TimeProvider time)
-    {
-        var handler = (OrderCommandHandler)RuntimeHelpers.GetUninitializedObject(typeof(OrderCommandHandler));
-        handler._timeProvider = time;
-        return handler;
+        // Assert
+        var published = Assert.Single(RaiseStampCapturingExecutor.Captured);
+        Assert.Equal(RaiseStampClusterFixture.FrozenNow, published.OccurredAt);
     }
 }

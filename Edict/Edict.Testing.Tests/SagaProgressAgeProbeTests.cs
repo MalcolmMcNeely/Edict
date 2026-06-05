@@ -120,20 +120,20 @@ public sealed class StickerProgress : IEdictPersistedState
 
 public partial class StickerAggregate : EdictCommandHandler<StickerState>
 {
-    public Task<EdictCommandResult> HandleAsync(IssueStickerCommand command)
+    Task<EdictCommandResult> HandleAsync(IssueStickerCommand command)
     {
         State.Issued++;
         Raise(new StickerIssuedEvent(command.StickerId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(StickerAcknowledgedCommand command) =>
+    Task<EdictCommandResult> HandleAsync(StickerAcknowledgedCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 }
 
 public partial class StickerSaga : EdictSaga<StickerProgress>
 {
-    public Task HandleAsync(StickerIssuedEvent edictEvent)
+    Task HandleAsync(StickerIssuedEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new StickerAcknowledgedCommand(edictEvent.StickerId));

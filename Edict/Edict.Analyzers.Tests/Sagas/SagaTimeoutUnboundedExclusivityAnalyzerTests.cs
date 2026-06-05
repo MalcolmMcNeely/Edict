@@ -26,7 +26,7 @@ public class SagaTimeoutUnboundedExclusivityAnalyzerTests
         {0}
         public partial class OrderSaga : EdictSaga<OrderProgress>
         {
-            public Task HandleAsync(OrderSubmitted edictEvent) => Task.CompletedTask;
+            Task HandleAsync(OrderSubmitted edictEvent) => Task.CompletedTask;
         }
         """;
 

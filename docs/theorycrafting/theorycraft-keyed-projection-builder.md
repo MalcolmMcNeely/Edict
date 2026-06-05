@@ -43,7 +43,7 @@ A `EdictKeyedProjectionBuilder<TKey, TState>` (working name — see Open Questio
 public sealed partial class CustomerView
     : EdictKeyedProjectionBuilder<Guid, CustomerState>
 {
-    public Task HandleAsync(OrderPlacedEvent evt)
+    Task HandleAsync(OrderPlacedEvent evt)
     {
         State.LastOrderAt = evt.OccurredAt;
         State.LifetimeOrderCount += 1;

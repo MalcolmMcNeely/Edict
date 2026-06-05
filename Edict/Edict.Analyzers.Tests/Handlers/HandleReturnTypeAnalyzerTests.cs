@@ -32,7 +32,7 @@ public class HandleReturnTypeAnalyzerTests
             public sealed class OrderState : IEdictPersistedState;
             public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<bool> HandleAsync(PlaceOrder command) =>
+                Task<bool> HandleAsync(PlaceOrder command) =>
                     Task.FromResult(true);
             }
             """;
@@ -43,7 +43,7 @@ public class HandleReturnTypeAnalyzerTests
         Assert.Equal("EDICT002", d.Id);
         Assert.Contains("PlaceOrder", d.GetMessage());
         Assert.Contains("OrderCommandHandler", d.GetMessage());
-        // Line 14 (0-indexed): "public Task<bool> HandleAsync(PlaceOrder command) =>"
+        // Line 14 (0-indexed): "Task<bool> HandleAsync(PlaceOrder command) =>"
         Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

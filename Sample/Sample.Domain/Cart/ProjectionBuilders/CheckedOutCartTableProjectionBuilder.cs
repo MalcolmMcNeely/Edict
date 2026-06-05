@@ -16,7 +16,7 @@ public sealed partial class CheckedOutCartTableProjectionBuilder : EdictTablePro
 
     protected override string GetRowKey(EdictEvent edictEvent) => "cart";
 
-    public Task HandleAsync(CartCheckedOutEvent edictEvent)
+    Task HandleAsync(CartCheckedOutEvent edictEvent)
     {
         CurrentRow.ItemCount = edictEvent.ItemCount;
         CurrentRow.Skus = string.Join(",", edictEvent.Skus);

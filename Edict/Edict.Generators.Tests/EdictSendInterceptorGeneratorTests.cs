@@ -22,7 +22,7 @@ public class EdictSendInterceptorGeneratorTests
 
         public partial class OrderCommandHandler : EdictCommandHandler
         {
-            public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
+            Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
 
@@ -61,10 +61,10 @@ public class EdictSendInterceptorGeneratorTests
 
         public partial class OrderCommandHandler : EdictCommandHandler
         {
-            public Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
+            Task<EdictCommandResult> HandleAsync(PlaceOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 
-            public Task<EdictCommandResult> HandleAsync(CancelOrder c) =>
+            Task<EdictCommandResult> HandleAsync(CancelOrder c) =>
                 Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         }
 

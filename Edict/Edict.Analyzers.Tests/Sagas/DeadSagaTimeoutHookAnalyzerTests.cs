@@ -26,7 +26,7 @@ public class DeadSagaTimeoutHookAnalyzerTests
         {0}
         public partial class OrderSaga : EdictSaga<OrderProgress>
         {
-            public Task HandleAsync(OrderSubmitted edictEvent) => Task.CompletedTask;
+            Task HandleAsync(OrderSubmitted edictEvent) => Task.CompletedTask;
         {1}
         }
         """;

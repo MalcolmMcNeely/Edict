@@ -48,7 +48,7 @@ public interface ISpanTrackerProbe : IGrainWithGuidKey
 
 public partial class SpanWorkflowSaga : EdictSaga<SpanWorkflowProgress>
 {
-    public Task HandleAsync(SpanSagaTriggerEvent edictEvent)
+    Task HandleAsync(SpanSagaTriggerEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new SpanTrackerCommand(edictEvent.WorkflowId));
@@ -58,7 +58,7 @@ public partial class SpanWorkflowSaga : EdictSaga<SpanWorkflowProgress>
 
 public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTrackerState>, ISpanTrackerProbe
 {
-    public Task<EdictCommandResult> HandleAsync(SpanTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(SpanTrackerCommand command)
     {
         State.Received++;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());

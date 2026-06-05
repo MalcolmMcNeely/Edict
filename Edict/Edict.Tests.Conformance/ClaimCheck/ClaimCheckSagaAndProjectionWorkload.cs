@@ -52,7 +52,7 @@ public interface IClaimCheckSagaTrackerProbe : IGrainWithGuidKey
 
 public partial class ClaimCheckSaga : EdictSaga<ClaimCheckSagaProgress>, IClaimCheckSagaProgressProbe
 {
-    public Task HandleAsync(ClaimCheckCounterIncrementedEvent edictEvent)
+    Task HandleAsync(ClaimCheckCounterIncrementedEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new ClaimCheckSagaFollowUpCommand(edictEvent.CounterId));
@@ -64,7 +64,7 @@ public partial class ClaimCheckSaga : EdictSaga<ClaimCheckSagaProgress>, IClaimC
 
 public partial class ClaimCheckSagaFollowUpHandler : EdictCommandHandler<ClaimCheckSagaTrackerState>, IClaimCheckSagaTrackerProbe
 {
-    public Task<EdictCommandResult> HandleAsync(ClaimCheckSagaFollowUpCommand command)
+    Task<EdictCommandResult> HandleAsync(ClaimCheckSagaFollowUpCommand command)
     {
         State.Received++;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -101,7 +101,7 @@ public sealed partial class ClaimCheckProjectionBuilder
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public Task HandleAsync(ClaimCheckCounterIncrementedEvent edictEvent)
+    Task HandleAsync(ClaimCheckCounterIncrementedEvent edictEvent)
     {
         CurrentRow.Count = edictEvent.NewCount;
         CurrentRow.Payload = edictEvent.Payload;

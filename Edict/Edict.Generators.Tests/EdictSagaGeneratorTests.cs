@@ -29,7 +29,7 @@ public class EdictSagaGeneratorTests
 
         public partial class OrderSaga : EdictSaga<OrderSagaProgress>
         {
-            public Task HandleAsync(OrderPlacedEvent edictEvent)
+            Task HandleAsync(OrderPlacedEvent edictEvent)
             {
                 Progress.Placed = true;
                 return Task.CompletedTask;
@@ -65,13 +65,13 @@ public class EdictSagaGeneratorTests
 
         public partial class OrderSaga : EdictSaga<OrderSagaProgress>
         {
-            public Task HandleAsync(OrderPlacedEvent edictEvent)
+            Task HandleAsync(OrderPlacedEvent edictEvent)
             {
                 Schedule(new PollGateway(), every: TimeSpan.FromSeconds(2));
                 return Task.CompletedTask;
             }
 
-            public Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
+            Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
                 Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
         }
         """;
@@ -104,16 +104,16 @@ public class EdictSagaGeneratorTests
 
         public partial class OrderSaga : EdictSaga<OrderSagaProgress>
         {
-            public Task HandleAsync(OrderPlacedEvent edictEvent)
+            Task HandleAsync(OrderPlacedEvent edictEvent)
             {
                 Schedule(new PollGateway(), every: TimeSpan.FromSeconds(2));
                 return Task.CompletedTask;
             }
 
-            public Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
+            Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
                 Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Continue());
 
-            public Task OnScheduleTimeoutAsync(PollGateway message) => Task.CompletedTask;
+            Task OnScheduleTimeoutAsync(PollGateway message) => Task.CompletedTask;
         }
         """;
 

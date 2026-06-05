@@ -75,7 +75,7 @@ public interface IResilienceSagaTrackerProbe : IGrainWithGuidKey
 
 public partial class ResilienceWorkflowSaga : EdictSaga<ResilienceWorkflowProgress>, IResilienceSagaProgressProbe
 {
-    public Task HandleAsync(ResilienceSagaTriggerEvent edictEvent)
+    Task HandleAsync(ResilienceSagaTriggerEvent edictEvent)
     {
         Progress.Handled++;
         Dispatch(new ResilienceSagaTrackerCommand(edictEvent.WorkflowId));
@@ -87,7 +87,7 @@ public partial class ResilienceWorkflowSaga : EdictSaga<ResilienceWorkflowProgre
 
 public partial class ResilienceSagaTrackerCommandHandler : EdictCommandHandler<ResilienceTrackerState>, IResilienceSagaTrackerProbe
 {
-    public Task<EdictCommandResult> HandleAsync(ResilienceSagaTrackerCommand command)
+    Task<EdictCommandResult> HandleAsync(ResilienceSagaTrackerCommand command)
     {
         State.Received++;
         State.LastWorkflowId = command.WorkflowId;
@@ -205,7 +205,7 @@ public sealed partial class SiloKillProjectionBuilder : EdictTableProjectionBuil
             _ => this.GetPrimaryKey().ToString(),
         };
 
-    public async Task HandleAsync(SiloKillProjectionEvent edictEvent)
+    async Task HandleAsync(SiloKillProjectionEvent edictEvent)
     {
         var entry = Interlocked.Increment(ref SiloKillCoordinator.HandlerEntries);
         if (entry == 1)

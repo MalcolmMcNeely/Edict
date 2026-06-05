@@ -28,14 +28,14 @@ public sealed partial class LineItemFulfillmentTableProjectionBuilder : EdictTab
         _ => "",
     };
 
-    public Task HandleAsync(LineItemAddedEvent edictEvent)
+    Task HandleAsync(LineItemAddedEvent edictEvent)
     {
         CurrentRow.LineItemId = edictEvent.LineItemId;
         CurrentRow.Status = LineItemFulfillmentStatus.Pending;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(LineItemFulfilledEvent edictEvent)
+    Task HandleAsync(LineItemFulfilledEvent edictEvent)
     {
         CurrentRow.LineItemId = edictEvent.LineItemId;
         CurrentRow.Status = LineItemFulfillmentStatus.Fulfilled;

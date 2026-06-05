@@ -17,7 +17,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     // threshold so a checked-out cart follows the happy path.
     const decimal LineItemAmount = 25m;
 
-    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         State.Status = OrderStatus.Open;
         State.Items.Clear();
@@ -30,7 +30,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     // payment and fulfillment workflow. Only OrderSubmitted sets the projected
     // status; a LineItemAdded per basket entry carries the line items through to
     // OrderConfirmed for fulfillment.
-    public Task<EdictCommandResult> HandleAsync(PlaceOrderFromCartCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceOrderFromCartCommand command)
     {
         State.Status = OrderStatus.Submitted;
         State.Items.Clear();
@@ -45,7 +45,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(AddLineItemCommand command)
+    Task<EdictCommandResult> HandleAsync(AddLineItemCommand command)
     {
         if (State.Status != OrderStatus.Open)
         {
@@ -58,7 +58,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(SubmitOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(SubmitOrderCommand command)
     {
         if (State.Items.Count == 0)
         {
@@ -73,7 +73,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 
     // Driven by the OrderPayment saga on PaymentAuthorized — the happy-path
     // terminal transition.
-    public Task<EdictCommandResult> HandleAsync(ConfirmOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(ConfirmOrderCommand command)
     {
         if (State.Status == OrderStatus.Cancelled)
         {
@@ -91,7 +91,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 
     // Driven by the OrderFulfillment saga on OrderFullyFulfilled — the terminal
     // transition past Confirmed. Only a confirmed order may ship.
-    public Task<EdictCommandResult> HandleAsync(MarkOrderShippedCommand command)
+    Task<EdictCommandResult> HandleAsync(MarkOrderShippedCommand command)
     {
         if (State.Status != OrderStatus.Confirmed)
         {
@@ -107,7 +107,7 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
     // A submitted order stays cancellable — that is exactly the OrderPayment
     // saga's compensation branch (PaymentDeclined → CancelOrder). Only a
     // confirmed order is terminal and rejects cancellation.
-    public Task<EdictCommandResult> HandleAsync(CancelOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(CancelOrderCommand command)
     {
         if (State.Status == OrderStatus.Confirmed)
         {

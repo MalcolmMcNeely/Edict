@@ -11,7 +11,7 @@ public sealed partial record FulfillNextLine : EdictScheduleMessage;
 
 public partial class FulfillmentCommandHandler : EdictCommandHandler<FulfillmentState>
 {
-    public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
+    Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
     {
         State.OrderId = command.OrderId;
         State.Lines = command.LineItemIds
@@ -22,7 +22,7 @@ public partial class FulfillmentCommandHandler : EdictCommandHandler<Fulfillment
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
+    async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
     {
         var pendingIndex = State.Lines.FindIndex(line => line.Status == LineItemFulfillmentStatus.Pending);
         if (pendingIndex < 0)
@@ -78,7 +78,7 @@ An explicit positive `timeout:` wins. `EdictSchedule.Unbounded` (a branded senti
 **When the cap fires**, the framework gives the schedule one chance to compensate through `OnScheduleTimeoutAsync(TMessage)`:
 
 ```csharp
-public Task OnScheduleTimeoutAsync(WatchdogPoll message)
+Task OnScheduleTimeoutAsync(WatchdogPoll message)
 {
     Raise(new WatchdogEscalatedEvent(State.WatchdogId, State.Polls));
     return Task.CompletedTask;
@@ -94,14 +94,14 @@ The scheduling surface on an `EdictSaga` is identical: a saga schedules a recurr
 ```csharp
 public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress>
 {
-    public Task HandleAsync(GatewaySettlementBegunEvent edictEvent)
+    Task HandleAsync(GatewaySettlementBegunEvent edictEvent)
     {
         Progress.PaymentId = edictEvent.PaymentId;
         Schedule(new PollGatewayMessage(), every: TimeSpan.FromMinutes(5));
         return Task.CompletedTask;
     }
 
-    public Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
+    Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
     {
         Progress.Polls++;
         if (Progress.Polls >= 2)

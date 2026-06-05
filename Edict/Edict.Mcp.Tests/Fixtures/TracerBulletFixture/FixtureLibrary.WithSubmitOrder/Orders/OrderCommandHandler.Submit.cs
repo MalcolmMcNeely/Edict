@@ -4,7 +4,7 @@ namespace FixtureLibrary.WithSubmitOrder.Orders;
 
 public sealed partial class OrderCommandHandler
 {
-    public Task<EdictCommandResult> HandleAsync(SubmitOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(SubmitOrderCommand command)
     {
         if (State.IsSubmitted)
         {

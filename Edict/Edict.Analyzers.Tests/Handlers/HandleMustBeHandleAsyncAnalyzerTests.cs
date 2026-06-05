@@ -149,7 +149,7 @@ public class HandleMustBeHandleAsyncAnalyzerTests
             public sealed class OrderState : IEdictPersistedState;
             public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
             {
-                public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
                     Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
             }
             """;

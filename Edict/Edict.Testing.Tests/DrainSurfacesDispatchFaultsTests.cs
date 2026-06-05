@@ -118,7 +118,7 @@ public sealed partial record BoomTriggeredEvent(Guid WidgetId) : EdictEvent
 
 public partial class BoomAggregate : EdictCommandHandler<BoomState>
 {
-    public Task<EdictCommandResult> HandleAsync(TriggerBoomCommand command)
+    Task<EdictCommandResult> HandleAsync(TriggerBoomCommand command)
     {
         Raise(new BoomTriggeredEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -144,7 +144,7 @@ public sealed partial class BoomProjectionBuilder : EdictTableProjectionBuilder<
 
     protected override string GetRowKey(EdictEvent edictEvent) => "boom";
 
-    public Task HandleAsync(BoomTriggeredEvent edictEvent) =>
+    Task HandleAsync(BoomTriggeredEvent edictEvent) =>
         throw new InvalidOperationException(RefusalMessage);
 }
 
@@ -171,7 +171,7 @@ public sealed partial record PoisonRaisedEvent(Guid WidgetId) : EdictEvent
 
 public partial class PoisonAggregate : EdictCommandHandler<PoisonState>
 {
-    public Task<EdictCommandResult> HandleAsync(TriggerPoisonCommand command)
+    Task<EdictCommandResult> HandleAsync(TriggerPoisonCommand command)
     {
         Raise(new PoisonRaisedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -183,7 +183,7 @@ public partial class PoisonAggregate : EdictCommandHandler<PoisonState>
 // the harness's fire-and-forget dispatch fault seam.
 public sealed partial class PoisonAuditHandler : EdictEventHandler
 {
-    public Task HandleAsync(PoisonRaisedEvent edictEvent) =>
+    Task HandleAsync(PoisonRaisedEvent edictEvent) =>
         throw new InvalidOperationException("PoisonAuditHandler refused to audit the event.");
 }
 
@@ -210,7 +210,7 @@ public sealed partial record RaceTriggeredEvent(Guid WidgetId) : EdictEvent
 
 public partial class RaceAggregate : EdictCommandHandler<RaceState>
 {
-    public Task<EdictCommandResult> HandleAsync(TriggerRaceCommand command)
+    Task<EdictCommandResult> HandleAsync(TriggerRaceCommand command)
     {
         Raise(new RaceTriggeredEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
@@ -237,6 +237,6 @@ public sealed partial class RaceProjectionBuilder : EdictTableProjectionBuilder<
 
     protected override string GetRowKey(EdictEvent edictEvent) => "race";
 
-    public Task HandleAsync(RaceTriggeredEvent edictEvent) =>
+    Task HandleAsync(RaceTriggeredEvent edictEvent) =>
         throw new InconsistentStateException("simulated storage ETag race that never clears");
 }

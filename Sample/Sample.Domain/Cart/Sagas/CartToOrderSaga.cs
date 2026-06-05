@@ -16,7 +16,7 @@ namespace Sample.Domain.Cart.Sagas;
 /// </summary>
 public partial class CartToOrderSaga : EdictSaga<CartToOrderProgress>
 {
-    public Task HandleAsync(CartCheckedOutEvent edictEvent)
+    Task HandleAsync(CartCheckedOutEvent edictEvent)
     {
         Progress.OrderId = edictEvent.CartId;
         Dispatch(new PlaceOrderFromCartCommand(edictEvent.CartId, edictEvent.Skus));

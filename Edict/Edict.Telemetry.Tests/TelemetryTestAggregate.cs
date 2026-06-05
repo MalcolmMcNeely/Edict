@@ -39,19 +39,19 @@ public sealed partial record TelOrderPlacedEvent(Guid OrderId, string Sku) : Edi
 
 public partial class TelOrderCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> HandleAsync(TelPlaceOrderCommand command)
+    Task<EdictCommandResult> HandleAsync(TelPlaceOrderCommand command)
     {
         Raise(new TelOrderPlacedEvent(command.OrderId, command.Sku));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(TelFailOrderCommand command) =>
+    Task<EdictCommandResult> HandleAsync(TelFailOrderCommand command) =>
         throw new InvalidOperationException("simulated failure");
 }
 
 public partial class TelOrderPlacedHandler : EdictEventHandler
 {
-    public Task HandleAsync(TelOrderPlacedEvent _) => Task.CompletedTask;
+    Task HandleAsync(TelOrderPlacedEvent _) => Task.CompletedTask;
 }
 
 public interface ITelOrderEventCaptureGrain : IGrainWithGuidKey

@@ -12,7 +12,7 @@ public sealed partial record FulfillNextLine : EdictScheduleMessage;
 Schedule(new FulfillNextLine(), every: TimeSpan.FromSeconds(2));
 
 // the fire handler:
-public Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
+Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
 {
     var pending = State.Lines.FindIndex(line => line.Status == Pending);
     if (pending < 0) { return Complete(); }

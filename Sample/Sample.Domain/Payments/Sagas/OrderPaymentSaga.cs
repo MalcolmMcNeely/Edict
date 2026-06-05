@@ -21,14 +21,14 @@ namespace Sample.Domain.Payments.Sagas;
 /// </summary>
 public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
 {
-    public Task HandleAsync(OrderSubmittedEvent edictEvent)
+    Task HandleAsync(OrderSubmittedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.PaymentRequested;
         Dispatch(new AuthorizePaymentCommand(edictEvent.OrderId, edictEvent.Amount));
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(PaymentAuthorizedEvent edictEvent)
+    Task HandleAsync(PaymentAuthorizedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.Confirmed;
         Dispatch(new ConfirmOrderCommand(edictEvent.OrderId));
@@ -39,7 +39,7 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(PaymentDeclinedEvent edictEvent)
+    Task HandleAsync(PaymentDeclinedEvent edictEvent)
     {
         Progress.Stage = OrderPaymentStage.Compensated;
         Dispatch(new CancelOrderCommand(edictEvent.OrderId, "payment_declined"));

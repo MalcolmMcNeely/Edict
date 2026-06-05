@@ -17,7 +17,7 @@ Curious how this was built? See [How this was built](#how-this-was-built) below.
 ```csharp
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
-    public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand cmd)
+    Task<EdictCommandResult> HandleAsync(PlaceOrderCommand cmd)
     {
         State.Status = OrderStatus.Open;
         Raise(new OrderPlacedEvent(cmd.OrderId));
@@ -31,7 +31,7 @@ Subscribing to that event is just as small:
 ```csharp
 public sealed partial class OrderEmailHandler(IEmailSender email) : EdictEventHandler
 {
-    public Task HandleAsync(OrderPlacedEvent evt) => email.SendConfirmation(evt.OrderId, evt.EventId);
+    Task HandleAsync(OrderPlacedEvent evt) => email.SendConfirmation(evt.OrderId, evt.EventId);
 }
 ```
 

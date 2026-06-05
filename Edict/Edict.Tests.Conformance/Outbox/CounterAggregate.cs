@@ -69,14 +69,14 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public Task<Guid> GetActivationIdAsync() => Task.FromResult(_activationId);
 
-    public Task<EdictCommandResult> HandleAsync(IncrementCounterCommand command)
+    Task<EdictCommandResult> HandleAsync(IncrementCounterCommand command)
     {
         State.Count++;
         Raise(new CounterIncrementedEvent(command.CounterId, State.Count));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(BatchIncrementCounterCommand command)
+    Task<EdictCommandResult> HandleAsync(BatchIncrementCounterCommand command)
     {
         for (var i = 0; i < command.Times; i++)
         {

@@ -78,14 +78,14 @@ public sealed partial record WidgetIncrementedEvent(Guid WidgetId) : EdictEvent
 
 public partial class WidgetAggregate : EdictCommandHandler<WidgetState>
 {
-    public Task<EdictCommandResult> HandleAsync(PlaceWidgetCommand command)
+    Task<EdictCommandResult> HandleAsync(PlaceWidgetCommand command)
     {
         State.Count = 0;
         Raise(new WidgetPlacedEvent(command.WidgetId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(IncrementWidgetCommand command)
+    Task<EdictCommandResult> HandleAsync(IncrementWidgetCommand command)
     {
         State.Count++;
         Raise(new WidgetIncrementedEvent(command.WidgetId));
@@ -114,13 +114,13 @@ public sealed partial class DecoyWidgetProjectionBuilder : EdictTableProjectionB
 
     protected override string GetRowKey(EdictEvent edictEvent) => "decoy";
 
-    public Task HandleAsync(WidgetPlacedEvent edictEvent)
+    Task HandleAsync(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(WidgetIncrementedEvent edictEvent)
+    Task HandleAsync(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Hits++;
         return Task.CompletedTask;
@@ -147,13 +147,13 @@ public sealed partial class WidgetCounterProjectionBuilder : EdictTableProjectio
 
     protected override string GetRowKey(EdictEvent edictEvent) => "counter";
 
-    public Task HandleAsync(WidgetPlacedEvent edictEvent)
+    Task HandleAsync(WidgetPlacedEvent edictEvent)
     {
         CurrentRow.Count = 0;
         return Task.CompletedTask;
     }
 
-    public Task HandleAsync(WidgetIncrementedEvent edictEvent)
+    Task HandleAsync(WidgetIncrementedEvent edictEvent)
     {
         CurrentRow.Count++;
         return Task.CompletedTask;

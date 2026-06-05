@@ -21,7 +21,7 @@ public sealed partial record CheckSkuCommand(Guid OrderId, string Sku) : EdictCo
 
 public partial class CheckSkuCommandHandler : EdictCommandHandler
 {
-    public Task<EdictCommandResult> HandleAsync(CheckSkuCommand command) =>
+    Task<EdictCommandResult> HandleAsync(CheckSkuCommand command) =>
         Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
 }
 

@@ -3,7 +3,7 @@
 Claim-check is the framework's escape hatch for oversized events. When the serialised wire frame would exceed the streaming substrate's per-message cap, the payload is written to an append-only blob store keyed by the event's `EventId`, and the wire hop carries no separate pointer — the envelope's `EventId` **is** the key. The receiver pipeline materialises the body before dispatch; the consumer's `HandleAsync(TEvent)` signature is unchanged. This holds for every consumer role: event handlers, sagas, and table-projection builders all receive a claim-checked event identically to an in-band one, and a saga's dispatched command or a projection's row write is staged and delivered the same way.
 
 ```csharp
-public Task HandleAsync(LargeOrderEvent edictEvent)
+Task HandleAsync(LargeOrderEvent edictEvent)
 {
     return Task.CompletedTask;
 }

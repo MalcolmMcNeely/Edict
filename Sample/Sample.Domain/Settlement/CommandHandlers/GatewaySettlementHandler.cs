@@ -15,20 +15,20 @@ namespace Sample.Domain.Settlement.CommandHandlers;
 /// </summary>
 public partial class GatewaySettlementHandler : EdictCommandHandler<GatewaySettlementState>
 {
-    public Task<EdictCommandResult> HandleAsync(BeginGatewaySettlementCommand command)
+    Task<EdictCommandResult> HandleAsync(BeginGatewaySettlementCommand command)
     {
         State.PaymentId = command.PaymentId;
         Raise(new GatewaySettlementBegunEvent(command.PaymentId, command.PollTimeoutSeconds));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(ConfirmSettlementCommand command)
+    Task<EdictCommandResult> HandleAsync(ConfirmSettlementCommand command)
     {
         State.Settled = true;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictCommandResult> HandleAsync(AbandonSettlementCommand command)
+    Task<EdictCommandResult> HandleAsync(AbandonSettlementCommand command)
     {
         State.Abandoned = true;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());

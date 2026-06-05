@@ -20,20 +20,20 @@ namespace Sample.Domain.Watchdog.CommandHandlers;
 /// </summary>
 public partial class WatchdogCommandHandler : EdictCommandHandler<WatchdogState>
 {
-    public Task<EdictCommandResult> HandleAsync(StartWatchdogCommand command)
+    Task<EdictCommandResult> HandleAsync(StartWatchdogCommand command)
     {
         State.WatchdogId = command.WatchdogId;
         Schedule(new WatchdogPoll(), every: TimeSpan.FromHours(1), timeout: TimeSpan.FromMinutes(5));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    public Task<EdictScheduleResult> HandleAsync(WatchdogPoll message)
+    Task<EdictScheduleResult> HandleAsync(WatchdogPoll message)
     {
         State.Polls++;
         return Continue();
     }
 
-    public Task OnScheduleTimeoutAsync(WatchdogPoll message)
+    Task OnScheduleTimeoutAsync(WatchdogPoll message)
     {
         Raise(new WatchdogEscalatedEvent(State.WatchdogId, State.Polls));
         return Task.CompletedTask;

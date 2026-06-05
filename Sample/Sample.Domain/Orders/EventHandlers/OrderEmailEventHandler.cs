@@ -18,7 +18,7 @@ namespace Sample.Domain.Orders.EventHandlers;
 /// </summary>
 public sealed partial class OrderEmailEventHandler(ILogger<OrderEmailEventHandler> logger) : EdictEventHandler
 {
-    public Task HandleAsync(OrderPlacedEvent edictEvent)
+    Task HandleAsync(OrderPlacedEvent edictEvent)
     {
         if (ServiceProvider.GetService<IEmailNotifier>() is { } notifier)
         {
