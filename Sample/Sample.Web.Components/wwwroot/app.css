@@ -364,3 +364,9 @@ main {
 .playground-basket li {
     padding: 0.15rem 0;
 }
+
+.playground-section {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}

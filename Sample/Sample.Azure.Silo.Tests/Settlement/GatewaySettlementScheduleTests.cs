@@ -47,6 +47,12 @@ public sealed class GatewaySettlementScheduleTests
         await app.FireDueSchedulesAsync();
         Assert.Equal(1, app.Timeline.Entries.Count(entry =>
             entry.Kind == "Command" && entry.Type == nameof(ConfirmSettlementCommand)));
+
+        // The poll count and terminal outcome the Playground surfaces, read off
+        // the saga's own durable Progress through the same accessor.
+        var progress = await app.GetSagaProgress<GatewaySettlementSaga, GatewaySettlementProgress>(paymentId);
+
+        await Verify(progress);
     }
 
     [Fact]
@@ -57,14 +63,20 @@ public sealed class GatewaySettlementScheduleTests
         await using var app = await EdictTestApp.StartAsync(b => b
             .WithConsumer(typeof(GatewaySettlementSaga).Assembly));
 
-        // A 10-second poll timeout against a 5-minute cadence: the cap fires before
-        // any due tick, and the poll never settles.
-        await app.SendAsync(new BeginGatewaySettlementCommand(paymentId, PollTimeoutSeconds: 10));
+        // A 1-second poll timeout against the 2-second demo cadence: the cap fires
+        // before any due tick, and the poll never settles.
+        await app.SendAsync(new BeginGatewaySettlementCommand(paymentId, PollTimeoutSeconds: 1));
         await app.Drain();
 
         await app.FireScheduleTimeoutsAsync();
 
         Assert.Equal(1, app.Timeline.Entries.Count(entry =>
             entry.Kind == "Command" && entry.Type == nameof(AbandonSettlementCommand)));
+
+        // The compensation outcome the Playground surfaces off the saga's Progress:
+        // the poll never settled, so the count stays zero and the outcome is abandoned.
+        var progress = await app.GetSagaProgress<GatewaySettlementSaga, GatewaySettlementProgress>(paymentId);
+
+        await Verify(progress);
     }
 }

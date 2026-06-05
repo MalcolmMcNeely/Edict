@@ -19,7 +19,9 @@ namespace Sample.Domain.Settlement.Sagas;
 /// </summary>
 public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress>
 {
-    static readonly TimeSpan PollCadence = TimeSpan.FromMinutes(5);
+    // Tuned for demo, not production: a real gateway poll runs on a multi-minute
+    // cadence, shrunk here to seconds so a visitor can watch the poll count climb.
+    static readonly TimeSpan PollCadence = TimeSpan.FromSeconds(2);
 
     Task HandleAsync(GatewaySettlementBegunEvent edictEvent)
     {
@@ -45,6 +47,7 @@ public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress
         // attempt. Settling sends the confirming Command and stops the schedule.
         if (Progress.Polls >= 2)
         {
+            Progress.Outcome = GatewaySettlementOutcome.Settled;
             Dispatch(new ConfirmSettlementCommand(Progress.PaymentId));
             return Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
         }
@@ -54,6 +57,7 @@ public partial class GatewaySettlementSaga : EdictSaga<GatewaySettlementProgress
 
     Task OnScheduleTimeoutAsync(PollGatewayMessage message)
     {
+        Progress.Outcome = GatewaySettlementOutcome.Abandoned;
         Dispatch(new AbandonSettlementCommand(Progress.PaymentId));
         return Task.CompletedTask;
     }

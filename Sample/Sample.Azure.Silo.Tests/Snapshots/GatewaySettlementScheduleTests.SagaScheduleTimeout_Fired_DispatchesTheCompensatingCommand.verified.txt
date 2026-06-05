@@ -1,0 +1,4 @@
+{
+  PaymentId: Guid_1,
+  Outcome: Abandoned
+}

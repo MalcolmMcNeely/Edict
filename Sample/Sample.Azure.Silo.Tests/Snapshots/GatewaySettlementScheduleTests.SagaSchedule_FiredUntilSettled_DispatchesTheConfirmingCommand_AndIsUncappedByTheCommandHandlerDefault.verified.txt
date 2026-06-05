@@ -1,0 +1,5 @@
+{
+  PaymentId: Guid_1,
+  Polls: 2,
+  Outcome: Settled
+}
