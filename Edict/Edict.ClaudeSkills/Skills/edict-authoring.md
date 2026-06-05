@@ -110,6 +110,76 @@ protected override Task OnSagaTimeoutAsync()
 
 `edict_list_handlers` reports each saga's effective cap (a duration, `unbounded`, or `default`) alongside its role, so the inventory check above also tells you which sagas already carry an explicit `[EdictSagaTimeout]`.
 
+## Authoring a schedule
+
+A schedule is recurring or timeout work driven from inside a Command Handler or a Saga. It is not a sixth grain role: you add it to an existing Command Handler or Saga, never to an Event Handler or a Projection Builder. Reach for it when a handler needs to do something *again later* on a fixed cadence (poll a gateway, fulfil the next line, renew a lease) instead of blocking the current turn or wiring a raw Orleans timer.
+
+A schedule fires a **message**, never a delegate. The message is a record deriving from `EdictScheduleMessage` in `Edict.Contracts.Schedules`, carrying an `[Alias]` exactly like a Command or Event so it round-trips on the wire. The framework persists the message bytes in the grain envelope, and on each fire deserializes it and routes it back through the same generator-emitted dispatch the handler uses for Commands:
+
+```csharp
+[Alias("fulfill-next-line")]
+public sealed record FulfillNextLine : EdictScheduleMessage;
+```
+
+Start the schedule from a normal `HandleAsync` by calling the protected `Schedule(message, every, timeout)`. The cadence is declared once, here, as a single fixed `every:` interval (no jitter, no per-fire reschedule). The first fire is at `+every`:
+
+```csharp
+public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
+{
+    State.OrderId = command.OrderId;
+    Schedule(new FulfillNextLine(), every: TimeSpan.FromSeconds(2));
+    return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+}
+```
+
+Handle each fire with a `Task<EdictScheduleResult> HandleAsync(TMessage)` overload alongside your Command handlers. It re-enters the full handler lifecycle (mutate `State`, `Raise` events, `Dispatch` from a saga) and answers exactly one of two outcomes: keep firing on the cadence, or stop. On a **Command Handler** use the protected `Continue()` / `Complete()` helpers, which return the result already wrapped in a `Task`:
+
+```csharp
+public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
+{
+    var pendingIndex = State.Lines.FindIndex(line => line.Status == LineItemFulfillmentStatus.Pending);
+    if (pendingIndex < 0)
+    {
+        return await Complete();
+    }
+
+    State.Lines[pendingIndex] = State.Lines[pendingIndex] with { Status = LineItemFulfillmentStatus.Fulfilled };
+    Raise(new LineItemFulfilledEvent(State.OrderId, State.Lines[pendingIndex].LineItemId));
+    return await Continue();
+}
+```
+
+A **Saga** has no `Continue()` / `Complete()` helpers (its own `Complete()` is the saga lifecycle terminal). Construct the result directly:
+
+```csharp
+public Task<EdictScheduleResult> HandleAsync(PollGatewayMessage message)
+{
+    Progress.Polls++;
+    if (Progress.Polls >= 2)
+    {
+        Dispatch(new ConfirmSettlementCommand(Progress.PaymentId));
+        return Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+    }
+    return Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Continue());
+}
+```
+
+A one-shot delayed action is just `every: X` plus `Complete()` on the first fire.
+
+**Every schedule has a timeout cap, armed once at registration and never reset by a fire** (a dead-man's switch on total schedule lifetime). Omitting `timeout:` inherits the silo default; pass an explicit `TimeSpan` to cap shorter, or `EdictSchedule.Unbounded` to opt a legitimately perpetual schedule out of any cap. A Command Handler schedule inherits `EdictCommandHandlerScheduleOptions.DefaultTimeout` (see the `edict-silo-wiring` skill); a Saga schedule is instead bounded by the saga's own `[EdictSagaTimeout]` cap.
+
+To compensate when the cap fires, write an `OnScheduleTimeoutAsync(TMessage)` overload taking the same message type. It runs the compensation atomically with the schedule's removal. Without it, a fired cap dead-letters (loudly, never silently):
+
+```csharp
+public Task OnScheduleTimeoutAsync(PollGatewayMessage message)
+{
+    Dispatch(new AbandonSettlementCommand(Progress.PaymentId));
+    return Task.CompletedTask;
+}
+```
+
+`edict_list_handlers` reports, per Command Handler and Saga, whether it registers a schedule and the source of that schedule's timeout cap (`inheritsSiloDefault` for a Command Handler, `inheritsSagaCap` for a Saga). It does not report the per-schedule `timeout:` literal, so the inventory tells you *which* handlers schedule, not the exact cap value at each call site.
+
 ## When to look up a term
 
 When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.

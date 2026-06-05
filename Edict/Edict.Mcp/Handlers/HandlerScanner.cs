@@ -16,6 +16,8 @@ sealed class HandlerScanner
     const string EventBase = "Edict.Contracts.Events.EdictEvent";
     const string RouteKeyAttributeFullName = "Edict.Contracts.Commands.EdictRouteKeyAttribute";
     const string SagaTimeoutAttributeFullName = "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute";
+    const string ScheduleMessageBase = "Edict.Contracts.Schedules.EdictScheduleMessage";
+    const string TaskOfScheduleResultReturnType = "System.Threading.Tasks.Task<Edict.Contracts.Schedules.EdictScheduleResult>";
 
     public HandlerInventory Scan(IEnumerable<Compilation> compilations, string? solutionDirectory)
     {
@@ -72,13 +74,15 @@ sealed class HandlerScanner
         var boundContracts = CollectBoundContracts(handlerSymbol, role, resolver);
         var sourceLocation = ResolveSourceLocation(handlerSymbol, solutionDirectory);
         var sagaTimeoutCap = role == HandlerRole.Saga ? ReadSagaTimeoutCap(handlerSymbol) : null;
+        var schedule = ReadScheduleRegistration(handlerSymbol, role);
         return new HandlerEntry(
             DeclaringTypeName: handlerSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)),
             Role: role,
             BoundContracts: boundContracts,
             DeclaringAssembly: handlerSymbol.ContainingAssembly.Name,
             SourceLocation: sourceLocation,
-            SagaTimeoutCap: sagaTimeoutCap);
+            SagaTimeoutCap: sagaTimeoutCap,
+            Schedule: schedule);
     }
 
     static IReadOnlyList<BoundContractInfo> CollectBoundContracts(INamedTypeSymbol handlerSymbol, HandlerRole role, BaseTypeResolver resolver)
@@ -180,6 +184,39 @@ sealed class HandlerScanner
             }
         }
         return SagaTimeoutCap.InheritsDefault;
+    }
+
+    // A handler registers a schedule when it declares a schedule fire handler
+    // HandleAsync(TMessage) : Task<EdictScheduleResult>, mirroring the generator's own discovery.
+    // The scanner does not read the timeout: call-site argument: a command handler's schedule
+    // inherits the silo-wide EdictCommandHandlerScheduleOptions.DefaultTimeout, while a saga's
+    // schedule is bounded by the saga cap, so the source is the only thing surfaced here.
+    static ScheduleRegistration? ReadScheduleRegistration(INamedTypeSymbol handlerSymbol, HandlerRole role)
+    {
+        if (role != HandlerRole.CommandHandler && role != HandlerRole.Saga)
+        {
+            return null;
+        }
+
+        foreach (var member in EnumerateInheritedMembers(handlerSymbol))
+        {
+            if (member is not IMethodSymbol method
+                || method.Name != EdictWellKnownNames.HandleMethodName
+                || method.Parameters.Length != 1)
+            {
+                continue;
+            }
+            if (method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)) != TaskOfScheduleResultReturnType)
+            {
+                continue;
+            }
+            if (method.Parameters[0].Type is not INamedTypeSymbol parameterType || !DerivesFromMetadataName(parameterType, ScheduleMessageBase))
+            {
+                continue;
+            }
+            return role == HandlerRole.Saga ? ScheduleRegistration.InheritsSagaCap : ScheduleRegistration.InheritsSiloDefault;
+        }
+        return null;
     }
 
     static SourceLocationInfo? ResolveSourceLocation(INamedTypeSymbol symbol, string? solutionDirectory)

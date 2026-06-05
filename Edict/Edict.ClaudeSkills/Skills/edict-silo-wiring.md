@@ -32,6 +32,21 @@ Each `AddEdict*` extension that takes a `(...)` argument accepts an `Action<T>` 
 
 Command Validators (`EdictCommandValidator<TCommand>` subclasses) are auto-discovered by `AddEdict(assembly)` through FluentValidation's `AddValidatorsFromAssemblies`. No manual DI registration is needed; adding a validator class to the consumer assembly is enough.
 
+## Schedule default timeout
+
+`AddEdict(...)` takes three optional configuration lambdas: core `EdictOptions`, then `EdictSagaOptions`, then `EdictCommandHandlerScheduleOptions`. The third configures the default cap for Command Handler schedules:
+
+```csharp
+silo.AddEdict(
+    core => { core.OutboxMaxAttempts = 3; },
+    saga => { saga.DefaultTimeout = TimeSpan.FromDays(7); },
+    schedule => { schedule.DefaultTimeout = TimeSpan.FromDays(7); });
+```
+
+`EdictCommandHandlerScheduleOptions.DefaultTimeout` is the cap applied to any Command Handler schedule started without an explicit `timeout:`. It ships finite at 7 days so no schedule can tick forever by accident, and it is positive-or-null validated at host start (a zero or negative value aggregates into the boot-time `EdictWiringException`). Set it to `null` to return the silo to uncapped command-handler schedules. This default governs Command Handler schedules only: a Saga's schedule is bounded by that saga's own `[EdictSagaTimeout]` cap, not by this option.
+
+A consumer opts a single perpetual schedule out of the cap at its call site with `timeout: EdictSchedule.Unbounded`, which always beats this default. See the `edict-authoring` skill for the `Schedule(...)` call site.
+
 ## Supported pairings
 
 Pick exactly one streaming + one persistence:

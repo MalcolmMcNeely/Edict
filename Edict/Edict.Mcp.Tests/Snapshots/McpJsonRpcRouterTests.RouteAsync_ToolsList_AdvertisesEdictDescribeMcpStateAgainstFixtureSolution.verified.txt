@@ -45,7 +45,7 @@
       },
       {
         "name": "edict_list_handlers",
-        "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location. Saga handlers also carry their effective [EdictSagaTimeout] cap: a duration literal, unbounded, or default (inherits the silo-wide EdictSagaOptions.DefaultTimeout).",
+        "description": "Returns every consumer-defined subclass of EdictCommandHandler / EdictEventHandler / EdictSaga / EdictProjectionBuilder / EdictTableProjectionBuilder in the loaded solution, each with its role, bound Command/Event types, [EdictRouteKey] property name, declaring assembly, and source location. Saga handlers also carry their effective [EdictSagaTimeout] cap: a duration literal, unbounded, or default (inherits the silo-wide EdictSagaOptions.DefaultTimeout). A Command Handler or Saga that registers a schedule (declares a HandleAsync(TMessage) returning Task\u003CEdictScheduleResult\u003E) also carries its schedule timeout source: inheritsSiloDefault for a Command Handler (the silo-wide EdictCommandHandlerScheduleOptions.DefaultTimeout) or inheritsSagaCap for a Saga (bounded by the saga\u0027s own cap). The per-schedule timeout: call-site argument is not statically extracted.",
         "inputSchema": {
           "type": "object",
           "properties": {}

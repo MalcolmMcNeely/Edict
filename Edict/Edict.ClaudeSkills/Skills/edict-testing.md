@@ -38,6 +38,24 @@ A **state-only Command** — one that mutates the aggregate's `State` and raises
 - **`EdictTestApp.GetSagaState(sagaType)`** — most-recent `lastHandledAt` across sagas of that type on the silo. Pairs with `AdvanceClock` for idleness-shaped tests.
 - **`EdictTestApp.Drain()`** — settles the engine. Returns when the inline outbox drain has run, the in-process publisher has fanned every event out, every cascading `SendCommand` has settled, and the chaos held-queue is empty. Hard timeout.
 - **`EdictTestApp.AdvanceClock(TimeSpan)`** — advances the virtual `TimeProvider` (the engine's backoff/reminder gate) and drains. Backoff timing elapses with no wall-clock wait.
+- **`EdictTestApp.FireDueSchedulesAsync()`** — drives the next round of due schedule fires. Reads the soonest due instant across every grain a Command has been routed to, advances the virtual clock to it, fires every grain now due, and drains so the fired outcome (raised Events, dispatched Commands) lands on the `Timeline`. A no-op when no schedule is active.
+- **`EdictTestApp.FireScheduleTimeoutsAsync()`** — the symmetric seam for the timeout cap. Advances to the soonest cap instant, fires the timeout on every grain at or past its cap, and drains so the compensation (`OnScheduleTimeoutAsync`) or the dead-letter (when no hook is written) lands on the `Timeline`.
+
+## Testing a schedule (interval-agnostic)
+
+Both fire seams read the schedule's own next-due (or next-timeout) instant from the grain and advance the virtual clock to exactly that point, so a test never names the cadence. Do **not** `AdvanceClock(TimeSpan.FromSeconds(2))` to match a `Schedule(every: 2s)` call: that couples the test to a literal the handler owns, and the test breaks the moment the cadence changes even though behaviour is identical. Call `FireDueSchedulesAsync()` once per fire and chain it to walk a multi-step scheduled workflow:
+
+```csharp
+await app.SendAsync(new StartFulfillmentCommand(orderId, lineIds));
+await app.Drain();
+
+await app.FireDueSchedulesAsync();   // first line fulfilled
+await app.FireDueSchedulesAsync();   // second line fulfilled, schedule completes
+
+await Verify(app.Timeline);
+```
+
+Assert the compensation and dead-letter branches the same way: drive the schedule with `FireScheduleTimeoutsAsync()` and `Verify` the `Timeline`, which shows the `OnScheduleTimeoutAsync` outcome (a compensating Command or raised Event) or the dead-letter row. Swap any collaborator a fire handler resolves (an `IWarehouseGateway`, a gateway client) through the same `Replace<TService>` seam used elsewhere; a schedule fire handler is ordinary handler code and composes with DI identically.
 
 ## Chaos is on by default
 

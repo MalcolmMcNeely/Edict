@@ -287,6 +287,123 @@ public class HandlerScannerTests
         """;
 
     [Fact]
+    public void Scan_CommandHandlerRegisteringSchedule_SurfacesInheritsSiloDefaultSource()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
+            using Edict.Contracts.Schedules;
+            using Edict.Core.Commands;
+
+            namespace Acme.Billing
+            {
+                public sealed record MeterState : IEdictPersistedState;
+
+                public sealed record StartMeteringCommand : EdictCommand
+                {
+                    [EdictRouteKey]
+                    public System.Guid SubscriptionId { get; init; }
+                }
+
+                public sealed record MeterTick : EdictScheduleMessage;
+
+                public sealed partial class MeterCommandHandler : EdictCommandHandler<MeterState>
+                {
+                    public System.Threading.Tasks.Task HandleAsync(StartMeteringCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                    public System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(MeterTick tick) => null!;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Equal(HandlerRole.CommandHandler, entry.Role);
+        Assert.NotNull(entry.Schedule);
+        Assert.Equal(ScheduleTimeoutSource.InheritsSiloDefault, entry.Schedule!.TimeoutSource);
+    }
+
+    [Fact]
+    public void Scan_CommandHandlerWithoutSchedule_HasNoScheduleRegistration()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
+            using Edict.Core.Commands;
+
+            namespace Acme.Orders
+            {
+                public sealed record OrderState : IEdictPersistedState;
+
+                public sealed record PlaceOrderCommand : EdictCommand
+                {
+                    [EdictRouteKey]
+                    public System.Guid OrderId { get; init; }
+                }
+
+                public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
+                {
+                    public System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Null(entry.Schedule);
+    }
+
+    [Fact]
+    public void Scan_SagaRegisteringSchedule_SurfacesInheritsSagaCapSource()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
+            using Edict.Contracts.Schedules;
+            using Edict.Core.Sagas;
+
+            namespace Acme.Settlement
+            {
+                public sealed record SettlementProgress : IEdictPersistedState;
+
+                [EdictStream("Payments")]
+                public sealed record PaymentAuthorised : EdictEvent;
+
+                public sealed record PollSettlement : EdictScheduleMessage;
+
+                public sealed partial class SettlementSaga : EdictSaga<SettlementProgress>
+                {
+                    public System.Threading.Tasks.Task HandleAsync(PaymentAuthorised edictEvent) => System.Threading.Tasks.Task.CompletedTask;
+                    public System.Threading.Tasks.Task<EdictScheduleResult> HandleAsync(PollSettlement poll) => null!;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        Assert.Equal(HandlerRole.Saga, entry.Role);
+        Assert.NotNull(entry.Schedule);
+        Assert.Equal(ScheduleTimeoutSource.InheritsSagaCap, entry.Schedule!.TimeoutSource);
+    }
+
+    [Fact]
     public void Scan_CommandValidatorSubclass_ReportsCommandValidatorRoleWithBoundCommand()
     {
         // Arrange
@@ -561,6 +678,16 @@ public class HandlerScannerTests
             using Edict.Contracts.Persistence;
             public abstract class EdictProjectionBuilder { }
             public abstract class EdictTableProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
+        }
+
+        namespace Edict.Contracts.Schedules
+        {
+            public abstract record EdictScheduleMessage;
+            public abstract record EdictScheduleResult
+            {
+                public sealed record Continue : EdictScheduleResult;
+                public sealed record Complete : EdictScheduleResult;
+            }
         }
         """;
 }
