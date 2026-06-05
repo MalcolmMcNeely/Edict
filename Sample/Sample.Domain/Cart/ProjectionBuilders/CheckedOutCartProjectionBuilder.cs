@@ -7,9 +7,9 @@ using Sample.Contracts.Cart.Projections;
 
 namespace Sample.Domain.Cart.ProjectionBuilders;
 
-public sealed partial class CheckedOutCartTableProjectionBuilder : EdictTableProjectionBuilder<CheckedOutCartRow>
+public sealed partial class CheckedOutCartProjectionBuilder : EdictListProjectionBuilder<CheckedOutCartRow>
 {
-    public CheckedOutCartTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public CheckedOutCartProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "checkedoutcarts";

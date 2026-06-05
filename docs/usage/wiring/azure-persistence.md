@@ -97,7 +97,7 @@ Azurite's table emulator is close enough that the conformance battery runs again
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `Table Projection Builder`, `Table Repository`.
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Table Repository`.
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [projection-builders.md](../concepts/projection-builders.md), [idempotency.md](../concepts/idempotency.md).
 - Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).

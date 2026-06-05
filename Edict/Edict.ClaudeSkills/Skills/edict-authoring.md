@@ -1,6 +1,6 @@
 ---
 name: edict-authoring
-description: Use this skill when working on a consumer app built on Edict and adding a new feature — a new Command, Event, Command Handler, Event Handler, Saga, Projection Builder, or Table Projection Builder. Walks the role decision tree before any code is written.
+description: Use this skill when working on a consumer app built on Edict and adding a new feature — a new Command, Event, Command Handler, Event Handler, Saga, Projection Builder, or List Projection Builder. Walks the role decision tree before any code is written.
 ---
 
 # Authoring a feature in an Edict consumer app
@@ -16,7 +16,7 @@ A new feature is *always* one of five grain roles plus the validator DI-service 
 - **Event Handler** — the terminal side-effect grain. Use when something has *happened* and the consequence is external (email, HTTP call, non-Edict store). Lives on `EdictEventHandler`; named `{Name}EventHandler`. Never owns events, never calls `Raise` or `Dispatch`.
 - **Saga** — the coordinator. Use when an event needs to fan into at most one follow-up Command, possibly on a different aggregate. Lives on `EdictSaga<TProgress>`; at most one Command per handled Event via `Dispatch`. Do not reconstruct progress by replay; the durable `Progress` is the source of truth.
 - **Projection Builder** — the in-grain read model. Use when a small, single-grain forward-only view is enough. Edict is event-driven, not event-sourced — projections only ever see events from subscription forward.
-- **Table Projection Builder** — the external read model. Use when the read model grows beyond what fits comfortably in grain state. The durable row lives in an external store; the grain holds a transient last-touched-slot cache.
+- **List Projection Builder** — the external read model. Use when the read model grows beyond what fits comfortably in grain state. The durable row lives in an external store; the grain holds a transient last-touched-slot cache.
 
 ## Always check the inventory before authoring
 

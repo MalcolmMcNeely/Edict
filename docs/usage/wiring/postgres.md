@@ -97,7 +97,7 @@ The Sample web project does exactly this. The framework option will stay until t
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `Table Projection Builder`, `Table Repository`, `Claim Check`.
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Table Repository`, `Claim Check`.
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [claim-check.md](../concepts/claim-check.md), [idempotency.md](../concepts/idempotency.md).
 - Configuration — [postgres.md](../../configuration/postgres.md) — the options table, connection-string format, and pool-sizing math.
 - Wiring — [kafka.md](kafka.md), [azure-streaming.md](azure-streaming.md), [azure-persistence.md](azure-persistence.md).

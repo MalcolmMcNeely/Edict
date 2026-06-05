@@ -5,7 +5,7 @@ namespace Edict.Kafka.Tests.Resilience;
 // the kill, RestartSiloAsync brings up a fresh silo on the same address; the new
 // Edict.Kafka receiver re-Assigns its partition and reads from the consumer
 // group's last committed offset — which is the offset BEFORE the in-flight event,
-// because MessagesDeliveredAsync never ran. The EdictTableProjectionBuilder's
+// because MessagesDeliveredAsync never ran. The EdictListProjectionBuilder's
 // atomic ring + UpsertRow commit guarantees the reference-store row settles at
 // Count = 1 even though Handle entered the projection grain twice.
 [Collection(KafkaSiloKillCollection.Name)]

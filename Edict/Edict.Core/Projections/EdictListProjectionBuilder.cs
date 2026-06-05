@@ -29,14 +29,14 @@ namespace Edict.Core.Projections;
 /// double-apply gap — it is no longer an accepted limitation.
 /// </para>
 /// </summary>
-public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
-    where T : class, IEdictPersistedState, new()
+public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
+    where TRow : class, IEdictPersistedState, new()
 {
-    IEdictTableWriteStore<T>? _writeStore;
+    IEdictTableWriteStore<TRow>? _writeStore;
     Serializer? _cachedSerializer;
     TypeConverter? _cachedTypeConverter;
-    readonly InvocationScope<ProjectionRowBox<T>> _row = new();
-    (string PartitionKey, string RowKey, T Row)? _lastWrittenRow;
+    readonly InvocationScope<ProjectionRowBox<TRow>> _row = new();
+    (string PartitionKey, string RowKey, TRow Row)? _lastWrittenRow;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -65,7 +65,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     /// when the row type is immutable (e.g. a record with <c>init</c>-only
     /// properties).
     /// </summary>
-    protected T CurrentRow
+    protected TRow CurrentRow
     {
         get => _row.Current.Row;
         set => _row.Current.Row = value;
@@ -74,7 +74,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
-        _writeStore = await writeStoreFactory.CreateAsync<T>(TableName, cancellationToken);
+        _writeStore = await writeStoreFactory.CreateAsync<TRow>(TableName, cancellationToken);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         var box = _row.Begin();
         box.Row = _lastWrittenRow is { } cached && cached.PartitionKey == partitionKey && cached.RowKey == rowKey
             ? cached.Row
-            : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new T();
+            : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new TRow();
 
         await handler(edictEvent);
 
@@ -109,7 +109,7 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
         return EdictDispatchOutcome.HandledWith(BuildUpsertEntry(partitionKey, rowKey, box.Row));
     }
 
-    OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, T row)
+    OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, TRow row)
     {
         // The row type identity that travels with the effect is the
         // frozen [Alias] literal, captured here via TypeConverter.Format so the
@@ -123,10 +123,10 @@ public abstract class EdictTableProjectionBuilder<T>(IEdictTableStoreFactory wri
             TableName = TableName,
             PartitionKey = partitionKey,
             RowKey = rowKey,
-            RowAlias = typeConverter.Format(typeof(T)),
+            RowAlias = typeConverter.Format(typeof(TRow)),
             // Stage as object so the wire bytes carry the Orleans type id;
             // the drain decodes via Deserialize<object> and gets the concrete
-            // row instance back without needing T at runtime.
+            // row instance back without needing TRow at runtime.
             RowBytes = serializer.SerializeToArray<object>(row),
         };
 

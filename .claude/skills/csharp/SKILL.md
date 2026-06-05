@@ -32,7 +32,7 @@ A type is `Edict`-prefixed **iff (a)** a consumer types it — derives from it, 
 **No `Grain` suffix.** "Grain" is an Orleans implementation noun a consumer never names. Edict abstractions and consumer subclasses never end in `Grain`. Consumer subclasses are `{Name}{Role}`: `OrderCommandHandler`, `OrdersByStatusProjectionBuilder`, future `{Name}EventHandler` / `{Name}Saga`.
 
 **Consumer-facing (always `Edict`-prefixed):**
-`EdictCommand`, `EdictEvent`, `EdictCommandResult`, `EdictRejectionReason`, `[EdictRouteKey]`, `[EdictStream]`, `[EdictTelemeterized]`, `EdictCommandHandler`, `EdictProjectionBuilder`, `EdictTableProjectionBuilder`, `IEdictSender`, `IEdictTableRepository`. Plus `EdictIdempotencyBase` under clause (b) — no consumer derives from it directly, but it is the shared root of every consumer grain base.
+`EdictCommand`, `EdictEvent`, `EdictCommandResult`, `EdictRejectionReason`, `[EdictRouteKey]`, `[EdictStream]`, `[EdictTelemeterized]`, `EdictCommandHandler`, `EdictProjectionBuilder`, `EdictListProjectionBuilder`, `IEdictSender`, `IEdictTableRepository`. Plus `EdictIdempotencyBase` under clause (b) — no consumer derives from it directly, but it is the shared root of every consumer grain base.
 
 **Internal (stays bare):** sender implementation, command-route resolver, dedup state, exception types. If a consumer never names it and it is not a shared inheritance root, it does not carry the prefix. **Raw Orleans test doubles** that genuinely derive from `Grain`/`Grain<T>` (e.g. `DedupPublisherGrain`) keep "Grain" — they are honest grains, not Edict abstractions.
 
@@ -41,7 +41,7 @@ A type is `Edict`-prefixed **iff (a)** a consumer types it — derives from it, 
 | Assembly | What goes here |
 |---|---|
 | `Edict.Contracts` | Consumer-typed surface: `EdictCommand`, `EdictEvent`, attributes, `IEdictSender`, `IEdictTableRepository`, and the internal write-store seam. No Orleans server runtime. |
-| `Edict.Core` | Persistence-agnostic grain runtime: `EdictCommandHandler`, `EdictIdempotencyBase`, `EdictProjectionBuilder`, `EdictTableProjectionBuilder`. Must not depend on `Azure.*`. |
+| `Edict.Core` | Persistence-agnostic grain runtime: `EdictCommandHandler`, `EdictIdempotencyBase`, `EdictProjectionBuilder`, `EdictListProjectionBuilder`. Must not depend on `Azure.*`. |
 | `Edict.Telemetry` | `ActivitySource`, span extensions, ADR-0003 stream-hop trace capture (`RequestContext`). References `Orleans.Core`, not the server runtime. |
 | `Edict.Azure` | All Azure-specific implementations. The only assembly that may depend on `Azure.*`. |
 | `Edict.Generators` | Roslyn source generators (`netstandard2.0`). |
@@ -65,7 +65,7 @@ Ask: "Does a consumer ever name this type?"
 Edict.Core/
   Commands/     – EdictCommandHandler, sender, routing
   Idempotency/  – EdictIdempotencyBase and IdempotencyState (shared inheritance root)
-  Projections/  – EdictProjectionBuilder and EdictTableProjectionBuilder
+  Projections/  – EdictProjectionBuilder and EdictListProjectionBuilder
   Sagas/        – (future) saga base
   Serialization/
   TableStorage/ – framework-internal write-store seam

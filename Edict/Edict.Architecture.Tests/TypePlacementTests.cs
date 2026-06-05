@@ -107,9 +107,9 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void EdictTableProjectionBuilder_ShouldResideInEdictCore()
+    public void EdictListProjectionBuilder_ShouldResideInEdictCore()
     {
-        var rule = Classes().That().HaveNameStartingWith("EdictTableProjectionBuilder")
+        var rule = Classes().That().HaveNameStartingWith("EdictListProjectionBuilder")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);

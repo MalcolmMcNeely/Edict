@@ -49,10 +49,10 @@ public interface IAzureRecoverableProbe : IGrainWithGuidKey
     Task ForceDrainViaReminderAsync();
 }
 
-public sealed partial class AzureRecoverableOrderTableProjectionBuilder
-    : EdictTableProjectionBuilder<AzureRecoverableOrderRow>, IAzureRecoverableProbe
+public sealed partial class AzureRecoverableOrderProjectionBuilder
+    : EdictListProjectionBuilder<AzureRecoverableOrderRow>, IAzureRecoverableProbe
 {
-    public AzureRecoverableOrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public AzureRecoverableOrderProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "azurerecoverableorderprojection";

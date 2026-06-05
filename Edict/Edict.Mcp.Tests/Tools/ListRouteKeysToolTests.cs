@@ -43,7 +43,7 @@ public class ListRouteKeysToolTests
                 SourceLocation: null),
             new HandlerEntry(
                 DeclaringTypeName: "Acme.Reporting.OrdersByStatusProjection",
-                Role: HandlerRole.TableProjectionBuilder,
+                Role: HandlerRole.ListProjectionBuilder,
                 BoundContracts:
                 [
                     new BoundContractInfo("Acme.Orders.OrderPlaced", "OrderId"),

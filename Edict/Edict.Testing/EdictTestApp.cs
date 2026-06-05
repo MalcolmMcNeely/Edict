@@ -145,7 +145,7 @@ public sealed class EdictTestApp : IAsyncDisposable
 
     /// <summary>
     /// Typed probe over the in-memory table store: returns the projection row a
-    /// <see cref="EdictTableProjectionBuilder{T}"/> last wrote for the supplied
+    /// <see cref="EdictListProjectionBuilder{TRow}"/> last wrote for the supplied
     /// <c>(tableName, partitionKey, rowKey)</c>, or <c>null</c> when the
     /// projection's <c>Handle</c> never ran for this key.
     /// </summary>

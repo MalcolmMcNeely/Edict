@@ -12,7 +12,7 @@ namespace Edict.Kafka.Tests.Resilience;
 // Dedicated event types for the Kafka silo-kill suite. The projection rows land
 // in the in-memory reference table store (the streaming binding fakes the
 // persistence axis) so a silo restart can prove redelivery + the
-// EdictTableProjectionBuilder atomic ring-equals-row commit holds the projection
+// EdictListProjectionBuilder atomic ring-equals-row commit holds the projection
 // row at the same count even when the handler is invoked twice end-to-end.
 //
 // Single-event stream for mid-handler crash; multi-event stream for
@@ -79,7 +79,7 @@ public sealed class KafkaSiloKillBatchEventPublisher : Grain, IKafkaSiloKillBatc
 // the projection commits the row exactly once because the EdictIdempotencyBase
 // ring slot and the UpsertRow effect commit atomically in one grain-state
 // write — only present if the first delivery had returned, which it didn't.
-public sealed partial class KafkaSiloKillProjectionBuilder : EdictTableProjectionBuilder<KafkaSiloKillTableRow>
+public sealed partial class KafkaSiloKillProjectionBuilder : EdictListProjectionBuilder<KafkaSiloKillTableRow>
 {
     public const string Table = "kafkasilokillprojection";
 
@@ -125,7 +125,7 @@ public sealed partial class KafkaSiloKillProjectionBuilder : EdictTableProjectio
 // sequence=1 is blocked → MessagesDeliveredAsync never runs → both events'
 // offsets stay uncommitted → both redelivered. After restart, both Handle
 // fresh and the row settles at Count=2 (one increment per event).
-public sealed partial class KafkaSiloKillBatchProjectionBuilder : EdictTableProjectionBuilder<KafkaSiloKillTableRow>
+public sealed partial class KafkaSiloKillBatchProjectionBuilder : EdictListProjectionBuilder<KafkaSiloKillTableRow>
 {
     public const string Table = "kafkasilokillbatchprojection";
 

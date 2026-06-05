@@ -1,6 +1,6 @@
 namespace Edict.Core.Projections;
 
-// Per-invocation row holder for EdictTableProjectionBuilder<T>: the dispatch
+// Per-invocation row holder for EdictListProjectionBuilder<TRow>: the dispatch
 // loads the row into the box, the handler reads/replaces CurrentRow through it,
 // and the dispatch reads the computed row back to stage the UpsertRow effect.
 // A box (not the row itself) because the loaded row replaces the freshly-opened

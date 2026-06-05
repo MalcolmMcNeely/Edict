@@ -11,7 +11,7 @@ namespace Edict.Core.DeadLetter;
 
 [ImplicitStreamSubscription("edict-dead-letter")]
 internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory storeFactory)
-    : EdictTableProjectionBuilder<EdictDeadLetterEntry>(storeFactory)
+    : EdictListProjectionBuilder<EdictDeadLetterEntry>(storeFactory)
 {
     protected override string TableName => EdictDeadLetterTable.Name;
 

@@ -216,7 +216,7 @@ public sealed class TrackerRow : IEdictPersistedState
     public int CascadedHandlerCount { get; set; }
 }
 
-public sealed partial class TrackerProjectionBuilder : EdictTableProjectionBuilder<TrackerRow>
+public sealed partial class TrackerProjectionBuilder : EdictListProjectionBuilder<TrackerRow>
 {
     public TrackerProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }

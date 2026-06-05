@@ -43,7 +43,7 @@ unpause — the closest analogue to a transient broker disruption.
 2. `KafkaSiloKilledMidHandlerTests` — single event, slow `Handle`, kill the
    silo before `MessagesDeliveredAsync` runs. After restart the new consumer
    reads from the pre-event committed offset, redelivers, and the
-   `EdictTableProjectionBuilder`'s atomic ring + `UpsertRow` write settles
+   `EdictListProjectionBuilder`'s atomic ring + `UpsertRow` write settles
    the row at `Count = 1` despite two `Handle` entries.
 3. `KafkaSiloKilledMidBatchTests` — two events published back-to-back, both
    reach the partition before the kill. The slow first `Handle` blocks the

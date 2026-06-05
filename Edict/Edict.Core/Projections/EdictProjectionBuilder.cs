@@ -6,7 +6,7 @@ namespace Edict.Core.Projections;
 /// Marker base for the two projection-builder roles. The dispatch seam
 /// (<c>DispatchEventAsync</c>) now lives on the shared idempotency root
 /// <see cref="EdictIdempotencyBase{TPayload}"/> so sagas share it too;
-/// <c>EdictTableProjectionBuilder&lt;T&gt;</c> overrides it for
+/// <c>EdictListProjectionBuilder&lt;TRow&gt;</c> overrides it for
 /// load-apply-writeback.
 /// </summary>
 public abstract class EdictProjectionBuilder : EdictIdempotencyBase;

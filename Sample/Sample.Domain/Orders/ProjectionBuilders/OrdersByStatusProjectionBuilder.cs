@@ -9,9 +9,9 @@ using Sample.Contracts.Payments.Events;
 
 namespace Sample.Domain.Orders.ProjectionBuilders;
 
-public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTableProjectionBuilder<OrderStatusRow>
+public sealed partial class OrdersByStatusProjectionBuilder : EdictListProjectionBuilder<OrderStatusRow>
 {
-    public OrdersByStatusTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrdersByStatusProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "ordersbystatus";

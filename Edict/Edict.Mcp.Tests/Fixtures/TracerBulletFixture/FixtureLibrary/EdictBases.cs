@@ -60,7 +60,7 @@ namespace Edict.Core.Projections
 {
     using Edict.Contracts.Persistence;
     public abstract class EdictProjectionBuilder { }
-    public abstract class EdictTableProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
+    public abstract class EdictListProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
 }
 
 namespace Orleans.Hosting

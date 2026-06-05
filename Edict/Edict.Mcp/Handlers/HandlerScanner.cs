@@ -11,7 +11,7 @@ sealed class HandlerScanner
     const string EventHandlerBase = "Edict.Core.EventHandler.EdictEventHandler";
     const string SagaOpenGeneric = "Edict.Core.Sagas.EdictSaga`1";
     const string ProjectionBuilderBase = "Edict.Core.Projections.EdictProjectionBuilder";
-    const string TableProjectionBuilderOpenGeneric = "Edict.Core.Projections.EdictTableProjectionBuilder`1";
+    const string ListProjectionBuilderOpenGeneric = "Edict.Core.Projections.EdictListProjectionBuilder`1";
     const string CommandBase = "Edict.Contracts.Commands.EdictCommand";
     const string EventBase = "Edict.Contracts.Events.EdictEvent";
     const string RouteKeyAttributeFullName = "Edict.Contracts.Commands.EdictRouteKeyAttribute";
@@ -295,7 +295,7 @@ sealed class HandlerScanner
         readonly INamedTypeSymbol? eventHandlerBase;
         readonly INamedTypeSymbol? sagaOpen;
         readonly INamedTypeSymbol? projectionBuilderBase;
-        readonly INamedTypeSymbol? tableProjectionBuilderOpen;
+        readonly INamedTypeSymbol? listProjectionBuilderOpen;
 
         public BaseTypeResolver(Compilation compilation)
         {
@@ -304,7 +304,7 @@ sealed class HandlerScanner
             eventHandlerBase = compilation.GetTypeByMetadataName(EventHandlerBase);
             sagaOpen = compilation.GetTypeByMetadataName(SagaOpenGeneric);
             projectionBuilderBase = compilation.GetTypeByMetadataName(ProjectionBuilderBase);
-            tableProjectionBuilderOpen = compilation.GetTypeByMetadataName(TableProjectionBuilderOpenGeneric);
+            listProjectionBuilderOpen = compilation.GetTypeByMetadataName(ListProjectionBuilderOpenGeneric);
         }
 
         public bool HasAnyBase => commandHandlerOpen is not null
@@ -312,14 +312,14 @@ sealed class HandlerScanner
             || eventHandlerBase is not null
             || sagaOpen is not null
             || projectionBuilderBase is not null
-            || tableProjectionBuilderOpen is not null;
+            || listProjectionBuilderOpen is not null;
 
         public HandlerRole? ResolveRole(INamedTypeSymbol type)
         {
-            // Order matters: TableProjectionBuilder is a kind of ProjectionBuilder, so check it first.
-            if (tableProjectionBuilderOpen is not null && DerivesFromOpenGeneric(type, tableProjectionBuilderOpen))
+            // Order matters: ListProjectionBuilder is a kind of ProjectionBuilder, so check it first.
+            if (listProjectionBuilderOpen is not null && DerivesFromOpenGeneric(type, listProjectionBuilderOpen))
             {
-                return HandlerRole.TableProjectionBuilder;
+                return HandlerRole.ListProjectionBuilder;
             }
             if (projectionBuilderBase is not null && DerivesFromSymbol(type, projectionBuilderBase))
             {

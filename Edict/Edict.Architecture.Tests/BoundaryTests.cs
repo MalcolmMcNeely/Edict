@@ -97,13 +97,13 @@ public class BoundaryTests
                  && a.Name.StartsWith("Confluent.Kafka", StringComparison.OrdinalIgnoreCase));
     }
 
-    // EdictTableProjectionBuilder is provider-neutral; Azure stays in the
+    // EdictListProjectionBuilder is provider-neutral; Azure stays in the
     // write-store implementation, not in the grain base.
     [Fact]
-    public void EdictTableProjectionBuilder_ShouldNotDependOnAzure()
+    public void EdictListProjectionBuilder_ShouldNotDependOnAzure()
     {
         var rule = Classes().That()
-            .HaveNameStartingWith("EdictTableProjectionBuilder")
+            .HaveNameStartingWith("EdictListProjectionBuilder")
             .Should()
             .NotDependOnAnyTypesThat()
             .ResideInNamespaceMatching(@"^Azure")

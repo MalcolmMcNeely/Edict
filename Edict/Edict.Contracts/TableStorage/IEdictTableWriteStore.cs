@@ -9,7 +9,7 @@ namespace Edict.Contracts.TableStorage;
 /// <see cref="IEdictTableRepository{T}"/>.
 /// <para>
 /// Stays <c>public</c> only because the consumer-facing
-/// <c>EdictTableProjectionBuilder&lt;T&gt;</c> ctor takes
+/// <c>EdictListProjectionBuilder&lt;TRow&gt;</c> ctor takes
 /// <c>IEdictTableStoreFactory</c>, whose <c>CreateAsync&lt;T&gt;</c> returns
 /// this type — flipping it to internal fires CS0050 on a public base ctor's
 /// signature. Hidden from consumer IntelliSense because the consumer never

@@ -18,7 +18,7 @@ namespace Sample.Azure.Silo.Tests.Cart;
 /// asserted through observable surfaces: the cart-scoped slice of the
 /// <see cref="EdictTestApp.Timeline"/> shows the three Commands raise exactly one
 /// Event, and the projection read-model row proves the downstream
-/// <c>CheckedOutCartTableProjectionBuilder</c> was driven by that Event. Neither
+/// <c>CheckedOutCartProjectionBuilder</c> was driven by that Event. Neither
 /// assertion reaches into private grain <c>State</c>. The bridge Saga's
 /// downstream Order cascade (covered by <see cref="CartToOrderBridgeTests"/>) is
 /// scoped out: its multi-saga ordering is chaos-sensitive, so a full-timeline

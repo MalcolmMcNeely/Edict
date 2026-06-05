@@ -7,5 +7,5 @@ enum HandlerRole
     EventHandler,
     Saga,
     ProjectionBuilder,
-    TableProjectionBuilder,
+    ListProjectionBuilder,
 }

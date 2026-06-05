@@ -182,7 +182,7 @@ public sealed class SiloKillEventPublisher : Grain, ISiloKillEventPublisher
             .OnNextAsync(edictEvent);
 }
 
-public sealed partial class SiloKillProjectionBuilder : EdictTableProjectionBuilder<SiloKillTableRow>
+public sealed partial class SiloKillProjectionBuilder : EdictListProjectionBuilder<SiloKillTableRow>
 {
     public const string Table = "silokillprojection";
 

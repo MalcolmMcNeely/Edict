@@ -11,7 +11,7 @@ namespace Edict.Benchmarks.Throughput.Workload;
 /// distinct row and the issuer's point-get poll waits for the row written by
 /// its own send rather than short-circuiting on a stale row from a prior one.
 /// </summary>
-public sealed partial class BenchProjectionBuilder : EdictTableProjectionBuilder<BenchEventRow>
+public sealed partial class BenchProjectionBuilder : EdictListProjectionBuilder<BenchEventRow>
 {
     public const string TableNameLiteral = "benchevent";
 

@@ -325,7 +325,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Outbox.OutboxSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Outbox.UpsertRowEffect", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Projections.EdictProjectionBuilder",
-        "Edict.Core.Projections.EdictTableProjectionBuilder`1",
+        "Edict.Core.Projections.EdictListProjectionBuilder`1",
         "Edict.Core.Projections.IEdictProjectionBuilder",
         "Edict.Core.Sagas.EdictSaga`1",
         "Edict.Core.Sagas.IEdictSaga",
@@ -336,7 +336,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Schedules.ScheduleEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
-        "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictTableProjectionBuilder<T> — permanent resident.
+        "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictListProjectionBuilder<TRow> — permanent resident.
         "OrleansCodeGen.Edict.Core.Commands.Codec_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
         "OrleansCodeGen.Edict.Core.Commands.Copier_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
         "OrleansCodeGen.Edict.Core.Commands.Invokable_IEdictCommandHandler_GrainReference_E0958B40",

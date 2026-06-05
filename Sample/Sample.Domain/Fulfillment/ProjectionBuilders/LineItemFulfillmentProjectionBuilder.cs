@@ -14,9 +14,9 @@ namespace Sample.Domain.Fulfillment.ProjectionBuilders;
 /// fulfillment state. Partition key is the OrderId so the Blazor Fulfillment
 /// page can fetch all rows for an order; row key is the LineItemId.
 /// </summary>
-public sealed partial class LineItemFulfillmentTableProjectionBuilder : EdictTableProjectionBuilder<LineItemFulfillmentRow>
+public sealed partial class LineItemFulfillmentProjectionBuilder : EdictListProjectionBuilder<LineItemFulfillmentRow>
 {
-    public LineItemFulfillmentTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public LineItemFulfillmentProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "lineitemfulfillment";

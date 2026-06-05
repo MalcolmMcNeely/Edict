@@ -6,7 +6,7 @@ namespace Edict.Tests.Conformance.Persistence;
 
 /// <summary>
 /// Substrate-agnostic conformance for the read-modify-write loop in
-/// <c>EdictTableProjectionBuilder</c>: a second event loads the existing row
+/// <c>EdictListProjectionBuilder</c>: a second event loads the existing row
 /// and writes back the delta.
 /// </summary>
 public abstract class TableProjectionIncrementsOnSubsequentEventScenarios<TFixture>

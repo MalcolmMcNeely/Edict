@@ -26,7 +26,7 @@ public abstract class TableProjectionSingletonScenarios<TFixture>
         var orderIdB = Guid.NewGuid();
 
         var publisher = _fixture.GrainFactory
-            .GetGrain<IStreamPublisher>(GlobalOrderTableProjectionBuilder.SingletonKey);
+            .GetGrain<IStreamPublisher>(GlobalOrderProjectionBuilder.SingletonKey);
 
         await publisher.PublishAsync("ConformanceOrders", new OrderPlacedEvent(orderIdA, "SKU-X") with
         {
@@ -39,7 +39,7 @@ public abstract class TableProjectionSingletonScenarios<TFixture>
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
-        var singletonPk = GlobalOrderTableProjectionBuilder.SingletonKey.ToString();
+        var singletonPk = GlobalOrderProjectionBuilder.SingletonKey.ToString();
         var repository = _fixture.GetTableRepository<OrderTableRow>("globalorderprojection");
 
         await TableProjectionWaiters.WaitForPartitionCountAsync(repository, singletonPk, 2);

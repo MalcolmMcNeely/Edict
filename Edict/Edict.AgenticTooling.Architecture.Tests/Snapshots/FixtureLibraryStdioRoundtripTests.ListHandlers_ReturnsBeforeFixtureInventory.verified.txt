@@ -54,7 +54,7 @@
     },
     {
       "declaringTypeName": "FixtureLibrary.Reporting.OrdersByStatusProjection",
-      "role": "tableProjectionBuilder",
+      "role": "listProjectionBuilder",
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",

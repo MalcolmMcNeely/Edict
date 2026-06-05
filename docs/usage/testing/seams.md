@@ -86,7 +86,7 @@ The harness's in-process publisher dispatches a published event by resolving eve
 
 The bypass exists because the Orleans memory-stream pulling agent does not deliver to referenced-assembly consumers — every saga and projection lives in the consumer's grain assembly, which the pulling agent does not scan. The in-process publisher reflects over the consumer assembly's `[ImplicitStreamSubscription]` attributes at start-up (the `SubscriberMap`) and dispatches synchronously through `IEdictEventConsumer`. From the Outbox engine's point of view the effect is unchanged — same `OutboxEffectKind.PublishEvent`, same dedup ring, same dead-letter promotion path.
 
-A consumer does not write `IEdictEventConsumer` directly. The framework's grain bases (`EdictCommandHandler<T>`, `EdictSaga<T>`, `EdictTableProjectionBuilder<T>`, `EdictEventHandler`) inherit it. The interface appears in the Edict source tree as `public` because Orleans's codegen needs it; consumers do not implement, decorate, or call it.
+A consumer does not write `IEdictEventConsumer` directly. The framework's grain bases (`EdictCommandHandler<T>`, `EdictSaga<T>`, `EdictListProjectionBuilder<TRow>`, `EdictEventHandler`) inherit it. The interface appears in the Edict source tree as `public` because Orleans's codegen needs it; consumers do not implement, decorate, or call it.
 
 ## What gets bypassed under test, and what does not
 

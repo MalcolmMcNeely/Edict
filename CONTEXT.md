@@ -73,12 +73,12 @@ _Avoid_: static/extension-method send (bypasses DI, defeats the in-memory test s
 A named Orleans stream that carries every event type for one domain, declared once via `[Stream("Name")]` on the concrete event type.
 _Avoid_: per-event-type streams; inferring the stream name from the CLR namespace; a publisher and subscriber naming the stream independently.
 
-**Table Projection Builder**:
-A Projection Builder whose read model lives in an external composite-key store instead of grain state, so grain activation stays small no matter how large the read model grows. The grain holds a transient last-touched-slot cache of the row in memory so consecutive events on the same `(pk, rk)` skip the store read; the *durable* read model still lives in the external store.
-_Avoid_: reading the store directly instead of via the Table Repository; putting the *durable* read model in grain state "to be safe"; treating "Table" as Azure-specific; putting an `ITableEntity`/storage type on the row.
+**List Projection Builder**:
+A Projection Builder whose read model lives in an external composite-key store instead of grain state, so grain activation stays small no matter how large the read model grows. The grain holds a transient last-touched-slot cache of the row in memory so consecutive events on the same `(pk, rk)` skip the store read; the *durable* read model still lives in the external store. The base type (`EdictListProjectionBuilder<TRow>`), not a storage word in the class name, marks the species, so consumer subclasses are named `{Name}ProjectionBuilder`.
+_Avoid_: reading the store directly instead of via the Table Repository; putting the *durable* read model in grain state "to be safe"; treating the external store as Azure-specific; putting an `ITableEntity`/storage type on the row; carrying a storage word ("Table") in the subclass name.
 
 **Table Repository**:
-The framework-provided read-only, persistence-neutral interface (`IEdictTableRepository`) the application uses to read a Table Projection Builder's output.
+The framework-provided read-only, persistence-neutral interface (`IEdictTableRepository`) the application uses to read a List Projection Builder's output.
 _Avoid_: writing through the repository; depending on the framework-internal write seam from application code.
 
 **Outbox**:

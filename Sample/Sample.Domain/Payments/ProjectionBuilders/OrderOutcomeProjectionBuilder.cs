@@ -13,9 +13,9 @@ namespace Sample.Domain.Payments.ProjectionBuilders;
 /// observable through a read endpoint. Kept separate from the status
 /// projection so each projection has a single, stable responsibility.
 /// </summary>
-public sealed partial class OrderOutcomeTableProjectionBuilder : EdictTableProjectionBuilder<OrderOutcomeRow>
+public sealed partial class OrderOutcomeProjectionBuilder : EdictListProjectionBuilder<OrderOutcomeRow>
 {
-    public OrderOutcomeTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrderOutcomeProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "orderoutcome";

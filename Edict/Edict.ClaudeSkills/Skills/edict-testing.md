@@ -33,7 +33,7 @@ A **state-only Command** — one that mutates the aggregate's `State` and raises
 - **`EdictTestApp.SendAsync(EdictCommand)`** — issues a Command through the real `IEdictSender` decorated for timeline recording. This is the in-memory swap of the production `IEdictSender` — the same seam consumers inject in production code. A validator-driven `Rejected` flows back through this same call, so assert validator behaviour by `SendAsync`-ing a payload the validator rejects and inspecting the returned `EdictCommandResult` (or the `Timeline` for the recorded `Rejected` outcome).
 - **`EdictTestApp.Timeline`** — the recorded sequence to `Verify` against. The default assertion shape for any workflow with more than one observable step.
 - **`EdictTestApp.GetSagaProgress<TSaga, TProgress>(Guid key)`** — typed read of the saga grain's durable `Progress` for direct snapshot assertion.
-- **`EdictTestApp.GetProjectionRow<TRow>(tableName, partitionKey, rowKey)`** — typed read of the row a `EdictTableProjectionBuilder<TRow>` last wrote.
+- **`EdictTestApp.GetProjectionRow<TRow>(tableName, partitionKey, rowKey)`** — typed read of the row a `EdictListProjectionBuilder<TRow>` last wrote.
 - **`EdictTestApp.GetOutboxState(grainType)`** — `(TotalPending, OldestEnqueuedAt)` the observable gauges would scrape. For metrics-shape tests.
 - **`EdictTestApp.GetSagaState(sagaType)`** — most-recent `lastHandledAt` across sagas of that type on the silo. Pairs with `AdvanceClock` for idleness-shaped tests.
 - **`EdictTestApp.Drain()`** — settles the engine. Returns when the inline outbox drain has run, the in-process publisher has fanned every event out, every cascading `SendCommand` has settled, and the chaos held-queue is empty. Hard timeout.

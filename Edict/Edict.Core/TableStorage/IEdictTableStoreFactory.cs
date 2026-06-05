@@ -9,7 +9,7 @@ namespace Edict.Core.TableStorage;
 /// The grain base calls this in <see cref="Orleans.Grain.OnActivateAsync"/> so each
 /// concrete grain targets its own table without coupling to a specific provider.
 /// <para>
-/// Public because the consumer-facing <c>EdictTableProjectionBuilder&lt;T&gt;</c>
+/// Public because the consumer-facing <c>EdictListProjectionBuilder&lt;TRow&gt;</c>
 /// ctor takes it as a parameter (flipping to internal fires CS0051 on the
 /// public base ctor). Hidden from consumer IntelliSense — the consumer pipes
 /// the DI-resolved instance straight through to the base; they never look the

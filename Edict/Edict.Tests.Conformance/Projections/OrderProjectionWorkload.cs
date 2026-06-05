@@ -19,7 +19,7 @@ public sealed class OrderTableRow : IEdictPersistedState
     public int OrderCount { get; set; }
 }
 
-public interface IOrderTableProjectionProbe : IGrainWithGuidKey
+public interface IOrderListProjectionProbe : IGrainWithGuidKey
 {
     Task<RingStateProbe> GetRingStateAsync();
 }
@@ -30,10 +30,10 @@ public sealed record RingStateProbe(
     [property: Id(0)] int Capacity,
     [property: Id(1)] int Count);
 
-public sealed partial class OrderTableProjectionBuilder
-    : EdictTableProjectionBuilder<OrderTableRow>, IOrderTableProjectionProbe
+public sealed partial class OrderListProjectionBuilder
+    : EdictListProjectionBuilder<OrderTableRow>, IOrderListProjectionProbe
 {
-    public OrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrderListProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "orderprojection";
@@ -59,9 +59,9 @@ public sealed partial class OrderTableProjectionBuilder
 
 // Consumer-specified fixed RowKey ("summary") — proves RowKey is independent
 // of PartitionKey.
-public sealed partial class OrderSummaryTableProjectionBuilder : EdictTableProjectionBuilder<OrderTableRow>
+public sealed partial class OrderSummaryProjectionBuilder : EdictListProjectionBuilder<OrderTableRow>
 {
-    public OrderSummaryTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public OrderSummaryProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "ordersummary";
@@ -78,11 +78,11 @@ public sealed partial class OrderSummaryTableProjectionBuilder : EdictTableProje
 // Global-singleton projection grain at a fixed Guid key. RowKey is the
 // source aggregate ID, so each aggregate's order is a distinct row under
 // the singleton PartitionKey.
-public sealed partial class GlobalOrderTableProjectionBuilder : EdictTableProjectionBuilder<OrderTableRow>
+public sealed partial class GlobalOrderProjectionBuilder : EdictListProjectionBuilder<OrderTableRow>
 {
     public static readonly Guid SingletonKey = new("00000000-0000-0000-0000-000000000001");
 
-    public GlobalOrderTableProjectionBuilder(IEdictTableStoreFactory storeFactory)
+    public GlobalOrderProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "globalorderprojection";

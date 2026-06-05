@@ -12,7 +12,7 @@ public sealed partial class CustomerProfile : EdictProjectionBuilder<Guid, Custo
 public sealed partial class OrdersByStatus : EdictListProjectionBuilder<OrdersByStatusRow> { ... }
 ```
 
-`EdictListProjectionBuilder` replaces the existing `EdictTableProjectionBuilder`.
+`EdictListProjectionBuilder<TRow>` is the renamed form of the former `EdictTableProjectionBuilder<T>` (the rename has landed). Consumer subclasses drop the storage word and are named `{Name}ProjectionBuilder`; the base type, not a word in the class name, marks the species.
 
 ## Why these names
 
@@ -36,4 +36,4 @@ They already share the right root: `EdictIdempotencyBase<TPayload>`. Sibling spe
 
 ## Implementation note
 
-A non-generic marker base `EdictProjectionBuilder : EdictIdempotencyBase` exists today for scanner discrimination. C# arity-overloading lets the marker and `EdictProjectionBuilder<TKey, TState>` coexist, but the new keyed species cannot inherit *through* the marker (the marker closes `EdictIdempotencyBase` over `EdictUnit`, the keyed species needs `EdictIdempotencyBase<TState>`). Resolve during the slice — either drop the marker in favour of scanner logic, or replace it with an `IEdictProjectionBuilder` interface implemented by both species.
+The abstract marker base `EdictProjectionBuilder : EdictIdempotencyBase` is retained as the shared root: the generator and analyzer EDICT009 key on it, and `EdictListProjectionBuilder<TRow>` derives from it. C# arity-overloading lets the marker and a future `EdictProjectionBuilder<TKey, TState>` coexist, but that keyed species cannot inherit *through* the marker (the marker closes `EdictIdempotencyBase` over `EdictUnit`, the keyed species needs `EdictIdempotencyBase<TState>`). When the keyed species lands it slots in as a sibling under the marker root, not through it — resolved then, the same way the list species sits beside it now.

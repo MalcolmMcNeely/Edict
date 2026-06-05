@@ -56,7 +56,7 @@ Detection: an entry whose `command` is `dotnet` is classified as the manifest fo
 
 Five skills land, each scoped to "when working on a consumer app built on Edict":
 
-- `edict-authoring` — fires when adding a feature. Walks the Command Handler / Event Handler / Saga / Projection Builder / Table Projection Builder decision tree.
+- `edict-authoring` — fires when adding a feature. Walks the Command Handler / Event Handler / Saga / Projection Builder / List Projection Builder decision tree.
 - `edict-contracts` — fires when defining or modifying Commands and Events. Covers `[EdictRouteKey]`, `[EdictStream]`, `[EdictTelemeterized]`, MessagePack-first.
 - `edict-silo-wiring` — fires when editing `Program.cs`. Covers the `AddEdict*` matrix.
 - `edict-testing` — fires when writing tests. Covers `EdictTestApp`, the probes, `Replace`, and chaos-default.

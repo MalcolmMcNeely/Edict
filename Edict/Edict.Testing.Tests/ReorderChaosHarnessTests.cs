@@ -105,7 +105,7 @@ public sealed class DecoyRow : IEdictPersistedState
 // Soaks the seed's leading hold rolls, leaving the fragile projection's
 // Increment arrival on a no-hold roll — Increment dispatches immediately,
 // Place ends up flushed last, Count goes to 0.
-public sealed partial class DecoyWidgetProjectionBuilder : EdictTableProjectionBuilder<DecoyRow>
+public sealed partial class DecoyWidgetProjectionBuilder : EdictListProjectionBuilder<DecoyRow>
 {
     public DecoyWidgetProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
@@ -138,7 +138,7 @@ public sealed class WidgetCounterRow : IEdictPersistedState
 // "Reset on Place" shape: WidgetPlaced re-initialises Count = 0, WidgetIncremented
 // increments. Strict order leaves Count = 1; bounded reorder lands the reset last
 // and Count goes to 0 — the fragility the harness must surface.
-public sealed partial class WidgetCounterProjectionBuilder : EdictTableProjectionBuilder<WidgetCounterRow>
+public sealed partial class WidgetCounterProjectionBuilder : EdictListProjectionBuilder<WidgetCounterRow>
 {
     public WidgetCounterProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }

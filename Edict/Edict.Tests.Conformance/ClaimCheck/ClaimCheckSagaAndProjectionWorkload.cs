@@ -85,7 +85,7 @@ public sealed class ClaimCheckProjectionRow : IEdictPersistedState
 }
 
 public sealed partial class ClaimCheckProjectionBuilder
-    : EdictTableProjectionBuilder<ClaimCheckProjectionRow>
+    : EdictListProjectionBuilder<ClaimCheckProjectionRow>
 {
     public ClaimCheckProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }

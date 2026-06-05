@@ -52,7 +52,7 @@ For a repo with multiple solutions, pass `--solution path/to.slnx` in the `.mcp.
 
 - `edict_describe_glossary_term` — fuzzy lookup of Edict's domain language. Case-insensitive, the optional `Edict` prefix elidable (`Saga`, `saga`, `EdictSaga` all resolve).
 - `edict_lookup_adr` — fuzzy retrieval of an Edict decision record by number or title substring.
-- `edict_list_handlers` — every consumer-defined `EdictCommandHandler` / `EdictEventHandler` / `EdictSaga` / `EdictProjectionBuilder` / `EdictTableProjectionBuilder` in the solution, with bound contract type, route-key property, declaring assembly, and source location.
+- `edict_list_handlers` — every consumer-defined `EdictCommandHandler` / `EdictEventHandler` / `EdictSaga` / `EdictProjectionBuilder` / `EdictListProjectionBuilder` in the solution, with bound contract type, route-key property, declaring assembly, and source location.
 - `edict_list_route_keys` — derived view over the handler inventory surfacing route-key collisions and shares.
 - `edict_describe_silo_wiring` — locates `Program.cs`, walks the `ISiloBuilder` chain, reports the wired `AddEdict*` extensions plus the known-but-missing ones.
 - `edict_describe_mcp_state` — self-diagnostic. Reports the loaded solution path, indexed-handler count, the full version drift report, and the registered tool list. Run this first when results look off.

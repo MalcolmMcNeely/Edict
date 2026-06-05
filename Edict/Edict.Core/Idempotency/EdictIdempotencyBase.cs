@@ -305,7 +305,7 @@ public abstract class EdictIdempotencyBase<TPayload>
         if (outcome.Handled)
         {
             // The ring slot and any outbox effect the dispatch staged commit in
-            // the SAME one write — a Table Projection Builder's row write is an
+            // the SAME one write — a List Projection Builder's row write is an
             // UpsertRow effect atomic with this ring commit, then drained
             // at-least-once. Plain consumers stage nothing, so the path stays a
             // single ring-only write with no engine/reminder churn. The
@@ -318,7 +318,7 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <summary>
     /// Called by the generated <c>DispatchAsync</c> for each matched event type.
     /// The default passes the event directly to <paramref name="handler"/> and
-    /// stages no effect. <c>EdictTableProjectionBuilder&lt;T&gt;</c> wraps it
+    /// stages no effect. <c>EdictListProjectionBuilder&lt;TRow&gt;</c> wraps it
     /// with load-apply-writeback and returns an
     /// <see cref="OutboxEffectKind.UpsertRow"/> effect;
     /// <c>EdictSaga&lt;TProgress&gt;</c> wraps it to buffer the single outbound

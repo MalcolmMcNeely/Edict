@@ -3,5 +3,5 @@ using Edict.Core.Projections;
 
 namespace FixtureLibrary.Reporting;
 
-public abstract class ReportingTableProjectionBase<TRow> : EdictTableProjectionBuilder<TRow>
+public abstract class ReportingProjectionBase<TRow> : EdictListProjectionBuilder<TRow>
     where TRow : class, IEdictPersistedState, new();

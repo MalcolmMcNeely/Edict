@@ -438,7 +438,7 @@ public class HandlerScannerTests
     }
 
     [Fact]
-    public void Scan_ProjectionBuilderAndTableProjectionBuilder_AreRecognisedAndDistinguishedByRole()
+    public void Scan_ProjectionBuilderAndListProjectionBuilder_AreRecognisedAndDistinguishedByRole()
     {
         // Arrange
         const string consumerSource = """
@@ -458,7 +458,7 @@ public class HandlerScannerTests
                     System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
 
-                public sealed partial class OrdersByStatusProjection : EdictTableProjectionBuilder<OrdersByStatusRow>
+                public sealed partial class OrdersByStatusProjection : EdictListProjectionBuilder<OrdersByStatusRow>
                 {
                     System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
@@ -474,7 +474,7 @@ public class HandlerScannerTests
         var activity = Assert.Single(inventory.Handlers, entry => entry.DeclaringTypeName == "Acme.Reporting.OrderActivityProjection");
         var byStatus = Assert.Single(inventory.Handlers, entry => entry.DeclaringTypeName == "Acme.Reporting.OrdersByStatusProjection");
         Assert.Equal(HandlerRole.ProjectionBuilder, activity.Role);
-        Assert.Equal(HandlerRole.TableProjectionBuilder, byStatus.Role);
+        Assert.Equal(HandlerRole.ListProjectionBuilder, byStatus.Role);
     }
 
     [Fact]
@@ -677,7 +677,7 @@ public class HandlerScannerTests
         {
             using Edict.Contracts.Persistence;
             public abstract class EdictProjectionBuilder { }
-            public abstract class EdictTableProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
+            public abstract class EdictListProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
         }
 
         namespace Edict.Contracts.Schedules

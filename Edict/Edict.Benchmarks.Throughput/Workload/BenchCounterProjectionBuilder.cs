@@ -11,7 +11,7 @@ namespace Edict.Benchmarks.Throughput.Workload;
 /// contention, so the throughput ceiling is the substrate's per-aggregate
 /// consumer rate, not optimistic-concurrency retries.
 /// </summary>
-public sealed partial class BenchCounterProjectionBuilder : EdictTableProjectionBuilder<BenchCounterRow>
+public sealed partial class BenchCounterProjectionBuilder : EdictListProjectionBuilder<BenchCounterRow>
 {
     public const string TableNameLiteral = "benchcounter";
     public const string FixedRowKey = "counter";

@@ -133,7 +133,7 @@ public sealed class BoomRow : IEdictPersistedState
     public int Hits { get; set; }
 }
 
-public sealed partial class BoomProjectionBuilder : EdictTableProjectionBuilder<BoomRow>
+public sealed partial class BoomProjectionBuilder : EdictListProjectionBuilder<BoomRow>
 {
     public const string RefusalMessage = "BoomProjectionBuilder refused to handle the event.";
 
@@ -228,7 +228,7 @@ public sealed class RaceRow : IEdictPersistedState
 // Always throws the storage race the harness's bounded retry exists for. Every
 // retry attempt hits it, so the exhausted retry must surface the fault rather
 // than swallow it onto the unobserved dispatch task.
-public sealed partial class RaceProjectionBuilder : EdictTableProjectionBuilder<RaceRow>
+public sealed partial class RaceProjectionBuilder : EdictListProjectionBuilder<RaceRow>
 {
     public RaceProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
