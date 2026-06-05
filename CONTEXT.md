@@ -57,6 +57,10 @@ _Avoid_: calling it on a saga whose key may legitimately receive a later Event (
 The single Command a saga issues to undo or unwind partial work, either from a normal handler on a failure Event or from the `OnSagaTimeoutAsync()` hook when the cap fires; an un-overridden fired cap dead-letters instead.
 _Avoid_: dispatching more than one compensating Command; treating dead-letter as compensation.
 
+**EdictSchedule**:
+A Command Handler's first-class way to run recurring work on its own clock, started from inside `HandleAsync` with `Schedule(message, every:)`. The schedule persists a serializable `EdictScheduleMessage` (data plus its `[Alias]`), never a delegate; each fire deserializes it, routes it back through the handler's generated dispatch, and re-enters the full handler lifecycle, so a fire gets throw-rollback, atomic state-plus-outbox commit, and trace nesting like any other handler. The fire handler returns only `Continue` or `Complete` (`EdictScheduleResult`); cadence is declared once at the call site. Durable across deactivation (a grain timer for sub-minute precision, the `edict-schedule` Reminder as the one-minute backstop); missed ticks coalesce to a single catch-up fire. Replaces the raw `RegisterGrainTimer` + `CommitAndDrainRaisedEventsAsync` escape hatch.
+_Avoid_: persisting a delegate or closure (only the message is durable; read everything else from `State`); declaring the cadence anywhere but `Schedule(...)`; expecting more than `Continue`/`Complete` from a fire; confusing the (future, per-schedule, call-argument) **schedule timeout** with the **Saga Timeout** (per-saga, a class attribute) — they share vocabulary by design but are scoped to different hosts. A schedule currently runs until `Complete()`; the timeout cap is not yet shipped.
+
 **Projection Builder**:
 A grain that consumes the live Event stream and maintains a current-state read model, processing the stream only forward.
 _Avoid_: implying replay, rehydration, or "rebuild the projection".
