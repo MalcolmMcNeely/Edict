@@ -89,6 +89,17 @@ Does the change add behaviour whose correctness depends on a real backend — du
 
 If yes, capture which axis it belongs to (streaming or persistence — pick the axis whose real provider exercises the risk), the scenario shape, and the providers it binds across. Adding the abstract scenario *obliges* binding it on every provider on that axis or the build goes red — that obligation is the design requirement, captured now rather than discovered from the guard later. Note explicitly when a behaviour does **not** warrant a scenario (pure in-grain logic with no backend dependency), so the skip is a recorded decision.
 
+### 11. Telemetry — `Edict.Telemetry` spans + `Meter` instruments (ADRs 0037-0040)
+
+Spans are *the* observability mechanism — CLAUDE.md forbids log-narrating the command/event flow — so a behavioural change that opens no span and bumps no counter is invisible in production. Every span name, tag key, and meter name lives in one place, `SemanticConventions`, against the single `"Edict"` `ActivitySource`; a new step that emits telemetry ad hoc, off that registry, is the failure mode.
+
+Does the change add a step a consumer needs to *see* happen (a new outbox effect, saga transition, claim-check hop, dead-letter cause, table write) or a quantity they need to *count* (a new failure mode, a new lifecycle outcome, a new duration)?
+
+- **Span side:** a new span name or tag goes on the `"Edict"` source via `SemanticConventions`, span-name constants prefix-only so substrate `StartsWith` assertions keep holding. If the new tag carries a *consumer-supplied* value, the consumer-facing `[Telemeterized]` attribute and its `TelemeterizedMustBePrimitiveAnalyzer` guard (ADR 0037) are in play — that's an authoring-surface change, not internal-only.
+- **Metric side:** a new instrument lands under the Meter naming rules (ADR 0038), and every tag must clear the cardinality policy (ADR 0039) — an unbounded dimension (raw `EventId`, route key, exception message, or anything not a compile-closed allowlist like `FailureReasonValues`) is the design-time catch, not a production cardinality blowup. An observable gauge needs the silo-local metrics cache seam (ADR 0040) so a scrape costs zero grain calls; that cache feed is an implementation requirement, capture it.
+
+Capture the span/tag/meter name and its tags here. Note explicitly when a change is span-only, metric-only, or neither (pure plumbing a consumer never observes), so the skip is a recorded decision. The prose homes (`docs/usage/concepts/telemetry.md`, `docs/operations/observability.md`) are axis 5's job — anchor, don't duplicate.
+
 ## Rules
 
 - **Ask one axis at a time.** Do not present the list. Walk it as part of the interview.
