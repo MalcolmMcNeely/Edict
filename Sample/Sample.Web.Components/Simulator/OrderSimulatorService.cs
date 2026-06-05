@@ -10,7 +10,7 @@ namespace Sample.Web.Components.Simulator;
 
 /// <summary>
 /// Demo prop, not a framework primitive. A web-tier hosted-service singleton
-/// that places random 1–5 line orders on a 2-second cadence when running.
+/// that places random 1–5 line orders on a 500ms cadence when running.
 /// Paused by default; the hub's ▶ / ⏸ buttons toggle <see cref="Start"/> and
 /// <see cref="Stop"/>. State (the running flag, the ticking task) is shared
 /// across Blazor circuits because the service is a singleton. No persistence
@@ -19,7 +19,7 @@ namespace Sample.Web.Components.Simulator;
 /// </summary>
 public sealed class OrderSimulatorService : IHostedService, IDisposable
 {
-    static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(2);
+    static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(500);
     static readonly string[] SampleSkus = ["SKU-1", "SKU-2", "SKU-3", "SKU-4", "SKU-5"];
 
     readonly IEdictSender _sender;
