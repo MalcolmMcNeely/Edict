@@ -43,6 +43,15 @@ sealed class HarnessContext(
     // flush anyway).
     public InProcPublishExecutor? PublishExecutor { get; set; }
 
+    /// <summary>
+    /// Every <c>(grainClassName, key)</c> the recording sender has routed a
+    /// Command to. A schedule is only ever started from inside a Command's
+    /// <c>HandleAsync</c>, so this set is the complete roster of grains that
+    /// could hold a due schedule — the discovery surface for
+    /// <c>FireDueSchedulesAsync</c> with no production-side registry.
+    /// </summary>
+    public ConcurrentDictionary<(string GrainClassName, Guid Key), byte> RoutedGrains { get; } = new();
+
     /// <summary>The silo's IEdictMetricsCache singleton, captured by the silo
     /// configurator so EdictTestApp's GetOutboxState / GetSagaState probes
     /// read the SAME cache that the OutboxHost + EdictSaga pushed to. Null

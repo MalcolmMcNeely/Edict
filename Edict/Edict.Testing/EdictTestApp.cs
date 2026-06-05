@@ -13,6 +13,7 @@ using Edict.Core.EventHandler;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Core.Sagas;
+using Edict.Core.Schedules;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Testing.Internal;
@@ -237,6 +238,56 @@ public sealed class EdictTestApp : IAsyncDisposable
         await Drain();
     }
 
+    /// <summary>
+    /// Drives the next round of due schedule fires deterministically, without
+    /// hardcoding the cadence. Reads the soonest due instant across every grain a
+    /// Command has been routed to, advances the virtual clock to it, fires every
+    /// grain that is now due, and drains so the fired outcome (raised events,
+    /// dispatched Commands) lands on the <see cref="Timeline"/>. A no-op when no
+    /// schedule is active. Chainable: call it once per fire to walk a multi-step
+    /// scheduled workflow.
+    /// </summary>
+    public async Task FireDueSchedulesAsync()
+    {
+        var fireables = _context.RoutedGrains.Keys
+            .Select(routed => _cluster.GrainFactory.GetGrain<IEdictScheduleFireable>(routed.Key, routed.GrainClassName))
+            .ToArray();
+
+        DateTimeOffset? soonest = null;
+        var dueByGrain = new List<(IEdictScheduleFireable Grain, DateTimeOffset? Due)>(fireables.Length);
+        foreach (var fireable in fireables)
+        {
+            var due = await fireable.PeekSoonestScheduleDueAsync();
+            dueByGrain.Add((fireable, due));
+            if (due is { } instant && (soonest is null || instant < soonest))
+            {
+                soonest = instant;
+            }
+        }
+
+        if (soonest is null)
+        {
+            return;
+        }
+
+        var now = _context.Clock.GetUtcNow();
+        if (soonest.Value > now)
+        {
+            _context.Clock.Advance(soonest.Value - now);
+        }
+
+        var fireInstant = _context.Clock.GetUtcNow();
+        foreach (var (grain, due) in dueByGrain)
+        {
+            if (due is { } instant && instant <= fireInstant)
+            {
+                await grain.FireDueSchedulesAsync();
+            }
+        }
+
+        await Drain();
+    }
+
     public async ValueTask DisposeAsync() => await _cluster.DisposeAsync();
 
     static void ConfigureSerialization(HarnessContext ctx, IServiceCollection services) =>
@@ -266,13 +317,15 @@ public sealed class EdictTestApp : IAsyncDisposable
     // Re-point IEdictSender at the recording decorator wrapping the real sender,
     // so a saga's in-silo dispatched Command and a test's client Command share
     // one timeline. Last AddSingleton wins in MS DI.
-    static void DecorateSender(IServiceCollection services, TimelineRecorder recorder) =>
+    static void DecorateSender(IServiceCollection services, HarnessContext ctx) =>
         services.AddSingleton<IEdictSender>(serviceProvider =>
             new RecordingSender(
                 new EdictSender(
                     serviceProvider.GetRequiredService<CommandRouteResolver>(),
                     serviceProvider.GetRequiredService<IGrainFactory>()),
-                recorder));
+                ctx.Recorder,
+                serviceProvider.GetRequiredService<CommandRouteResolver>(),
+                ctx.RoutedGrains));
 
     sealed class SiloConfigurator : ISiloConfigurator
     {
@@ -335,7 +388,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
                 ActivatorUtilities.CreateInstance<InProcInvokeHandlerExecutor>(serviceProvider, ctx.Recorder));
 
-            DecorateSender(siloBuilder.Services, ctx.Recorder);
+            DecorateSender(siloBuilder.Services, ctx);
 
             // Builder-supplied fakes win over every harness/AddEdict
             // registration above — MS DI resolves the last AddSingleton, so the
@@ -367,7 +420,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             ConfigureSerialization(ctx, clientBuilder.Services);
             InvokeAddEdict(clientBuilder.Services);
             RegisterInMemoryDeadLetterTable(clientBuilder.Services, ctx);
-            DecorateSender(clientBuilder.Services, ctx.Recorder);
+            DecorateSender(clientBuilder.Services, ctx);
 
             foreach (var apply in ctx.Replacements)
             {
