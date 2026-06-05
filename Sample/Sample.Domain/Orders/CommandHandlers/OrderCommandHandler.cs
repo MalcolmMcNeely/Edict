@@ -137,15 +137,18 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    // A submitted order stays cancellable — that is exactly the OrderPayment
-    // saga's compensation branch (PaymentDeclined → CancelOrder). Only a
-    // confirmed order is terminal and rejects cancellation.
+    // Cancellation serves two racing callers: the OrderPayment saga's compensation
+    // (PaymentDeclined, on a Submitted order) and the reservation hold's expiry (on
+    // whatever status the order has reached by the window's end). It is permissive
+    // by design: once an order has confirmed or passed into any later terminal
+    // status, a late cancel is a no-op that neither throws nor reopens it. Only an
+    // Open or Submitted order cancels.
     Task<EdictCommandResult> HandleAsync(CancelOrderCommand command)
     {
-        if (State.Status == OrderStatus.Confirmed)
+        if (State.Status is not (OrderStatus.Open or OrderStatus.Submitted))
         {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
-                [new EdictRejectionReason("already_confirmed", "Order has already been confirmed.")]));
+                [new EdictRejectionReason("order_not_cancellable", "Order has reached a status that can no longer be cancelled.")]));
         }
 
         State.Status = OrderStatus.Cancelled;
