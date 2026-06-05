@@ -1,4 +1,5 @@
 using Edict.Contracts;
+using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 using Edict.Core.Schedules;
 using Edict.Core.Tests.TestSupport;
@@ -141,6 +142,7 @@ public sealed class ScheduleHostTests
             new RecordingReminderRegistrar(log),
             timer,
             clock,
+            new EdictOptions(),
             dispatch);
         return (host, clock);
     }

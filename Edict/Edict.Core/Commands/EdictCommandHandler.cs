@@ -361,6 +361,7 @@ public abstract class EdictCommandHandler<TState>
             new GrainReminderRegistrar(this),
             new GrainScheduleTimer(this),
             ServiceProvider.GetRequiredService<TimeProvider>(),
+            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             FireScheduleEntryAsync);
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>

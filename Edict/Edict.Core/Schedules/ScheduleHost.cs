@@ -1,3 +1,4 @@
+using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
 using Orleans.Runtime;
@@ -21,14 +22,11 @@ sealed class ScheduleHost<TPayload>
 {
     internal const string ScheduleReminderName = "edict-schedule";
 
-    // The Reminder is the durability backstop only; the grain timer carries
-    // sub-minute cadence. One minute is the Orleans reminder floor.
-    static readonly TimeSpan ReminderPeriod = TimeSpan.FromMinutes(1);
-
     readonly IPersistentState<GrainEnvelope<TPayload>> _state;
     readonly IReminderRegistrar _reminders;
     readonly IScheduleTimer _timer;
     readonly TimeProvider _timeProvider;
+    readonly EdictOptions _options;
     readonly Func<ScheduleEntry, DateTimeOffset, Task> _dispatch;
 
     bool _reminderRegistered;
@@ -38,12 +36,14 @@ sealed class ScheduleHost<TPayload>
         IReminderRegistrar reminders,
         IScheduleTimer timer,
         TimeProvider timeProvider,
+        EdictOptions options,
         Func<ScheduleEntry, DateTimeOffset, Task> dispatch)
     {
         _state = state;
         _reminders = reminders;
         _timer = timer;
         _timeProvider = timeProvider;
+        _options = options;
         _dispatch = dispatch;
     }
 
@@ -121,7 +121,12 @@ sealed class ScheduleHost<TPayload>
 
     async Task RegisterReminderAsync()
     {
-        await _reminders.RegisterOrUpdateReminderAsync(ScheduleReminderName, ReminderPeriod, ReminderPeriod);
+        // The Reminder is the durability backstop only — the grain timer carries
+        // sub-minute cadence. It reuses the outbox drain reminder period (already
+        // validated at or above the Orleans one-minute reminder floor), the same
+        // knob the saga cap reminder reuses, so the schedule adds no new tunable.
+        var period = _options.OutboxDrainReminderPeriod;
+        await _reminders.RegisterOrUpdateReminderAsync(ScheduleReminderName, period, period);
         _reminderRegistered = true;
     }
 
