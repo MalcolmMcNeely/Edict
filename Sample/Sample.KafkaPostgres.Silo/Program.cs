@@ -14,6 +14,7 @@ using Sample.Domain.Diagnostics.Metrics;
 using Sample.Domain.Fulfillment;
 using Sample.Domain.Orders;
 using Sample.Domain.Orders.CommandHandlers;
+using Sample.Domain.Orders.Notifications;
 using Sample.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -99,7 +100,9 @@ builder.Host.UseOrleans((context, silo) =>
     });
 });
 
-builder.Services.AddSingleton<IEmailNotifier, LoggingEmailNotifier>();
+// The Event Handler reaches out to the Web-hosted notifications sink over HTTP
+// (service discovery resolves "web"), modelling a real external API call.
+builder.Services.AddHttpEmailNotifier();
 builder.Services.AddSingleton<IWarehouseGateway, LoggingWarehouseGateway>();
 
 // Silo-side MeterListener feeding the Sample.Web Live Metrics spoke.

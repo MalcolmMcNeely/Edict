@@ -10,6 +10,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- NotificationsSink maps the silo's POST target via minimal-API
+             endpoint routing, so the RCL needs the ASP.NET hosting types
+             (IEndpointRouteBuilder, Results) the Razor SDK does not pull in. -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.App.Internal.Assets" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
         <!-- Hub.razor injects IEdictSender; the Aspire AppHost's silo binds it.

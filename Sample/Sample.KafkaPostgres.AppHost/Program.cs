@@ -24,8 +24,14 @@ var silo = builder.AddProject<Projects.Sample_KafkaPostgres_Silo>("silo")
     // this so the Web's Orleans client cannot race the gateway-open moment
     // and surface a ConnectionFailedException on the dashboard.
     .WithHttpHealthCheck("/health");
-builder.AddProject<Projects.Sample_KafkaPostgres_Web>("web")
+var web = builder.AddProject<Projects.Sample_KafkaPostgres_Web>("web")
     .WithReference(appdb).WaitFor(postgres)
     .WaitFor(silo);
+
+// The silo POSTs notifications to the Web-hosted sink, so it needs the Web's
+// address via service discovery. Deliberately no WaitFor: the Web already
+// WaitFor(silo) above, and a mutual wait would deadlock startup. The notifier
+// swallows the unreachable first POSTs that race the Web coming up.
+silo.WithReference(web);
 
 await builder.Build().RunAsync();

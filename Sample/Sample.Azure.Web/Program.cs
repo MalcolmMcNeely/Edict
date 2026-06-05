@@ -8,6 +8,7 @@ using Orleans.Serialization;
 using Sample.ServiceDefaults;
 using Sample.Domain.Orders.CommandHandlers;
 using Sample.Web.Components;
+using Sample.Web.Components.Notifications;
 using Sample.Web.Components.Simulator;
 using Sample.Web.Components.State;
 
@@ -35,6 +36,10 @@ builder.UseOrleansClient(client =>
 // the read tier needs no table-storage wiring of its own.
 builder.Services.AddEdict();
 
+// Hosts the in-memory notifications sink the silo POSTs to over HTTP and the
+// Orders view reads back in-process.
+builder.Services.AddNotificationsSink();
+
 builder.Services.AddSingleton<CurrentOrderTracker>();
 builder.Services.AddSingleton<KnownOrdersRegistry>();
 builder.Services.AddSingleton<IDeterministicOrderPlacer, FireOneOrderHelper>();
@@ -52,5 +57,7 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapNotificationsSink();
 
 app.Run();

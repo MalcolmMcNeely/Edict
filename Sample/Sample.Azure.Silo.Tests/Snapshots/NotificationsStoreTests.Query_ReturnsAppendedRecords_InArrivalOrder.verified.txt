@@ -1,0 +1,10 @@
+﻿[
+  {
+    OrderId: Guid_1,
+    EventId: Guid_2
+  },
+  {
+    OrderId: Guid_3,
+    EventId: Guid_4
+  }
+]
