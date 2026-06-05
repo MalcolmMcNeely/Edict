@@ -63,6 +63,57 @@ main {
     margin-bottom: 1.25rem;
 }
 
+.concept-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.concept-header h1 {
+    margin: 0;
+}
+
+.concept-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 2rem 0 0.75rem;
+}
+
+.concept-section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #374151;
+}
+
+.concept-badge {
+    display: inline-block;
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.how-this-works {
+    font-size: 0.85rem;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.how-this-works:hover {
+    text-decoration: underline;
+}
+
+.placeholder-note {
+    color: #6b7280;
+}
+
 .hub {
     max-width: 1400px;
 }
@@ -97,6 +148,65 @@ main {
     align-self: stretch;
     background: #e5e7eb;
     margin: 0 0.5rem;
+}
+
+.fault-panel {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.fault-panel-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+}
+
+.fault-panel-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.fault-panel-buttons button {
+    background: #1f2937;
+    color: #f3f4f6;
+    border: 0;
+    padding: 0.45rem 0.85rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.fault-panel-buttons button:hover {
+    background: #b91c1c;
+}
+
+.hub-details,
+.spotlight-details {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.hub-details:hover,
+.spotlight-details:hover {
+    text-decoration: underline;
+}
+
+.spotlight-details {
+    display: inline-block;
+    margin-top: 0.75rem;
+}
+
+.dl-cause {
+    font-weight: 500;
+    color: #374151;
 }
 
 .hub-message {

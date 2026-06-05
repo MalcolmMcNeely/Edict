@@ -1,0 +1,38 @@
+@if (Section)
+{
+    <div class="concept-section-header">
+        <h2>@Title</h2>
+        @if (Concept is not null)
+        {
+            <span class="concept-badge">@Concept</span>
+        }
+        @if (DocsHref is not null)
+        {
+            <a class="how-this-works" href="@DocsHref" target="_blank" rel="noopener">How this works →</a>
+        }
+    </div>
+}
+else
+{
+    <header class="concept-header">
+        <h1>@Title</h1>
+        @if (Concept is not null)
+        {
+            <span class="concept-badge">@Concept</span>
+        }
+        @if (DocsHref is not null)
+        {
+            <a class="how-this-works" href="@DocsHref" target="_blank" rel="noopener">How this works →</a>
+        }
+    </header>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Concept { get; set; }
+
+    [Parameter] public string? DocsHref { get; set; }
+
+    [Parameter] public bool Section { get; set; }
+}

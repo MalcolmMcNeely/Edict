@@ -17,7 +17,10 @@
 @inject CurrentOrderTracker OrderTracker
 @implements IDisposable
 
-<PageTitle>Edict — Demo</PageTitle>
+<PageTitle>Edict — Dashboard</PageTitle>
+
+<ConceptHeader Title="Dashboard" Concept="ListProjection"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/projection-builders.md" />
 
 <div class="hub">
     <section class="hub-controls">
@@ -30,11 +33,16 @@
             <button @onclick="OnStart">▶ Start traffic</button>
         }
         <button @onclick="OnFireOne">Fire one order</button>
-        <span class="hub-controls-sep"></span>
-        <button @onclick="OnInjectPoison">Inject Dead Letter</button>
-        <button @onclick="OnInject5Mb">Inject 5MB</button>
-        <button @onclick="OnInjectSagaReject">Inject saga reject</button>
-        <button @onclick="OnPlaceEmptyReference">Place with Empty Reference</button>
+    </section>
+
+    <section class="fault-panel">
+        <div class="fault-panel-label">Fault injection</div>
+        <div class="fault-panel-buttons">
+            <button @onclick="OnInjectPoison">Poison → dead letter</button>
+            <button @onclick="OnInject5Mb">Oversize → claim-check</button>
+            <button @onclick="OnInjectSagaReject">Saga reject → dead letter</button>
+            <button @onclick="OnPlaceEmptyReference">Empty reference → validator reject</button>
+        </div>
     </section>
 
     @if (!string.IsNullOrEmpty(_message))
@@ -60,6 +68,7 @@
                                 <th>Items</th>
                                 <th>Placed</th>
                                 <th>Shipped</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -72,6 +81,7 @@
                                     <td>@entry.Row.ItemCount</td>
                                     <td>@FormatTime(entry.Row.PlacedAt)</td>
                                     <td>@FormatTime(entry.Row.ShippedAt)</td>
+                                    <td><a class="hub-details" href="orders/@entry.OrderId" @onclick:stopPropagation="true">details →</a></td>
                                 </tr>
                             }
                         </tbody>
@@ -114,7 +124,7 @@
                                 Status="_spotlightedStatus"
                                 FulfillmentLines="_fulfillmentLines" />
                 <div class="hub-counter">
-                    <a href="dead-letter">
+                    <a href="operations">
                         <div class="hub-counter-label">Dead-letter</div>
                         <div class="hub-counter-value">@_deadLetterCount</div>
                     </a>
@@ -134,21 +144,21 @@
     string _message = "";
 
     PeriodicTimer? _timer;
-    CancellationTokenSource? _cts;
+    CancellationTokenSource? _cancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
         await RefreshAsync();
-        _cts = new CancellationTokenSource();
+        _cancellationTokenSource = new CancellationTokenSource();
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _ = PollAsync(_cts.Token);
+        _ = PollAsync(_cancellationTokenSource.Token);
     }
 
-    async Task PollAsync(CancellationToken ct)
+    async Task PollAsync(CancellationToken cancellationToken)
     {
         try
         {
-            while (await _timer!.WaitForNextTickAsync(ct))
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
             {
                 await RefreshAsync();
                 await InvokeAsync(StateHasChanged);
@@ -278,9 +288,9 @@
 
     public void Dispose()
     {
-        _cts?.Cancel();
+        _cancellationTokenSource?.Cancel();
         _timer?.Dispose();
-        _cts?.Dispose();
+        _cancellationTokenSource?.Dispose();
     }
 
     sealed record OrderEntry(Guid OrderId, OrderStatusRow Row);

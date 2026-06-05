@@ -1,22 +1,16 @@
-@page "/dead-letter"
 @inject IEdictDeadLetterRepository DeadLetterRepository
 @implements IDisposable
 
-<PageTitle>Dead Letter</PageTitle>
-
-<h1>Dead Letter</h1>
-
-<p class="tagline">Effects that exhausted the outbox retry budget. Failure here is forensic, not blocking — the system kept running.</p>
-
 @if (_entries.Count == 0)
 {
-    <p><em>No dead-letter rows yet.</em></p>
+    <p class="placeholder-note"><em>No dead-letter rows yet. Effects that exhaust the outbox retry budget land here; failure is forensic, not blocking.</em></p>
 }
 else
 {
     <table>
         <thead>
             <tr>
+                <th>Cause</th>
                 <th>Dead-lettered at</th>
                 <th>Kind</th>
                 <th>Source grain</th>
@@ -30,6 +24,7 @@ else
             @foreach (var entry in _entries)
             {
                 <tr>
+                    <td><span class="dl-cause">@CauseLabel(entry)</span></td>
                     <td>@entry.DeadLetteredAt.ToString("HH:mm:ss")</td>
                     <td>@entry.Kind</td>
                     <td><code>@entry.SourceGrainType</code>/<code>@entry.SourceGrainKey</code></td>
@@ -47,21 +42,21 @@ else
     IReadOnlyList<EdictDeadLetterEntry> _entries = [];
 
     PeriodicTimer? _timer;
-    CancellationTokenSource? _cts;
+    CancellationTokenSource? _cancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
         await RefreshAsync();
-        _cts = new CancellationTokenSource();
+        _cancellationTokenSource = new CancellationTokenSource();
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _ = PollAsync(_cts.Token);
+        _ = PollAsync(_cancellationTokenSource.Token);
     }
 
-    async Task PollAsync(CancellationToken ct)
+    async Task PollAsync(CancellationToken cancellationToken)
     {
         try
         {
-            while (await _timer!.WaitForNextTickAsync(ct))
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
             {
                 await RefreshAsync();
                 await InvokeAsync(StateHasChanged);
@@ -82,10 +77,26 @@ else
         }
     }
 
+    // The RCA distinction operators care about is what failed and why. A receiver
+    // that lost its claim-check blob is its own category; otherwise the effect kind
+    // names the cause, with the two demo-injected dead letters (an Event Handler that
+    // threw, and a Command that exhausted retries on a rejecting target) called out by name.
+    static string CauseLabel(EdictDeadLetterEntry entry) =>
+        entry.FailureKind == EdictDeadLetterFailureKind.BlobMissing
+            ? "Claim-check blob reaped"
+            : entry.Kind switch
+            {
+                "InvokeHandler" => "Event handler threw",
+                "SendCommand" => "Command rejected, retries exhausted",
+                "PublishEvent" => "Event publish failed",
+                "UpsertRow" => "Projection write failed",
+                _ => entry.Kind,
+            };
+
     public void Dispose()
     {
-        _cts?.Cancel();
+        _cancellationTokenSource?.Cancel();
         _timer?.Dispose();
-        _cts?.Dispose();
+        _cancellationTokenSource?.Dispose();
     }
 }

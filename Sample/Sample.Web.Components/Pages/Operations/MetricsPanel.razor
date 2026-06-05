@@ -1,14 +1,7 @@
-@page "/metrics"
 @using Orleans
 @using Sample.Contracts.Diagnostics.Metrics
 @inject IClusterClient ClusterClient
 @implements IDisposable
-
-<PageTitle>Live Metrics</PageTitle>
-
-<h1>Live Metrics</h1>
-
-<p class="tagline">The four headline operator metrics, polled at 1Hz from the silo's <code>IEdictMetricsCache</code> and a process-local <code>MeterListener</code>. Each tile shows the PromQL recipe a real Prometheus + Grafana deployment would use — collapse the &lt;details&gt; to see it.</p>
 
 <div class="metrics-grid">
     <div class="metrics-tile">
@@ -62,21 +55,21 @@
     MetricsSnapshot _snapshot = new(0, 0, 0, 0, 0);
 
     PeriodicTimer? _timer;
-    CancellationTokenSource? _cts;
+    CancellationTokenSource? _cancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
         await RefreshAsync();
-        _cts = new CancellationTokenSource();
+        _cancellationTokenSource = new CancellationTokenSource();
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _ = PollAsync(_cts.Token);
+        _ = PollAsync(_cancellationTokenSource.Token);
     }
 
-    async Task PollAsync(CancellationToken ct)
+    async Task PollAsync(CancellationToken cancellationToken)
     {
         try
         {
-            while (await _timer!.WaitForNextTickAsync(ct))
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
             {
                 await RefreshAsync();
                 await InvokeAsync(StateHasChanged);
@@ -107,8 +100,8 @@
 
     public void Dispose()
     {
-        _cts?.Cancel();
+        _cancellationTokenSource?.Cancel();
         _timer?.Dispose();
-        _cts?.Dispose();
+        _cancellationTokenSource?.Dispose();
     }
 }

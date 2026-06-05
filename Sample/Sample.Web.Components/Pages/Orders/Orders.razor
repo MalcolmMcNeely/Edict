@@ -1,0 +1,19 @@
+@page "/orders"
+@page "/orders/{OrderId:guid}"
+
+<PageTitle>Edict — Orders</PageTitle>
+
+<ConceptHeader Title="Orders" Concept="Saga" DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/sagas.md" />
+
+@if (OrderId is { } id)
+{
+    <p class="placeholder-note">Coming soon: drive order <code>@id</code> through its lifecycle, watch the payment Saga compensate a declined order, the barrier Saga close it, and outbound notifications fire.</p>
+}
+else
+{
+    <p class="placeholder-note">Coming soon: pick an order from the Dashboard to drive its lifecycle, watching the saga branches advance on their own.</p>
+}
+
+@code {
+    [Parameter] public Guid? OrderId { get; set; }
+}
