@@ -29,12 +29,6 @@ public partial class CartCommandHandler : EdictCommandHandler<CartState>
 
     Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
     {
-        if (State.Skus.Count == 0)
-        {
-            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
-                [new EdictRejectionReason("empty_cart", "Cart has no items to check out.")]));
-        }
-
         if (State.CheckedOut)
         {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
@@ -45,4 +39,8 @@ public partial class CartCommandHandler : EdictCommandHandler<CartState>
         Raise(new CartCheckedOutEvent(command.CartId, State.Skus.Count, State.Skus.ToArray()));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
+
+    // Exposes the accumulated cart to CartCheckoutCommandValidator, which gates an
+    // empty-basket checkout before this handler runs.
+    protected override object? GetValidationState() => State;
 }

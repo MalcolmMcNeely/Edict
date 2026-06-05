@@ -1,7 +1,129 @@
 @page "/checkout"
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Cart.Commands
+@using Sample.Contracts.Orders.Projections
+@inject IEdictSender Sender
+@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
 
 <PageTitle>Edict — Checkout</PageTitle>
 
-<ConceptHeader Title="Checkout" Concept="Saga" DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/sagas.md" />
+<ConceptHeader Title="Checkout" Concept="Saga"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/sagas.md" />
 
-<p class="placeholder-note">Coming soon: build a cart with state-only Commands, get rejected at an empty checkout, then check out so the bridge Saga turns the basket into an Order, read straight back on the same click.</p>
+<section class="hub-controls">
+    <span class="playground-cart">Cart <code>@FormatShort(_cartId)</code></span>
+    <span class="hub-controls-sep"></span>
+    @foreach (var sku in Catalogue)
+    {
+        <button @onclick="() => OnAddItem(sku)" disabled="@_checkedOut">Add @sku</button>
+    }
+    <span class="hub-controls-sep"></span>
+    <button @onclick="OnCheckout" disabled="@_checkedOut">Check out (@_basket.Count)</button>
+    <button @onclick="OnNewCart">New cart</button>
+</section>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="hub-message">@_message</div>
+}
+
+<div class="hub-grid">
+    <div class="hub-left">
+        <h2>Basket <span class="hub-orders-meta">state-only · raises no Event</span></h2>
+        @if (_basket.Count == 0)
+        {
+            <p class="hub-empty-small">Empty. Each Add sends one AddItemToCart Command that mutates durable state and raises no Event. Check out empty to watch the Command Validator reject it.</p>
+        }
+        else
+        {
+            <ul class="playground-basket">
+                @foreach (var sku in _basket)
+                {
+                    <li><code>@sku</code></li>
+                }
+            </ul>
+        }
+    </div>
+
+    <div class="hub-right">
+        <h2>Placed order <span class="hub-orders-meta">read-your-writes on Accepted</span></h2>
+        @if (_orderStatus is null)
+        {
+            <p class="hub-empty-small">No order yet. On checkout the bridge Saga turns the basket into an Order, read straight back on this same click via the cursor on Accepted.</p>
+        }
+        else
+        {
+            <table class="hub-orders">
+                <tbody>
+                    <tr><td>Status</td><td>@_orderStatus.Status</td></tr>
+                    <tr><td>Items</td><td>@_orderStatus.ItemCount</td></tr>
+                </tbody>
+            </table>
+            <a class="hub-details" href="orders/@_cartId">Open in Orders →</a>
+        }
+    </div>
+</div>
+
+@code {
+    static readonly string[] Catalogue = ["WIDGET", "GADGET", "GIZMO"];
+
+    Guid _cartId = Guid.NewGuid();
+    readonly List<string> _basket = [];
+    bool _checkedOut;
+    OrderStatusRow? _orderStatus;
+    string _message = "";
+
+    async Task OnAddItem(string sku)
+    {
+        var result = await Sender.SendAsync(new AddItemToCartCommand(_cartId, sku));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _basket.Add(sku);
+            _message = $"Added {sku}: one AddItemToCart Command, no Event raised.";
+        }
+        else
+        {
+            _message = Describe(result);
+        }
+    }
+
+    async Task OnCheckout()
+    {
+        var result = await Sender.SendAsync(new CheckoutCartCommand(_cartId));
+        if (result is EdictCommandResult.Accepted accepted)
+        {
+            _checkedOut = true;
+
+            // Read-your-writes: feeding the cursor from Accepted waits, briefly and
+            // boundedly, until the bridge Saga's placed Order is visible, so the row
+            // comes back on this same click. The correlation propagates through the
+            // bridge, so the cursor reaches the Order keyed by the cart id.
+            var read = await OrdersByStatus.GetAsync(_cartId.ToString(), "status", after: accepted.Cursor);
+            _orderStatus = read.Row;
+            _message = read.Status == EdictReadStatus.CursorReached
+                ? "Checked out. The bridge Saga placed an Order and the cursor read it straight back: no poll, no lag."
+                : "Checked out. The read timed out before the projection caught up; showing the latest row.";
+        }
+        else
+        {
+            _message = $"Empty checkout {Describe(result)}";
+        }
+    }
+
+    void OnNewCart()
+    {
+        _cartId = Guid.NewGuid();
+        _basket.Clear();
+        _checkedOut = false;
+        _orderStatus = null;
+        _message = "Started a fresh cart.";
+    }
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string Describe(EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected rejected
+            ? $"rejected by the Command Validator before the handler ran: {string.Join(", ", rejected.Reasons.Select(reason => reason.Message))}"
+            : "accepted.";
+}
