@@ -1,0 +1,19 @@
+﻿{
+  Placement: {
+    Kind: Command,
+    Type: PlaceOrderFromCartCommand,
+    Data: {
+      OrderId: Guid_1,
+      Skus: [
+        SKU-A,
+        SKU-B
+      ]
+    }
+  },
+  OrderStatus: {
+    Status: Submitted,
+    ItemCount: 2,
+    SubmittedAt: DateTimeOffset_1,
+    AuthorizedAt: DateTimeOffset_1
+  }
+}

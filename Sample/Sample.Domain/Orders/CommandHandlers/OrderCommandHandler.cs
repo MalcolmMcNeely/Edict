@@ -13,11 +13,35 @@ namespace Sample.Domain.Orders.CommandHandlers;
 // inline FIFO drain publishes. No volatile aggregate fields.
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
 {
+    // Per-line tally for a bridged cart order, kept below the payment decline
+    // threshold so a checked-out cart follows the happy path.
+    const decimal LineItemAmount = 25m;
+
     public Task<EdictCommandResult> HandleAsync(PlaceOrderCommand command)
     {
         State.Status = OrderStatus.Open;
         State.Items.Clear();
         Raise(new OrderPlacedEvent(command.OrderId));
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+    }
+
+    // The Cart to Order bridge Saga's single dispatch lands here: place and submit
+    // the whole basket atomically so the Order flows straight into the existing
+    // payment and fulfillment workflow. Only OrderSubmitted sets the projected
+    // status; a LineItemAdded per basket entry carries the line items through to
+    // OrderConfirmed for fulfillment.
+    public Task<EdictCommandResult> HandleAsync(PlaceOrderFromCartCommand command)
+    {
+        State.Status = OrderStatus.Submitted;
+        State.Items.Clear();
+        foreach (var sku in command.Skus)
+        {
+            var lineItemId = Guid.NewGuid();
+            State.Items.Add(new OrderLine { LineItemId = lineItemId, Sku = sku, Quantity = 1 });
+            Raise(new LineItemAddedEvent(command.OrderId, lineItemId, sku, 1));
+        }
+
+        Raise(new OrderSubmittedEvent(command.OrderId, command.Skus.Count * LineItemAmount));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

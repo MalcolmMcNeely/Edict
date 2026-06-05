@@ -11,6 +11,7 @@ using Edict.Telemetry;
 
 using Orleans.Serialization;
 
+using Sample.Contracts.Cart.Projections;
 using Sample.Contracts.Fulfillment.Projections;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
@@ -45,6 +46,8 @@ var tableServiceClient = new TableServiceClient(tableConnectionString);
 builder.Services.AddSingleton(tableServiceClient);
 builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
     _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
+builder.Services.AddSingleton<IEdictTableRepository<CheckedOutCartRow>>(
+    _ => new AzureTableRepository<CheckedOutCartRow>(tableServiceClient, "checkedoutcarts"));
 builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
     _ => new AzureTableRepository<OrderOutcomeRow>(tableServiceClient, "orderoutcome"));
 builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(

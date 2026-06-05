@@ -1,43 +1,41 @@
 ﻿{
-  Timeline: {
-    Entries: [
-      {
-        Kind: Command,
-        Type: AddItemToCartCommand,
-        Data: {
-          CartId: Guid_1,
-          Sku: SKU-A
-        }
-      },
-      {
-        Kind: Command,
-        Type: AddItemToCartCommand,
-        Data: {
-          CartId: Guid_1,
-          Sku: SKU-B
-        }
-      },
-      {
-        Kind: Command,
-        Type: CheckoutCartCommand,
-        Data: {
-          CartId: Guid_1
-        }
-      },
-      {
-        Kind: Event,
-        Type: CartCheckedOutEvent,
-        Data: {
-          CartId: Guid_1,
-          ItemCount: 2,
-          Skus: [
-            SKU-A,
-            SKU-B
-          ]
-        }
+  CartTimeline: [
+    {
+      Kind: Command,
+      Type: AddItemToCartCommand,
+      Data: {
+        CartId: Guid_1,
+        Sku: SKU-A
       }
-    ]
-  },
+    },
+    {
+      Kind: Command,
+      Type: AddItemToCartCommand,
+      Data: {
+        CartId: Guid_1,
+        Sku: SKU-B
+      }
+    },
+    {
+      Kind: Command,
+      Type: CheckoutCartCommand,
+      Data: {
+        CartId: Guid_1
+      }
+    },
+    {
+      Kind: Event,
+      Type: CartCheckedOutEvent,
+      Data: {
+        CartId: Guid_1,
+        ItemCount: 2,
+        Skus: [
+          SKU-A,
+          SKU-B
+        ]
+      }
+    }
+  ],
   ProjectionRow: {
     ItemCount: 2,
     Skus: SKU-A,SKU-B

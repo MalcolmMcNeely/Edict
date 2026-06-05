@@ -1,6 +1,7 @@
 using Edict.Testing;
 
 using Sample.Contracts.Cart.Commands;
+using Sample.Contracts.Cart.Events;
 using Sample.Contracts.Cart.Projections;
 using Sample.Domain.Cart.CommandHandlers;
 
@@ -14,10 +15,14 @@ namespace Sample.Azure.Silo.Tests.Cart;
 /// framework persists each completing <c>HandleAsync</c>, so the accumulated
 /// items survive to the later <c>CheckoutCart</c> Command, which raises one
 /// <c>CartCheckedOutEvent</c> derived from the accumulated state. Everything is
-/// asserted through observable surfaces: the <see cref="EdictTestApp.Timeline"/>
-/// shows the Commands and the raised Event, and the projection read-model row
-/// proves the downstream <c>CheckedOutCartTableProjectionBuilder</c> was driven
-/// by that Event. Neither assertion reaches into private grain <c>State</c>.
+/// asserted through observable surfaces: the cart-scoped slice of the
+/// <see cref="EdictTestApp.Timeline"/> shows the three Commands raise exactly one
+/// Event, and the projection read-model row proves the downstream
+/// <c>CheckedOutCartTableProjectionBuilder</c> was driven by that Event. Neither
+/// assertion reaches into private grain <c>State</c>. The bridge Saga's
+/// downstream Order cascade (covered by <see cref="CartToOrderBridgeTests"/>) is
+/// scoped out: its multi-saga ordering is chaos-sensitive, so a full-timeline
+/// snapshot here would be non-deterministic.
 /// </summary>
 public sealed class CartCheckoutTests
 {
@@ -36,11 +41,17 @@ public sealed class CartCheckoutTests
         await app.SendAsync(new CheckoutCartCommand(cartId));
         await app.Drain();
 
+        var cartTimeline = app.Timeline.Entries
+            .Where(entry => entry.Type is nameof(AddItemToCartCommand)
+                or nameof(CheckoutCartCommand)
+                or nameof(CartCheckedOutEvent))
+            .ToList();
+
         var row = await app.GetProjectionRow<CheckedOutCartRow>(
             tableName: "checkedoutcarts",
             partitionKey: cartId.ToString(),
             rowKey: "cart");
 
-        await Verify(new { app.Timeline, ProjectionRow = row });
+        await Verify(new { CartTimeline = cartTimeline, ProjectionRow = row });
     }
 }

@@ -11,6 +11,7 @@ using Npgsql;
 
 using Orleans.Serialization;
 
+using Sample.Contracts.Cart.Projections;
 using Sample.Contracts.Fulfillment.Projections;
 using Sample.Contracts.Orders.Projections;
 using Sample.Contracts.Payments.Projections;
@@ -52,6 +53,9 @@ builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(postgresConnectionStri
 builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(serviceProvider =>
     new PostgresTableRepository<OrderStatusRow>(
         serviceProvider.GetRequiredService<NpgsqlDataSource>(), "ordersbystatus", serviceProvider.GetRequiredService<Serializer>()));
+builder.Services.AddSingleton<IEdictTableRepository<CheckedOutCartRow>>(serviceProvider =>
+    new PostgresTableRepository<CheckedOutCartRow>(
+        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "checkedoutcarts", serviceProvider.GetRequiredService<Serializer>()));
 builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(serviceProvider =>
     new PostgresTableRepository<OrderOutcomeRow>(
         serviceProvider.GetRequiredService<NpgsqlDataSource>(), "orderoutcome", serviceProvider.GetRequiredService<Serializer>()));
