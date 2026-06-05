@@ -5,10 +5,12 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
+using Edict.Contracts.Schedules;
 using Edict.Core.DeadLetter;
 using Edict.Core.Idempotency;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
+using Edict.Core.Schedules;
 using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -49,7 +51,7 @@ namespace Edict.Core.Sagas;
 /// <see cref="SagaDeadlineResolver"/> and <see cref="SagaLifecycleTransition"/>.
 /// </para>
 /// </summary>
-public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IEdictSaga
+public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IEdictSaga, IEdictScheduleFireable
     where TProgress : IEdictPersistedState, new()
 {
     // Sibling to OutboxHost.DrainReminderName: the cap reminder is a second
@@ -63,6 +65,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     EdictOptions? _cachedOptions;
     EdictSagaOptions? _cachedSagaOptions;
     IReminderRegistrar? _capReminders;
+    ScheduleHost<TProgress>? _scheduleHost;
+    IDeadLetterPromoter? _deadLetterPromoter;
     string? _cachedSagaType;
     string? _cachedSagaKey;
 
@@ -90,6 +94,9 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     EdictSagaOptions SagaOptions =>
         _cachedSagaOptions ??= ServiceProvider.GetService<IOptions<EdictSagaOptions>>()?.Value ?? new EdictSagaOptions();
     IReminderRegistrar CapReminders => _capReminders ??= new GrainReminderRegistrar(this);
+    Serializer Serializer => _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
+    ScheduleHost<TProgress> ScheduleHost => _scheduleHost ??= BuildScheduleHost();
+    IDeadLetterPromoter DeadLetterPromoter => _deadLetterPromoter ??= ServiceProvider.GetRequiredService<IDeadLetterPromoter>();
 
     /// <inheritdoc cref="IEdictSaga.GetEdictProgressAsync" />
     public Task<object> GetEdictProgressAsync() => Task.FromResult<object>(Progress!);
@@ -125,6 +132,72 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// <see cref="Dispatch"/>: buffered now, applied at the commit.
     /// </summary>
     protected void Complete() => _dispatch.Current.RequestComplete();
+
+    /// <summary>
+    /// Starts a recurring schedule from inside an event <c>HandleAsync</c>. The
+    /// surface is identical to a Command Handler's: the <paramref name="message"/>
+    /// is persisted (data plus its <c>[Alias]</c>), never a delegate, and each fire
+    /// deserialises it and routes it back through this saga's
+    /// <c>HandleAsync(TMessage) : Task&lt;EdictScheduleResult&gt;</c>, re-entering the
+    /// full handler lifecycle so a fire can <see cref="Dispatch"/> a Command (poll
+    /// then send). The first fire is at <c>+every</c>; the handler returns
+    /// <see cref="EdictScheduleResult.Continue"/> or
+    /// <see cref="EdictScheduleResult.Complete"/>.
+    /// <para>
+    /// A saga schedule is bounded by the saga's own timeout: the command-handler
+    /// silo default does not apply inside a saga, so the saga cap stays the single
+    /// ceiling for everything a saga owns. An explicit positive
+    /// <paramref name="timeout"/> caps this one schedule shorter (armed once here,
+    /// never reset by a fire); <see cref="EdictSchedule.Unbounded"/> and omitting
+    /// <paramref name="timeout"/> both leave the schedule uncapped at the schedule
+    /// level. On a fired cap the schedule runs <c>OnScheduleTimeoutAsync(TMessage)</c>
+    /// if one is written, else dead-letters.
+    /// </para>
+    /// </summary>
+    protected void Schedule(EdictScheduleMessage message, TimeSpan every, TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every, ResolveScheduleCap(timeout));
+    }
+
+    // Resolves the effective timeout duration for a saga schedule. Unlike a Command
+    // Handler's, this never inherits EdictCommandHandlerScheduleOptions.DefaultTimeout:
+    // the saga's own absolute cap is the single ceiling. An explicit timeout: caps
+    // this schedule shorter; EdictSchedule.Unbounded and an omitted timeout: both
+    // leave it uncapped at the schedule level (null).
+    static TimeSpan? ResolveScheduleCap(TimeSpan? timeout) =>
+        timeout is { } explicitTimeout && explicitTimeout != EdictSchedule.Unbounded
+            ? explicitTimeout
+            : null;
+
+    /// <summary>
+    /// Generator override target: type-switches a fired message to the saga's
+    /// matching <c>HandleAsync(TMessage)</c>. The base default is unreachable — a
+    /// schedule can only be armed for a message this saga dispatches.
+    /// </summary>
+    protected virtual Task<EdictScheduleResult> DispatchScheduleFireAsync(EdictScheduleMessage message) =>
+        throw new EdictUnroutableScheduleMessageException(message.GetType());
+
+    /// <summary>
+    /// Generator override target: type-switches a timed-out message to the saga's
+    /// matching <c>OnScheduleTimeoutAsync(TMessage)</c> compensation hook, returning
+    /// <c>true</c> when one ran. The base default returns <c>false</c> for every
+    /// message — a schedule whose author wrote no hook dead-letters its fired cap.
+    /// </summary>
+    protected virtual Task<bool> DispatchScheduleTimeoutAsync(EdictScheduleMessage message) =>
+        Task.FromResult(false);
+
+    /// <inheritdoc />
+    public Task FireDueSchedulesAsync() => ScheduleHost.FireDueAsync();
+
+    /// <inheritdoc />
+    public Task<DateTimeOffset?> PeekSoonestScheduleDueAsync() => Task.FromResult(ScheduleHost.SoonestDueAt);
+
+    /// <inheritdoc />
+    public Task FireDueScheduleTimeoutsAsync() => ScheduleHost.FireTimeoutsAsync();
+
+    /// <inheritdoc />
+    public Task<DateTimeOffset?> PeekSoonestScheduleTimeoutAsync() => Task.FromResult(ScheduleHost.SoonestTimeoutAt);
 
     /// <summary>
     /// Whether this saga declares a <c>HandleAsync</c> overload for the runtime
@@ -190,6 +263,10 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         }
 
         await ApplyCapReminderActionAsync(capAction, newLifecycle);
+
+        // A handler that called Schedule(...) staged an entry the commit above just
+        // made durable; arm its timer and Reminder now.
+        await ReconcileScheduleIfActiveAsync();
     }
 
     /// <summary>
@@ -316,7 +393,26 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
     /// <inheritdoc />
     public override Task ReceiveReminder(string reminderName, TickStatus status) =>
-        reminderName == CapReminderName ? ReceiveCapReminderAsync() : base.ReceiveReminder(reminderName, status);
+        reminderName switch
+        {
+            CapReminderName => ReceiveCapReminderAsync(),
+            ScheduleHost<TProgress>.ScheduleReminderName => ScheduleHost.ReceiveReminderAsync(),
+            _ => base.ReceiveReminder(reminderName, status),
+        };
+
+    /// <summary>
+    /// Re-arms any durable schedule's timer and Reminder when the saga activates,
+    /// on top of the base's outbox drain-on-activation. Skipped entirely for the
+    /// common saga that never scheduled, so the cost is one Count check.
+    /// </summary>
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        await base.OnActivateAsync(cancellationToken);
+        if (State.Schedule.Active.Count > 0)
+        {
+            await ScheduleHost.OnActivateAsync();
+        }
+    }
 
     /// <summary>
     /// The cap reminder tick. Terminalises a live saga: it opens a fresh dispatch
@@ -466,6 +562,141 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             sagaKey: SagaKey,
             lastHandledAt: Clock.GetUtcNow());
     }
+
+    // The dispatch delegate ScheduleHost calls per due entry — the saga's schedule
+    // fire lifecycle, parallel to the Command Handler's. A fresh dispatch buffer
+    // scopes the one-command-per-fire limit, the fire handler runs through the
+    // generated DispatchScheduleFireAsync, and the schedule's next-due advance
+    // commits atomically with any Dispatched Command (poll then send) through the
+    // saga's own Outbox commit boundary — no dedup-ring slot, since no Event came
+    // in. A handler throw discards the turn (partial Progress rolled back to the
+    // last durable snapshot, the buffered command dropped) but re-times the
+    // schedule forward so a failing poll retries on the next cadence. Once the saga
+    // is terminal its schedules stop: the saga cap is the single ceiling for
+    // everything a saga owns, so a fire against a Completed or TimedOut saga removes
+    // the schedule rather than running the handler.
+    async Task FireScheduleEntryAsync(ScheduleEntry entry, DateTimeOffset now)
+    {
+        if (IsTerminal())
+        {
+            await PruneScheduleAsync(entry.ScheduleId);
+            return;
+        }
+
+        var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
+        var buffer = _dispatch.Begin();
+
+        EdictScheduleResult result;
+        try
+        {
+            result = await DispatchScheduleFireAsync(message);
+        }
+        catch
+        {
+            await ReadStateAsync();
+            await CommitScheduleAsync(base.State.Schedule.Continue(entry.ScheduleId, now), stagedEffect: null);
+            return;
+        }
+
+        var command = buffer.Take();
+        var effect = command is null ? null : BuildSendCommandEntry(command);
+
+        var nextSchedule = result is EdictScheduleResult.Complete
+            ? base.State.Schedule.Complete(entry.ScheduleId)
+            : base.State.Schedule.Continue(entry.ScheduleId, now);
+
+        await CommitScheduleAsync(nextSchedule, effect);
+    }
+
+    // The dispatch delegate ScheduleHost calls per timed-out entry. A timeout is
+    // terminal: it removes the schedule in the same commit as its outcome. A written
+    // OnScheduleTimeoutAsync hook runs as compensation and may Dispatch one
+    // compensating Command (which commits atomically with the removal); otherwise the
+    // cap dead-letters through DeadLetterPromoter with a no-throw synthetic row. A
+    // hook that throws is rolled back to the durable snapshot and dead-lettered.
+    async Task FireScheduleTimeoutEntryAsync(ScheduleEntry entry, DateTimeOffset now)
+    {
+        if (IsTerminal())
+        {
+            await PruneScheduleAsync(entry.ScheduleId);
+            return;
+        }
+
+        var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
+        var buffer = _dispatch.Begin();
+
+        bool handled;
+        try
+        {
+            handled = await DispatchScheduleTimeoutAsync(message);
+        }
+        catch
+        {
+            await ReadStateAsync();
+            handled = false;
+        }
+
+        if (handled)
+        {
+            var command = buffer.Take();
+            var effect = command is null ? null : BuildSendCommandEntry(command);
+            await CommitScheduleAsync(base.State.Schedule.Complete(entry.ScheduleId), effect);
+            return;
+        }
+
+        var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
+        var traceParent = traceId is not null && spanId is not null
+            ? ActivityExtensions.BuildTraceParent(traceId, spanId)
+            : null;
+
+        var deadLetter = DeadLetterPromoter.PromoteScheduleTimeout(
+            scheduleMessageType: message.GetType().FullName ?? message.GetType().Name,
+            sourceGrainKey: SagaKey,
+            sourceGrainType: SagaType,
+            traceParent: traceParent,
+            traceState: traceState,
+            now: now);
+
+        await CommitScheduleAsync(base.State.Schedule.Complete(entry.ScheduleId), deadLetter);
+    }
+
+    bool IsTerminal() => State.Saga?.State is SagaLifecycleState.Completed or SagaLifecycleState.TimedOut;
+
+    Task PruneScheduleAsync(Guid scheduleId) => CommitScheduleAsync(base.State.Schedule.Complete(scheduleId), stagedEffect: null);
+
+    // Commits a schedule-slice transition plus any staged effect (a Dispatched
+    // Command or a dead-letter) atomically through the saga's Outbox commit
+    // boundary, then reconciles the timer and Reminder against what the fire left.
+    async Task CommitScheduleAsync(ScheduleSlice nextSchedule, OutboxEntry? stagedEffect)
+    {
+        var before = base.State.Schedule;
+        await Host.CommitProgressAndDrainAsync(
+            applyProgress: () => base.State.Schedule = nextSchedule,
+            rollbackProgress: () => base.State.Schedule = before,
+            stagedEffect: stagedEffect);
+        await ScheduleHost.ReconcileAsync();
+    }
+
+    // Arms the timer and Reminder when a handled Event staged a schedule. Skipped
+    // entirely for the common non-scheduling saga (no host built, no durable
+    // schedules), so the cost there is one Count check.
+    Task ReconcileScheduleIfActiveAsync() =>
+        _scheduleHost is not null || State.Schedule.Active.Count > 0
+            ? ScheduleHost.ReconcileAsync()
+            : Task.CompletedTask;
+
+    ScheduleHost<TProgress> BuildScheduleHost() =>
+        new(
+            new GrainPersistentStateAdapter<GrainEnvelope<TProgress>>(
+                get: () => base.State,
+                set: v => base.State = v,
+                writeState: WriteStateAsync),
+            new GrainReminderRegistrar(this),
+            new GrainScheduleTimer(this),
+            Clock,
+            Options,
+            FireScheduleEntryAsync,
+            FireScheduleTimeoutEntryAsync);
 
     OutboxEntry BuildSendCommandEntry(EdictCommand command)
     {

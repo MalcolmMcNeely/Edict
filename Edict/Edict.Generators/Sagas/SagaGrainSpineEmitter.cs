@@ -93,8 +93,83 @@ internal static class SagaGrainSpineEmitter
                                 return false;
                         }
                     }
-                }
+            {{EmitScheduleDispatch(grain)}}{{EmitScheduleTimeoutDispatch(grain)}}    }
             }
+
+            """;
+    }
+
+    // Emits the schedule fire-dispatch type-switch — the parallel of the command
+    // spine's DispatchScheduleFireAsync for the saga's
+    // HandleAsync(TMessage) : Task<EdictScheduleResult> arms — only when the saga
+    // registers at least one schedule. An un-annotated saga emits nothing here,
+    // inheriting the throwing base default it can never reach.
+    static string EmitScheduleDispatch(SagaGrainModel grain)
+    {
+        if (grain.ScheduleMessages.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var arms = new StringBuilder();
+        foreach (var message in grain.ScheduleMessages)
+        {
+            arms.Append("                ")
+                .Append(message.Fqn)
+                .Append(" m => this.")
+                .Append(EdictWellKnownNames.HandleMethodName)
+                .Append("(m),\n");
+        }
+
+        return $$"""
+
+                    protected override {{EdictWellKnownNames.TaskOfEdictScheduleResultFqn}} DispatchScheduleFireAsync(
+                        global::Edict.Contracts.Schedules.EdictScheduleMessage message) =>
+                        message switch
+                        {
+            {{arms.ToString().TrimEnd('\n')}}
+                            _ => throw new global::Edict.Core.Schedules.EdictUnroutableScheduleMessageException(
+                                message.GetType()),
+                        };
+
+            """;
+    }
+
+    // Emits the schedule-timeout dispatch — the type-switch over the saga's
+    // OnScheduleTimeoutAsync(TMessage) arms — only when the saga writes at least
+    // one timeout hook. A fired cap whose message has no arm returns false so the
+    // lifecycle dead-letters it; a saga with no timeout hook at all inherits the
+    // base default (false for every message) and emits nothing here.
+    static string EmitScheduleTimeoutDispatch(SagaGrainModel grain)
+    {
+        if (grain.ScheduleTimeoutMessages.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var arms = new StringBuilder();
+        foreach (var message in grain.ScheduleTimeoutMessages)
+        {
+            arms
+                .Append("                case ").Append(message.Fqn).Append(" m:\n")
+                .Append("                    await this.")
+                .Append(EdictWellKnownNames.OnScheduleTimeoutMethodName)
+                .Append("(m);\n")
+                .Append("                    return true;\n");
+        }
+
+        return $$"""
+
+                    protected override async {{EdictWellKnownNames.TaskOfBoolFqn}} DispatchScheduleTimeoutAsync(
+                        global::Edict.Contracts.Schedules.EdictScheduleMessage message)
+                    {
+                        switch (message)
+                        {
+            {{arms.ToString().TrimEnd('\n')}}
+                            default:
+                                return false;
+                        }
+                    }
 
             """;
     }

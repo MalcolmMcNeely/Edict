@@ -59,6 +59,18 @@ public class IncrementalityTests
         GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(ScheduleTimeoutSource);
     }
 
+    [Fact]
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForSagaSchedules()
+    {
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(SagaScheduleSource);
+    }
+
+    [Fact]
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForSagaScheduleTimeouts()
+    {
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(SagaScheduleTimeoutSource);
+    }
+
     const string CommandSource = """
         using System;
         using System.Threading.Tasks;
@@ -234,6 +246,86 @@ public class IncrementalityTests
                 Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
 
             public Task OnScheduleTimeoutAsync(FulfillNextLine message) => Task.CompletedTask;
+        }
+        """;
+
+    const string SagaScheduleSource = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Events;
+        using Edict.Contracts.Schedules;
+        using Edict.Core.Sagas;
+        using MessagePack;
+
+        namespace Sample;
+
+        [MessagePackObject(keyAsPropertyName: true)]
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed partial record PollGateway : EdictScheduleMessage;
+
+        public sealed class OrderSagaProgress
+        {
+            public bool Settled { get; set; }
+        }
+
+        public sealed partial class OrderSaga : EdictSaga<OrderSagaProgress>
+        {
+            public Task HandleAsync(OrderPlacedEvent edictEvent)
+            {
+                Schedule(new PollGateway(), every: TimeSpan.FromSeconds(2));
+                return Task.CompletedTask;
+            }
+
+            public Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
+                Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+        }
+        """;
+
+    const string SagaScheduleTimeoutSource = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Events;
+        using Edict.Contracts.Schedules;
+        using Edict.Core.Sagas;
+        using MessagePack;
+
+        namespace Sample;
+
+        [MessagePackObject(keyAsPropertyName: true)]
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed partial record PollGateway : EdictScheduleMessage;
+
+        public sealed class OrderSagaProgress
+        {
+            public bool Settled { get; set; }
+        }
+
+        public sealed partial class OrderSaga : EdictSaga<OrderSagaProgress>
+        {
+            public Task HandleAsync(OrderPlacedEvent edictEvent)
+            {
+                Schedule(new PollGateway(), every: TimeSpan.FromSeconds(2));
+                return Task.CompletedTask;
+            }
+
+            public Task<EdictScheduleResult> HandleAsync(PollGateway message) =>
+                Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Continue());
+
+            public Task OnScheduleTimeoutAsync(PollGateway message) => Task.CompletedTask;
         }
         """;
 

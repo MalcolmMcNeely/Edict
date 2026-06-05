@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
+using Edict.Core.Schedules;
 using Edict.Telemetry;
 
 using Orleans;
@@ -34,7 +36,8 @@ sealed class InProcPublishExecutor(
     ChaosOptions chaos,
     IEventStreamAccessors accessors,
     IEventTagWriters tagWriters,
-    TimelineRecorder recorder) : IOutboxEffectExecutor
+    TimelineRecorder recorder,
+    ConcurrentDictionary<(string GrainClassName, Guid Key), byte> routedGrains) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
@@ -162,6 +165,16 @@ sealed class InProcPublishExecutor(
 
     void Dispatch(Type grainClass, Guid routeKey, EdictEvent edictEvent)
     {
+        // A saga starts a schedule from inside an event HandleAsync, so it joins
+        // the schedule-fire roster the moment an event fans out to it — the
+        // command-routed roster (RecordingSender) never sees a saga. Only
+        // schedule-capable subscribers are recorded; event handlers and projection
+        // builders do not implement the fire seam.
+        if (typeof(IEdictScheduleFireable).IsAssignableFrom(grainClass) && grainClass.FullName is { } grainClassName)
+        {
+            routedGrains.TryAdd((grainClassName, routeKey), 0);
+        }
+
         var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
         var deliveries = 1 + _roller.ExtraDeliveries(grainClass);
         for (var i = 0; i < deliveries; i++)

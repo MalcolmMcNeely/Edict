@@ -425,7 +425,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             siloBuilder.Services.AddSingleton(ctx.Chaos);
             siloBuilder.Services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
             {
-                var inst = ActivatorUtilities.CreateInstance<InProcPublishExecutor>(serviceProvider, ctx.Recorder);
+                var inst = ActivatorUtilities.CreateInstance<InProcPublishExecutor>(serviceProvider, ctx.Recorder, ctx.RoutedGrains);
                 ctx.PublishExecutor = inst;
                 return inst;
             });
