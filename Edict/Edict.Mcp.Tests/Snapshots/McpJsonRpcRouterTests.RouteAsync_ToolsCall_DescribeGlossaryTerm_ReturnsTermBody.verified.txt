@@ -1,11 +1,11 @@
-{
+﻿{
   "jsonrpc": "2.0",
   "id": 4,
   "result": {
     "content": [
       {
         "type": "text",
-        "text": "**Saga**:\nA grain that coordinates a multi-step workflow by reacting to Events and issuing exactly one Command per Event via \u0060Dispatch\u0060.\n_Avoid_: dispatching more than one command per handled event; expecting \u0060Dispatch\u0060 to buffer like \u0060Raise\u0060; reconstructing progress by replay."
+        "text": "**Saga**:\nA grain that coordinates a multi-step workflow by reacting to Events, holding durable \u0060Progress\u0060, and issuing at most one Command per Event via \u0060Dispatch\u0060. A handler may mutate \u0060Progress\u0060 and dispatch nothing (accumulate now, act on a later Event); the mutation still commits, because every handled Event commits its dedup-ring slot and \u0060Progress\u0060 rides the same atomic write.\n_Avoid_: dispatching more than one command per handled event; reading \u0022at most one\u0022 as \u0022exactly one\u0022 (zero dispatches is a valid handle, not a dropped one); expecting \u0060Dispatch\u0060 to buffer like \u0060Raise\u0060; reconstructing progress by replay."
       }
     ],
     "isError": false
