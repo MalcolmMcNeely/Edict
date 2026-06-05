@@ -5,10 +5,12 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
+using Edict.Contracts.Schedules;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
+using Edict.Core.Schedules;
 using Edict.Telemetry;
 
 using FluentValidation;
@@ -46,14 +48,20 @@ namespace Edict.Core.Commands;
 /// </summary>
 [StorageProvider(ProviderName = "edict-state")]
 public abstract class EdictCommandHandler<TState>
-    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IRemindable
+    : Grain<GrainEnvelope<TState>>, IEdictCommandHandler, IEdictScheduleFireable, IRemindable
     where TState : IEdictPersistedState, new()
 {
     OutboxHost<TState>? _host;
+    ScheduleHost<TState>? _scheduleHost;
+    Serializer? _serializer;
     internal List<EdictEvent>? _raisedEvents;
     internal TimeProvider? _timeProvider;
 
     OutboxHost<TState> Host => _host ??= BuildHost();
+
+    ScheduleHost<TState> ScheduleHost => _scheduleHost ??= BuildScheduleHost();
+
+    Serializer Serializer => _serializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
@@ -81,6 +89,10 @@ public abstract class EdictCommandHandler<TState>
     {
         await base.OnActivateAsync(cancellationToken);
         await Host.OnActivateAsync();
+        if (base.State.Schedule.Active.Count > 0)
+        {
+            await ScheduleHost.OnActivateAsync();
+        }
     }
 
     /// <summary>
@@ -97,7 +109,82 @@ public abstract class EdictCommandHandler<TState>
 
     /// <inheritdoc />
     public Task ReceiveReminder(string reminderName, TickStatus status) =>
-        Host.ReceiveReminderAsync();
+        reminderName == ScheduleHost<TState>.ScheduleReminderName
+            ? ScheduleHost.ReceiveReminderAsync()
+            : Host.ReceiveReminderAsync();
+
+    /// <inheritdoc />
+    public Task FireDueSchedulesAsync() => ScheduleHost.FireDueAsync();
+
+    /// <inheritdoc />
+    public Task<DateTimeOffset?> PeekSoonestScheduleDueAsync() =>
+        Task.FromResult(ScheduleHost.SoonestDueAt);
+
+    /// <summary>
+    /// Starts a recurring schedule from inside <c>HandleAsync</c>. The
+    /// <paramref name="message"/> is persisted (data plus its <c>[Alias]</c>),
+    /// never a delegate; each fire deserializes it and routes it back through this
+    /// grain's <c>HandleAsync(TMessage) : Task&lt;EdictScheduleResult&gt;</c>,
+    /// re-entering the full handler lifecycle. The first fire is at
+    /// <c>+every</c>; the handler answers only <see cref="Continue"/> or
+    /// <see cref="Complete"/>. The staged schedule is durable because the
+    /// enclosing command commits the whole envelope; the timer and Reminder arm
+    /// on that commit.
+    /// </summary>
+    protected void Schedule(EdictScheduleMessage message, TimeSpan every)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every);
+    }
+
+    /// <summary>Fire-handler result: fire again on the declared cadence.</summary>
+    protected static Task<EdictScheduleResult> Continue() =>
+        Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Continue());
+
+    /// <summary>Fire-handler result: stop the schedule; no further fires.</summary>
+    protected static Task<EdictScheduleResult> Complete() =>
+        Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+
+    /// <summary>
+    /// Generator override target: type-switches a fired message to the consumer's
+    /// matching <c>HandleAsync(TMessage)</c>. The base default is unreachable — a
+    /// schedule can only be armed for a message this grain dispatches.
+    /// </summary>
+    protected virtual Task<EdictScheduleResult> DispatchScheduleFireAsync(EdictScheduleMessage message) =>
+        throw new EdictUnroutableScheduleMessageException(message.GetType());
+
+    // The dispatch delegate ScheduleHost calls per due entry — the hand-written
+    // schedule fire lifecycle, parallel to ValidateAndHandleAsync. Deserialize,
+    // run the fire handler through the generated dispatch, apply the outcome to
+    // the slice, and commit atomically with state and outbox. A handler throw
+    // discards the turn (buffered events dropped, partial State mutation rolled
+    // back to the last durable snapshot) but re-times the schedule forward so a
+    // failing fire retries on the next cadence rather than spinning the timer;
+    // slice 1 has no dead-letter path for a stuck schedule.
+    async Task FireScheduleEntryAsync(ScheduleEntry entry, DateTimeOffset now)
+    {
+        var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
+
+        EdictScheduleResult result;
+        try
+        {
+            result = await DispatchScheduleFireAsync(message);
+        }
+        catch
+        {
+            DiscardRaisedEvents();
+            await ReadStateAsync();
+            base.State.Schedule = base.State.Schedule.Continue(entry.ScheduleId, now);
+            await CommitAndDrainRaisedEventsAsync();
+            return;
+        }
+
+        base.State.Schedule = result is EdictScheduleResult.Complete
+            ? base.State.Schedule.Complete(entry.ScheduleId)
+            : base.State.Schedule.Continue(entry.ScheduleId, now);
+
+        await CommitAndDrainRaisedEventsAsync();
+    }
 
     /// <summary>
     /// Buffers an event to be staged onto the Outbox when the current command
@@ -227,6 +314,16 @@ public abstract class EdictCommandHandler<TState>
         }
 
         await CommitAndDrainRaisedEventsAsync();
+
+        // A handler that called Schedule(...) staged an entry that the commit
+        // above just made durable; arm its timer and Reminder now. Skipped
+        // entirely for the common non-scheduling handler (no host built, no
+        // durable schedules), so the cost there is one Count check.
+        if (_scheduleHost is not null || base.State.Schedule.Active.Count > 0)
+        {
+            await ScheduleHost.ReconcileAsync();
+        }
+
         return result;
     }
 
@@ -254,6 +351,17 @@ public abstract class EdictCommandHandler<TState>
             claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
             requestDeactivation: DeactivateOnIdle);
+
+    ScheduleHost<TState> BuildScheduleHost() =>
+        new(
+            new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
+                get: () => base.State,
+                set: v => base.State = v,
+                writeState: WriteStateAsync),
+            new GrainReminderRegistrar(this),
+            new GrainScheduleTimer(this),
+            ServiceProvider.GetRequiredService<TimeProvider>(),
+            FireScheduleEntryAsync);
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test

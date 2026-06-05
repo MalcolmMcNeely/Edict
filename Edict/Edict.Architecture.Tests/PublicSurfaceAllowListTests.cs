@@ -330,6 +330,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Sagas.SagaLifecycle", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Sagas.SagaLifecycleState", // ADR 0045: persisted-state slot enum on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Schedules.EdictUnroutableScheduleMessageException",
+        "Edict.Core.Schedules.IEdictScheduleFireable", // Framework-internal grain interface for the Test Framework fire seam.
         "Edict.Core.Schedules.ScheduleEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
@@ -352,10 +353,16 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Outbox.Copier_UpsertRowEffect",
         "OrleansCodeGen.Edict.Core.Sagas.Codec_SagaLifecycle",
         "OrleansCodeGen.Edict.Core.Sagas.Copier_SagaLifecycle",
+        "OrleansCodeGen.Edict.Core.Schedules.Codec_Invokable_IEdictScheduleFireable_GrainReference_612CF67A",
+        "OrleansCodeGen.Edict.Core.Schedules.Codec_Invokable_IEdictScheduleFireable_GrainReference_8DABBE0C",
         "OrleansCodeGen.Edict.Core.Schedules.Codec_ScheduleEntry",
         "OrleansCodeGen.Edict.Core.Schedules.Codec_ScheduleSlice",
+        "OrleansCodeGen.Edict.Core.Schedules.Copier_Invokable_IEdictScheduleFireable_GrainReference_612CF67A",
+        "OrleansCodeGen.Edict.Core.Schedules.Copier_Invokable_IEdictScheduleFireable_GrainReference_8DABBE0C",
         "OrleansCodeGen.Edict.Core.Schedules.Copier_ScheduleEntry",
         "OrleansCodeGen.Edict.Core.Schedules.Copier_ScheduleSlice",
+        "OrleansCodeGen.Edict.Core.Schedules.Invokable_IEdictScheduleFireable_GrainReference_612CF67A",
+        "OrleansCodeGen.Edict.Core.Schedules.Invokable_IEdictScheduleFireable_GrainReference_8DABBE0C",
         "OrleansCodeGen.Edict.Core.Sagas.Codec_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Copier_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Invokable_IEdictSaga_GrainReference_747818AD",

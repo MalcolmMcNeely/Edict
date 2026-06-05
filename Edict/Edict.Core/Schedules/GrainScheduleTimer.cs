@@ -8,6 +8,10 @@ namespace Edict.Core.Schedules;
 // deactivation. Non-periodic (Period = infinite) — the host re-arms after every
 // fire from the recomputed soonest-due, so a coalesced forward jump re-times the
 // timer rather than ticking on a fixed grid.
+//
+// KeepAlive is false: a schedule must survive deactivation, so the grain is
+// allowed to idle out and the durable Reminder re-activates it to catch up.
+// Pinning it alive would defeat the durability the primitive exists to give.
 sealed class GrainScheduleTimer(Grain grain) : IScheduleTimer
 {
     IGrainTimer? _timer;
@@ -19,7 +23,7 @@ sealed class GrainScheduleTimer(Grain grain) : IScheduleTimer
         {
             DueTime = dueTime < TimeSpan.Zero ? TimeSpan.Zero : dueTime,
             Period = Timeout.InfiniteTimeSpan,
-            KeepAlive = true,
+            KeepAlive = false,
         });
     }
 
