@@ -14,7 +14,7 @@ sealed class SagaDispatchBuffer
         if (_pending is not null)
         {
             throw new EdictSagaCoordinationException(
-                "A saga issues exactly one Command per Event; Dispatch was called more than once " +
+                "A saga issues at most one Command per Event; Dispatch was called more than once " +
                 "within a single event handler. Command fan-out from a saga is a coordination smell.");
         }
 

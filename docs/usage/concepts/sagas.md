@@ -1,6 +1,6 @@
 # Sagas
 
-An `EdictSaga<TProgress>` coordinates a multi-step cross-aggregate workflow by reacting to events and issuing exactly one command per event via `Dispatch`.
+An `EdictSaga<TProgress>` coordinates a multi-step cross-aggregate workflow by reacting to events, holding durable `Progress`, and issuing at most one command per event via `Dispatch`. The floor is zero: a handler that mutates `Progress` and dispatches nothing is a valid handle, not a dropped one. Every handled event commits its dedup-ring slot, and `Progress` rides the same atomic write, so the mutation persists.
 
 ```csharp
 using Edict.Core.Sagas;
@@ -28,12 +28,51 @@ public partial class OrderPaymentSaga : EdictSaga<OrderPaymentProgress>
 
 - **`EdictSaga<TProgress>`** (`Edict.Core.Sagas`) — abstract base where `TProgress : IEdictPersistedState, new()`. A consumer declares the saga as a `partial class` (the generator emits the Orleans interface, the implicit stream subscription, and the `DispatchAsync` switch over the consumer's `HandleAsync` overloads) and writes one `Task HandleAsync(TEvent edictEvent)` per subscribed event type.
 - **`Progress`** (`protected TProgress`) — durable workflow state. The consumer mutates `Progress` inside `HandleAsync`; it commits atomically with the dedup ring and the staged `SendCommand` effect in one grain-state write.
-- **`Dispatch(EdictCommand)`** (`protected void`) — issues the single command this event implies. Buffered and staged as a `SendCommand` outbox effect after the handler returns; commits atomically with `Progress` and the dedup ring. A second call within the same event handler throws — saga command fan-out is a coordination smell and the API shape makes it structurally unmissable.
+- **`Dispatch(EdictCommand)`** (`protected void`) — issues at most one command per event. When the event implies a follow-up, call it once; the command is buffered and staged as a `SendCommand` outbox effect after the handler returns, committing atomically with `Progress` and the dedup ring. Not calling it is equally valid: a handler may accumulate into `Progress` and dispatch nothing. A *second* call within the same event handler throws — saga command fan-out is a coordination smell and the API shape makes it structurally unmissable.
 - **`Complete()`** (`protected void`) — marks the saga successfully finished. Hard-terminal: buffered like `Dispatch`, applied at the commit, it moves the lifecycle to `Completed` in the same atomic write as `Progress`, unregisters the cap reminder, and causes any later genuinely-new Event to dead-letter. See the lifecycle section below for when not to call it.
 - **`OnSagaTimeoutAsync()`** (`protected virtual Task`) — the compensation hook the framework invokes when the absolute cap fires. Override it to compensate; the default dead-letters. See the lifecycle section.
 - **`TProgress`** must implement `IEdictPersistedState` and follow the persistence contract (see EDICT011 below).
 
 A saga never `Raise`s — events belong to aggregates. A saga's dedup ring suppresses at-least-once redelivery of any event it has already processed; see [idempotency.md](idempotency.md).
+
+## Accumulate, then act
+
+The "at most one" floor is zero, and that is the whole point of `Progress`. A saga often has to wait for several events before it knows what Command to send, so most handled events mutate `Progress` and dispatch nothing, and only the event that closes the gap dispatches. This is the intended pattern, not a degenerate one: each dispatch-nothing handle still commits, because `Progress` rides the same atomic write as the dedup-ring slot. A crash after a dispatch-nothing handle replays nothing: the accumulated `Progress` is already durable.
+
+```csharp
+using Edict.Core.Sagas;
+
+public partial class FulfilmentSaga : EdictSaga<FulfilmentProgress>
+{
+    public Task HandleAsync(ShipmentDispatchedEvent edictEvent)
+    {
+        // Accumulate. No Command unless this is the shipment that completes the
+        // order, so most of these handles mutate Progress and dispatch nothing.
+        Progress.DispatchedShipmentIds.Add(edictEvent.ShipmentId);
+        return Act(edictEvent.OrderId);
+    }
+
+    public Task HandleAsync(OrderShipmentPlanEvent edictEvent)
+    {
+        Progress.PlannedShipmentCount = edictEvent.ShipmentCount;
+        return Act(edictEvent.OrderId);
+    }
+
+    Task Act(Guid orderId)
+    {
+        // Act, but only once the accumulated Progress closes the gap.
+        if (Progress.PlannedShipmentCount > 0
+            && Progress.DispatchedShipmentIds.Count == Progress.PlannedShipmentCount)
+        {
+            Dispatch(new CloseOrderCommand(orderId));
+            Complete();
+        }
+        return Task.CompletedTask;
+    }
+}
+```
+
+(Both handlers funnel through `Act`, so whichever event arrives last, the final shipment or the plan, is the one that dispatches. The earlier ones are all dispatch-nothing handles that still persist their `Progress`.)
 
 ## Lifecycle: the absolute cap
 
@@ -68,7 +107,7 @@ protected override Task OnSagaTimeoutAsync()
 }
 ```
 
-The override may mutate `Progress` and `Dispatch` exactly one compensating Command; both commit atomically with the `TimedOut` terminal write. **The default (no override) dead-letters** the fired cap with `EdictSagaTimeoutException`, so a finite-capped saga that times out without a compensation path surfaces loudly on the dead-letter projection rather than silently stranding the workflow.
+The override may mutate `Progress` and `Dispatch` at most one compensating Command; both commit atomically with the `TimedOut` terminal write. **The default (no override) dead-letters** the fired cap with `EdictSagaTimeoutException`, so a finite-capped saga that times out without a compensation path surfaces loudly on the dead-letter projection rather than silently stranding the workflow.
 
 ## Analyzer rules
 

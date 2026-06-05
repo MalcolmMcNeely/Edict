@@ -24,7 +24,7 @@ namespace Edict.Core.Sagas;
 
 /// <summary>
 /// Base for a saga: an idempotent consumer that coordinates a multi-step
-/// cross-aggregate workflow, reacting to Events and issuing exactly one Command
+/// cross-aggregate workflow, reacting to Events and issuing at most one Command
 /// per Event while holding durable <see cref="Progress"/>. It closes
 /// the generic idempotency root on <typeparamref name="TProgress"/>, so the
 /// "Event Handlers, Sagas, and Projection Builders all inherit
@@ -379,7 +379,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// <summary>
     /// Compensation hook invoked when the absolute lifetime cap fires. Override
     /// to run compensation with full access to <see cref="Progress"/>: mutate it
-    /// and <see cref="Dispatch"/> exactly one compensating Command, both of which
+    /// and <see cref="Dispatch"/> at most one compensating Command, both of which
     /// commit atomically with the <see cref="SagaLifecycleState.TimedOut"/>
     /// terminal write. The default implementation routes the fired cap to
     /// dead-letter, so a forgotten timeout surfaces loudly rather than silently

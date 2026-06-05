@@ -42,8 +42,8 @@ A terminal grain that subscribes implicitly to an Event stream and reacts by per
 _Avoid_: owning events; calling `Raise`/`Dispatch` from a handler; treating dedup-window commitment as "the side effect happened"; inlining external I/O on the stream callback by rolling your own `EdictIdempotencyBase` subclass.
 
 **Saga**:
-A grain that coordinates a multi-step workflow by reacting to Events and issuing exactly one Command per Event via `Dispatch`.
-_Avoid_: dispatching more than one command per handled event; expecting `Dispatch` to buffer like `Raise`; reconstructing progress by replay.
+A grain that coordinates a multi-step workflow by reacting to Events, holding durable `Progress`, and issuing at most one Command per Event via `Dispatch`. A handler may mutate `Progress` and dispatch nothing (accumulate now, act on a later Event); the mutation still commits, because every handled Event commits its dedup-ring slot and `Progress` rides the same atomic write.
+_Avoid_: dispatching more than one command per handled event; reading "at most one" as "exactly one" (zero dispatches is a valid handle, not a dropped one); expecting `Dispatch` to buffer like `Raise`; reconstructing progress by replay.
 
 **Saga Timeout**:
 A saga's absolute lifetime cap: a deadline armed once when the saga handles its first Event and never reset by later activity, declared with `[EdictSagaTimeout]` (a duration literal or `Unbounded`) and otherwise inheriting the silo-wide default (ships finite at 7 days).
@@ -113,7 +113,7 @@ _Avoid_: calling `Edict.Substrate.*` libraries a "production substrate" (they ar
 
 - A **Command Validator** gates a **Command** in the same activation turn before its **Command Handler**'s `HandleAsync` runs, reads but never mutates state, and yields a `Rejected` **Command Result** on failure
 - A **Command Handler** handles **Commands**, mutates durable `State`, returns a **Command Result**, and may raise **Events**
-- A **Saga** reacts to an **Event** and issues exactly one **Command**
+- A **Saga** reacts to an **Event**, mutates durable `Progress`, and issues at most one **Command** (zero or one); a dispatch-nothing handle still persists its `Progress`
 - The **Outbox** is one engine with four effect kinds; a permanently failing entry is **dead-lettered**; delivery is at-least-once and made effectively-once by the **Idempotency Base**
 - A **Command** is routed to exactly one aggregate grain by its single `[RouteKey]` Guid; a creation command routes identically — the caller mints the Guid and Orleans' virtual grains make the not-yet-activated aggregate addressable
 - A consumer issues a **Command** through the **Sender**; the **Sender** is the seam `Edict.Testing` swaps for an in-memory implementation

@@ -219,6 +219,28 @@ public sealed class SagaLifecycleTests
         Assert.Equal(deadlineBefore, deadlineAfter);
     }
 
+    [Fact]
+    public async Task DispatchNothingHandle_ProgressMutation_SurvivesReactivation()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetCappedSaga(workflowId);
+
+        // A handler that mutates Progress and dispatches no Command is a valid
+        // handle, not a dropped one: the mutation rides the same atomic
+        // dedup-ring commit, so it must outlive reactivation. The same-activation
+        // Handled assertions elsewhere don't prove that durability.
+        await saga.DeliverAsync(Trigger(workflowId));
+        var handledBefore = await saga.GetHandledAsync();
+
+        await saga.RequestDeactivationAsync();
+
+        var handledAfter = await saga.GetHandledAsync();
+
+        Assert.Empty(CapturingSendCommandExecutor.Captured);
+        Assert.Equal(1, handledBefore);
+        Assert.Equal(handledBefore, handledAfter);
+    }
+
     ISagaLifecycleProbe GetDefaultCapSaga(Guid workflowId) =>
         _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
             workflowId, grainClassNamePrefix: typeof(DefaultCapSaga).FullName);

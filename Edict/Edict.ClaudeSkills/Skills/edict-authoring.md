@@ -14,7 +14,7 @@ A new feature is *always* one of five grain roles plus the validator DI-service 
 - **Command Handler** — the Guid-keyed aggregate. Use when the new behaviour is a state transition the user (or another system) is *asking for*. Lives on `EdictCommandHandler<TState>`; named `{Name}CommandHandler`. Handles `EdictCommand` subclasses, mutates durable `State`, returns an `EdictCommandResult`, and may raise `EdictEvent`s.
 - **Command Validator** — the precondition gate. A stateless DI service (not a grain) resolved by the handler's activation each turn. Lives on `EdictCommandValidator<TCommand>`; named `{Name}CommandValidator`. Reads current state, never mutates, and yields a `Rejected` result on failure. The line between Validator and `HandleAsync` is mutation: knowable-from-current-state → Validator; only-knowable-while-mutating → `HandleAsync`.
 - **Event Handler** — the terminal side-effect grain. Use when something has *happened* and the consequence is external (email, HTTP call, non-Edict store). Lives on `EdictEventHandler`; named `{Name}EventHandler`. Never owns events, never calls `Raise` or `Dispatch`.
-- **Saga** — the coordinator. Use when an event needs to fan into exactly one follow-up Command, possibly on a different aggregate. Lives on `EdictSaga<TProgress>`; one Command per handled Event via `Dispatch`. Do not reconstruct progress by replay; the durable `Progress` is the source of truth.
+- **Saga** — the coordinator. Use when an event needs to fan into at most one follow-up Command, possibly on a different aggregate. Lives on `EdictSaga<TProgress>`; at most one Command per handled Event via `Dispatch`. Do not reconstruct progress by replay; the durable `Progress` is the source of truth.
 - **Projection Builder** — the in-grain read model. Use when a small, single-grain forward-only view is enough. Edict is event-driven, not event-sourced — projections only ever see events from subscription forward.
 - **Table Projection Builder** — the external read model. Use when the read model grows beyond what fits comfortably in grain state. The durable row lives in an external store; the grain holds a transient last-touched-slot cache.
 
@@ -82,7 +82,7 @@ Decide between Validator and `HandleAsync` by the mutation line: if the rejectio
 
 ## Authoring a Saga
 
-Derive from `EdictSaga<TProgress>` in `Edict.Core.Sagas` and write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event. Each handler mutates the durable `Progress` and issues at most one Command via `Dispatch`. Beyond that, a saga has a lifecycle every author has to decide about.
+Derive from `EdictSaga<TProgress>` in `Edict.Core.Sagas` and write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event. Each handler mutates the durable `Progress` and issues at most one Command via `Dispatch`. "At most one" means the floor is zero: a handler that mutates `Progress` and dispatches nothing is a valid handle, not a dropped one. The mutation commits on the same atomic write as the dedup-ring slot, so the accumulate-now, act-on-a-later-Event pattern is first-class. Beyond that, a saga has a lifecycle every author has to decide about.
 
 **Every saga has an absolute lifetime cap.** It is armed once, on the saga's first handled Event, and never reset by later activity: it bounds total workflow lifetime, not idle time and not per step. The default is finite: a saga inherits the silo-wide `EdictSagaOptions.DefaultTimeout`, which ships at 7 days. Override it per saga, or opt out entirely:
 
@@ -98,7 +98,7 @@ public partial class LongRunningCoordinator : EdictSaga<CoordinatorProgress> { /
 
 **Decide deliberately whether to call `Complete()` at all.** A saga whose key may legitimately receive a later Event (a long-lived coordinator that keeps reacting) should *not* call it; leave it live and rely on the cap as its only terminal path. Calling `Complete()` on such a saga turns a normal later Event into a dead-letter. The rule: call `Complete()` only when no further Event for this key can be part of the workflow.
 
-**Override `OnSagaTimeoutAsync()` to compensate when the cap fires.** The override may mutate `Progress` and `Dispatch` exactly one compensating Command, both of which commit atomically with the timeout. The default (no override) dead-letters the fired cap, so a finite-capped saga that stalls surfaces loudly rather than vanishing.
+**Override `OnSagaTimeoutAsync()` to compensate when the cap fires.** The override may mutate `Progress` and `Dispatch` at most one compensating Command, both of which commit atomically with the timeout. The default (no override) dead-letters the fired cap, so a finite-capped saga that stalls surfaces loudly rather than vanishing.
 
 ```csharp
 protected override Task OnSagaTimeoutAsync()
