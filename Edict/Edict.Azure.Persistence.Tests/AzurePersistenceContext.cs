@@ -28,7 +28,6 @@ sealed record AzurePersistenceContext(
     TableServiceClient TableServiceClient,
     BlobServiceClient BlobServiceClient,
     string GrainStateContainerName,
-    string DeadLetterTableName,
     IEdictClaimCheckStore ClaimCheckStore,
     Action<EdictOptions>? ConfigureOptions,
     bool ReplacePublishExecutorWithControllable,

@@ -63,7 +63,7 @@ A consumer reading projection or dead-letter rows from the client process needs 
 
 ## Configuration
 
-`EdictAzurePersistenceOptions` (the grain-state container, the dead-letter table name, and the optional service-client overrides) and the connection-string precedence rules are documented in [configuration/azure-persistence.md](../../configuration/azure-persistence.md).
+`EdictAzurePersistenceOptions` (the grain-state container and the optional service-client overrides) and the connection-string precedence rules are documented in [configuration/azure-persistence.md](../../configuration/azure-persistence.md).
 
 The extension wires four Orleans pieces internally that the consumer does not configure directly:
 
@@ -73,10 +73,6 @@ The extension wires four Orleans pieces internally that the consumer does not co
 - `IEdictTableStoreFactory` → `AzureTableWriteStoreFactory` — the per-table write seam projection builders use.
 
 ## Gotchas
-
-### `DeadLetterTableName` no longer drives reads
-
-The auto-wired dead-letter projection writes every row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`, used as both the table name and the singleton partition key. Dead-letter reads now go through the projection grain via the auto-registered `IEdictDeadLetterRepository`, which reads that literal table on the operator's behalf, so a consumer reads dead-letters with no storage wiring of their own and there is no table-name mismatch to work around. The `DeadLetterTableName` option is vestigial (it once named the operator-facing repository's table) and no longer affects reads.
 
 ### Azurite is not bit-for-bit Azure Table Storage
 

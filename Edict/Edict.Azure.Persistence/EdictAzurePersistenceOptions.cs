@@ -5,18 +5,15 @@ namespace Edict.Azure.Persistence;
 
 /// <summary>
 /// Tuning knobs for the Azure persistence provider: the grain-state
-/// blob container, the dead-letter table, and the optional service-client
-/// overrides. Brand-prefixed because the consumer types it. Claim-check
-/// settings live on <c>EdictAzureStreamsOptions</c> — claim-check is driven
-/// by the queue wire-cap, not grain-state storage.
+/// blob container and the optional service-client overrides. Brand-prefixed
+/// because the consumer types it. Claim-check settings live on
+/// <c>EdictAzureStreamsOptions</c> — claim-check is driven by the queue
+/// wire-cap, not grain-state storage.
 /// </summary>
 public sealed class EdictAzurePersistenceOptions
 {
     /// <summary>Container for the Edict grain-state slot (<c>edict-state</c>).</summary>
     public string GrainStateContainerName { get; set; } = "edict-state";
-
-    /// <summary>Azure Table backing the forensic dead-letter projection.</summary>
-    public string DeadLetterTableName { get; set; } = "edict-dead-letter";
 
     /// <summary>
     /// Optional <see cref="TableServiceClient"/>; a DI-registered singleton

@@ -34,8 +34,6 @@ namespace Edict.Substrate.KafkaPostgres;
 /// </summary>
 public sealed class KafkaPostgresSubstrate : ISubstrate
 {
-    public const string DeadLetterTableName = "edict_dead_letter";
-
     public string Name => "kafkapostgres";
 
     public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop) =>
@@ -201,7 +199,6 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
             silo.AddEdictPostgresPersistence(o =>
             {
                 o.ConnectionString = postgresConnectionString;
-                o.DeadLetterTableName = KafkaPostgresSubstrate.DeadLetterTableName;
             });
         };
 

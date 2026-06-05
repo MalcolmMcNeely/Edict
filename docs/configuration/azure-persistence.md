@@ -7,7 +7,6 @@
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `GrainStateContainerName` | `"edict-state"` | Azure Blob container holding the Edict grain-state slot. Single-blob ETag atomicity covers the `[PersistentState("state", "edict-state")]` slot every framework grain base writes through. |
-| `DeadLetterTableName` | `"edict-dead-letter"` | Vestigial. Dead-letter reads now route through the projection grain (which reads the literal `"deadletter"` table), so this option no longer drives reads or writes — see the gotcha on the wiring page. |
 | `TableServiceClient` | `null` | Optional `TableServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
 | `BlobServiceClient` | `null` | Optional `BlobServiceClient` for grain-state blobs. Same DI-precedence rule. |
 
@@ -21,7 +20,7 @@ Both clients (`TableServiceClient`, `BlobServiceClient`) can come from three pla
 
 Local development uses Azurite via `UseDevelopmentStorage=true`. Production uses an Azure Storage account connection string or a `TokenCredential`-authenticated client. The two clients can point at the same account or split across accounts — table-storage limits (e.g. partition-throughput throttling) and blob-storage limits are independent, so a hot system can scale them separately.
 
-Note that Azurite accepts table names Azure rejects: Azure Table names must match `^[A-Za-z][A-Za-z0-9]{2,62}$` — no hyphens, no underscores. If you override `DeadLetterTableName`, keep it Azure-compliant. The wiring page covers this and the Azurite-fidelity caveats in full.
+Note that Azurite accepts table names Azure rejects: Azure Table names must match `^[A-Za-z][A-Za-z0-9]{2,62}$` — no hyphens, no underscores. The framework's literal dead-letter table `deadletter` is Azure-compliant; any projection `TableName` you author must be too. The wiring page covers this and the Azurite-fidelity caveats in full.
 
 ## See also
 

@@ -35,8 +35,6 @@ public sealed class PostgresProviderFixture : IAsyncLifetime
 
     public string PostgresConnectionString => _connectionString;
 
-    public string DeadLetterTableName => "edict_dead_letter";
-
     public string ClaimCheckTableName => "edict_claim_check";
 
     public async Task InitializeAsync()
@@ -45,7 +43,7 @@ public sealed class PostgresProviderFixture : IAsyncLifetime
         var databaseName = $"edict_{Guid.NewGuid():N}";
         _connectionString = await PostgresDatabaseFactory.CreateDatabaseAsync(adminConnectionString, databaseName);
 
-        var context = new ProviderContext(_connectionString, DeadLetterTableName, ClaimCheckTableName);
+        var context = new ProviderContext(_connectionString, ClaimCheckTableName);
         _contextKey = ProviderContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -94,7 +92,6 @@ public sealed class PostgresProviderFixture : IAsyncLifetime
             siloBuilder.AddEdictPostgresPersistence(persistenceOptions =>
             {
                 persistenceOptions.ConnectionString = ctx.ConnectionString;
-                persistenceOptions.DeadLetterTableName = ctx.DeadLetterTableName;
                 persistenceOptions.ClaimCheckTableName = ctx.ClaimCheckTableName;
             });
         }
@@ -118,7 +115,7 @@ public sealed class PostgresProviderCollection : ICollectionFixture<PostgresProv
     public const string Name = "PostgresProvider";
 }
 
-sealed record ProviderContext(string ConnectionString, string DeadLetterTableName, string ClaimCheckTableName);
+sealed record ProviderContext(string ConnectionString, string ClaimCheckTableName);
 
 static class ProviderContextRegistry
 {

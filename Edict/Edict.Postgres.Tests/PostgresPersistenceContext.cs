@@ -22,7 +22,6 @@ namespace Edict.Postgres.Tests;
 /// </summary>
 sealed record PostgresPersistenceContext(
     string ConnectionString,
-    string DeadLetterTableName,
     string ClaimCheckTableName,
     Action<EdictOptions>? ConfigureOptions,
     bool ReplacePublishExecutorWithControllable,

@@ -78,10 +78,6 @@ The extension builds one `NpgsqlDataSource` at silo wiring time and registers it
 
 Orleans' shipped `AdoNetGrainStorage` (used for `PubSubStore`) owns its own connection-string-keyed Npgsql pool. That's two pools per silo: Edict's tuned one plus Orleans' default-sized one for `PubSubStore` and reminders. The Orleans pool is not load-bearing for command throughput and does not need to match Edict's tuning.
 
-### `DeadLetterTableName` no longer drives reads
-
-The auto-wired dead-letter projection writes every row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`. Dead-letter reads now go through the projection grain via the auto-registered `IEdictDeadLetterRepository`, which reads that literal table on the operator's behalf, so a consumer reads dead-letters with no storage wiring of their own and there is no table-name mismatch to work around. The `DeadLetterTableName` option is vestigial (it once named the operator-facing repository's table) and no longer affects reads.
-
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`, `Claim Check`.

@@ -95,7 +95,6 @@ builder.Host.UseOrleans((context, silo) =>
     silo.AddEdictAzurePersistence(o =>
     {
         o.GrainStateContainerName = "edict-state";
-        o.DeadLetterTableName     = "edict-dead-letter";
         o.TableServiceClient      = new TableServiceClient(tableConnectionString);
         o.BlobServiceClient       = new BlobServiceClient(blobConnectionString);
     });

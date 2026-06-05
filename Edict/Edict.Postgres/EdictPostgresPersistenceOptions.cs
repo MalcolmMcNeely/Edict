@@ -29,15 +29,6 @@ public sealed class EdictPostgresPersistenceOptions
     public string GrainStorageProviderName { get; set; } = "edict-state";
 
     /// <summary>
-    /// Table name backing the forensic dead-letter projection. The framework's
-    /// EdictDeadLetterProjectionBuilder writes the consumer-typed
-    /// <see cref="Edict.Contracts.DeadLetter.EdictDeadLetterEntry"/> through
-    /// the table-store factory; the Postgres impl materialises the structured
-    /// columns alongside the MessagePack payload.
-    /// </summary>
-    public string DeadLetterTableName { get; set; } = "edict_dead_letter";
-
-    /// <summary>
     /// Table backing the append-only claim-check escape hatch.
     /// Postgres has no per-row cap (TOAST handles large payloads via lz4
     /// compression) — Edict still uses claim-check on the Postgres pairing

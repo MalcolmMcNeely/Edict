@@ -35,7 +35,6 @@ public sealed class AzuriteSubstrate : ISubstrate
 {
     public const string GrainStateContainerName = "edict-state";
     public const string ClaimCheckBlobContainerName = "edict-claim-check";
-    public const string DeadLetterTableName = "edictdeadletter";
 
     public string Name => "azure";
 
@@ -186,7 +185,6 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
             silo.AddEdictAzurePersistence(o =>
             {
                 o.GrainStateContainerName = AzuriteSubstrate.GrainStateContainerName;
-                o.DeadLetterTableName = AzuriteSubstrate.DeadLetterTableName;
                 o.TableServiceClient = tableClient;
                 o.BlobServiceClient = blobClient;
             });

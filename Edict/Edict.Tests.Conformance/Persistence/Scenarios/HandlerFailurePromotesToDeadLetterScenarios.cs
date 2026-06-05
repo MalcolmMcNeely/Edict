@@ -54,9 +54,9 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
             return await probe.GetPendingOutboxCountAsync() == 0;
         });
 
-        // The projection writes to its literal "deadletter" table — independent
-        // of the fixture's per-collection DeadLetterTableName (which backs the
-        // operator-facing repository facade).
+        // The dead-letter projection writes to its framework-constant literal
+        // table; parallel collections isolate their rows by EventId /
+        // SourceGrainKey, not by table name.
         var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(
             EdictDeadLetterTable.Name);
 

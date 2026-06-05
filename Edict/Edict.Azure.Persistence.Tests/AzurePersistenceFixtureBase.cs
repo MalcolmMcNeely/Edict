@@ -72,8 +72,6 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     protected string GrainStateContainerName { get; private set; } = "";
 
-    protected string DeadLetterTableName { get; private set; } = "";
-
     // Per-shape knobs — a subclass overrides only the ones it needs.
     protected virtual Action<EdictOptions>? ConfigureOptions => null;
 
@@ -96,7 +94,6 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
         var token = Guid.NewGuid().ToString("N");
         GrainStateContainerName = $"edict-state-{token}";
-        DeadLetterTableName = $"deadletter{token}";
         ClaimCheckContainerName = $"edict-claim-check-{token}";
 
         // Built eagerly off the grain task scheduler — a sync-over-async path in
@@ -108,7 +105,6 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             _tableServiceClient,
             _blobServiceClient,
             GrainStateContainerName,
-            DeadLetterTableName,
             ClaimCheckStore,
             ConfigureOptions,
             ReplacePublishExecutorWithControllable,

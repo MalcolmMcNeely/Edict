@@ -73,8 +73,6 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
     // claim-check subclass that reads it is derived and in this assembly.
     private protected IEdictClaimCheckStore ClaimCheckStore { get; private set; } = null!;
 
-    public string DeadLetterTableName { get; private set; } = "edict_dead_letter";
-
     public string ClaimCheckTableName { get; private set; } = "edict_claim_check";
 
     // Per-shape knobs — a subclass overrides only the ones it needs.
@@ -101,7 +99,6 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
         var context = new PostgresPersistenceContext(
             _connectionString,
-            DeadLetterTableName,
             ClaimCheckTableName,
             ConfigureOptions,
             ReplacePublishExecutorWithControllable,
@@ -213,7 +210,6 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             siloBuilder.AddEdictPostgresPersistence(persistenceOptions =>
             {
                 persistenceOptions.ConnectionString = ctx.ConnectionString;
-                persistenceOptions.DeadLetterTableName = ctx.DeadLetterTableName;
                 persistenceOptions.ClaimCheckTableName = ctx.ClaimCheckTableName;
             });
 

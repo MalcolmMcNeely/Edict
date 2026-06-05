@@ -57,8 +57,7 @@ public sealed class AzurePersistenceRecoveryFixture : IAsyncLifetime
         var context = new RecoveryContext(
             _tableServiceClient,
             _blobServiceClient,
-            $"edict-state-{token}",
-            $"deadletter{token}");
+            $"edict-state-{token}");
         _contextKey = RecoveryContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -160,8 +159,7 @@ public sealed class AzurePersistenceRecoveryCollection : ICollectionFixture<Azur
 sealed record RecoveryContext(
     TableServiceClient TableServiceClient,
     BlobServiceClient BlobServiceClient,
-    string GrainStateContainerName,
-    string DeadLetterTableName);
+    string GrainStateContainerName);
 
 static class RecoveryContextRegistry
 {

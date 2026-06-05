@@ -94,7 +94,6 @@ builder.Host.UseOrleans((context, silo) =>
         o.ConnectionString          = postgresConnectionString;
         o.Invariant                 = "Npgsql";
         o.GrainStorageProviderName  = "edict-state";
-        o.DeadLetterTableName       = "edict_dead_letter";
         o.ClaimCheckTableName       = "edict_claim_check";
         o.BootstrapSchema           = true;
     });
