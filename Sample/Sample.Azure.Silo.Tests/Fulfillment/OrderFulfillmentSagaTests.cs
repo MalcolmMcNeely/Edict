@@ -57,12 +57,12 @@ public sealed class OrderFulfillmentSagaTests
         await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 
-        // Five timer ticks transition all lines to Fulfilled; the terminal
-        // tick raises OrderFullyFulfilledEvent which the saga bridges into
-        // MarkOrderShippedCommand.
-        for (var i = 0; i < 5; i++)
+        // Five schedule fires transition all lines to Fulfilled; the terminal
+        // fire raises OrderFullyFulfilledEvent which the saga bridges into
+        // MarkOrderShippedCommand. Interval-agnostic — the cadence is never named.
+        for (var line = 0; line < 5; line++)
         {
-            await app.AdvanceClock(TimeSpan.FromSeconds(10));
+            await app.FireDueSchedulesAsync();
         }
 
         var markShippedCount = app.Timeline.Entries.Count(e =>

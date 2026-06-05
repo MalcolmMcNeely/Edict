@@ -1,34 +1,28 @@
 using Edict.Contracts.Commands;
+using Edict.Contracts.Schedules;
 using Edict.Core.Commands;
 
-using Orleans.Runtime;
+using Microsoft.Extensions.DependencyInjection;
 
 using Sample.Contracts.Fulfillment.Commands;
 using Sample.Contracts.Fulfillment.Domain;
 using Sample.Contracts.Fulfillment.Events;
+using Sample.Contracts.Fulfillment.Messages;
 using Sample.Domain.Fulfillment.State;
 
 namespace Sample.Domain.Fulfillment.CommandHandlers;
 
 /// <summary>
 /// Fulfillment aggregate, keyed by OrderId. Snapshots the line item ids from
-/// <see cref="StartFulfillmentCommand"/> and registers an Orleans grain timer
-/// that transitions one Pending line to Fulfilled per tick at a randomised
-/// 2–8s cadence; the terminal tick raises <see cref="OrderFullyFulfilledEvent"/>
-/// and stops the timer.
-/// <para>
-/// The grain timer is the deliberate demo choice over a Reminder because Orleans
-/// Reminders have a one-minute minimum period — too coarse for the sample's
-/// sub-10s tick cadence. Production code with longer cadences should use
-/// reminders for durability across deactivation; the demo accepts the trade
-/// because the timer is reseeded inside the same activation and the in-process
-/// cluster never deactivates while the workflow is in flight.
-/// </para>
+/// <see cref="StartFulfillmentCommand"/> and schedules a <see cref="FulfillNextLine"/>
+/// on a flat cadence; each fire transitions one Pending line to Fulfilled and
+/// raises <see cref="LineItemFulfilledEvent"/>. The terminal fire raises
+/// <see cref="OrderFullyFulfilledEvent"/> and completes the schedule. The whole
+/// loop is durable and survives deactivation: the cadence is declared once at
+/// <c>Schedule(...)</c>, and the fire handler answers only "again or done".
 /// </summary>
 public partial class FulfillmentCommandHandler : EdictCommandHandler<FulfillmentState>
 {
-    IGrainTimer? _timer;
-
     public Task<EdictCommandResult> HandleAsync(StartFulfillmentCommand command)
     {
         if (State.Lines.Count > 0)
@@ -42,48 +36,33 @@ public partial class FulfillmentCommandHandler : EdictCommandHandler<Fulfillment
             .Select(id => new FulfillmentLine { LineItemId = id, Status = LineItemFulfillmentStatus.Pending })
             .ToList();
 
-        ScheduleNextTick();
+        Schedule(new FulfillNextLine(), every: TimeSpan.FromSeconds(2));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    void ScheduleNextTick()
+    public async Task<EdictScheduleResult> HandleAsync(FulfillNextLine message)
     {
-        var delay = TimeSpan.FromSeconds(Random.Shared.Next(2, 8));
-        _timer?.Dispose();
-        _timer = this.RegisterGrainTimer(OnTickAsync, new GrainTimerCreationOptions
-        {
-            DueTime = delay,
-            Period = Timeout.InfiniteTimeSpan,
-            KeepAlive = true,
-        });
-    }
-
-    async Task OnTickAsync(CancellationToken cancellationToken)
-    {
-        var pendingIndex = State.Lines.FindIndex(l => l.Status == LineItemFulfillmentStatus.Pending);
+        var pendingIndex = State.Lines.FindIndex(candidate => candidate.Status == LineItemFulfillmentStatus.Pending);
         if (pendingIndex < 0)
         {
-            _timer?.Dispose();
-            _timer = null;
-            return;
+            return await Complete();
         }
 
         var line = State.Lines[pendingIndex];
+        if (ServiceProvider.GetService<IWarehouseGateway>() is { } gateway)
+        {
+            await gateway.DispatchLineAsync(State.OrderId, line.LineItemId);
+        }
+
         State.Lines[pendingIndex] = line with { Status = LineItemFulfillmentStatus.Fulfilled };
         Raise(new LineItemFulfilledEvent(State.OrderId, line.LineItemId));
 
-        var allFulfilled = State.Lines.All(l => l.Status == LineItemFulfillmentStatus.Fulfilled);
-        if (allFulfilled)
+        if (State.Lines.All(candidate => candidate.Status == LineItemFulfillmentStatus.Fulfilled))
         {
             Raise(new OrderFullyFulfilledEvent(State.OrderId));
-            _timer?.Dispose();
-            _timer = null;
-        }
-        else
-        {
-            ScheduleNextTick();
+            return await Complete();
         }
 
-        await CommitAndDrainRaisedEventsAsync();
+        return await Continue();
     }
 }

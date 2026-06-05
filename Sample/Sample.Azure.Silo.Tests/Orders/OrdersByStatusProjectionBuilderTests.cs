@@ -54,9 +54,9 @@ public sealed class OrdersByStatusProjectionBuilderTests
 
         await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "SKU-1", 1));
-        // Below decline threshold — the saga authorises payment. No AdvanceClock
-        // so the fulfillment grain timer never ticks; OrderFullyFulfilled and
-        // OrderShipped do not fire.
+        // Below decline threshold — the saga authorises payment. No
+        // FireDueSchedulesAsync so the fulfillment schedule never fires;
+        // OrderFullyFulfilled and OrderShipped do not fire.
         await app.SendAsync(new SubmitOrderCommand(orderId, Amount: 100m));
         await app.Drain();
 

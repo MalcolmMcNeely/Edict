@@ -11,6 +11,7 @@ using OpenTelemetry;
 using Orleans.Serialization;
 
 using Sample.Domain.Diagnostics.Metrics;
+using Sample.Domain.Fulfillment;
 using Sample.Domain.Orders;
 using Sample.Domain.Orders.CommandHandlers;
 using Sample.ServiceDefaults;
@@ -64,6 +65,12 @@ builder.Host.UseOrleans((context, silo) =>
         // The absolute lifetime cap for any saga without its own
         // [EdictSagaTimeout]. Ships finite at 7 days; null is fully opt-in.
         saga.DefaultTimeout = TimeSpan.FromDays(7);
+    },
+    schedule =>
+    {
+        // The absolute lifetime cap for any Command Handler schedule started
+        // without its own timeout:. Ships finite at 7 days; null is fully opt-in.
+        schedule.DefaultTimeout = TimeSpan.FromDays(7);
     });
 
     silo.AddEdictKafkaStreams(o =>
@@ -92,6 +99,7 @@ builder.Host.UseOrleans((context, silo) =>
 });
 
 builder.Services.AddSingleton<IEmailNotifier, LoggingEmailNotifier>();
+builder.Services.AddSingleton<IWarehouseGateway, LoggingWarehouseGateway>();
 
 // Silo-side MeterListener feeding the Sample.Web Live Metrics spoke.
 // Same singleton resolved as IHostedService (starts/stops the listener
