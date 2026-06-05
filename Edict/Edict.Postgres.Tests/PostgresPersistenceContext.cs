@@ -29,7 +29,8 @@ sealed record PostgresPersistenceContext(
     bool DecorateGrainStorage,
     int? ClaimCheckThresholdBytes,
     OutboxFaultState OutboxFault,
-    StorageFaultState StorageFault);
+    StorageFaultState StorageFault,
+    TimeProvider? ClockOverride);
 
 static class PostgresPersistenceContextRegistry
 {

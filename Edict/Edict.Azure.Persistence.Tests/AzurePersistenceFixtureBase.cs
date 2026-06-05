@@ -83,6 +83,11 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     protected virtual int? ClaimCheckThresholdBytes => null;
 
+    // A schedule fixture returns a FakeTimeProvider here so its scenarios can push
+    // a schedule past-due on a virtual clock; every other fixture leaves it null
+    // and runs on TimeProvider.System.
+    protected virtual TimeProvider? ClockOverride => null;
+
     public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
@@ -110,7 +115,8 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             DecorateGrainStorage,
             ClaimCheckThresholdBytes,
             OutboxFault,
-            StorageFault);
+            StorageFault,
+            ClockOverride);
         _contextKey = AzurePersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -155,7 +161,7 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
                 new AzureTableRepository<EdictDeadLetterEntry>(
                     ctx.TableServiceClient, ctx.DeadLetterTableName));
-            siloBuilder.Services.AddSingleton(TimeProvider.System);
+            siloBuilder.Services.AddSingleton(ctx.ClockOverride ?? TimeProvider.System);
             siloBuilder.Services.AddSingleton(ctx.ClaimCheckStore);
 
             if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)

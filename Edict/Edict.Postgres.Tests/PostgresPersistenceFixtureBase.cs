@@ -86,6 +86,11 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     protected virtual int? ClaimCheckThresholdBytes => null;
 
+    // A schedule fixture returns a FakeTimeProvider here so its scenarios can push
+    // a schedule past-due on a virtual clock; every other fixture leaves it null
+    // and runs on TimeProvider.System.
+    protected virtual TimeProvider? ClockOverride => null;
+
     public override async Task InitializeAsync()
     {
         var adminConnectionString = await PostgresAssemblyHost.GetAdminConnectionStringAsync();
@@ -103,7 +108,8 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             DecorateGrainStorage,
             ClaimCheckThresholdBytes,
             OutboxFault,
-            StorageFault);
+            StorageFault,
+            ClockOverride);
         _contextKey = PostgresPersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -177,7 +183,7 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             // cold grain activations can run past Orleans' default 30 s response
             // timeout on a slow runner.
             siloBuilder.Configure<SiloMessagingOptions>(options => options.ResponseTimeout = TimeSpan.FromMinutes(2));
-            siloBuilder.Services.AddSingleton(TimeProvider.System);
+            siloBuilder.Services.AddSingleton(ctx.ClockOverride ?? TimeProvider.System);
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
 
             if (ctx.ConfigureOptions is { } configureOptions)

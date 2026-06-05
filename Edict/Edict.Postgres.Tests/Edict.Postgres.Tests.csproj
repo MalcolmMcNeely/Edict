@@ -3,6 +3,7 @@
     <ItemGroup>
         <PackageReference Include="FluentValidation" />
         <PackageReference Include="MessagePack" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Microsoft.Orleans.Persistence.AdoNet" />
         <PackageReference Include="Microsoft.Orleans.Reminders.AdoNet" />
         <PackageReference Include="Microsoft.Orleans.TestingHost" />
