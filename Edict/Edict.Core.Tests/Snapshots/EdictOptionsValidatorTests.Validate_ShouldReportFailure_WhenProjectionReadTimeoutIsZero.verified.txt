@@ -1,0 +1,3 @@
+﻿[
+  ProjectionReadTimeout must be greater than zero (an omitted cursor timeout falls back to this bound, so it can never be infinite) but was 00:00:00.
+]

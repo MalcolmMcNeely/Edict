@@ -51,6 +51,8 @@ builder.Host.UseOrleans((context, silo) =>
     silo.AddEdict(o =>
     {
         o.IdempotencyWindowSize     = 100;
+        o.CorrelationWindowSize     = 100;
+        o.ProjectionReadTimeout     = TimeSpan.FromSeconds(2);
         // Tuned for demo, not production: OutboxBaseDelay+OutboxMaxAttempts
         // are shrunk so the Dead Letter buttons promote within ~5 seconds
         // instead of the multi-minute production retry budget.

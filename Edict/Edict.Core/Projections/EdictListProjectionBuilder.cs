@@ -78,16 +78,17 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
     }
 
     /// <summary>
-    /// Serves a consumer point-get through the grain. The store partition is
+    /// Serves a consumer point-get from the row store. The store partition is
     /// always this grain's <see cref="DefaultPartitionKey"/> — the read facade
     /// addresses the grain by its routing key, so the caller's partition and the
-    /// grain key coincide for per-aggregate projections.
+    /// grain key coincide for per-aggregate projections. The read-your-writes wait
+    /// runs on the base before this lands.
     /// </summary>
-    public override async Task<object?> EdictReadRowAsync(string rowKey) =>
+    protected override async Task<object?> ReadRowAsync(string rowKey) =>
         await _writeStore!.GetAsync(DefaultPartitionKey, rowKey);
 
-    /// <summary>Serves a consumer partition-query through the grain.</summary>
-    public override async Task<IReadOnlyList<object>> EdictReadPartitionAsync()
+    /// <summary>Serves a consumer partition-query from the row store.</summary>
+    protected override async Task<IReadOnlyList<object>> ReadPartitionAsync()
     {
         var rows = await _writeStore!.QueryPartitionAsync(DefaultPartitionKey);
         return rows.Cast<object>().ToList();
@@ -118,6 +119,10 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
         box.Row = _lastWrittenRow is { } cached && cached.PartitionKey == partitionKey && cached.RowKey == rowKey
             ? cached.Row
             : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new TRow();
+
+        // Remember this event's correlation so the commit advances the
+        // read-your-writes ring for it alongside the dedup-ring commit.
+        StashCorrelation(edictEvent.CorrelationId);
 
         await handler(edictEvent);
 

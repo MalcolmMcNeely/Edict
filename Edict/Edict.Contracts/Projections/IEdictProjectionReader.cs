@@ -1,3 +1,5 @@
+using Edict.Contracts.Commands;
+
 namespace Edict.Contracts.Projections;
 
 /// <summary>
@@ -11,12 +13,39 @@ namespace Edict.Contracts.Projections;
 /// per-aggregate projection this is the aggregate's <c>[EdictRouteKey]</c> Guid,
 /// which is also its store partition. Point-get and partition-scoped query only.
 /// </para>
+/// <para>
+/// Read-your-writes: pass the <see cref="EdictCursor"/> from a command's
+/// <c>Accepted</c> result as <paramref name="after"/> to wait, briefly and
+/// boundedly, until the work the command set in motion is visible. With no cursor
+/// the read answers immediately (the poll path). An omitted
+/// <paramref name="timeout"/> falls back to the bounded
+/// <c>EdictOptions.ProjectionReadTimeout</c>; pass
+/// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.
+/// The read never throws for eventual-consistency lag — the
+/// <see cref="EdictReadStatus"/> on the result reports whether the cursor was
+/// reached or the wait timed out (still returning the latest available rows).
+/// </para>
 /// </summary>
 public interface IEdictProjectionReader<TRow> where TRow : class
 {
-    /// <summary>Point-gets the row at (<paramref name="partitionKey"/>, <paramref name="rowKey"/>), or <see langword="null"/>.</summary>
-    Task<TRow?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Point-gets the row at (<paramref name="partitionKey"/>, <paramref name="rowKey"/>),
+    /// optionally waiting for <paramref name="after"/> first.
+    /// </summary>
+    Task<EdictProjectionRead<TRow>> GetAsync(
+        string partitionKey,
+        string rowKey,
+        EdictCursor? after = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>Returns every row in <paramref name="partitionKey"/>.</summary>
-    Task<IReadOnlyList<TRow>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Returns every row in <paramref name="partitionKey"/>, optionally waiting for
+    /// <paramref name="after"/> first.
+    /// </summary>
+    Task<EdictProjectionPartitionRead<TRow>> QueryPartitionAsync(
+        string partitionKey,
+        EdictCursor? after = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default);
 }

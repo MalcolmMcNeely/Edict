@@ -383,7 +383,8 @@ public abstract class EdictIdempotencyBase<TPayload>
                 DedupRing.RollBack(Idempotency, revert);
                 _dedupMirror!.Activate(Idempotency.HandledEventIds, Idempotency.Head, Idempotency.Count);
             },
-            stagedEffect: stagedEffect);
+            stagedEffect: stagedEffect,
+            onDrained: MarkConsumerProgressDrained);
     }
 
     /// <summary>
@@ -400,6 +401,18 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     /// <summary>Restores what <see cref="ApplyConsumerProgress"/> mutated when the commit write faults.</summary>
     private protected virtual void RollbackConsumerProgress()
+    {
+    }
+
+    /// <summary>
+    /// Runs after the staged effect has drained — the row write has landed in the
+    /// store. Default no-op; a Projection overrides it to advance the in-memory
+    /// read-your-writes marker and signal parked readers, so a
+    /// <c>CursorReached</c> answer implies the row is readable. The host calls this
+    /// only when the effect actually drained (not on transient backoff), so it
+    /// never fires ahead of the row landing.
+    /// </summary>
+    private protected virtual void MarkConsumerProgressDrained()
     {
     }
 

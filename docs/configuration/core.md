@@ -23,6 +23,8 @@ silo.AddEdict(
 | `OutboxMaxAttempts` | `8` | Attempts before a permanently failing outbox entry is promoted to a dead-letter publish. The attempt that reaches this count removes the entry and appends an `EdictDeadLetterRaised` publish at the FIFO tail in one write. Must be at least 1. |
 | `OutboxJitterFraction` | `0.2` | Fraction of the computed delay used as a deterministic ±spread per entry, so a fleet failing together does not stampede the same retry instant. `0` disables jitter. Validated to `[0, 1]`; an out-of-range value throws at startup (no silent clamp). |
 | `OutboxDrainReminderPeriod` | `1 min` | Period of the lazy outbox drain reminder. Orleans' reminder floor is one minute; a value below that throws at startup. |
+| `CorrelationWindowSize` | `100` | Number of distinct `CorrelationId` values a Projection remembers for read-your-writes. Distinct from `IdempotencyWindowSize`, so a Projection that never reads with a cursor pays nothing and the two windows tune independently. A cursor for a correlation that has aged out of this window degrades to a plain read. Must be at least 1. |
+| `ProjectionReadTimeout` | `2 s` | Bounded default a read-your-writes Projection read waits when the caller supplies a cursor but no explicit timeout. An omitted timeout falls back to this bound and never to an infinite wait; pass `Timeout.InfiniteTimeSpan` explicitly to wait indefinitely. Must be greater than zero, so the default can never be infinite. |
 
 ### Per-grain `WindowSize` override
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 
+using Edict.Core.Correlation;
 using Edict.Core.Idempotency;
 using Edict.Core.Sagas;
 using Edict.Core.Schedules;
@@ -61,4 +62,14 @@ public sealed class GrainEnvelope<TPayload>
     /// </summary>
     [Id(4)]
     public ScheduleSlice Schedule { get; set; } = new();
+
+    /// <summary>
+    /// The processed-correlation ring for read-your-writes. Null for every
+    /// non-projection consumer — the cost is one empty reference. A projection
+    /// populates it on its first handled Event, and the ring advances on the same
+    /// atomic write as the dedup-ring commit so a read-your-writes read survives a
+    /// reactivation with no extra write.
+    /// </summary>
+    [Id(5)]
+    public CorrelationProgress? Correlation { get; set; }
 }

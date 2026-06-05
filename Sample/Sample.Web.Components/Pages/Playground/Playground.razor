@@ -177,8 +177,8 @@
 
         try
         {
-            _checkedOutCart = await CheckedOutCarts.GetAsync(_cartId.ToString(), "cart");
-            _orderStatus = await OrdersByStatus.GetAsync(_cartId.ToString(), "status");
+            _checkedOutCart = (await CheckedOutCarts.GetAsync(_cartId.ToString(), "cart")).Row;
+            _orderStatus = (await OrdersByStatus.GetAsync(_cartId.ToString(), "status")).Row;
         }
         catch
         {

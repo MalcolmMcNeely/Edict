@@ -93,6 +93,39 @@ public sealed class EdictOptionsValidatorTests
     }
 
     [Fact]
+    public Task Validate_ShouldReportFailure_WhenCorrelationWindowSizeBelowOne()
+    {
+        var failures = EdictOptionsValidator.Validate(new EdictOptions
+        {
+            CorrelationWindowSize = 0,
+        });
+
+        return Verify(failures);
+    }
+
+    [Fact]
+    public Task Validate_ShouldReportFailure_WhenProjectionReadTimeoutIsZero()
+    {
+        var failures = EdictOptionsValidator.Validate(new EdictOptions
+        {
+            ProjectionReadTimeout = TimeSpan.Zero,
+        });
+
+        return Verify(failures);
+    }
+
+    [Fact]
+    public Task Validate_ShouldReportFailure_WhenProjectionReadTimeoutIsInfinite()
+    {
+        var failures = EdictOptionsValidator.Validate(new EdictOptions
+        {
+            ProjectionReadTimeout = Timeout.InfiniteTimeSpan,
+        });
+
+        return Verify(failures);
+    }
+
+    [Fact]
     public Task Validate_ShouldReportEveryFailure_WhenMultipleValuesAreInvalid()
     {
         var failures = EdictOptionsValidator.Validate(new EdictOptions

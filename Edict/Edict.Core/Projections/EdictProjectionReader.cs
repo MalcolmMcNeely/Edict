@@ -1,5 +1,6 @@
 using System.ComponentModel;
 
+using Edict.Contracts.Commands;
 using Edict.Contracts.Projections;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -36,19 +37,29 @@ public sealed class EdictProjectionReader<TRow> : IEdictProjectionReader<TRow>
         _grainFactory = serviceProvider.GetRequiredService<IGrainFactory>();
     }
 
-    public async Task<TRow?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default)
+    public async Task<EdictProjectionRead<TRow>> GetAsync(
+        string partitionKey,
+        string rowKey,
+        EdictCursor? after = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var grain = ResolveGrain(partitionKey);
-        return (TRow?)await grain.EdictReadRowAsync(rowKey).ConfigureAwait(false);
+        var result = await grain.EdictReadRowAsync(rowKey, after?.CorrelationId, timeout).ConfigureAwait(false);
+        return new EdictProjectionRead<TRow>((TRow?)result.Payload, result.Status);
     }
 
-    public async Task<IReadOnlyList<TRow>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default)
+    public async Task<EdictProjectionPartitionRead<TRow>> QueryPartitionAsync(
+        string partitionKey,
+        EdictCursor? after = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var grain = ResolveGrain(partitionKey);
-        var rows = await grain.EdictReadPartitionAsync().ConfigureAwait(false);
-        return rows.Cast<TRow>().ToList();
+        var result = await grain.EdictReadPartitionAsync(after?.CorrelationId, timeout).ConfigureAwait(false);
+        return new EdictProjectionPartitionRead<TRow>(result.Payload.Cast<TRow>().ToList(), result.Status);
     }
 
     IEdictProjectionBuilder ResolveGrain(string partitionKey)

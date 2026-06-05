@@ -12,15 +12,21 @@ sealed class GrainBackedDeadLetterRepository(IEdictProjectionReader<EdictDeadLet
 {
     static string SingletonPartition => EdictDeadLetterRaised.SingletonGrainKey.ToString();
 
-    public Task<IReadOnlyList<EdictDeadLetterEntry>> ListAllAsync(
-        CancellationToken cancellationToken = default) =>
-        reader.QueryPartitionAsync(SingletonPartition, cancellationToken);
+    public async Task<IReadOnlyList<EdictDeadLetterEntry>> ListAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        // Forensic reads are a plain poll — no cursor — so the read status is
+        // ignored and the rows are returned directly.
+        var read = await reader.QueryPartitionAsync(
+            SingletonPartition, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return read.Rows;
+    }
 
     public async Task<IReadOnlyList<EdictDeadLetterEntry>> ListAsync(
         string grainKey, CancellationToken cancellationToken = default)
     {
-        var all = await reader.QueryPartitionAsync(
-            SingletonPartition, cancellationToken).ConfigureAwait(false);
-        return all.Where(entry => entry.SourceGrainKey == grainKey).ToList();
+        var read = await reader.QueryPartitionAsync(
+            SingletonPartition, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return read.Rows.Where(entry => entry.SourceGrainKey == grainKey).ToList();
     }
 }

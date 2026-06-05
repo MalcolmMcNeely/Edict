@@ -1,3 +1,4 @@
+using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Projections;
 using Edict.Core.DeadLetter;
@@ -10,13 +11,15 @@ public class GrainBackedDeadLetterRepositoryTests
     {
         public string? LastPartitionKey { get; private set; }
 
-        public Task<EdictDeadLetterEntry?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default) =>
+        public Task<EdictProjectionRead<EdictDeadLetterEntry>> GetAsync(
+            string partitionKey, string rowKey, EdictCursor? after = null, TimeSpan? timeout = null, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<EdictDeadLetterEntry>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default)
+        public Task<EdictProjectionPartitionRead<EdictDeadLetterEntry>> QueryPartitionAsync(
+            string partitionKey, EdictCursor? after = null, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
         {
             LastPartitionKey = partitionKey;
-            return Task.FromResult(rows);
+            return Task.FromResult(new EdictProjectionPartitionRead<EdictDeadLetterEntry>(rows, EdictReadStatus.Immediate));
         }
     }
 

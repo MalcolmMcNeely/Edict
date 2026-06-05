@@ -143,7 +143,8 @@ sealed class OutboxHost<TPayload>
     public async Task CommitProgressAndDrainAsync(
         Action applyProgress,
         Action rollbackProgress,
-        OutboxEntry? stagedEffect)
+        OutboxEntry? stagedEffect,
+        Action? onDrained = null)
     {
         var outboxBeforeCommit = State.Outbox;
         applyProgress();
@@ -163,9 +164,19 @@ sealed class OutboxHost<TPayload>
             throw;
         }
 
-        if (stagedEffect is not null)
+        if (stagedEffect is { } staged)
         {
             await DrainAsync();
+
+            // Fire the post-drain hook only when the effect actually left the
+            // Pending set this pass. A backed-off (transient-failed) row write
+            // stays Pending, so a read-your-writes marker must not yet treat the
+            // correlation as visible — the row is not in the store. The reminder
+            // retry, or a reactivation drain, lands it later.
+            if (onDrained is not null && State.Outbox.Pending.All(pending => pending.EntryId != staged.EntryId))
+            {
+                onDrained();
+            }
         }
     }
 

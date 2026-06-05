@@ -25,13 +25,22 @@ namespace Edict.Core.Projections;
 public interface IEdictProjectionBuilder : IEdictEventConsumer
 {
     /// <summary>
-    /// Point-gets the row at <paramref name="rowKey"/> in this projection's
-    /// partition, or <see langword="null"/> when absent.
+    /// Point-gets the row at <paramref name="rowKey"/>, optionally waiting until the
+    /// correlation named by <paramref name="afterCorrelationId"/> is visible. A
+    /// null correlation answers immediately (the poll path); otherwise the grain
+    /// parks until the correlation is processed or <paramref name="timeout"/>
+    /// elapses (a null timeout falls back to the bounded
+    /// <c>EdictOptions.ProjectionReadTimeout</c>). The
+    /// <see cref="ProjectionReadResult{TPayload}"/> carries the read status because
+    /// only the grain knows whether the wait reached the cursor or timed out.
     /// </summary>
     [AlwaysInterleave]
-    Task<object?> EdictReadRowAsync(string rowKey);
+    Task<ProjectionReadResult<object?>> EdictReadRowAsync(string rowKey, Guid? afterCorrelationId, TimeSpan? timeout);
 
-    /// <summary>Returns every row in this projection's partition.</summary>
+    /// <summary>
+    /// Returns every row in this projection's partition, with the same optional
+    /// read-your-writes wait as <see cref="EdictReadRowAsync"/>.
+    /// </summary>
     [AlwaysInterleave]
-    Task<IReadOnlyList<object>> EdictReadPartitionAsync();
+    Task<ProjectionReadResult<IReadOnlyList<object>>> EdictReadPartitionAsync(Guid? afterCorrelationId, TimeSpan? timeout);
 }

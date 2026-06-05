@@ -22,6 +22,8 @@ public sealed class OrderTableRow : IEdictPersistedState
 public interface IOrderListProjectionProbe : IGrainWithGuidKey
 {
     Task<RingStateProbe> GetRingStateAsync();
+
+    Task DeactivateSelfAsync();
 }
 
 [GenerateSerializer]
@@ -55,6 +57,12 @@ public sealed partial class OrderListProjectionBuilder
         Task.FromResult(new RingStateProbe(
             State.Idempotency.HandledEventIds.Length,
             State.Idempotency.Count));
+
+    public Task DeactivateSelfAsync()
+    {
+        DeactivateOnIdle();
+        return Task.CompletedTask;
+    }
 }
 
 // Consumer-specified fixed RowKey ("summary") — proves RowKey is independent

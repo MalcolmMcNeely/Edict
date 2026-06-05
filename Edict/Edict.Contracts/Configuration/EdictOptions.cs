@@ -20,6 +20,24 @@ public sealed class EdictOptions
     /// </summary>
     public int IdempotencyWindowSize { get; set; } = 100;
 
+    /// <summary>
+    /// Maximum number of distinct <c>EdictEvent.CorrelationId</c> values a
+    /// Projection remembers for read-your-writes. Distinct from
+    /// <see cref="IdempotencyWindowSize"/>: a Projection that never reads with a
+    /// cursor pays nothing, and the two windows tune independently. A cursor for a
+    /// correlation that has aged out of this window degrades to a plain read.
+    /// </summary>
+    public int CorrelationWindowSize { get; set; } = 100;
+
+    /// <summary>
+    /// The bounded default a read-your-writes Projection read waits when the caller
+    /// supplies a cursor but no explicit timeout. Kept short enough for a request
+    /// path, long enough to bridge the outbox-to-projection hop. An omitted timeout
+    /// falls back to this bound and never to an infinite wait; a caller wanting an
+    /// indefinite wait passes <see cref="Timeout.InfiniteTimeSpan"/> explicitly.
+    /// </summary>
+    public TimeSpan ProjectionReadTimeout { get; set; } = TimeSpan.FromSeconds(2);
+
     /// <summary>The first Outbox retry delay; doubles each attempt up to <see cref="OutboxMaxDelay"/>.</summary>
     public TimeSpan OutboxBaseDelay { get; set; } = TimeSpan.FromSeconds(2);
 

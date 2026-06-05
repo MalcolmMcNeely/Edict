@@ -49,6 +49,19 @@ internal static class EdictOptionsValidator
                 $"{nameof(EdictOptions.IdempotencyWindowSize)} must be at least 1 but was {options.IdempotencyWindowSize}.");
         }
 
+        if (options.CorrelationWindowSize < 1)
+        {
+            failures.Add(
+                $"{nameof(EdictOptions.CorrelationWindowSize)} must be at least 1 but was {options.CorrelationWindowSize}.");
+        }
+
+        if (options.ProjectionReadTimeout <= TimeSpan.Zero)
+        {
+            failures.Add(
+                $"{nameof(EdictOptions.ProjectionReadTimeout)} must be greater than zero (an omitted cursor timeout " +
+                $"falls back to this bound, so it can never be infinite) but was {options.ProjectionReadTimeout}.");
+        }
+
         return failures;
     }
 }
