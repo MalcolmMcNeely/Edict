@@ -15,7 +15,7 @@ _Avoid_: trace fields on `Command`; past-tense command names.
 
 **Event**:
 A notification that something happened, broadcast on a domain stream to zero or more subscribers and discarded after handling.
-_Avoid_: assuming the event key equals the command key; treating the command→event Guid as a guaranteed-continuous correlation id (trace context, not the Guid, is what reliably stitches the chain).
+_Avoid_: assuming the event key equals the command key; treating the per-message `[RouteKey]` Guid as a chain identifier (it re-keys across domains; the framework-stamped Correlation Id is the chain-stable token that rides every hop, with W3C trace context as its observability twin).
 
 **Telemeterized**:
 An attribute placed on a primitive property of a `Command`/`Event` subclass that causes the generator to emit code writing the property as an OpenTelemetry tag of the form `edict.{snake_case_property_name}` on the active span — for a Command, the `edict.command` span; for an Event, both the `edict.event.publish` and `edict.event.handle` spans. The tag key is shared across declaring types so the same domain concept queries by a single key.
@@ -30,8 +30,16 @@ The `[RouteKey]` attribute marking the single `Guid` property that addresses a m
 _Avoid_: `[Key]` (collides with `System.ComponentModel.DataAnnotations`); non-Guid keys; more than one per message; assuming the event key equals the command key.
 
 **Command Result**:
-The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with reasons), carrying no domain data; it is the caller's answer only and does not gate persistence — a completing handler's `State` mutations and raised Events commit on both outcomes.
+The outcome envelope a Command Handler returns: `Accepted` or `Rejected` (with reasons), carrying no domain data; it is the caller's answer only and does not gate persistence — a completing handler's `State` mutations and raised Events commit on both outcomes. `Accepted` also carries an `EdictCursor` for read-your-writes.
 _Avoid_: returning domain payloads through a command; throwing for expected rejection; treating `Rejected` as a rollback (it is not — what the handler did is still committed, only a throw discards).
+
+**Correlation Id**:
+A framework-stamped Guid that rides every Command and Event on one causal chain. It is minted if absent when a Command is first sent and inherited by every message that chain causes — a Command's raised Events, a Saga's dispatched Command — so a timer or schedule fire, having no upstream message, starts a fresh chain. It is the chain-stable identifier behind read-your-writes and an optional grouping dimension on dead-letter rows.
+_Avoid_: authoring it by hand (the framework stamps it; a caller may supply one but need not); conflating it with the per-message `[RouteKey]` Guid (which re-keys across domains) or with W3C trace context (the observability twin, null when unsampled); expecting a per-hop causation parent (it is constant across the chain, not a parent pointer).
+
+**EdictCursor**:
+The opaque read-your-writes token echoed on `EdictCommandResult.Accepted`, wrapping the Command's Correlation Id. A consumer feeds it to a Projection Read as `after:` to wait, briefly and boundedly, until the work the Command set in motion is visible.
+_Avoid_: unwrapping it to the bare Guid on the read path (pass the cursor); minting one to force a wait on work no Command set in motion; reading a returned cursor as proof the whole chain has landed (it names the chain; the read decides visibility).
 
 **Command Validator**:
 A server-side, no-mutation precondition gate for a Command, run within the same activation turn before `HandleAsync`, answering whether the Command is admissible against current aggregate state. Authored as `{Name}CommandValidator : EdictCommandValidator<TCommand>` — an Edict-owned thin base over `FluentValidation.AbstractValidator<TCommand>`. Discovered automatically by `AddEdict()` from the same assemblies it scans for handlers; no manual DI registration.
@@ -80,6 +88,10 @@ _Avoid_: reading the store directly instead of via the Projection Reader; puttin
 **Projection Reader**:
 The framework-provided read-only, storage-neutral interface (`IEdictProjectionReader<TRow>`) the application uses to read a List Projection Builder's output. Reads route through the projection grain (not the backing store directly), so the read API carries no storage detail and the activation that owns the rows is on the read path. Mirrors `IEdictSender` on the command side.
 _Avoid_: reaching for the framework-internal write/store seam from application code; expecting a write method (the reader is read-only).
+
+**Projection Read**:
+The typed tri-state a Projection Reader returns (`EdictProjectionRead<TRow>` for a point-get, `EdictProjectionPartitionRead<TRow>` for a partition query): the row or rows plus an `EdictReadStatus` of `Immediate` (no cursor, the poll path), `CursorReached` (the cursor's correlation is visible), or `CursorTimedOut` (the bounded wait elapsed; the latest available row is still returned). With no cursor a read answers immediately; with an `EdictCursor` it waits until the named correlation's first effect on this projection is visible, falling back to the bounded `EdictOptions.ProjectionReadTimeout` unless an explicit infinite timeout is passed. Eventual-consistency lag is an expected outcome carried in the status, never a throw; only caller cancellation throws.
+_Avoid_: reading lag as a fault; assuming `CursorReached` means every effect of the correlation has landed (it is any-applied: at least the first effect is visible, so prefer one Event per Command where exact read-your-writes matters); passing an explicit infinite timeout by accident (an omitted timeout is bounded, never infinite).
 
 **Outbox**:
 The single durable-delivery engine, owned by both grain roots, that records pending effects (`PublishEvent`, `SendCommand`, `UpsertRow`, `InvokeHandler`) in the same grain-state write as the consumer payload. A `PublishEvent` entry's `EventId` is stamped once as the event is enqueued and persisted on the payload, so a re-publish reuses the committed id rather than minting a new one.

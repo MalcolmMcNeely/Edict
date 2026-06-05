@@ -25,6 +25,8 @@ The `Timeline` is the deterministic Verify-shaped view of every Command sent, Ev
 
 A **state-only Command** — one that mutates the aggregate's `State` and raises no Event — has no Event on the `Timeline` of its own. Assert it through its *downstream* effect, not its private grain `State`: send the accumulating Commands, then send the Command that reads the accumulated state and raises an Event, and `Verify` that the Timeline shows the state-only Commands with no following Event plus the later Event whose payload was derived from what they accumulated. Reach a projection it drives with `GetProjectionRow`. Do not add a probe to read the grain's `State` directly — the observable surfaces are the contract.
 
+**Read-your-writes is a flow assertion, not a cursor seam.** `EdictTestApp` has no cursor or timeout probe, by design: `Drain()` settles the whole chain, so after it the projection row is already there and `GetProjectionRow` reads it the same way it reads any projection. There is nothing to wait on, so a test never passes an `EdictCursor` or a timeout. Assert read-your-writes as the flow it is — `SendAsync` the Command, `Drain()`, then `GetProjectionRow` shows the row the Command set in motion. The cursor wait itself (the bounded timeout against the virtual clock, the `CursorReached`/`CursorTimedOut` tri-state, ring eviction, correlation propagation) is framework mechanism, unit-tested inside `Edict.Core.Tests`, not consumer surface.
+
 ## The EdictTestApp surface
 
 - **`EdictTestApp.StartAsync(configure)`** — boots the in-memory cluster. The `configure` callback uses `EdictTestAppBuilder`.

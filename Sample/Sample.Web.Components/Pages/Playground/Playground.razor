@@ -18,7 +18,7 @@
 
 <h1>Playground</h1>
 
-<p class="tagline">Step a workflow one Command at a time — each click is one trace in the Aspire dashboard, in contrast to the Demo hub's auto-traffic. Build a cart with state-only Commands (no Event, no downstream traffic), then check out: a bridge Saga turns the whole basket into an Order that flows through payment and fulfillment.</p>
+<p class="tagline">Step a workflow one Command at a time and read your own write straight back. Every <code>Accepted</code> carries a cursor; feeding it to a Projection read waits, briefly and boundedly, until the work that Command set in motion is visible, so the row comes back on the same click with no poll and no lag. That is the contrast with the Demo hub, which reads with no cursor and shows the eventual-consistency gap. Build a cart with state-only Commands (no Event, no downstream traffic), then check out: a bridge Saga turns the whole basket into an Order that flows through payment and fulfillment.</p>
 
 <section class="hub-controls">
     <span class="playground-cart">Cart <code>@FormatShort(_cartId)</code></span>
@@ -29,6 +29,7 @@
     }
     <span class="hub-controls-sep"></span>
     <button @onclick="OnCheckout" disabled="@(_checkedOut || _basket.Count == 0)">Check out (@_basket.Count)</button>
+    <button @onclick="OnRefreshOrder" disabled="@(!_checkedOut)">Refresh order</button>
     <button @onclick="OnNewCart">New cart</button>
 </section>
 
@@ -57,7 +58,7 @@
         <h2>Checked-out cart <span class="hub-orders-meta">CheckedOutCart projection</span></h2>
         @if (_checkedOutCart is null)
         {
-            <p class="hub-empty-small">No checkout yet. This read model is written by a Table Projection Builder once you check out.</p>
+            <p class="hub-empty-small">No checkout yet. A List Projection Builder writes this read model once you check out, and the cursor on <code>Accepted</code> reads it straight back on the same click.</p>
         }
         else
         {
@@ -74,7 +75,7 @@
         <h2>Bridged order <span class="hub-orders-meta">keyed by the cart id</span></h2>
         @if (_orderStatus is null)
         {
-            <p class="hub-empty-small">No order yet. On checkout the bridge Saga places one Order carrying the basket; it then flows through payment and fulfillment, and a barrier Saga closes it once both payment and fulfillment have landed.</p>
+            <p class="hub-empty-small">No order yet. On checkout the cursor reads the freshly placed Order straight back; it then flows through payment and fulfillment, and a barrier Saga closes it once both have landed. That downstream lifecycle is genuinely eventual, so press Refresh order (a plain cursorless read) to watch it advance.</p>
         }
         else
         {
@@ -163,28 +164,11 @@
 
     async Task RefreshAsync()
     {
-        await RefreshCartAsync();
+        // Only the settlement schedule polls on a timer: watching its poll count
+        // climb on a recurring cadence is inherently time-driven. The cart and
+        // order panels read through the cursor instead (see OnCheckout), so they
+        // have no background poll.
         await RefreshSettlementAsync();
-    }
-
-    async Task RefreshCartAsync()
-    {
-        // Nothing downstream exists until checkout raises its Event.
-        if (!_checkedOut)
-        {
-            return;
-        }
-
-        try
-        {
-            _checkedOutCart = (await CheckedOutCarts.GetAsync(_cartId.ToString(), "cart")).Row;
-            _orderStatus = (await OrdersByStatus.GetAsync(_cartId.ToString(), "status")).Row;
-        }
-        catch
-        {
-            // Read-only refresh path: a transient store hiccup must not surface
-            // as a Blazor error boundary in the demo.
-        }
     }
 
     async Task RefreshSettlementAsync()
@@ -225,14 +209,45 @@
     async Task OnCheckout()
     {
         var result = await Sender.SendAsync(new CheckoutCartCommand(_cartId));
-        if (result is EdictCommandResult.Accepted)
+        if (result is EdictCommandResult.Accepted accepted)
         {
             _checkedOut = true;
-            _message = "Checked out — one CartCheckedOutEvent carries the whole basket; the bridge Saga is placing the Order.";
+
+            // Read-your-writes: feed the cursor the Command set in motion straight
+            // into the reads. Each waits, briefly and boundedly, until that work is
+            // visible, so both rows come back on this same click. The correlation
+            // propagates through the bridge Saga, so the cursor also reaches the
+            // freshly placed Order, not just the checked-out cart.
+            var cursor = accepted.Cursor;
+            var cart = await CheckedOutCarts.GetAsync(_cartId.ToString(), "cart", after: cursor);
+            var order = await OrdersByStatus.GetAsync(_cartId.ToString(), "status", after: cursor);
+            _checkedOutCart = cart.Row;
+            _orderStatus = order.Row;
+            _message = cart.Status == EdictReadStatus.CursorReached
+                ? "Checked out. The cursor on Accepted read the cart and the placed Order straight back: no poll, no lag."
+                : "Checked out. The read timed out before the projection caught up, so this is the latest available row.";
         }
         else
         {
             _message = Describe("CheckoutCart", result);
+        }
+    }
+
+    async Task OnRefreshOrder()
+    {
+        try
+        {
+            // The plain poll path: no cursor, answers from the current store state.
+            // The Order's downstream lifecycle (payment, fulfillment, shipping) is
+            // genuinely eventual, so this is how a visitor watches it advance.
+            _checkedOutCart = (await CheckedOutCarts.GetAsync(_cartId.ToString(), "cart")).Row;
+            _orderStatus = (await OrdersByStatus.GetAsync(_cartId.ToString(), "status")).Row;
+            _message = "Refreshed the Order with a plain cursorless read, the same path the Demo hub polls on.";
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface
+            // as a Blazor error boundary in the demo.
         }
     }
 

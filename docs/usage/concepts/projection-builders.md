@@ -26,6 +26,10 @@ public sealed partial class OrderCountProjectionBuilder : EdictProjectionBuilder
 
 A projection builder only ever sees events from the moment it is subscribed. There is no "rebuild the projection" operation and no historical scan.
 
+## Reading the read model
+
+A read model that lives in an external store (`EdictListProjectionBuilder<TRow>`) is read through `IEdictProjectionReader<TRow>`, which routes through the projection grain rather than the store directly — so the read API carries no storage detail and the activation that owns the rows is on the read path. That read path supports **read-your-writes**: pass the `EdictCursor` from a Command's `Accepted` result and the read waits, briefly and boundedly, until that Command's work is visible. See [read-your-writes.md](read-your-writes.md). A base `EdictProjectionBuilder` whose state is rebuilt each activation exposes its state through its own bespoke grain interface, not the reader.
+
 ## Analyzer rules
 
 - **EDICT001** — concrete projection builders must be declared `partial`; the generator emits the Orleans interface and the dispatch switch into a second partial declaration.
@@ -33,5 +37,5 @@ A projection builder only ever sees events from the moment it is subscribed. The
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Projection Builder`, `List Projection Builder`, `Event`, `Idempotency Base`.
-- Concepts — [table-projections.md](table-projections.md), [events.md](events.md), [idempotency.md](idempotency.md), [event-handlers.md](event-handlers.md), [telemetry.md](telemetry.md).
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Projection Builder`, `List Projection Builder`, `Projection Reader`, `Event`, `Idempotency Base`.
+- Concepts — [table-projections.md](table-projections.md), [read-your-writes.md](read-your-writes.md), [events.md](events.md), [idempotency.md](idempotency.md), [event-handlers.md](event-handlers.md), [telemetry.md](telemetry.md).

@@ -22,7 +22,7 @@ For fleet-wide triage during a system-wide failure, use `ListAllAsync()` instead
 - **`IEdictDeadLetterRepository`** (`Edict.Contracts.DeadLetter`) — **strictly read-only**:
   - `ListAsync(string grainKey, CancellationToken)` — dead letters for a single source aggregate.
   - `ListAllAsync(CancellationToken)` — every row in the fleet-wide partition.
-- **`EdictDeadLetterEntry`** (`Edict.Contracts.DeadLetter`) — the projection row. Carries `EntryId`, `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), `AttemptCount`, `DeadLetteredAt`, `SourceGrainKey`, `SourceGrainType`, `EffectTarget` (encoded per kind — `"{stream}/{eventType}"` for `PublishEvent`, `"{targetGrainType}/{targetGrainKey}"` for `SendCommand`, `"{table}/{pk}/{rk}"` for `UpsertRow`), `TraceParent`, `ExceptionType`, `Reason`, `PayloadJson`, `SourceEventType`, `SourceEventId`, and `FailureKind`.
+- **`EdictDeadLetterEntry`** (`Edict.Contracts.DeadLetter`) — the projection row. Carries `EntryId`, `Kind` (`PublishEvent` / `SendCommand` / `UpsertRow` / `InvokeHandler`), `AttemptCount`, `DeadLetteredAt`, `SourceGrainKey`, `SourceGrainType`, `EffectTarget` (encoded per kind — `"{stream}/{eventType}"` for `PublishEvent`, `"{targetGrainType}/{targetGrainKey}"` for `SendCommand`, `"{table}/{pk}/{rk}"` for `UpsertRow`), `TraceParent`, `CorrelationId`, `ExceptionType`, `Reason`, `PayloadJson`, `SourceEventType`, `SourceEventId`, and `FailureKind`.
 - **`EdictDeadLetterFailureKind`** (`Edict.Contracts.DeadLetter`) — discriminator:
   - `EffectFailure` (default) — an outbound effect exhausted `MaxAttempts` at the publisher.
   - `BlobMissing` — a receiver could not materialise a claim-checked event because its blob had been reaped. `SourceEventId` is the locator for the (now-gone) parked body — the claim-check key is the event's `EventId`, so the same id that identifies the event also locates its blob.
@@ -33,7 +33,7 @@ For fleet-wide triage during a system-wide failure, use `ListAllAsync()` instead
 1. An outbox effect throws repeatedly and reaches `EdictOptions.OutboxMaxAttempts`.
 2. In the same one grain-state write, the engine removes the failing entry from the Outbox slice and appends a new `PublishEvent` entry carrying an `EdictDeadLetterRaised` event.
 3. The auto-wired `EdictDeadLetterProjectionBuilder` consumes that stream and upserts the row.
-4. Operators read via `IEdictDeadLetterRepository`. The captured `TraceParent` lands on the row so trace continuity from the original effect is preserved.
+4. Operators read via `IEdictDeadLetterRepository`. The captured `TraceParent` lands on the row so trace continuity from the original effect is preserved, and the row's `CorrelationId` is the chain-stable id of the work that failed — every dead-letter row from one causal chain shares it, so a fleet-wide listing groups by `CorrelationId` to see all the failures one Command set in motion, where `TraceParent` is null under unsampled traces. The facade is read-only and routes through the dead-letter projection grain (the same read path as any List projection), not the store directly.
 
 ## Saga-lifecycle dead letters
 

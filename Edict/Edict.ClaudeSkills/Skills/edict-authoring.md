@@ -180,6 +180,31 @@ Task OnScheduleTimeoutAsync(PollGatewayMessage message)
 
 `edict_list_handlers` reports, per Command Handler and Saga, whether it registers a schedule and the source of that schedule's timeout cap (`inheritsSiloDefault` for a Command Handler, `inheritsSagaCap` for a Saga). It does not report the per-schedule `timeout:` literal, so the inventory tells you *which* handlers schedule, not the exact cap value at each call site.
 
+## Reading a List Projection, and read-your-writes
+
+A List Projection Builder's read model is read through `IEdictProjectionReader<TRow>` (DI-injected, the read-side mirror of `IEdictSender`), never by touching the store. Each read returns an `EdictProjectionRead<TRow>` — the row plus an `EdictReadStatus` — so a plain read takes `.Row`:
+
+```csharp
+OrderStatusRow? row = (await ordersReader.GetAsync(orderId.ToString(), "status")).Row;
+```
+
+To read your own write back without a poll-and-retry loop, feed the `EdictCursor` from the Command's `Accepted` result as `after:`. The read waits, briefly and boundedly, until the work that Command set in motion is visible, then answers:
+
+```csharp
+var result = await sender.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+if (result is EdictCommandResult.Accepted accepted)
+{
+    EdictProjectionRead<OrderStatusRow> read =
+        await ordersReader.GetAsync(orderId.ToString(), "status", after: accepted.Cursor);
+
+    // read.Status is CursorReached and read.Row reflects the placement, on this call.
+}
+```
+
+The cursor names a framework-stamped correlation that propagates across the whole chain — a Command's raised Events and a Saga's dispatched Commands inherit it — so the cursor a Command returns reaches a projection effect that lands *downstream of a Saga*, not just the immediate write. You never author the correlation: keep returning `new EdictCommandResult.Accepted()` and the runtime stamps the cursor after the handler returns.
+
+`CursorReached` is **any-applied**: it means at least the correlation's first effect on this projection is visible, not that every effect has landed. Where exact read-your-writes matters, prefer one Event per Command, so the correlation has a single effect on the projection and "first applied" equals "fully applied". On a bounded-wait timeout the read returns `CursorTimedOut` with the latest available row — that is lag, not a fault, so never wrap a read in a `try`/`catch` expecting a stale-read exception. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely; an omitted timeout is always bounded (it falls back to `EdictOptions.ProjectionReadTimeout`, never to infinite).
+
 ## When to look up a term
 
 When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.
@@ -187,6 +212,8 @@ When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "wh
 ## Naming and brand prefix
 
 Consumer subclasses are `{Name}{Role}` — never `Grain`-suffixed. Examples: `OrderCommandHandler`, `OrderPaymentSaga`, `OrdersByStatusProjectionBuilder`. The `Edict`-prefix is reserved for the framework surface itself; do not add it to your subclasses.
+
+Both projection species share the one `{Name}ProjectionBuilder` suffix, storage-neutral by design: the base type disambiguates them — `EdictProjectionBuilder` for an in-grain view, `EdictListProjectionBuilder<TRow>` for an external-store read model — so the class name never carries a storage word like `Table`.
 
 ## See also
 

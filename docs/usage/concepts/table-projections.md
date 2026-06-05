@@ -26,13 +26,15 @@ public sealed partial class OrdersByStatusProjectionBuilder
 }
 ```
 
-The application reads the projection through `IEdictProjectionReader<TRow>`, never by talking to the store directly. The read routes through the projection grain, so the read API carries no storage detail:
+The application reads the projection through `IEdictProjectionReader<TRow>`, never by talking to the store directly. The read routes through the projection grain, so the read API carries no storage detail. Each read returns an `EdictProjectionRead<TRow>` (the row plus a status); take `.Row` for the plain case:
 
 ```csharp
-OrderStatusRow? row = await projectionReader.GetAsync(orderId.ToString(), "status");
+OrderStatusRow? row = (await projectionReader.GetAsync(orderId.ToString(), "status")).Row;
 ```
 
 The partition key is the projection's routing key — for a per-aggregate projection this is the aggregate's `[EdictRouteKey]` Guid, exactly what you would pass to read its row.
+
+Pass the `EdictCursor` from a Command's `Accepted` result as `after:` to wait until that Command's work is visible before answering — read-your-writes. See [read-your-writes.md](read-your-writes.md).
 
 ## Surface
 
@@ -53,5 +55,5 @@ The upsert is idempotent by `(PartitionKey, RowKey)` — at-least-once redeliver
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `List Projection Builder`, `Table Repository`, `Projection Builder`, `Outbox`.
-- Concepts — [projection-builders.md](projection-builders.md), [events.md](events.md), [idempotency.md](idempotency.md), [dead-letter.md](dead-letter.md).
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `List Projection Builder`, `Projection Reader`, `Projection Read`, `Projection Builder`, `Outbox`.
+- Concepts — [projection-builders.md](projection-builders.md), [read-your-writes.md](read-your-writes.md), [events.md](events.md), [idempotency.md](idempotency.md), [dead-letter.md](dead-letter.md).
