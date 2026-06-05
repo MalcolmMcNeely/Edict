@@ -1,19 +1,243 @@
 @page "/orders"
 @page "/orders/{OrderId:guid}"
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Orders.Commands
+@using Sample.Contracts.Orders.Projections
+@using Sample.Contracts.Payments.Projections
+@using Sample.Domain.Orders.Notifications
+@using Sample.Domain.Payments.CommandHandlers
+@using Sample.Web.Components.Simulator
+@using Sample.Web.Components.State
+@inject IEdictSender Sender
+@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
+@inject IEdictProjectionReader<OrderOutcomeRow> Outcomes
+@inject INotificationsStore Notifications
+@inject KnownOrdersRegistry KnownOrders
+@inject CurrentOrderTracker OrderTracker
+@implements IDisposable
 
 <PageTitle>Edict — Orders</PageTitle>
 
-<ConceptHeader Title="Orders" Concept="Saga" DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/sagas.md" />
+<ConceptHeader Title="Orders" Concept="Saga"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/sagas.md" />
 
-@if (OrderId is { } id)
-{
-    <p class="placeholder-note">Coming soon: drive order <code>@id</code> through its lifecycle, watch the payment Saga compensate a declined order, the barrier Saga close it, and outbound notifications fire.</p>
-}
-else
-{
-    <p class="placeholder-note">Coming soon: pick an order from the Dashboard to drive its lifecycle, watching the saga branches advance on their own.</p>
-}
+<div class="hub">
+    <section class="hub-controls">
+        <span class="playground-cart">Pay</span>
+        <input class="orders-amount" type="number" min="1" step="1" @bind="_amount" />
+        <span class="hub-orders-meta">over £@PaymentCommandHandler.DeclineThreshold declines</span>
+        <span class="hub-controls-sep"></span>
+        <button @onclick="OnDrive">Drive a new order</button>
+    </section>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="hub-message">@_message</div>
+    }
+
+    @if (_viewedOrderId is null)
+    {
+        <p class="hub-empty">No order open. Press Drive a new order to start one, or arrive here from a Checkout or a Dashboard row to watch an order advance on its own.</p>
+    }
+    else
+    {
+        <div class="hub-grid">
+            <div class="hub-left">
+                <h2>Lifecycle <span class="hub-orders-meta">cursorless · eventual</span></h2>
+                <div class="spotlight">
+                    <div class="spotlight-order"><code>@_viewedOrderId</code></div>
+                    <table class="spotlight-table">
+                        <tbody>
+                            @foreach (var stage in Stages())
+                            {
+                                <tr>
+                                    <td class="spotlight-icon">@stage.Icon</td>
+                                    <td class="spotlight-state">@stage.Label</td>
+                                    <td class="spotlight-time">@stage.Time</td>
+                                </tr>
+                            }
+                            @if (Cancelled)
+                            {
+                                <tr>
+                                    <td class="spotlight-icon orders-cancelled">●</td>
+                                    <td class="spotlight-state orders-cancelled">Cancelled — payment declined, order compensated</td>
+                                    <td class="spotlight-time"></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="orders-outcome">Payment outcome: <strong>@Outcome</strong></div>
+                </div>
+            </div>
+
+            <div class="hub-right">
+                <h2>Notifications <span class="hub-orders-meta">in-process sink</span></h2>
+                <div class="spotlight">
+                    @if (_notifications.Count == 0)
+                    {
+                        <p class="hub-empty-small">No notifications yet. The Event Handler POSTs one to the sink when the order is placed; it lands here on the next poll.</p>
+                    }
+                    else
+                    {
+                        <table class="spotlight-table">
+                            <tbody>
+                                @foreach (var notification in _notifications)
+                                {
+                                    <tr>
+                                        <td class="spotlight-state">Order placed</td>
+                                        <td class="spotlight-span">key <code>@FormatShort(notification.EventId)</code></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     [Parameter] public Guid? OrderId { get; set; }
+
+    decimal _amount = 100m;
+    Guid? _viewedOrderId;
+    Guid? _lastRouteOrderId;
+    OrderStatusRow? _status;
+    OrderOutcomeRow? _outcome;
+    IReadOnlyList<SentNotification> _notifications = Array.Empty<SentNotification>();
+    string _message = "";
+    bool _started;
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    bool Cancelled => _status?.Status == "Cancelled";
+
+    string Outcome => _outcome?.Outcome ?? "Pending";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // A handed-in order id (from Checkout or a Dashboard row) is observed, not
+        // driven; the Drive control always starts a fresh order, so adopting the
+        // route id must not clobber an order the visitor just drove.
+        if (OrderId is { } handedIn && handedIn != _lastRouteOrderId)
+        {
+            _lastRouteOrderId = handedIn;
+            _viewedOrderId = handedIn;
+        }
+
+        if (!_started)
+        {
+            _started = true;
+            _cancellationTokenSource = new CancellationTokenSource();
+            _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            _ = PollAsync(_cancellationTokenSource.Token);
+        }
+
+        await RefreshAsync();
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        if (_viewedOrderId is not { } id)
+        {
+            return;
+        }
+
+        try
+        {
+            // Cursorless point-gets: no Accepted cursor is fed, so each read answers
+            // with the latest projected row and the visitor watches the lifecycle
+            // catch up across polls (eventual), the opposite of Checkout's
+            // read-your-writes cursor.
+            _status = (await OrdersByStatus.GetAsync(id.ToString(), "status")).Row;
+            _outcome = (await Outcomes.GetAsync(id.ToString(), "outcome")).Row;
+            _notifications = Notifications.Query().Where(notification => notification.OrderId == id).ToArray();
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    async Task OnDrive()
+    {
+        var orderId = Guid.NewGuid();
+
+        var place = await Sender.SendAsync(new PlaceOrderCommand(orderId, "ORDERS-DRIVE"));
+        if (place is not EdictCommandResult.Accepted)
+        {
+            _message = Describe("Place", place);
+            return;
+        }
+
+        KnownOrders.Register(orderId);
+        await Sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "WIDGET", 1));
+        await Sender.SendAsync(new SubmitOrderCommand(orderId, _amount));
+
+        _viewedOrderId = orderId;
+        OrderTracker.Set(orderId);
+        _message = _amount > PaymentCommandHandler.DeclineThreshold
+            ? $"Driving {FormatShort(orderId)} at £{_amount}: over the £{PaymentCommandHandler.DeclineThreshold} threshold, so payment declines and the Saga's compensation cancels it."
+            : $"Driving {FormatShort(orderId)} at £{_amount}: under the £{PaymentCommandHandler.DeclineThreshold} threshold, so payment authorises and the barrier Saga closes it once fulfilment lands.";
+
+        await RefreshAsync();
+    }
+
+    IEnumerable<Stage> Stages()
+    {
+        yield return Build("Placed", _status?.PlacedAt);
+        yield return Build("Submitted", _status?.SubmittedAt);
+
+        // Compensation stops the lifecycle at Submitted; the later stages never run,
+        // so showing them as pending would misread as "still in flight".
+        if (Cancelled)
+        {
+            yield break;
+        }
+
+        yield return Build("Authorised", _status?.AuthorizedAt);
+        yield return Build("Fulfilled", _status?.FulfilledAt);
+        yield return Build("Shipped", _status?.ShippedAt);
+        yield return Build("Closed", _status?.ClosedAt);
+    }
+
+    static Stage Build(string label, DateTimeOffset? at)
+    {
+        var icon = at is null ? "○" : "●";
+        var time = at?.ToLocalTime().ToString("HH:mm:ss") ?? "—";
+        return new Stage(icon, label, time);
+    }
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string Describe(string label, EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected rejected
+            ? $"{label} rejected: {string.Join(", ", rejected.Reasons.Select(reason => reason.Code))}."
+            : $"{label} accepted.";
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+
+    readonly record struct Stage(string Icon, string Label, string Time);
 }

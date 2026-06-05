@@ -460,6 +460,24 @@ main {
     font-size: 0.85rem;
 }
 
+.orders-amount {
+    width: 6rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.orders-outcome {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.orders-cancelled {
+    color: #b91c1c;
+}
+
 .playground-cart {
     color: #4b5563;
     font-size: 0.9rem;
