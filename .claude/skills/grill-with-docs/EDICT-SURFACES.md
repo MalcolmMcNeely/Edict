@@ -73,6 +73,22 @@ Does the change touch a wire-format type — anything MessagePack-serialised on 
 
 Edict is pre-release with no released consumers, so the answer is usually "no compat constraint." The grill still asks because the Verify contract round-trip is the wire drift guard (ADR 0007) — a wire change needs the snapshot regenerated, and that's a design requirement worth recording so it does not surprise the implementation slice.
 
+### 9. Consumer test seams — `Edict.Testing`
+
+`Edict.Testing` is a consumer-facing production surface — it ships as a package and consumers reference it to test their apps (`EdictTestApp`, the `FakeTimeProvider` virtual clock, `AdvanceClock`, `Replace<TService>`, probes, `Drain()`). It is **not** internal framework test infra (internal tests must never depend on it). This axis is distinct from axis 3's `edict-testing` skill, which documents *how* to use the seams, and from axis 5's `docs/usage/testing/*`, which is prose: here the question is whether a new seam must be **built**.
+
+Does the change introduce a primitive a consumer needs to drive or observe deterministically in a test? Anything that fires on a clock or a background trigger — a new timer, lifecycle hook, timeout, or outcome — needs an interval-agnostic, virtual-clock-driven seam so the consumer can assert without wall-clock waits, and so chained scenarios (act → fire → assert → fire → assert) stay deterministic.
+
+If yes, name the seam (e.g. a `Fire*Async()` that advances the injected clock to the next due instant and drains) and the implementation requirement it implies: the production timer or reminder must arm against the injected `TimeProvider`, or the harness cannot drive it. Wall-clock delay is never the test mechanism — that constraint is a standing one, so the seam is the deliverable.
+
+### 10. Conformance batteries — `Edict.Tests.Conformance` (ADR-0054)
+
+Conformance is Edict's entire confidence story against real third-party tech, so a change with backend-dependent correctness that skips it ships unproven. It runs as two axis batteries (streaming + persistence, supersedes 0027): the streaming battery binds stream-sensitive scenarios against real Azure Queue + Kafka over dumb persistence; the persistence battery binds durability scenarios against real Azure Table + Postgres over dumb MemoryStreams. Each axis provider's `.Tests` project binds the shared scenarios, and the binding-completeness guard (`Edict.Architecture.Tests`, #296) fails if a scenario is added to the abstract battery but left unbound on an axis.
+
+Does the change add behaviour whose correctness depends on a real backend — durability across reactivation, redelivery, claim-check fetch, dead-letter persistence, ordering? If it would pass on in-memory fakes yet could break on a real queue or a real table, it needs a conformance scenario, not just a unit test.
+
+If yes, capture which axis it belongs to (streaming or persistence — pick the axis whose real provider exercises the risk), the scenario shape, and the providers it binds across. Adding the abstract scenario *obliges* binding it on every provider on that axis or the build goes red — that obligation is the design requirement, captured now rather than discovered from the guard later. Note explicitly when a behaviour does **not** warrant a scenario (pure in-grain logic with no backend dependency), so the skip is a recorded decision.
+
 ## Rules
 
 - **Ask one axis at a time.** Do not present the list. Walk it as part of the interview.
