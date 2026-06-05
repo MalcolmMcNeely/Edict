@@ -83,5 +83,5 @@ The `partial` modifier is required by the generator; if it is missing, the gener
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Saga`, `Saga Timeout`, `Complete`, `Compensation`, `EdictCommand`, `Event`.
-- Concepts — [commands.md](commands.md), [events.md](events.md), [event-handlers.md](event-handlers.md), [idempotency.md](idempotency.md), [dead-letter.md](dead-letter.md), [telemetry.md](telemetry.md).
+- Concepts — [commands.md](commands.md), [events.md](events.md), [event-handlers.md](event-handlers.md), [schedules.md](schedules.md), [idempotency.md](idempotency.md), [dead-letter.md](dead-letter.md), [telemetry.md](telemetry.md).
 - ADRs — [0016 — Saga model](../../adr/0016-saga-model.md), [0050 — Saga absolute lifetime cap](../../adr/0050-saga-absolute-lifetime-cap.md).

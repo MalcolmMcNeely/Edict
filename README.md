@@ -149,6 +149,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Operational metrics.** Outbox depth + oldest-entry age, dead-letter rate by failure kind, handler p99 by command/event type, stream lag, saga progress age, claim-check size distribution, drain-cycle stability — all on a single `Meter` named `"Edict"`. Vendor-neutral PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
 - **Saga timeouts.** Every saga carries an absolute lifetime cap: a shipped 7-day default, overridable per saga with `[EdictSagaTimeout]` or opted out entirely. A compensation hook runs on expiry and dead-letters by default, so a stalled workflow is bounded and visible, not immortal.
+- **In-grain durable scheduling.** A command handler or saga schedules recurring work from inside `HandleAsync` with one line; the schedule persists a message (never a delegate), survives deactivation, and catches up on reactivation. A finite timeout cap dead-letters a stuck schedule by default, or runs a compensation hook.
 - **Configurable.** Every knob is an options property with a default and startup validation.
 - **In-memory tests.** SendAsync → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 

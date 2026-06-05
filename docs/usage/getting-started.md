@@ -188,7 +188,7 @@ To run locally, start Azurite (the [Azurite docs](https://learn.microsoft.com/az
 
 ## Next steps
 
-- **Concepts** — [Commands](concepts/commands.md), [Validators](concepts/validators.md), [Events](concepts/events.md), [Event Handlers](concepts/event-handlers.md), [Sagas](concepts/sagas.md), [Projection Builders](concepts/projection-builders.md), [Table Projections](concepts/table-projections.md), [Idempotency](concepts/idempotency.md), [Claim Check](concepts/claim-check.md), [Dead Letter](concepts/dead-letter.md), [Telemetry](concepts/telemetry.md).
+- **Concepts** — [Commands](concepts/commands.md), [Validators](concepts/validators.md), [Events](concepts/events.md), [Event Handlers](concepts/event-handlers.md), [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projection Builders](concepts/projection-builders.md), [Table Projections](concepts/table-projections.md), [Idempotency](concepts/idempotency.md), [Claim Check](concepts/claim-check.md), [Dead Letter](concepts/dead-letter.md), [Telemetry](concepts/telemetry.md).
 - **Wiring** — [Azure Streaming](wiring/azure-streaming.md), [Azure Persistence](wiring/azure-persistence.md), [Kafka](wiring/kafka.md), [Postgres](wiring/postgres.md).
 - **Testing** — [Setup](testing/setup.md), [Probes](testing/probes.md), [Chaos](testing/chaos.md), [Seams](testing/seams.md).
 - **Agentic tooling** — [Setup](agentic/setup.md), [Skills](agentic/skills.md), [MCP tools](agentic/mcp-tools.md), [Troubleshooting](agentic/troubleshooting.md).

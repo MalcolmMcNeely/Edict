@@ -66,5 +66,5 @@ public partial class CartCommandHandler : EdictCommandHandler<CartState>
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `EdictCommand`, `RouteKey`, `Command Result`, `Command Validator`, `Sender`.
-- Concepts — [validators.md](validators.md), [events.md](events.md), [sagas.md](sagas.md), [telemetry.md](telemetry.md).
+- Concepts — [validators.md](validators.md), [events.md](events.md), [sagas.md](sagas.md), [schedules.md](schedules.md), [telemetry.md](telemetry.md).
 - Decision trail — [ADR-0055](../../adr/0055-command-handler-state-persists-on-completion.md) (state persists on completion, independent of events).
