@@ -34,6 +34,7 @@ public sealed class EdictSender : IEdictSender
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        command = EnsureCorrelation(command);
         var route = _resolver.GetRoute(command);
         var key = route.RouteKeySelector(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
@@ -82,6 +83,7 @@ public sealed class EdictSender : IEdictSender
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        command = EnsureCorrelation(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");
@@ -103,4 +105,13 @@ public sealed class EdictSender : IEdictSender
             throw;
         }
     }
+
+    // Mint the chain-stable correlation id here, at the boundary, when the command
+    // carries none, and honour a caller-supplied value (idempotency-key style).
+    // Assign-once at the boundary rather than a new()-time initializer on the
+    // record, mirroring how EventId is minted as an event enters the outbox; the
+    // minted command is what dispatches, so the correlation is present when the
+    // handler runs and propagates onto every event it raises.
+    static TCommand EnsureCorrelation<TCommand>(TCommand command) where TCommand : EdictCommand =>
+        command.CorrelationId == Guid.Empty ? command with { CorrelationId = Guid.NewGuid() } : command;
 }

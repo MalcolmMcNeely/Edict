@@ -68,6 +68,17 @@ public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(new InMemoryClaimCheckStore());
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
+
+            // Swap the real publish executor for the capturing one (Replace, not
+            // append — the host keys executors by Kind, so a duplicate would throw)
+            // so a schedule-fired event's stamped correlation is readable on the
+            // command turn rather than chased through async stream delivery.
+            var publishDescriptor = siloBuilder.Services.Single(descriptor =>
+                descriptor.ServiceType == typeof(IOutboxEffectExecutor)
+                && descriptor.ImplementationType == typeof(PublishEventExecutor));
+            siloBuilder.Services.Remove(publishDescriptor);
+            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, ScheduleRaiseCapturingExecutor>();
+
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
             siloBuilder.AddMemoryGrainStorage("edict-state");

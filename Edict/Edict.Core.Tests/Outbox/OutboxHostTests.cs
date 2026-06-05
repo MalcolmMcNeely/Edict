@@ -149,7 +149,7 @@ public sealed class OutboxHostTests
         var raised = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
         Assert.Equal(Guid.Empty, raised.EventId);
 
-        await host.EnqueueRaisedEventsAndDrainAsync([raised], traceParent: null, traceState: null);
+        await host.EnqueueRaisedEventsAndDrainAsync([raised], traceParent: null, traceState: null, correlationId: Guid.NewGuid());
 
         var persisted = Serializer.Deserialize<EdictEvent>(Assert.Single(executor.Invocations).Payload);
         Assert.NotEqual(Guid.Empty, persisted.EventId);
@@ -166,7 +166,7 @@ public sealed class OutboxHostTests
         var first = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
         var second = new OrderPlacedEvent(FixedOrderId, "SKU-2") { OccurredAt = Now };
 
-        await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null);
+        await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null, correlationId: Guid.NewGuid());
 
         var ids = executor.Invocations
             .Select(entry => Serializer.Deserialize<EdictEvent>(entry.Payload).EventId)
@@ -174,6 +174,26 @@ public sealed class OutboxHostTests
         Assert.Equal(2, ids.Length);
         Assert.DoesNotContain(Guid.Empty, ids);
         Assert.NotEqual(ids[0], ids[1]);
+    }
+
+    [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldStampCorrelation_OntoEveryRaisedEvent()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new RecordingExecutor();
+        var host = BuildHostWithClaimCheck(state, log, executor);
+
+        var correlationId = Guid.NewGuid();
+        var first = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
+        var second = new OrderPlacedEvent(FixedOrderId, "SKU-2") { OccurredAt = Now };
+
+        await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null, correlationId);
+
+        var correlations = executor.Invocations
+            .Select(entry => Serializer.Deserialize<EdictEvent>(entry.Payload).CorrelationId)
+            .ToArray();
+        Assert.Equal([correlationId, correlationId], correlations);
     }
 
     [Fact]

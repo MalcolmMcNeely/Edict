@@ -243,6 +243,7 @@ sealed class OutboxHost<TPayload>
         IReadOnlyList<EdictEvent> events,
         string? traceParent,
         string? traceState,
+        Guid correlationId,
         CancellationToken cancellationToken = default)
     {
         if (events.Count == 0)
@@ -255,9 +256,11 @@ sealed class OutboxHost<TPayload>
         // serialises the payload — so the persisted bytes carry the stable
         // identity and a re-drain deserialises the same id. OccurredAt was
         // already stamped at Raise; this is the delivery identity, not the
-        // intent stamp.
+        // intent stamp. The correlation id is stamped here too: the event
+        // inherits it from the message that caused it, carried unchanged so the
+        // whole chain shares one chain-stable token.
         var results = await Task.WhenAll(events.Select(edictEvent =>
-            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid() }, cancellationToken)));
+            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId }, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);

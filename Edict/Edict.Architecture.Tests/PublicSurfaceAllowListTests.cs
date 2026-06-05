@@ -261,6 +261,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
         "Edict.Contracts.Commands.EdictCommand",
         "Edict.Contracts.Commands.EdictCommandResult",
+        "Edict.Contracts.Commands.EdictCursor",
         "Edict.Contracts.Commands.EdictRejectionReason",
         "Edict.Contracts.Commands.EdictRouteKeyAttribute",
         "Edict.Contracts.Configuration.EdictCommandHandlerScheduleOptions",

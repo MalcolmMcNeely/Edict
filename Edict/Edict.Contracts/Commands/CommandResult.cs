@@ -17,9 +17,17 @@ public abstract record EdictCommandResult
     {
     }
 
-    /// <summary>The command was accepted and handled. Carries no domain data.</summary>
+    /// <summary>
+    /// The command was accepted and handled. Carries the framework-stamped
+    /// <see cref="EdictCursor"/> for the work the command set in motion; a
+    /// consumer feeds it to a read-your-writes Projection read. The cursor is
+    /// stamped by the runtime after the handler returns, so a consumer handler
+    /// keeps writing <c>new EdictCommandResult.Accepted()</c> and never threads
+    /// the correlation by hand.
+    /// </summary>
+    /// <param name="Cursor">The read-your-writes cursor for this command's chain.</param>
     [MessagePackObject(keyAsPropertyName: true)]
-    public sealed record Accepted : EdictCommandResult;
+    public sealed record Accepted(EdictCursor Cursor = default) : EdictCommandResult;
 
     /// <summary>The command was rejected for one or more business reasons.</summary>
     /// <param name="Reasons">The structured reasons the command was rejected.</param>

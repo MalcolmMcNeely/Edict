@@ -24,7 +24,7 @@ public partial class BenchAggregateHandler : EdictCommandHandler<BenchAggregateS
         // Raising commits {State, Outbox} atomically; the bench projection
         // writes one row per event so the issuer's IEdictTableRepository
         // poll completes.
-        Raise(new BenchEvent(command.AggregateId, command.CorrelationId));
+        Raise(new BenchEvent(command.AggregateId, command.PollKey));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }

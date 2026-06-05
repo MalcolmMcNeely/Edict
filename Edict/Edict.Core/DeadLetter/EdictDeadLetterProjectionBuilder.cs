@@ -42,6 +42,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
             SourceEventType = raised.SourceEventType,
             SourceEventId = raised.SourceEventId,
             FailureKind = raised.FailureKind,
+            CorrelationId = raised.CorrelationId,
         };
         return Task.CompletedTask;
     }

@@ -42,7 +42,7 @@ public sealed class ClaimCheckOversizedEventIdFlowTests
         Assert.Equal(Guid.Empty, raised.EventId);
 
         // Act
-        await host.EnqueueRaisedEventsAndDrainAsync([raised], traceParent: null, traceState: null);
+        await host.EnqueueRaisedEventsAndDrainAsync([raised], traceParent: null, traceState: null, correlationId: Guid.NewGuid());
         var envelope = Assert.IsType<EdictEventEnvelope>(Assert.Single(stream.Captured));
         var unwrap = new ClaimCheckUnwrap(Serializer, store);
         var materialised = await unwrap.ApplyAsync(envelope, consumerType: typeof(object), CancellationToken.None);

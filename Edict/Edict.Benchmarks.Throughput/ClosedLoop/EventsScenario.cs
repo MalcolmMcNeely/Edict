@@ -5,12 +5,12 @@ using Edict.Contracts.TableStorage;
 namespace Edict.Benchmarks.Throughput.ClosedLoop;
 
 /// <summary>
-/// End-to-end pipeline scenario. Mints a per-Send <c>CorrelationId</c>,
+/// End-to-end pipeline scenario. Mints a per-Send <c>PollKey</c>,
 /// sends <see cref="BenchPublishCommand"/>, then polls the projection row
 /// written by <c>BenchProjectionBuilder</c> at <c>(aggregateId,
-/// correlationId)</c>. The row's existence is the substrate-neutral
+/// pollKey)</c>. The row's existence is the substrate-neutral
 /// completion signal — point-get against the projection store, polled at
-/// ~5 ms. A fresh <c>CorrelationId</c> per call prevents the wait from
+/// ~5 ms. A fresh <c>PollKey</c> per call prevents the wait from
 /// short-circuiting on a stale row from a previous send.
 /// </summary>
 public sealed class EventsScenario : IClosedLoopScenario
@@ -30,9 +30,9 @@ public sealed class EventsScenario : IClosedLoopScenario
 
     public async Task IssueOnceAsync(Guid aggregateId, byte[] filler, CancellationToken cancellationToken)
     {
-        var correlationId = Guid.NewGuid();
-        await _sender.SendAsync(new BenchPublishCommand(aggregateId, correlationId, filler));
-        await WaitForEventRowAsync(aggregateId, correlationId.ToString("D"), cancellationToken);
+        var pollKey = Guid.NewGuid();
+        await _sender.SendAsync(new BenchPublishCommand(aggregateId, pollKey, filler));
+        await WaitForEventRowAsync(aggregateId, pollKey.ToString("D"), cancellationToken);
     }
 
     async Task WaitForEventRowAsync(Guid aggregateId, string rowKey, CancellationToken cancellationToken)

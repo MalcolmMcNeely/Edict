@@ -367,9 +367,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // Build the SendCommand entry here, while the handle span is still
         // Activity.Current, so its captured traceparent makes the dispatched
         // command nest under the saga handle span as parent-child even when a
-        // crash-recovery drain runs much later.
+        // crash-recovery drain runs much later. Stamp the handled event's
+        // correlation onto the outbound command so the chain survives the hop;
+        // SendAsync's mint-if-empty then honours it rather than starting anew.
         var command = buffer.Take();
-        var effect = command is null ? null : BuildSendCommandEntry(command);
+        var effect = command is null
+            ? null
+            : BuildSendCommandEntry(command with { CorrelationId = edictEvent.CorrelationId });
 
         ReportSagaProgress();
 

@@ -105,6 +105,26 @@ public sealed class ScheduleLifecycleTests
     }
 
     [Fact]
+    public async Task Fire_RaisingEvent_ShouldStampAFreshCorrelation_AsANewCausalRoot()
+    {
+        var probeId = Guid.NewGuid();
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueRaiseEvent);
+
+        _fixture.AdvanceClock(Cadence);
+        await probe.FireDueSchedulesAsync();
+
+        // A fire has no upstream message, so its raised event starts a fresh
+        // correlation via the parameterless commit's mint — not the empty one the
+        // arming command carried. Filter by this probe's key: the capturing
+        // executor's queue is shared across the (serial) schedule tests.
+        var published = Assert.Single(
+            ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
+            tick => tick.Key == probeId);
+        Assert.NotEqual(Guid.Empty, published.CorrelationId);
+    }
+
+    [Fact]
     public async Task Fire_ThatThrows_ShouldRollBackStateMutation_AndKeepTheScheduleArmed()
     {
         var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());

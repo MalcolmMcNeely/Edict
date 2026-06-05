@@ -319,17 +319,25 @@ public abstract class EdictCommandHandler<TState>
     }
 
     /// <summary>
-    /// The shared commit primitive for a completing handler. When events were
-    /// raised, stages them as <see cref="OutboxEffectKind.PublishEvent"/> entries,
-    /// commits <c>{ State, Outbox }</c> in one write, then awaits the inline FIFO
-    /// drain. When none were raised, commits <c>{ State, Outbox }</c> alone (no
-    /// enqueue, no drain) so a handler that mutated <c>State</c> and raised nothing
-    /// keeps the mutation across deactivation. Both the dispatch lifecycle and the
-    /// grain-timer escape hatch (<c>RegisterGrainTimer</c> callbacks) route through
-    /// here. A post-commit publish failure does not roll back and does not surface
-    /// — the Reminder retries.
+    /// Commit primitive for a path with no upstream message — a schedule or timer
+    /// fire, or a <c>RegisterGrainTimer</c> escape-hatch callback. Mints a fresh
+    /// correlation for any raised events, the correct new-causal-root semantics:
+    /// a time-trigger continues no earlier conversation.
     /// </summary>
-    protected async Task CommitAndDrainRaisedEventsAsync()
+    protected Task CommitAndDrainRaisedEventsAsync() => CommitAndDrainRaisedEventsAsync(Guid.NewGuid());
+
+    /// <summary>
+    /// The shared commit primitive for a completing handler. When events were
+    /// raised, stages them as <see cref="OutboxEffectKind.PublishEvent"/> entries
+    /// (each stamped with <paramref name="correlationId"/>, inherited from the
+    /// handling command), commits <c>{ State, Outbox }</c> in one write, then
+    /// awaits the inline FIFO drain. When none were raised, commits
+    /// <c>{ State, Outbox }</c> alone (no enqueue, no drain) so a handler that
+    /// mutated <c>State</c> and raised nothing keeps the mutation across
+    /// deactivation. A post-commit publish failure does not roll back and does
+    /// not surface — the Reminder retries.
+    /// </summary>
+    protected async Task CommitAndDrainRaisedEventsAsync(Guid correlationId)
     {
         var events = _raisedEvents;
         _raisedEvents = null;
@@ -347,7 +355,7 @@ public abstract class EdictCommandHandler<TState>
             ? ActivityExtensions.BuildTraceParent(traceId, spanId)
             : null;
 
-        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState);
+        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState, correlationId);
     }
 
     /// <summary>Discards all buffered events. Called when the handler throws.</summary>
@@ -412,7 +420,7 @@ public abstract class EdictCommandHandler<TState>
             throw;
         }
 
-        await CommitAndDrainRaisedEventsAsync();
+        await CommitAndDrainRaisedEventsAsync(command.CorrelationId);
 
         // A handler that called Schedule(...) staged an entry that the commit
         // above just made durable; arm its timer and Reminder now. Skipped
@@ -423,7 +431,13 @@ public abstract class EdictCommandHandler<TState>
             await ScheduleHost.ReconcileAsync();
         }
 
-        return result;
+        // Echo the command's chain-stable correlation back as the read-your-writes
+        // cursor. Stamped here, the single chokepoint every dispatch funnels
+        // through, so a consumer handler keeps returning a bare Accepted and never
+        // threads the correlation by hand.
+        return result is EdictCommandResult.Accepted accepted
+            ? accepted with { Cursor = new EdictCursor(command.CorrelationId) }
+            : result;
     }
 
     /// <summary>

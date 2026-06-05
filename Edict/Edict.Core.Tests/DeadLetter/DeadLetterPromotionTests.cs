@@ -46,6 +46,41 @@ public sealed class DeadLetterPromotionTests
     }
 
     [Fact]
+    public void Build_ShouldCarryOriginatingCorrelation_WhenPublishEvent()
+    {
+        var correlationId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var entry = PublishEventEntry();
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1") { CorrelationId = correlationId };
+
+        var raised = DeadLetterPromotion.Build(
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
+            SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
+
+        Assert.Equal(correlationId, raised.CorrelationId);
+    }
+
+    [Fact]
+    public void Build_ShouldCarryOriginatingCorrelation_WhenSendCommand()
+    {
+        var correlationId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var entry = new OutboxEntry
+        {
+            EntryId = FixedEntryId,
+            Kind = OutboxEffectKind.SendCommand,
+            Payload = [],
+            AttemptCount = 3,
+        };
+        var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1") { CorrelationId = correlationId };
+
+        var raised = DeadLetterPromotion.Build(
+            entry, command, "Sample.PaymentCommandHandler", FixedOrderId,
+            new InvalidOperationException("rejected"),
+            SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
+
+        Assert.Equal(correlationId, raised.CorrelationId);
+    }
+
+    [Fact]
     public void Build_ShouldPopulateEffectTarget_WhenSendCommand()
     {
         var entry = new OutboxEntry

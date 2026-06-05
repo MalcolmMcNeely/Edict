@@ -37,6 +37,9 @@ public sealed class SpanTrackerState : IEdictPersistedState
 {
     [Id(0)]
     public int Received { get; set; }
+
+    [Id(1)]
+    public Guid LastCorrelationId { get; set; }
 }
 
 // Hand-written probe (Orleans codegen sees this, unlike the Edict-generated
@@ -44,6 +47,7 @@ public sealed class SpanTrackerState : IEdictPersistedState
 public interface ISpanTrackerProbe : IGrainWithGuidKey
 {
     Task<int> GetReceivedAsync();
+    Task<Guid> GetLastCorrelationIdAsync();
 }
 
 public partial class SpanWorkflowSaga : EdictSaga<SpanWorkflowProgress>
@@ -61,10 +65,13 @@ public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTracker
     Task<EdictCommandResult> HandleAsync(SpanTrackerCommand command)
     {
         State.Received++;
+        State.LastCorrelationId = command.CorrelationId;
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
     public Task<int> GetReceivedAsync() => Task.FromResult(State.Received);
+
+    public Task<Guid> GetLastCorrelationIdAsync() => Task.FromResult(State.LastCorrelationId);
 }
 
 // Pushes an event directly onto the saga's stream so the test can inject a
