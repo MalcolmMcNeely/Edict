@@ -26,11 +26,13 @@ public sealed partial class OrdersByStatusProjectionBuilder
 }
 ```
 
-The application reads the projection through `IEdictTableRepository<T>`, never by talking to the store directly:
+The application reads the projection through `IEdictProjectionReader<TRow>`, never by talking to the store directly. The read routes through the projection grain, so the read API carries no storage detail:
 
 ```csharp
-OrderStatusRow? row = await tableRepository.GetAsync(orderId.ToString(), "status");
+OrderStatusRow? row = await projectionReader.GetAsync(orderId.ToString(), "status");
 ```
+
+The partition key is the projection's routing key — for a per-aggregate projection this is the aggregate's `[EdictRouteKey]` Guid, exactly what you would pass to read its row.
 
 ## Surface
 
@@ -39,7 +41,7 @@ OrderStatusRow? row = await tableRepository.GetAsync(orderId.ToString(), "status
 - **`GetRowKey(EdictEvent edictEvent)`** (`protected abstract string`) — derives the row key from the incoming event.
 - **`DefaultPartitionKey`** (`protected virtual string`) — defaults to the grain's primary key as a string (which equals the event's `[EdictRouteKey]` Guid for per-aggregate projections). Override for global-singleton projections that collapse every row into one partition.
 - **`CurrentRow`** (`protected TRow`) — the row loaded (or freshly constructed) before each `HandleAsync` call. Modifications captured into an `UpsertRow` outbox effect after the handler returns. The setter is `protected` so an `init`-only row type can be replaced wholesale.
-- **`IEdictTableStoreFactory`** is the framework-internal write seam; ctor-inject and forward to `base`. The application tier reads via **`IEdictTableRepository<T>`** (`GetAsync`, `QueryPartitionAsync`); the repository is read-only.
+- **`IEdictTableStoreFactory`** is the framework-internal store seam; ctor-inject and forward to `base`. The application tier reads via **`IEdictProjectionReader<TRow>`** (`GetAsync`, `QueryPartitionAsync`), which routes through the grain; the reader is read-only and is registered automatically by `AddEdict()`.
 
 The upsert is idempotent by `(PartitionKey, RowKey)` — at-least-once redelivery of the effect does not double-apply.
 

@@ -3,7 +3,8 @@
     Kind: Command,
     Type: PlaceOrderFromCartCommand,
     Data: {
-      OrderId: Guid_1,
+      CorrelationId: Guid_1,
+      OrderId: Guid_2,
       Skus: [
         SKU-A,
         SKU-B

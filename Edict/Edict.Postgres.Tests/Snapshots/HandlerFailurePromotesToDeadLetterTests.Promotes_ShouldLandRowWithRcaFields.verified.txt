@@ -10,5 +10,6 @@
   ExceptionType: System.InvalidOperationException,
   Reason: controllable publish failure (outbox conformance test),
   PayloadJson: {Scrubbed},
-  SourceEventId: {Scrubbed}
+  SourceEventId: {Scrubbed},
+  CorrelationId: {Scrubbed}
 }

@@ -4,6 +4,7 @@
       Kind: Command,
       Type: PlaceOrderCommand,
       Data: {
+        CorrelationId: Guid_Empty,
         CustomerReference: REF-001,
         OrderId: Guid_1
       }
@@ -12,6 +13,7 @@
       Kind: Event,
       Type: OrderPlacedEvent,
       Data: {
+        CorrelationId: Guid_2,
         OrderId: Guid_1
       }
     },
@@ -19,7 +21,7 @@
       Kind: Invocation,
       Type: OrderPlacedEvent,
       Data: {
-        EventId: Guid_2,
+        EventId: Guid_3,
         Outcome: Ran
       }
     }

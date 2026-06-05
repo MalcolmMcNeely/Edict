@@ -78,6 +78,11 @@ internal static class EdictWellKnownNames
     public const string EdictProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictProjectionBuilder";
 
+    // The concrete List species. Generics stripped, so the open generic
+    // EdictListProjectionBuilder<TRow> matches; the row type is its sole type arg.
+    public const string EdictListProjectionBuilderFqn =
+        "global::Edict.Core.Projections.EdictListProjectionBuilder";
+
     // ── Edict.Core.EventHandler ──────────────────────────────────────────────
     // EdictEventHandler closes EdictIdempotencyBase<EdictUnit> via the
     // payload-free shim, so the consumer's `partial class : EdictEventHandler`

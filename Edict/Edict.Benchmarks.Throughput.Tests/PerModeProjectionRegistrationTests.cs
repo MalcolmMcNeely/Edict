@@ -22,7 +22,7 @@ namespace Edict.Benchmarks.Throughput.Tests;
 /// has drained. The wrong-mode table is read directly through the Azurite
 /// substrate's <see cref="TableServiceClient"/> (registered on the client by
 /// <see cref="AzuriteSubstrateRuntime"/>) because the harness no longer
-/// registers the wrong-mode <see cref="IEdictTableRepository{TRow}"/>.
+/// registers the wrong-mode <see cref="IEdictTableWriteStore{TRow}"/>.
 /// </summary>
 public sealed class PerModeProjectionRegistrationTests
 {
@@ -38,7 +38,7 @@ public sealed class PerModeProjectionRegistrationTests
         {
             var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
             var eventRepository = cluster.Client.ServiceProvider
-                .GetRequiredService<IEdictTableRepository<BenchEventRow>>();
+                .GetRequiredService<IEdictTableWriteStore<BenchEventRow>>();
             var tableClient = cluster.Client.ServiceProvider
                 .GetRequiredService<TableServiceClient>();
 
@@ -70,7 +70,7 @@ public sealed class PerModeProjectionRegistrationTests
         {
             var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
             var counterRepository = cluster.Client.ServiceProvider
-                .GetRequiredService<IEdictTableRepository<BenchCounterRow>>();
+                .GetRequiredService<IEdictTableWriteStore<BenchCounterRow>>();
             var tableClient = cluster.Client.ServiceProvider
                 .GetRequiredService<TableServiceClient>();
 
@@ -91,7 +91,7 @@ public sealed class PerModeProjectionRegistrationTests
     }
 
     static async Task WaitForRowAsync<TRow>(
-        IEdictTableRepository<TRow> repository,
+        IEdictTableWriteStore<TRow> repository,
         string partitionKey,
         string rowKey,
         CancellationToken cancellationToken)
@@ -113,7 +113,7 @@ public sealed class PerModeProjectionRegistrationTests
     }
 
     static async Task WaitForCounterAsync(
-        IEdictTableRepository<BenchCounterRow> repository,
+        IEdictTableWriteStore<BenchCounterRow> repository,
         Guid aggregateId,
         CancellationToken cancellationToken)
     {

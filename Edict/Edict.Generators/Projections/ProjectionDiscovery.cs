@@ -74,7 +74,35 @@ internal static class ProjectionDiscovery
             ? "Edict.Generated"
             : grain.ContainingNamespace.ToDisplayString();
 
-        return new ProjectionGrainModel(grainNamespace, grain.Name, new EquatableArray<ProjectionHandlerModel>(handlers));
+        var grainFqn = grain.ToDisplayString(FullyQualified);
+        var grainTypeName = grainFqn.StartsWith("global::", System.StringComparison.Ordinal)
+            ? grainFqn.Substring("global::".Length)
+            : grainFqn;
+
+        return new ProjectionGrainModel(
+            grainNamespace,
+            grain.Name,
+            grainTypeName,
+            FindRowFqn(grain),
+            new EquatableArray<ProjectionHandlerModel>(handlers));
+    }
+
+    // The List species closes EdictListProjectionBuilder<TRow>; the row type is
+    // its sole type argument and keys the read facade's route. A future
+    // grain-state species derives from EdictProjectionBuilder without this base,
+    // so it carries no row route here.
+    static string? FindRowFqn(INamedTypeSymbol grain)
+    {
+        for (var current = grain.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.IsGenericType
+                && current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics) == EdictWellKnownNames.EdictListProjectionBuilderFqn)
+            {
+                return current.TypeArguments[0].ToDisplayString(FullyQualified);
+            }
+        }
+
+        return null;
     }
 
     static string? GetStreamName(INamedTypeSymbol eventType)
@@ -102,4 +130,7 @@ internal static class ProjectionDiscovery
 
     static readonly SymbolDisplayFormat FullyQualified =
         SymbolDisplayFormat.FullyQualifiedFormat;
+
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 }

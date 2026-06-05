@@ -5,14 +5,15 @@ using System.Reflection;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Contracts.Projections;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
-using Edict.Contracts.TableStorage;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
+using Edict.Core.Projections;
 using Edict.Telemetry;
 
 using FluentValidation;
@@ -69,6 +70,16 @@ public static class EdictServiceCollectionExtensions
         var discoveredAccessors = EventStreamAccessorDiscovery.Discover(materialised, logger);
         var accessors = new Dictionary<Type, EdictEventStreamAccessor>(discoveredAccessors);
 
+        var projectionReadRoutes = new Dictionary<Type, string>(
+            ProjectionReadRouteDiscovery.Discover(materialised, logger));
+
+        // EdictDeadLetterProjectionBuilder lives in Edict.Core where the Edict
+        // generator does not run, so the per-assembly registrar cannot contribute
+        // its route. Hand-register it: the framework owns this projection and its
+        // grain class is statically known. The value is the full type name Orleans
+        // matches GetGrain's class-name prefix against.
+        projectionReadRoutes[typeof(EdictDeadLetterEntry)] = typeof(EdictDeadLetterProjectionBuilder).FullName!;
+
         var discoveredTagWriters = EventTagWritersDiscovery.Discover(materialised, logger);
         var tagWriters = new Dictionary<Type, Action<EdictEvent, Activity>>(discoveredTagWriters);
 
@@ -83,6 +94,8 @@ public static class EdictServiceCollectionExtensions
         services.AddValidatorsFromAssemblies(materialised);
 
         services.AddSingleton(new CommandRouteResolver(routes));
+        services.AddSingleton(new ProjectionReadRouteResolver(projectionReadRoutes));
+        services.AddSingleton(typeof(IEdictProjectionReader<>), typeof(EdictProjectionReader<>));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
         services.AddSingleton<IEdictSender>(serviceProvider => new EdictSender(
@@ -95,13 +108,12 @@ public static class EdictServiceCollectionExtensions
         services.TryAddSingleton<IEdictMetricsCache>(serviceProvider =>
             new EdictMetricsCache(serviceProvider.GetRequiredService<TimeProvider>()));
 
-        // Factory-delegate registration so a host that wires the framework
-        // but has no dead-letter table seam still constructs its DI
-        // container — the IEdictTableRepository<EdictDeadLetterEntry>
-        // dependency only resolves when an operator queries the repository.
+        // The forensic facade reads the dead-letter projection through the grain
+        // like any other projection, so it needs no storage seam of its own —
+        // the IEdictProjectionReader resolves the singleton dead-letter grain.
         services.AddSingleton<IEdictDeadLetterRepository>(serviceProvider =>
-            new TableBackedDeadLetterRepository(
-                serviceProvider.GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>()));
+            new GrainBackedDeadLetterRepository(
+                serviceProvider.GetRequiredService<IEdictProjectionReader<EdictDeadLetterEntry>>()));
 
         // Receiver-side wiring lives on the framework's front door rather
         // than AddEdictOutbox: every EdictIdempotencyBase consumer resolves

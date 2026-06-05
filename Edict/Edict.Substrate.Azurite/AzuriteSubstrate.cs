@@ -199,12 +199,9 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
                 .AddEdictContractSerializer());
             client.Services.AddSingleton(tableClient);
             client.Services.AddEdict();
-            // Framework-level dead-letter repo lives in the substrate — every
-            // Edict consumer needs to read the dead-letter table. Workload-
-            // specific row repositories belong in the harness, not here.
-            client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
-                _ => new AzureTableRepository<EdictDeadLetterEntry>(
-                    tableClient, AzuriteSubstrate.DeadLetterTableName));
+            // The dead-letter forensic facade reads through the projection grain
+            // now, so AddEdict()'s auto-registered IEdictProjectionReader serves it
+            // with no substrate-side repository wiring.
         };
     }
 
@@ -220,12 +217,13 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
-    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
+    public IEdictTableWriteStore<TRow> CreateRowStore<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new()
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
-        return new AzureTableRepository<TRow>(serviceProvider.GetRequiredService<TableServiceClient>(), tableName);
+        var tableClient = serviceProvider.GetRequiredService<TableServiceClient>().GetTableClient(tableName);
+        return new AzureTableWriteStore<TRow>(tableClient);
     }
 
     public async ValueTask DisposeAsync()

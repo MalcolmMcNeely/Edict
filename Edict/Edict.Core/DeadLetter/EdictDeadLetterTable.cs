@@ -1,10 +1,9 @@
 namespace Edict.Core.DeadLetter;
 
 /// <summary>
-/// Stable public anchor for the dead-letter table's name. Consumers wire their
-/// admin-side <see cref="Contracts.TableStorage.IEdictTableRepository{T}"/> via
-/// <c>EdictDeadLetterTable.Name</c> so they never reference the framework's
-/// projection-builder grain class.
+/// Stable anchor for the dead-letter table's name — the partition every
+/// dead-letter row is written to and the singleton dead-letter projection grain
+/// reads back through <see cref="Contracts.DeadLetter.IEdictDeadLetterRepository"/>.
 /// </summary>
 public static class EdictDeadLetterTable
 {

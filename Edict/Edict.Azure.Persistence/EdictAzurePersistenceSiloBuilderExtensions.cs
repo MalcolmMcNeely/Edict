@@ -77,10 +77,6 @@ public static class EdictAzurePersistenceSiloBuilderExtensions
         silo.Services.AddSingleton<IEdictTableStoreFactory>(
             _ => new AzureTableWriteStoreFactory(tableClient));
 
-        var deadLetterTable = options.DeadLetterTableName;
-        silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
-            new AzureTableRepository<EdictDeadLetterEntry>(tableClient, deadLetterTable));
-
         // Contribute Azure storage fault classification (Table writes) to the
         // dead-letter RCA dimension. TryAddEnumerable keeps the agreeing
         // streaming-side entry a harmless overlap rather than a duplicate when

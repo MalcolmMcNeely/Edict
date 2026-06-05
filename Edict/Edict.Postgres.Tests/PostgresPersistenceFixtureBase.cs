@@ -58,8 +58,8 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
-    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
-        new PostgresTableRepository<T>(
+    public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
+        new PostgresTableWriteStore<T>(
             _dataSource,
             tableName,
             Cluster.Client.ServiceProvider.GetRequiredService<Serializer>());

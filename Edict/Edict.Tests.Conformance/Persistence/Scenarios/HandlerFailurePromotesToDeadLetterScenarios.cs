@@ -57,7 +57,7 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
         // The projection writes to its literal "deadletter" table — independent
         // of the fixture's per-collection DeadLetterTableName (which backs the
         // operator-facing repository facade).
-        var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(
+        var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(
             EdictDeadLetterTable.Name);
 
         await WaitUntilAsync(async () =>
@@ -85,7 +85,8 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
             .ScrubMember<EdictDeadLetterEntry>(e => e.TraceParent)
             .ScrubMember<EdictDeadLetterEntry>(e => e.PayloadJson)
             .ScrubMember<EdictDeadLetterEntry>(e => e.SourceGrainKey)
-            .ScrubMember<EdictDeadLetterEntry>(e => e.SourceEventId);
+            .ScrubMember<EdictDeadLetterEntry>(e => e.SourceEventId)
+            .ScrubMember<EdictDeadLetterEntry>(e => e.CorrelationId);
     }
 
     static async Task WaitUntilAsync(Func<Task<bool>> condition)

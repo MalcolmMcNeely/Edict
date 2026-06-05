@@ -42,7 +42,7 @@ public sealed class SaturationRunner
         {
             var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
             var counterRepository = cluster.Client.ServiceProvider
-                .GetRequiredService<IEdictTableRepository<BenchCounterRow>>();
+                .GetRequiredService<IEdictTableWriteStore<BenchCounterRow>>();
             var aggregatePool = Enumerable.Range(0, 1024)
                 .Select(_ => Guid.NewGuid())
                 .ToArray();
@@ -139,7 +139,7 @@ public sealed class SaturationRunner
     }
 
     static async Task<long> SumCountersAsync(
-        IEdictTableRepository<BenchCounterRow> repository,
+        IEdictTableWriteStore<BenchCounterRow> repository,
         Guid[] aggregatePool,
         CancellationToken cancellationToken)
     {

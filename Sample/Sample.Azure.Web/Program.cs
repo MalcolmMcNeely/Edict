@@ -1,20 +1,10 @@
-using Azure.Data.Tables;
-
-using Edict.Azure.Persistence.TableStorage;
-using Edict.Contracts.DeadLetter;
-using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
-using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
 using Edict.Telemetry;
 
 using Orleans.Serialization;
 
-using Sample.Contracts.Cart.Projections;
-using Sample.Contracts.Fulfillment.Projections;
-using Sample.Contracts.Orders.Projections;
-using Sample.Contracts.Payments.Projections;
 using Sample.ServiceDefaults;
 using Sample.Domain.Orders.CommandHandlers;
 using Sample.Web.Components;
@@ -40,28 +30,9 @@ builder.UseOrleansClient(client =>
     });
 });
 
-var tableConnectionString = builder.Configuration.GetConnectionString("tables")
-                            ?? "UseDevelopmentStorage=true";
-var tableServiceClient = new TableServiceClient(tableConnectionString);
-builder.Services.AddSingleton(tableServiceClient);
-builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(
-    _ => new AzureTableRepository<OrderStatusRow>(tableServiceClient, "ordersbystatus"));
-builder.Services.AddSingleton<IEdictTableRepository<CheckedOutCartRow>>(
-    _ => new AzureTableRepository<CheckedOutCartRow>(tableServiceClient, "checkedoutcarts"));
-builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(
-    _ => new AzureTableRepository<OrderOutcomeRow>(tableServiceClient, "orderoutcome"));
-builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(
-    _ => new AzureTableRepository<LineItemFulfillmentRow>(tableServiceClient, "lineitemfulfillment"));
-
-// The framework projection writes to the literal table named by
-// EdictDeadLetterTable.Name; AddEdictAzurePersistence's DeadLetterTableName option
-// configures the operator-facing repository facade but not the projection itself,
-// so the consumer-side read must target the literal table to see what the
-// projection actually wrote.
-builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
-    _ => new AzureTableRepository<EdictDeadLetterEntry>(
-        tableServiceClient, EdictDeadLetterTable.Name));
-
+// Projection reads route through the grain via IEdictProjectionReader<TRow>;
+// AddEdict() registers it open-generic plus the dead-letter forensic facade, so
+// the read tier needs no table-storage wiring of its own.
 builder.Services.AddEdict();
 
 builder.Services.AddSingleton<CurrentOrderTracker>();

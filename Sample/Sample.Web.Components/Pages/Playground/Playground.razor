@@ -10,8 +10,8 @@
 @using Sample.Domain.Settlement.Sagas
 @inject IEdictSender Sender
 @inject IClusterClient ClusterClient
-@inject IEdictTableRepository<CheckedOutCartRow> CheckedOutCarts
-@inject IEdictTableRepository<OrderStatusRow> OrdersByStatus
+@inject IEdictProjectionReader<CheckedOutCartRow> CheckedOutCarts
+@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
 @implements IDisposable
 
 <PageTitle>Edict — Playground</PageTitle>

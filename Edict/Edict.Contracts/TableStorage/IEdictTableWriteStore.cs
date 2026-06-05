@@ -3,10 +3,11 @@ using System.ComponentModel;
 namespace Edict.Contracts.TableStorage;
 
 /// <summary>
-/// Framework-internal write-store seam for table projections. The grain
-/// base owns the load→apply→writeback orchestration; this interface keeps the
-/// backing store trivial to implement. Application code depends only on
-/// <see cref="IEdictTableRepository{T}"/>.
+/// Framework-internal backing-store seam for table projections. The grain
+/// base owns the load→apply→writeback orchestration and serves reads on the
+/// consumer's behalf; this interface keeps the backing store trivial to
+/// implement. Consumers never type it — they read through the
+/// <c>IEdictProjectionReader&lt;TRow&gt;</c> facade, which routes through the grain.
 /// <para>
 /// Stays <c>public</c> only because the consumer-facing
 /// <c>EdictListProjectionBuilder&lt;TRow&gt;</c> ctor takes
@@ -20,6 +21,8 @@ namespace Edict.Contracts.TableStorage;
 public interface IEdictTableWriteStore<T> where T : class, new()
 {
     Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default);
 
     Task UpsertAsync(string partitionKey, string rowKey, T row, CancellationToken cancellationToken = default);
 }

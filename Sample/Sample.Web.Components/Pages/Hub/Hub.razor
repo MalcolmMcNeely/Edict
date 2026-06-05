@@ -8,8 +8,8 @@
 @using Sample.Web.Components.Simulator
 @using Sample.Web.Components.State
 @inject IEdictSender Sender
-@inject IEdictTableRepository<OrderStatusRow> OrdersByStatus
-@inject IEdictTableRepository<LineItemFulfillmentRow> FulfillmentRows
+@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
+@inject IEdictProjectionReader<LineItemFulfillmentRow> FulfillmentRows
 @inject IEdictDeadLetterRepository DeadLetterRepository
 @inject IDeterministicOrderPlacer FireOne
 @inject OrderSimulatorService Simulator

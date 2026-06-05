@@ -22,7 +22,7 @@ public abstract class TableProjectionConsumerRowKeyScenarios<TFixture>
     public async Task HandleAsync_ShouldUseConsumerSpecifiedRowKeyForRowCoordinates()
     {
         var orderId = Guid.NewGuid();
-        var repository = _fixture.GetTableRepository<OrderTableRow>("ordersummary");
+        var repository = _fixture.GetTableStore<OrderTableRow>("ordersummary");
 
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-C"));
 

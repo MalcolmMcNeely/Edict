@@ -68,7 +68,7 @@ public sealed class PostgresProviderUnitTests
         var rowKey = Guid.NewGuid().ToString();
         await store.UpsertAsync(partitionKey, rowKey, new OrderTableRow { OrderCount = 42 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var repository = new PostgresTableWriteStore<OrderTableRow>(_dataSource, tableName, _serializer);
         var row = await repository.GetAsync(partitionKey, rowKey);
         Assert.NotNull(row);
         Assert.Equal(42, row!.OrderCount);
@@ -86,7 +86,7 @@ public sealed class PostgresProviderUnitTests
         await store.UpsertAsync(partitionKey, "rk-b", new OrderTableRow { OrderCount = 2 });
         await store.UpsertAsync("other-pk", "rk-a", new OrderTableRow { OrderCount = 99 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var repository = new PostgresTableWriteStore<OrderTableRow>(_dataSource, tableName, _serializer);
         var a = await repository.GetAsync(partitionKey, "rk-a");
         var b = await repository.GetAsync(partitionKey, "rk-b");
         Assert.Equal(1, a!.OrderCount);
@@ -107,7 +107,7 @@ public sealed class PostgresProviderUnitTests
         }
         await store.UpsertAsync("other-pk", "rk-1", new OrderTableRow { OrderCount = 999 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var repository = new PostgresTableWriteStore<OrderTableRow>(_dataSource, tableName, _serializer);
         var rows = await repository.QueryPartitionAsync(partitionKey);
         Assert.Equal(5, rows.Count);
         Assert.Equal([1, 2, 3, 4, 5], rows.Select(r => r.OrderCount).OrderBy(c => c).ToArray());
@@ -127,7 +127,7 @@ public sealed class PostgresProviderUnitTests
         var rowKey = Guid.NewGuid().ToString();
         await factory.UpsertRowAsync(tableName, partitionKey, rowKey, new OrderTableRow { OrderCount = 13 });
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var repository = new PostgresTableWriteStore<OrderTableRow>(_dataSource, tableName, _serializer);
         var row = await repository.GetAsync(partitionKey, rowKey);
         Assert.NotNull(row);
         Assert.Equal(13, row!.OrderCount);
@@ -140,7 +140,7 @@ public sealed class PostgresProviderUnitTests
         var factory = new PostgresTableWriteStoreFactory(_dataSource, _serializer, _services);
         await factory.CreateAsync<OrderTableRow>(tableName);
 
-        var repository = new PostgresTableRepository<OrderTableRow>(_dataSource, tableName, _serializer);
+        var repository = new PostgresTableWriteStore<OrderTableRow>(_dataSource, tableName, _serializer);
         var row = await repository.GetAsync(Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
         Assert.Null(row);
     }
@@ -148,7 +148,7 @@ public sealed class PostgresProviderUnitTests
     [Fact]
     public async Task TableRepository_ShouldReturnEmpty_WhenTableDoesNotExist()
     {
-        var repository = new PostgresTableRepository<OrderTableRow>(
+        var repository = new PostgresTableWriteStore<OrderTableRow>(
             _dataSource, $"unit_nonexistent_{Guid.NewGuid():N}", _serializer);
 
         var rows = await repository.QueryPartitionAsync("anything");

@@ -124,7 +124,6 @@ public static class EdictPostgresSiloBuilderExtensions
             opt.ConnectionString = options.ConnectionString;
         });
 
-        var deadLetterTable = options.DeadLetterTableName;
         var claimCheckTable = options.ClaimCheckTableName;
 
         silo.Services.AddSingleton<IEdictTableStoreFactory>(serviceProvider =>
@@ -132,12 +131,6 @@ public static class EdictPostgresSiloBuilderExtensions
                 serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                 serviceProvider.GetRequiredService<Serializer>(),
                 serviceProvider));
-
-        silo.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
-            new PostgresTableRepository<EdictDeadLetterEntry>(
-                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-                deadLetterTable,
-                serviceProvider.GetRequiredService<Serializer>()));
 
         silo.Services.TryAddSingleton<IEdictClaimCheckStore>(serviceProvider =>
             new PostgresClaimCheckStore(

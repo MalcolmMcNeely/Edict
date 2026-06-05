@@ -51,13 +51,14 @@ public abstract class PersistenceConformanceFixture : IAsyncLifetime
     public abstract Task DisposeAsync();
 
     /// <summary>
-    /// Provider-bound read seam used by table-projection and dead-letter
+    /// Provider-bound store seam used by table-projection and dead-letter
     /// conformance scenarios to verify a row landed in the substrate's durable
-    /// store. Each substrate fixture returns its own
-    /// <see cref="IEdictTableRepository{T}"/> implementation; the scenario stays
+    /// store. Reads go store-direct (the right shape for verifying a write
+    /// landed, independent of the grain read path). Each substrate fixture
+    /// returns its own <see cref="IEdictTableWriteStore{T}"/>; the scenario stays
     /// substrate-neutral.
     /// </summary>
-    public abstract IEdictTableRepository<T> GetTableRepository<T>(string tableName) where T : class, new();
+    public abstract IEdictTableWriteStore<T> GetTableStore<T>(string tableName) where T : class, new();
 
     /// <summary>
     /// Provider-bound write seam used by table-backed conformance scenarios to

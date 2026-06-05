@@ -7,7 +7,7 @@ namespace Edict.Tests.Conformance.Persistence;
 /// <summary>
 /// End-to-end conformance proving the substrate's table-write seam: the
 /// projection grain writes via <c>IEdictTableStoreFactory</c>, and the row is
-/// readable back via the substrate's <c>IEdictTableRepository{T}</c>
+/// readable back via the substrate's <c>IEdictTableWriteStore{T}</c>
 /// implementation.
 /// </summary>
 public abstract class TableProjectionWritesRowScenarios<TFixture>
@@ -24,7 +24,7 @@ public abstract class TableProjectionWritesRowScenarios<TFixture>
     public async Task HandleAsync_ShouldWriteRowReadableViaAzureTableRepository()
     {
         var orderId = Guid.NewGuid();
-        var repository = _fixture.GetTableRepository<OrderTableRow>("orderprojection");
+        var repository = _fixture.GetTableStore<OrderTableRow>("orderprojection");
 
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-E2E"));
 

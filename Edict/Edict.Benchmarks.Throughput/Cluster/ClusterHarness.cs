@@ -28,7 +28,7 @@ namespace Edict.Benchmarks.Throughput.Cluster;
 /// the consumer write pressure each event drives. The silo configurator
 /// removes the wrong-mode projection from <see cref="GrainTypeOptions"/>
 /// before the manifest materialises; the client configurator registers
-/// only the matching <see cref="IEdictTableRepository{TRow}"/>.
+/// only the matching <see cref="IEdictTableWriteStore{TRow}"/>.
 /// </para>
 /// </summary>
 public static class ClusterHarness
@@ -123,21 +123,22 @@ public static class ClusterHarness
                 runtime.ConfigureClient(clientBuilder);
                 // Workload-specific repository — the substrate library stays
                 // workload-free, so the harness registers its own row type
-                // here. The runtime's CreateRowRepository<T> seam picks the
-                // substrate-correct repo (AzureTableRepository on Azurite,
-                // PostgresTableRepository on Kafka+Postgres) without the
-                // harness branching on substrate kind. Only the mode's row
-                // type registers — the closed-loop sweep reads BenchEventRow,
-                // the saturation pass reads BenchCounterRow.
+                // here. The runtime's CreateRowStore<T> seam picks the
+                // substrate-correct store (AzureTableWriteStore on Azurite,
+                // PostgresTableWriteStore on Kafka+Postgres) without the
+                // harness branching on substrate kind. Reads go store-direct
+                // (off-grain — the right shape for a latency measurement). Only
+                // the mode's row type registers — the closed-loop sweep reads
+                // BenchEventRow, the saturation pass reads BenchCounterRow.
                 switch (Mode)
                 {
                     case SubstrateStartMode.ClosedLoop:
-                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchEventRow>>(serviceProvider =>
-                            runtime.CreateRowRepository<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
+                        clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchEventRow>>(serviceProvider =>
+                            runtime.CreateRowStore<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
                         break;
                     case SubstrateStartMode.Saturation:
-                        clientBuilder.Services.AddSingleton<IEdictTableRepository<BenchCounterRow>>(serviceProvider =>
-                            runtime.CreateRowRepository<BenchCounterRow>(serviceProvider, BenchCounterProjectionBuilder.TableNameLiteral));
+                        clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchCounterRow>>(serviceProvider =>
+                            runtime.CreateRowStore<BenchCounterRow>(serviceProvider, BenchCounterProjectionBuilder.TableNameLiteral));
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode.");

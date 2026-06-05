@@ -1,13 +1,13 @@
 # Azure persistence configuration
 
-`EdictAzurePersistenceOptions` backs `AddEdictAzurePersistence`, the single extension that chains Orleans Azure grain-storage, reminders, and table-storage plus the Edict provider seams (dead-letter table repository, table write-store factory). For the `Add*` call shape, the client-side setup, the four internally-wired Orleans pieces, and the framework-author gotchas, see [wiring/azure-persistence.md](../usage/wiring/azure-persistence.md).
+`EdictAzurePersistenceOptions` backs `AddEdictAzurePersistence`, the single extension that chains Orleans Azure grain-storage, reminders, and table-storage plus the Edict provider seam (the table write-store factory). For the `Add*` call shape, the client-side setup, the four internally-wired Orleans pieces, and the framework-author gotchas, see [wiring/azure-persistence.md](../usage/wiring/azure-persistence.md).
 
 ## `EdictAzurePersistenceOptions`
 
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `GrainStateContainerName` | `"edict-state"` | Azure Blob container holding the Edict grain-state slot. Single-blob ETag atomicity covers the `[PersistentState("state", "edict-state")]` slot every framework grain base writes through. |
-| `DeadLetterTableName` | `"edict-dead-letter"` | Backs the `IEdictTableRepository<EdictDeadLetterEntry>` registered by this extension. Does **not** drive where the projection writes — see the gotcha on the wiring page. |
+| `DeadLetterTableName` | `"edict-dead-letter"` | Vestigial. Dead-letter reads now route through the projection grain (which reads the literal `"deadletter"` table), so this option no longer drives reads or writes — see the gotcha on the wiring page. |
 | `TableServiceClient` | `null` | Optional `TableServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
 | `BlobServiceClient` | `null` | Optional `BlobServiceClient` for grain-state blobs. Same DI-precedence rule. |
 

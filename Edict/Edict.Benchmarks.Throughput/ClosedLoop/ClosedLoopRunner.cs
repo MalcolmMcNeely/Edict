@@ -78,7 +78,7 @@ public sealed class ClosedLoopRunner
             substrate,
             serviceProvider => new EventsScenario(
                 serviceProvider.GetRequiredService<IEdictSender>(),
-                serviceProvider.GetRequiredService<IEdictTableRepository<BenchEventRow>>()),
+                serviceProvider.GetRequiredService<IEdictTableWriteStore<BenchEventRow>>()),
             parallelisms, warmup, measurement, cancellationToken);
 
     Task<IReadOnlyList<ThroughputResults>> RunSweepAsync(

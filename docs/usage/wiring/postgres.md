@@ -1,6 +1,6 @@
 # Postgres wiring
 
-The Postgres persistence side ships in `Edict.Postgres` and is wired through one `ISiloBuilder` extension, `AddEdictPostgresPersistence`. It registers `EdictPostgresGrainStorage` for the `edict-state` slot, the Postgres reminder service, the table write-store factory, the dead-letter table repository, the Postgres-backed claim-check store, and idempotently runs the embedded DDL bootstrap. Pair with `AddEdictKafkaStreams` or `AddEdictAzureStreams` for the wire side.
+The Postgres persistence side ships in `Edict.Postgres` and is wired through one `ISiloBuilder` extension, `AddEdictPostgresPersistence`. It registers `EdictPostgresGrainStorage` for the `edict-state` slot, the Postgres reminder service, the table write-store factory, the Postgres-backed claim-check store, and idempotently runs the embedded DDL bootstrap. Pair with `AddEdictKafkaStreams` or `AddEdictAzureStreams` for the wire side.
 
 ## Silo setup
 
@@ -74,30 +74,17 @@ The extension registers `EdictPostgresGrainStorage` for the `edict-state` slot, 
 
 ### One `NpgsqlDataSource` singleton serves every Postgres call-site
 
-The extension builds one `NpgsqlDataSource` at silo wiring time and registers it as a singleton. Grain storage, table repositories, claim-check store, and the DDL bootstrap all run against this one data source so the connection pool is owned in a single place. Per ADR 0035, this matters operationally: `NpgsqlDataSource` exposes `db.client.connection.*` OpenTelemetry instruments only when one process owns one data source. The framework registers it via factory (`AddSingleton<NpgsqlDataSource>(_ => dataSource)`) so the container disposes it on teardown — `AddSingleton(instance)` would skip `IDisposable` tracking and leak the pool.
+The extension builds one `NpgsqlDataSource` at silo wiring time and registers it as a singleton. Grain storage, the projection store, claim-check store, and the DDL bootstrap all run against this one data source so the connection pool is owned in a single place. Per ADR 0035, this matters operationally: `NpgsqlDataSource` exposes `db.client.connection.*` OpenTelemetry instruments only when one process owns one data source. The framework registers it via factory (`AddSingleton<NpgsqlDataSource>(_ => dataSource)`) so the container disposes it on teardown — `AddSingleton(instance)` would skip `IDisposable` tracking and leak the pool.
 
 Orleans' shipped `AdoNetGrainStorage` (used for `PubSubStore`) owns its own connection-string-keyed Npgsql pool. That's two pools per silo: Edict's tuned one plus Orleans' default-sized one for `PubSubStore` and reminders. The Orleans pool is not load-bearing for command throughput and does not need to match Edict's tuning.
 
-### `DeadLetterTableName` does not control where the projection writes
+### `DeadLetterTableName` no longer drives reads
 
-The auto-wired projection writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict_dead_letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
-
-```csharp
-using Edict.Core.DeadLetter;
-using Edict.Postgres.TableStorage;
-
-builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
-    new PostgresTableRepository<EdictDeadLetterEntry>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-        EdictDeadLetterTable.Name,
-        serviceProvider.GetRequiredService<Serializer>()));
-```
-
-The Sample web project does exactly this. The framework option will stay until the projection is refactored to honour it.
+The auto-wired dead-letter projection writes every row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`. Dead-letter reads now go through the projection grain via the auto-registered `IEdictDeadLetterRepository`, which reads that literal table on the operator's behalf, so a consumer reads dead-letters with no storage wiring of their own and there is no table-name mismatch to work around. The `DeadLetterTableName` option is vestigial (it once named the operator-facing repository's table) and no longer affects reads.
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Table Repository`, `Claim Check`.
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`, `Claim Check`.
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [claim-check.md](../concepts/claim-check.md), [idempotency.md](../concepts/idempotency.md).
 - Configuration — [postgres.md](../../configuration/postgres.md) — the options table, connection-string format, and pool-sizing math.
 - Wiring — [kafka.md](kafka.md), [azure-streaming.md](azure-streaming.md), [azure-persistence.md](azure-persistence.md).

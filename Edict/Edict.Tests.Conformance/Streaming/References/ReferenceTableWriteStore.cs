@@ -13,6 +13,9 @@ sealed class ReferenceTableWriteStore<T>(ReferenceTableStoreFactory factory, str
     public Task<T?> GetAsync(string partitionKey, string rowKey, CancellationToken cancellationToken = default) =>
         Task.FromResult(factory.Get<T>(tableName, partitionKey, rowKey));
 
+    public Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default) =>
+        Task.FromResult(factory.GetPartition<T>(tableName, partitionKey));
+
     public Task UpsertAsync(string partitionKey, string rowKey, T row, CancellationToken cancellationToken = default)
     {
         factory.Upsert(tableName, partitionKey, rowKey, row);

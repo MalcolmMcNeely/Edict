@@ -15,7 +15,7 @@ public interface IInMemoryUpsert
     void UpsertObject(string partitionKey, string rowKey, object row);
 }
 
-public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
+public sealed class InMemoryTableWriteStore<T> : IEdictTableWriteStore<T>, IInMemoryUpsert
     where T : class, new()
 {
     public Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default) =>

@@ -59,7 +59,7 @@ builder.UseOrleansClient(client =>
 builder.Services.AddEdict();
 ```
 
-A consumer reading projection or dead-letter rows from the client process must also register the read-side `IEdictTableRepository<T>` for each row type — see the dead-letter gotcha below.
+A consumer reading projection or dead-letter rows from the client process needs no read-side storage wiring: `AddEdict()` registers `IEdictProjectionReader<TRow>` (open-generic) and the grain-backed `IEdictDeadLetterRepository`, both of which route reads through the projection grain.
 
 ## Configuration
 
@@ -74,30 +74,20 @@ The extension wires four Orleans pieces internally that the consumer does not co
 
 ## Gotchas
 
-### `DeadLetterTableName` does not control where the projection writes
+### `DeadLetterTableName` no longer drives reads
 
-The auto-wired projection writes every dead-letter row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`, used as both the table name and the singleton partition key. The `DeadLetterTableName` option on this extension wires the operator-facing `IEdictTableRepository<EdictDeadLetterEntry>` to read from whatever you name there (default `"edict-dead-letter"`), so by default the repository looks at an empty table while the projection populates `"deadletter"`. A consumer reading dead-letter rows must register their own repository pointing at the literal:
-
-```csharp
-using Edict.Core.DeadLetter;
-
-builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(
-    _ => new AzureTableRepository<EdictDeadLetterEntry>(
-        tableServiceClient, EdictDeadLetterTable.Name));
-```
-
-The Sample web project does exactly this. The framework option will stay until the projection is refactored to honour it.
+The auto-wired dead-letter projection writes every row to a literal table named `"deadletter"` — the constant `EdictDeadLetterTable.Name`, used as both the table name and the singleton partition key. Dead-letter reads now go through the projection grain via the auto-registered `IEdictDeadLetterRepository`, which reads that literal table on the operator's behalf, so a consumer reads dead-letters with no storage wiring of their own and there is no table-name mismatch to work around. The `DeadLetterTableName` option is vestigial (it once named the operator-facing repository's table) and no longer affects reads.
 
 ### Azurite is not bit-for-bit Azure Table Storage
 
 Azurite's table emulator is close enough that the conformance battery runs against it, but two differences bite:
 
-- Azurite accepts table names Azure rejects. Azure Table names must match `^[A-Za-z][A-Za-z0-9]{2,62}$` — no hyphens, no underscores. The default `"edict-dead-letter"` works on Azurite and fails on real Azure; the literal projection table `"deadletter"` works on both. If you override `DeadLetterTableName`, keep it Azure-compliant.
+- Azurite accepts table names Azure rejects. Azure Table names must match `^[A-Za-z][A-Za-z0-9]{2,62}$` — no hyphens, no underscores. The dead-letter projection's literal table `"deadletter"` is Azure-compliant; any projection `TableName` you author must be too.
 - Azurite's per-property throttling and partition-server load shedding are weaker than real Azure. Throughput sweeps that pass against Azurite may surface real-Azure throttling that the local battery does not.
 
 ## See also
 
-- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Table Repository`.
+- `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`.
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [projection-builders.md](../concepts/projection-builders.md), [idempotency.md](../concepts/idempotency.md).
 - Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).

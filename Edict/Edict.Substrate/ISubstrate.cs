@@ -37,13 +37,13 @@ public interface ISubstrateRuntime : IAsyncDisposable
     Action<IClientBuilder> ConfigureClient { get; }
 
     /// <summary>
-    /// Builds a substrate-correct <see cref="IEdictTableRepository{T}"/> for a
+    /// Builds a substrate-correct <see cref="IEdictTableWriteStore{T}"/> for a
     /// workload-specific row type. The substrate stays workload-free — it does
     /// not know <typeparamref name="TRow"/> — but it owns the choice of which
-    /// concrete repo to instantiate against the table name the caller provides.
-    /// Lets the throughput harness register one row repository per workload
-    /// without branching on the active substrate.
+    /// concrete store to instantiate against the table name the caller provides.
+    /// Lets the throughput harness read rows store-direct (off-grain, the right
+    /// shape for a latency measurement) without branching on the active substrate.
     /// </summary>
-    IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
+    IEdictTableWriteStore<TRow> CreateRowStore<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new();
 }

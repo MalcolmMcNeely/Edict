@@ -56,8 +56,8 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
-    public override IEdictTableRepository<T> GetTableRepository<T>(string tableName) =>
-        new AzureTableRepository<T>(_tableServiceClient, tableName);
+    public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
+        new AzureTableWriteStore<T>(_tableServiceClient.GetTableClient(tableName));
 
     public override IEdictTableStoreFactory TableStoreFactory =>
         new AzureTableWriteStoreFactory(_tableServiceClient);
@@ -158,9 +158,6 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
-            siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
-                new AzureTableRepository<EdictDeadLetterEntry>(
-                    ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton(ctx.ClockOverride ?? TimeProvider.System);
             siloBuilder.Services.AddSingleton(ctx.ClaimCheckStore);
 

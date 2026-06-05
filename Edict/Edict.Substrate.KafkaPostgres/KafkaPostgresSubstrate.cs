@@ -212,11 +212,9 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
                 .AddEdictContractSerializer());
             client.Services.AddEdict();
             client.Services.AddSingleton(dataSource);
-            client.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
-                new PostgresTableRepository<EdictDeadLetterEntry>(
-                    serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-                    KafkaPostgresSubstrate.DeadLetterTableName,
-                    serviceProvider.GetRequiredService<Serializer>()));
+            // The dead-letter forensic facade reads through the projection grain
+            // now, so AddEdict()'s auto-registered IEdictProjectionReader serves it
+            // with no substrate-side repository wiring.
         };
     }
 
@@ -239,12 +237,12 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
 
     public Action<IClientBuilder> ConfigureClient { get; }
 
-    public IEdictTableRepository<TRow> CreateRowRepository<TRow>(IServiceProvider serviceProvider, string tableName)
+    public IEdictTableWriteStore<TRow> CreateRowStore<TRow>(IServiceProvider serviceProvider, string tableName)
         where TRow : class, new()
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
-        return new PostgresTableRepository<TRow>(
+        return new PostgresTableWriteStore<TRow>(
             _dataSource,
             tableName,
             serviceProvider.GetRequiredService<Serializer>());

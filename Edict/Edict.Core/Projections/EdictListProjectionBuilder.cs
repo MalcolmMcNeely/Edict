@@ -78,6 +78,22 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
     }
 
     /// <summary>
+    /// Serves a consumer point-get through the grain. The store partition is
+    /// always this grain's <see cref="DefaultPartitionKey"/> — the read facade
+    /// addresses the grain by its routing key, so the caller's partition and the
+    /// grain key coincide for per-aggregate projections.
+    /// </summary>
+    public override async Task<object?> EdictReadRowAsync(string rowKey) =>
+        await _writeStore!.GetAsync(DefaultPartitionKey, rowKey);
+
+    /// <summary>Serves a consumer partition-query through the grain.</summary>
+    public override async Task<IReadOnlyList<object>> EdictReadPartitionAsync()
+    {
+        var rows = await _writeStore!.QueryPartitionAsync(DefaultPartitionKey);
+        return rows.Cast<object>().ToList();
+    }
+
+    /// <summary>
     /// Wraps every handler call with load-apply-stage. The base
     /// <see cref="EdictProjectionBuilder.DispatchEventAsync{TEvent}"/> default is a
     /// direct handler call; this override loads the row into a per-invocation

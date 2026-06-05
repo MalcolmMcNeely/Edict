@@ -164,7 +164,7 @@ public class PublicSurfaceAllowListTests
     [Fact]
     public void EdictAzurePersistence_PublicTypesMatchAllowList()
     {
-        var azurePersistenceAssembly = typeof(AzureTableRepository<>).Assembly;
+        var azurePersistenceAssembly = typeof(AzureTableWriteStore<>).Assembly;
         var actual = azurePersistenceAssembly
             .GetExportedTypes()
             .Where(type => !type.IsNested)
@@ -279,16 +279,17 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Events.EdictEventEnvelope",
         "Edict.Contracts.Events.EdictStreamAttribute",
         "Edict.Contracts.Persistence.IEdictPersistedState",
+        "Edict.Contracts.Projections.IEdictProjectionReader`1",
         "Edict.Contracts.Routing.EdictEventStreamAccessor",
         "Edict.Contracts.Routing.EdictEventStreamsAttribute",
         "Edict.Contracts.Routing.EdictEventTagWritersAttribute",
+        "Edict.Contracts.Routing.EdictProjectionReadRoutesAttribute",
         "Edict.Contracts.Routing.EdictRoutesAttribute",
         "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute",
         "Edict.Contracts.Schedules.EdictSchedule",
         "Edict.Contracts.Schedules.EdictScheduleMessage",
         "Edict.Contracts.Schedules.EdictScheduleResult",
         "Edict.Contracts.Sending.IEdictSender",
-        "Edict.Contracts.TableStorage.IEdictTableRepository`1",
         "Edict.Contracts.TableStorage.IEdictTableWriteStore`1",
         "Edict.Contracts.Telemetry.EdictTelemeterizedAttribute",
     };
@@ -327,6 +328,9 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Outbox.UpsertRowEffect", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Projections.EdictProjectionBuilder",
         "Edict.Core.Projections.EdictListProjectionBuilder`1",
+        "Edict.Core.Projections.EdictProjectionReader`1", // [EditorBrowsable(Never)] facade; public for open-generic DI registration.
+        "Edict.Core.Projections.EdictUnreadableProjectionException",
+        "Edict.Core.Projections.EdictUnsupportedProjectionReadException",
         "Edict.Core.Projections.IEdictProjectionBuilder",
         "Edict.Core.Sagas.EdictSaga`1",
         "Edict.Core.Sagas.IEdictSaga",
@@ -346,6 +350,12 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Idempotency.Copier_IdempotencyState",
         "OrleansCodeGen.Edict.Core.Idempotency.Copier_Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
         "OrleansCodeGen.Edict.Core.Idempotency.Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
+        "OrleansCodeGen.Edict.Core.Projections.Codec_Invokable_IEdictProjectionBuilder_GrainReference_321AF0F4",
+        "OrleansCodeGen.Edict.Core.Projections.Codec_Invokable_IEdictProjectionBuilder_GrainReference_A1AB905C",
+        "OrleansCodeGen.Edict.Core.Projections.Copier_Invokable_IEdictProjectionBuilder_GrainReference_321AF0F4",
+        "OrleansCodeGen.Edict.Core.Projections.Copier_Invokable_IEdictProjectionBuilder_GrainReference_A1AB905C",
+        "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_321AF0F4",
+        "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_A1AB905C",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_GrainEnvelope`1",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxEntry",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxSlice",
@@ -381,7 +391,7 @@ public class PublicSurfaceAllowListTests
     {
         "Edict.Azure.Persistence.EdictAzurePersistenceOptions",
         "Edict.Azure.Persistence.EdictAzurePersistenceSiloBuilderExtensions",
-        "Edict.Azure.Persistence.TableStorage.AzureTableRepository`1",
+        "Edict.Azure.Persistence.TableStorage.AzureTableWriteStore`1",
     };
 
     static readonly HashSet<string> EdictAzureStreamingAllowList = new(StringComparer.Ordinal)
@@ -396,7 +406,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Postgres.EdictPostgresPersistenceOptions",
         "Edict.Postgres.EdictPostgresSiloBuilderExtensions",
         "Edict.Postgres.EdictPostgresStorageException",
-        "Edict.Postgres.TableStorage.PostgresTableRepository`1",
+        "Edict.Postgres.TableStorage.PostgresTableWriteStore`1",
         "OrleansCodeGen.Edict.Postgres.Codec_EdictPostgresStorageException",
         "OrleansCodeGen.Edict.Postgres.Copier_EdictPostgresStorageException",
     };

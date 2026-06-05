@@ -18,12 +18,12 @@ public sealed class EventsScenario : IClosedLoopScenario
     static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(5);
 
     readonly IEdictSender _sender;
-    readonly IEdictTableRepository<BenchEventRow> _rowRepository;
+    readonly IEdictTableWriteStore<BenchEventRow> _rowStore;
 
-    public EventsScenario(IEdictSender sender, IEdictTableRepository<BenchEventRow> rowRepository)
+    public EventsScenario(IEdictSender sender, IEdictTableWriteStore<BenchEventRow> rowStore)
     {
         _sender = sender;
-        _rowRepository = rowRepository;
+        _rowStore = rowStore;
     }
 
     public string Name => "Command → Event delivery";
@@ -40,7 +40,7 @@ public sealed class EventsScenario : IClosedLoopScenario
         var partitionKey = aggregateId.ToString();
         while (!cancellationToken.IsCancellationRequested)
         {
-            var row = await _rowRepository.GetAsync(partitionKey, rowKey, cancellationToken);
+            var row = await _rowStore.GetAsync(partitionKey, rowKey, cancellationToken);
             if (row is not null)
             {
                 return;

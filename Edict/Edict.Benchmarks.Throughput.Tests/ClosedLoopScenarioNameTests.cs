@@ -15,7 +15,7 @@ public sealed class ClosedLoopScenarioNameTests
     [Fact]
     public void EventsScenario_Name_ShouldReadCommandToEventDelivery()
     {
-        var scenario = new EventsScenario(sender: null!, rowRepository: null!);
+        var scenario = new EventsScenario(sender: null!, rowStore: null!);
 
         Assert.Equal("Command → Event delivery", scenario.Name);
     }

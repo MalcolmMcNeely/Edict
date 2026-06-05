@@ -31,7 +31,7 @@ public class TypePlacementTests
 {
     static readonly DomainArchitecture Architecture = new ArchLoader()
         .LoadAssemblies(
-            typeof(AzureTableRepository<>).Assembly,
+            typeof(AzureTableWriteStore<>).Assembly,
             typeof(EdictAzureStreamsOptions).Assembly,
             typeof(EdictCommand).Assembly,
             typeof(EdictIdempotencyBase).Assembly,
@@ -71,10 +71,10 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void IEdictTableRepository_ShouldResideInEdictContracts()
+    public void IEdictProjectionReader_ShouldResideInEdictContracts()
     {
-        var rule = Interfaces().That().HaveNameStartingWith("IEdictTableRepository")
-            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.TableStorage$");
+        var rule = Interfaces().That().HaveNameStartingWith("IEdictProjectionReader")
+            .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Projections$");
 
         rule.Check(Architecture);
     }
@@ -455,9 +455,9 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void AzureTableRepository_ShouldResideInEdictAzurePersistence()
+    public void AzureTableWriteStore_ShouldResideInEdictAzurePersistence()
     {
-        var rule = Classes().That().HaveNameStartingWith("AzureTableRepository")
+        var rule = Classes().That().HaveNameStartingWith("AzureTableWriteStore")
             .Should().ResideInNamespaceMatching(@"^Edict\.Azure\.Persistence\.TableStorage$");
 
         rule.Check(Architecture);
@@ -518,9 +518,9 @@ public class TypePlacementTests
     }
 
     [Fact]
-    public void PostgresTableRepository_ShouldResideInEdictPostgres()
+    public void PostgresTableWriteStore_ShouldResideInEdictPostgres()
     {
-        var rule = Classes().That().HaveNameStartingWith("PostgresTableRepository")
+        var rule = Classes().That().HaveNameStartingWith("PostgresTableWriteStore")
             .Should().ResideInNamespaceMatching(@"^Edict\.Postgres\.TableStorage$");
 
         rule.Check(Architecture);

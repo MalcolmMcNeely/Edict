@@ -50,7 +50,7 @@ public abstract class UnregisteredTypePromotesToDeadLetterScenarios<TFixture>
             return await probe.GetPendingOutboxCountAsync() == 0;
         });
 
-        var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(
+        var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(
             EdictDeadLetterTable.Name);
 
         await WaitUntilAsync(async () =>

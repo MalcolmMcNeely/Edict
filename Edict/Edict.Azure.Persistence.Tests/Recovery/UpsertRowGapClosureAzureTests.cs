@@ -14,8 +14,8 @@ public sealed class UpsertRowGapClosureAzureTests(AzurePersistenceRecoveryFixtur
 
         var publisher = fixture.Cluster.GrainFactory.GetGrain<IAzureStreamPublisher>(orderId);
         var probe = fixture.Cluster.GrainFactory.GetGrain<IAzureRecoverableProbe>(orderId);
-        var repository = new AzureTableRepository<AzureRecoverableOrderRow>(
-            fixture.TableServiceClient, "azurerecoverableorderprojection");
+        var repository = new AzureTableWriteStore<AzureRecoverableOrderRow>(
+            fixture.TableServiceClient.GetTableClient("azurerecoverableorderprojection"));
 
         var edictEvent = new AzureRecoverableOrderPlacedEvent(orderId) with
         {

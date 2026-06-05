@@ -8,7 +8,7 @@ namespace Edict.Benchmarks.Throughput.Workload;
 /// <c>[EdictRouteKey]</c> and becomes the projection partition key.
 /// <c>PollKey</c> is copied from <see cref="BenchPublishCommand"/> by
 /// <see cref="BenchAggregateHandler"/> and becomes the projection row key,
-/// so the issuer's <c>IEdictTableRepository.GetAsync</c> poll waits for the
+/// so the issuer's <c>IEdictTableWriteStore.GetAsync</c> poll waits for the
 /// row written by this specific send.
 /// </summary>
 [EdictStream("Bench")]

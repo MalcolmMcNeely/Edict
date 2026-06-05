@@ -34,6 +34,15 @@ public sealed class ReferenceTableStoreFactory : IEdictTableStoreFactory
     internal T? Get<T>(string tableName, string partitionKey, string rowKey) where T : class =>
         _rows.TryGetValue(Key(tableName, partitionKey, rowKey), out var row) ? (T)row : null;
 
+    internal IReadOnlyList<T> GetPartition<T>(string tableName, string partitionKey) where T : class
+    {
+        var prefix = $"{tableName}|{partitionKey}|";
+        return _rows
+            .Where(entry => entry.Key.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(entry => (T)entry.Value)
+            .ToList();
+    }
+
     internal void Upsert<T>(string tableName, string partitionKey, string rowKey, T row) where T : class =>
         _rows[Key(tableName, partitionKey, rowKey)] = row;
 }

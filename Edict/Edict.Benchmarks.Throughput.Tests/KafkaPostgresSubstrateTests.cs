@@ -1,8 +1,6 @@
 using Confluent.Kafka;
 
 using Edict.Benchmarks.Throughput.Workload;
-using Edict.Contracts.DeadLetter;
-using Edict.Contracts.TableStorage;
 using Edict.Core.Serialization;
 using Edict.Postgres.TableStorage;
 using Edict.Substrate;
@@ -22,12 +20,12 @@ namespace Edict.Benchmarks.Throughput.Tests;
 public sealed class KafkaPostgresSubstrateTests
 {
     [Fact]
-    public async Task Runtime_CreateRowRepository_ReadsBackPreloadedBenchEventRow()
+    public async Task Runtime_CreateRowStore_ReadsBackPreloadedBenchEventRow()
     {
         // Postgres mirror of the Azurite seam test — proves the harness's
-        // generic factory call returns a PostgresTableRepository on Kafka +
-        // Postgres and reads back a BenchEventRow seeded directly through the
-        // write-store. The Events scenario's completion poll rides this exact
+        // generic CreateRowStore<T> call returns a PostgresTableWriteStore on
+        // Kafka + Postgres and reads back a BenchEventRow seeded directly through
+        // the write-store. The Events scenario's completion poll rides this exact
         // path during a Kafka × Postgres throughput sweep.
         var substrate = new KafkaPostgresSubstrate();
         await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
@@ -49,17 +47,17 @@ public sealed class KafkaPostgresSubstrateTests
         var rowKey = Guid.NewGuid().ToString("N");
         await store.UpsertAsync(partitionKey, rowKey, new BenchEventRow());
 
-        var repository = runtime.CreateRowRepository<BenchEventRow>(
+        var harnessStore = runtime.CreateRowStore<BenchEventRow>(
             serviceProvider, BenchProjectionBuilder.TableNameLiteral);
 
-        var row = await repository.GetAsync(partitionKey, rowKey);
+        var row = await harnessStore.GetAsync(partitionKey, rowKey);
 
         Assert.NotNull(row);
-        Assert.IsType<PostgresTableRepository<BenchEventRow>>(repository);
+        Assert.IsType<PostgresTableWriteStore<BenchEventRow>>(harnessStore);
     }
 
     [Fact]
-    public async Task Runtime_SiloCallback_WiresKafkaStreamsAtRuntimeBootstrap_AndPostgresDeadLetterRepoReadsBackSeededRow()
+    public async Task Runtime_SiloCallback_WiresKafkaStreamsAtRuntimeBootstrap()
     {
         var substrate = new KafkaPostgresSubstrate();
         await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(CancellationToken.None);
@@ -88,40 +86,6 @@ public sealed class KafkaPostgresSubstrateTests
                     var metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
                     Assert.NotEmpty(metadata.Brokers);
                 }
-
-                // Persistence half: seed a dead-letter row through Postgres and
-                // assert the substrate-published repository reads it back.
-                // Postgres seeding needs the silo's Serializer for the on-disk
-                // payload format, so seeding happens post-deploy (unlike the
-                // Azurite mirror which seeds raw TableEntity rows).
-                var serializer = cluster.ServiceProvider.GetRequiredService<Serializer>();
-                await using var dataSource = new NpgsqlDataSourceBuilder(runtime.PostgresConnectionString).Build();
-                var factory = new PostgresTableWriteStoreFactory(
-                    dataSource, serializer);
-                var store = await factory.CreateAsync<EdictDeadLetterEntry>(
-                    KafkaPostgresSubstrate.DeadLetterTableName);
-                var partitionKey = Guid.NewGuid().ToString("N");
-                var rowKey = Guid.NewGuid().ToString("N");
-                await store.UpsertAsync(partitionKey, rowKey, new EdictDeadLetterEntry
-                {
-                    EntryId = Guid.NewGuid(),
-                    Kind = "PublishEvent",
-                    AttemptCount = 3,
-                    DeadLetteredAt = DateTimeOffset.UtcNow,
-                    SourceGrainKey = "grain-key",
-                    SourceGrainType = "Grain.Type",
-                    EffectTarget = "stream/EventType",
-                    FailureKind = EdictDeadLetterFailureKind.EffectFailure,
-                });
-
-                var repository = cluster.ServiceProvider
-                    .GetRequiredService<IEdictTableRepository<EdictDeadLetterEntry>>();
-                var row = await repository.GetAsync(partitionKey, rowKey);
-
-                Assert.NotNull(row);
-                Assert.Equal("PublishEvent", row!.Kind);
-                Assert.Equal(3, row.AttemptCount);
-                Assert.Equal("grain-key", row.SourceGrainKey);
             }
             finally
             {

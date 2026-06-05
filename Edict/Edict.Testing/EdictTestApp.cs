@@ -355,16 +355,6 @@ public sealed class EdictTestApp : IAsyncDisposable
     static void InvokeAddEdict(IServiceCollection services) =>
         services.AddEdict();
 
-    // Plug the in-memory IEdictTableRepository<EdictDeadLetterEntry> behind
-    // AddEdict()'s auto-registered IEdictDeadLetterRepository facade so silo
-    // (write) and client (read) share one backing dictionary.
-    static void RegisterInMemoryDeadLetterTable(IServiceCollection services, HarnessContext ctx) =>
-        services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
-            (IEdictTableRepository<EdictDeadLetterEntry>)
-                ctx.TableStoreFactory
-                    .CreateAsync<EdictDeadLetterEntry>(EdictDeadLetterTable.Name)
-                    .GetAwaiter().GetResult());
-
     // Re-point IEdictSender at the recording decorator wrapping the real sender,
     // so a saga's in-silo dispatched Command and a test's client Command share
     // one timeline. Last AddSingleton wins in MS DI.
@@ -400,7 +390,6 @@ public sealed class EdictTestApp : IAsyncDisposable
                 serviceProvider.GetRequiredService<IEventStreamAccessors>()));
 
             InvokeAddEdict(siloBuilder.Services);
-            RegisterInMemoryDeadLetterTable(siloBuilder.Services, ctx);
             siloBuilder.Services.AddEdictOutbox();
 
             // Replace AddEdict()'s default IEdictMetricsCache with a
@@ -470,7 +459,6 @@ public sealed class EdictTestApp : IAsyncDisposable
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
             InvokeAddEdict(clientBuilder.Services);
-            RegisterInMemoryDeadLetterTable(clientBuilder.Services, ctx);
             DecorateSender(clientBuilder.Services, ctx);
 
             foreach (var apply in ctx.Replacements)

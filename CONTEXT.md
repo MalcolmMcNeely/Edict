@@ -75,11 +75,11 @@ _Avoid_: per-event-type streams; inferring the stream name from the CLR namespac
 
 **List Projection Builder**:
 A Projection Builder whose read model lives in an external composite-key store instead of grain state, so grain activation stays small no matter how large the read model grows. The grain holds a transient last-touched-slot cache of the row in memory so consecutive events on the same `(pk, rk)` skip the store read; the *durable* read model still lives in the external store. The base type (`EdictListProjectionBuilder<TRow>`), not a storage word in the class name, marks the species, so consumer subclasses are named `{Name}ProjectionBuilder`.
-_Avoid_: reading the store directly instead of via the Table Repository; putting the *durable* read model in grain state "to be safe"; treating the external store as Azure-specific; putting an `ITableEntity`/storage type on the row; carrying a storage word ("Table") in the subclass name.
+_Avoid_: reading the store directly instead of via the Projection Reader; putting the *durable* read model in grain state "to be safe"; treating the external store as Azure-specific; putting an `ITableEntity`/storage type on the row; carrying a storage word ("Table") in the subclass name.
 
-**Table Repository**:
-The framework-provided read-only, persistence-neutral interface (`IEdictTableRepository`) the application uses to read a List Projection Builder's output.
-_Avoid_: writing through the repository; depending on the framework-internal write seam from application code.
+**Projection Reader**:
+The framework-provided read-only, storage-neutral interface (`IEdictProjectionReader<TRow>`) the application uses to read a List Projection Builder's output. Reads route through the projection grain (not the backing store directly), so the read API carries no storage detail and the activation that owns the rows is on the read path. Mirrors `IEdictSender` on the command side.
+_Avoid_: reaching for the framework-internal write/store seam from application code; expecting a write method (the reader is read-only).
 
 **Outbox**:
 The single durable-delivery engine, owned by both grain roots, that records pending effects (`PublishEvent`, `SendCommand`, `UpsertRow`, `InvokeHandler`) in the same grain-state write as the consumer payload. A `PublishEvent` entry's `EventId` is stamped once as the event is enqueued and persisted on the payload, so a re-publish reuses the committed id rather than minting a new one.

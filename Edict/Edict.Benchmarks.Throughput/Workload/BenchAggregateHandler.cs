@@ -22,7 +22,7 @@ public partial class BenchAggregateHandler : EdictCommandHandler<BenchAggregateS
         // The Events scenario exists to measure the full pipeline: Outbox +
         // stream + consumer dispatch + dedup ring + projection write.
         // Raising commits {State, Outbox} atomically; the bench projection
-        // writes one row per event so the issuer's IEdictTableRepository
+        // writes one row per event so the issuer's IEdictTableWriteStore
         // poll completes.
         Raise(new BenchEvent(command.AggregateId, command.PollKey));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());

@@ -72,7 +72,7 @@ public abstract class SagaTimeoutTerminalDeadLetterScenarios<TFixture>
             await publisher.PublishAsync(Stream, newEvent);
         }
 
-        var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
+        var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
         await SagaTimeoutWaiters.WaitUntilAsync(async () =>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);

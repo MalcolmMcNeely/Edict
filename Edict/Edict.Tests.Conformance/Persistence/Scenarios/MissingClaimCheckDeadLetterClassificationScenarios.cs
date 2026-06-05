@@ -106,7 +106,7 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         // keep draining the consumer until that publish lands and the projection
         // upserts the row. The literal "deadletter" partition is shared across the
         // assembly, so the pointer envelope's unique EventId isolates this row.
-        var deadLetterTable = _fixture.GetTableRepository<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
+        var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
         EdictDeadLetterEntry? deadLetterRow = null;
         await WaitUntilAsync(async () =>
         {

@@ -1,20 +1,10 @@
-using Edict.Contracts.DeadLetter;
-using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
-using Edict.Core.DeadLetter;
 using Edict.Core.Serialization;
-using Edict.Postgres.TableStorage;
 using Edict.Telemetry;
-
-using Npgsql;
 
 using Orleans.Serialization;
 
-using Sample.Contracts.Cart.Projections;
-using Sample.Contracts.Fulfillment.Projections;
-using Sample.Contracts.Orders.Projections;
-using Sample.Contracts.Payments.Projections;
 using Sample.Domain.Orders.CommandHandlers;
 using Sample.ServiceDefaults;
 using Sample.Web.Components;
@@ -40,40 +30,9 @@ builder.UseOrleansClient(client =>
     });
 });
 
-var postgresConnectionString = builder.Configuration.GetConnectionString("appdb")
-    ?? throw new InvalidOperationException(
-        "Postgres connection string 'appdb' missing. Run via Sample.KafkaPostgres.AppHost.");
-
-// The Web process holds its own NpgsqlDataSource for the read-side
-// projection repositories. The silo's tuned DataSource lives in the silo
-// process and is unreachable from here; default pool sizing is fine
-// because the Web read path is not the throughput-sensitive surface.
-builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(postgresConnectionString).Build());
-
-builder.Services.AddSingleton<IEdictTableRepository<OrderStatusRow>>(serviceProvider =>
-    new PostgresTableRepository<OrderStatusRow>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "ordersbystatus", serviceProvider.GetRequiredService<Serializer>()));
-builder.Services.AddSingleton<IEdictTableRepository<CheckedOutCartRow>>(serviceProvider =>
-    new PostgresTableRepository<CheckedOutCartRow>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "checkedoutcarts", serviceProvider.GetRequiredService<Serializer>()));
-builder.Services.AddSingleton<IEdictTableRepository<OrderOutcomeRow>>(serviceProvider =>
-    new PostgresTableRepository<OrderOutcomeRow>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "orderoutcome", serviceProvider.GetRequiredService<Serializer>()));
-builder.Services.AddSingleton<IEdictTableRepository<LineItemFulfillmentRow>>(serviceProvider =>
-    new PostgresTableRepository<LineItemFulfillmentRow>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(), "lineitemfulfillment", serviceProvider.GetRequiredService<Serializer>()));
-
-// The framework projection writes to the literal table named by
-// EdictDeadLetterTable.Name; AddEdictPostgresPersistence's DeadLetterTableName
-// option configures the operator-facing repository facade but not the projection
-// itself, so the consumer-side read must target the literal table to see what the
-// projection actually wrote.
-builder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(serviceProvider =>
-    new PostgresTableRepository<EdictDeadLetterEntry>(
-        serviceProvider.GetRequiredService<NpgsqlDataSource>(),
-        EdictDeadLetterTable.Name,
-        serviceProvider.GetRequiredService<Serializer>()));
-
+// Projection reads route through the grain via IEdictProjectionReader<TRow>;
+// AddEdict() registers it open-generic plus the dead-letter forensic facade, so
+// the read tier needs no Postgres wiring of its own.
 builder.Services.AddEdict();
 
 builder.Services.AddSingleton<CurrentOrderTracker>();

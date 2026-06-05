@@ -100,8 +100,6 @@ public sealed class AzurePersistenceRecoveryFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
-            siloBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
-                new AzureTableRepository<EdictDeadLetterEntry>(ctx.TableServiceClient, ctx.DeadLetterTableName));
             siloBuilder.Services.AddSingleton(TimeProvider.System);
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(new ReferenceClaimCheckStore());
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
@@ -146,10 +144,8 @@ public sealed class AzurePersistenceRecoveryFixture : IAsyncLifetime
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Configure<ClientMessagingOptions>(options => options.ResponseTimeout = TimeSpan.FromMinutes(2));
             clientBuilder.Services.AddSingleton(ctx.TableServiceClient);
-            // The dead-letter table repository on the client lets the wiring test
-            // resolve the table-backed facade off the client service provider.
-            clientBuilder.Services.AddSingleton<IEdictTableRepository<EdictDeadLetterEntry>>(_ =>
-                new AzureTableRepository<EdictDeadLetterEntry>(ctx.TableServiceClient, ctx.DeadLetterTableName));
+            // The dead-letter forensic facade reads through the projection grain;
+            // AddEdict() registers the IEdictProjectionReader that backs it.
             clientBuilder.Services.AddEdict();
         }
     }

@@ -1,10 +1,11 @@
-[
+﻿[
   {
     Kind: Event,
     Type: LineItemAddedEvent,
     Data: {
-      LineItemId: Guid_1,
-      OrderId: Guid_2,
+      CorrelationId: Guid_1,
+      LineItemId: Guid_2,
+      OrderId: Guid_3,
       Quantity: 1,
       Sku: SKU-1
     }

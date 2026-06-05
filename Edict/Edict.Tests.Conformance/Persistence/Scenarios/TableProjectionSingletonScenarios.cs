@@ -40,7 +40,7 @@ public abstract class TableProjectionSingletonScenarios<TFixture>
         });
 
         var singletonPk = GlobalOrderProjectionBuilder.SingletonKey.ToString();
-        var repository = _fixture.GetTableRepository<OrderTableRow>("globalorderprojection");
+        var repository = _fixture.GetTableStore<OrderTableRow>("globalorderprojection");
 
         await TableProjectionWaiters.WaitForPartitionCountAsync(repository, singletonPk, 2);
         var rows = await repository.QueryPartitionAsync(singletonPk);

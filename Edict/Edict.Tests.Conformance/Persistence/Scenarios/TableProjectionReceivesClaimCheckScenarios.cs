@@ -11,7 +11,7 @@ namespace Edict.Tests.Conformance.Persistence;
 /// <c>ClaimCheckProjectionBuilder</c> via the reference stream, dispatches
 /// through the deferred <c>InvokeHandler</c> path, and the projection's staged
 /// <c>UpsertRow</c> effect lands a row in the real store, readable back through
-/// the provider's <see cref="IEdictTableRepository{T}"/>. The receiver-unwrap
+/// the provider's <see cref="IEdictTableWriteStore{T}"/>. The receiver-unwrap
 /// half is the streaming axis's job; here the asserted artefact is the durable
 /// row.
 /// </summary>
@@ -30,7 +30,7 @@ public abstract class TableProjectionReceivesClaimCheckScenarios<TFixture>
     {
         var counterId = Guid.NewGuid();
         var payload = $"projection-{Guid.NewGuid():N}";
-        var repository = _fixture.GetTableRepository<ClaimCheckProjectionRow>(ClaimCheckProjectionBuilder.Table);
+        var repository = _fixture.GetTableStore<ClaimCheckProjectionRow>(ClaimCheckProjectionBuilder.Table);
 
         await _fixture.Sender.SendAsync(new IncrementClaimCheckCounterCommand(counterId, payload));
 
@@ -42,7 +42,7 @@ public abstract class TableProjectionReceivesClaimCheckScenarios<TFixture>
     }
 
     static async Task<ClaimCheckProjectionRow?> WaitForRowAsync(
-        IEdictTableRepository<ClaimCheckProjectionRow> repository, string key, int timeoutSeconds = 30)
+        IEdictTableWriteStore<ClaimCheckProjectionRow> repository, string key, int timeoutSeconds = 30)
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTimeOffset.UtcNow < deadline)

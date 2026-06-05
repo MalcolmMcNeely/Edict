@@ -5,7 +5,7 @@ namespace Edict.Tests.Conformance.Projections;
 static class TableProjectionWaiters
 {
     public static async Task WaitForRowAsync(
-        IEdictTableRepository<OrderTableRow> repository,
+        IEdictTableWriteStore<OrderTableRow> repository,
         string partitionKey,
         string rowKey,
         int minOrderCount = 1,
@@ -24,7 +24,7 @@ static class TableProjectionWaiters
     }
 
     public static async Task WaitForRowAsync(
-        IEdictTableRepository<OrderTableRow> repository,
+        IEdictTableWriteStore<OrderTableRow> repository,
         string partitionKey,
         string rowKey,
         Func<OrderTableRow, bool> predicate,
@@ -43,7 +43,7 @@ static class TableProjectionWaiters
     }
 
     public static async Task WaitForPartitionCountAsync(
-        IEdictTableRepository<OrderTableRow> repository,
+        IEdictTableWriteStore<OrderTableRow> repository,
         string partitionKey,
         int expectedCount,
         int timeoutSeconds = 30)

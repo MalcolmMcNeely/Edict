@@ -171,6 +171,17 @@ public sealed class EdictGenerator : IIncrementalGenerator
             spc.AddSource($"{grain.Namespace}.{grain.GrainName}.g.cs",
                 SourceText.From(ProjectionGrainSpineEmitter.Emit(grain), Encoding.UTF8)));
 
+        context.RegisterSourceOutput(projectionGrains.Collect(), static (spc, allGrains) =>
+        {
+            if (allGrains.All(static grain => grain.RowFqn is null))
+            {
+                return;
+            }
+
+            spc.AddSource("Edict.Generated.EdictProjectionReadRegistrar.g.cs",
+                SourceText.From(ProjectionReadRegistrarEmitter.Emit(allGrains), Encoding.UTF8));
+        });
+
         // Sagas ───────────────────────────────────────────────────────────────
         var sagaGrains = context.SyntaxProvider
             .CreateSyntaxProvider(

@@ -16,14 +16,19 @@ namespace Edict.Postgres.TableStorage;
 /// table projections don't currently exercise the etag — the column is
 /// reserved for the next iteration).
 /// </summary>
-internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
+public sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
     where T : class, new()
 {
     readonly NpgsqlDataSource _dataSource;
     readonly string _tableName;
     readonly Serializer _serializer;
 
-    internal PostgresTableWriteStore(NpgsqlDataSource dataSource, string tableName, Serializer serializer)
+    /// <summary>
+    /// Public because the throughput harness constructs one directly to read rows
+    /// store-direct, the shape the deleted public repository served; the framework
+    /// otherwise resolves it through <c>IEdictTableStoreFactory</c>.
+    /// </summary>
+    public PostgresTableWriteStore(NpgsqlDataSource dataSource, string tableName, Serializer serializer)
     {
         _dataSource = dataSource;
         _tableName = tableName;
@@ -48,11 +53,45 @@ internal sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
             }
             return _serializer.Deserialize<T>((byte[])result);
         }
+        catch (PostgresException exception) when (exception.SqlState == "42P01")
+        {
+            // A never-created projection table reads as an absent row, not a
+            // fault — the store-direct read path can race ahead of the grain's
+            // first write, which is what creates the table.
+            return null;
+        }
         catch (NpgsqlException exception)
         {
             throw EdictPostgresStorageException.From(exception,
                 $"GetAsync failed for {_tableName} ({partitionKey}/{rowKey})");
         }
+    }
+
+    public async Task<IReadOnlyList<T>> QueryPartitionAsync(string partitionKey, CancellationToken cancellationToken = default)
+    {
+        var quoted = PostgresTableSchema.QuoteIdentifier(_tableName);
+        var results = new List<T>();
+        try
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";
+            command.Parameters.AddWithValue("pk", partitionKey);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                results.Add(_serializer.Deserialize<T>((byte[])reader["payload"]));
+            }
+        }
+        catch (PostgresException exception) when (exception.SqlState == "42P01")
+        {
+        }
+        catch (NpgsqlException exception)
+        {
+            throw EdictPostgresStorageException.From(exception,
+                $"QueryPartitionAsync failed for {_tableName} ({partitionKey})");
+        }
+        return results;
     }
 
     public async Task UpsertAsync(string partitionKey, string rowKey, T row, CancellationToken cancellationToken = default)

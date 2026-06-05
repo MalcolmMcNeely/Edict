@@ -18,7 +18,7 @@ interface IInMemoryUpsert
 /// (partitionKey, rowKey) — a full-row replace — so the Outbox's at-least-once
 /// UpsertRow redelivery does not double-apply.
 /// </summary>
-sealed class InMemoryTableStore<T> : IEdictTableWriteStore<T>, IEdictTableRepository<T>, IInMemoryUpsert
+sealed class InMemoryTableStore<T> : IEdictTableWriteStore<T>, IInMemoryUpsert
     where T : class, new()
 {
     readonly ConcurrentDictionary<(string pk, string rk), T> _rows = new();

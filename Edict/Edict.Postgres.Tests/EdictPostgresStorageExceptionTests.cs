@@ -94,18 +94,18 @@ public sealed class EdictPostgresStorageExceptionTests
     }
 
     [Fact]
-    public async Task TableRepository_GetAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
+    public async Task TableWriteStore_GetAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var repo = new PostgresTableRepository<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
+        var repo = new PostgresTableWriteStore<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => repo.GetAsync("pk", "rk"));
     }
 
     [Fact]
-    public async Task TableRepository_QueryPartitionAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
+    public async Task TableWriteStore_QueryPartitionAsync_ShouldThrowEdictPostgresStorageException_WhenConnectionFails()
     {
-        var repo = new PostgresTableRepository<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
+        var repo = new PostgresTableWriteStore<DummyRow>(UnreachableDataSource(), "dummy_table", EmptySerializer());
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
             () => repo.QueryPartitionAsync("pk"));

@@ -1,15 +1,15 @@
 namespace Edict.Contracts.DeadLetter;
 
 /// <summary>
-/// Read-only inspection of dead-lettered Outbox effects. The
-/// repository reads from the fleet-wide dead-letter projection table; the
-/// Azure implementation lives in <c>Edict.Azure</c> and the in-memory
-/// implementation in <c>Edict.Testing</c>. This interface is the substitution
-/// seam operators and tooling bind to, mirroring
-/// <see cref="TableStorage.IEdictTableRepository{T}"/> for the projection
-/// side. <b>Strictly read-only</b>: recovery is manual re-emission (for
-/// <c>PublishEvent</c>/<c>SendCommand</c>) or manual table repair (for
-/// <c>UpsertRow</c>), so the repository never exposes a write.
+/// Read-only inspection of dead-lettered Outbox effects. The repository reads
+/// the fleet-wide dead-letter projection through its grain (the dead-letter
+/// projection is itself a singleton List Projection Builder), so it rides the
+/// same read mechanism as every other projection and needs no storage seam of
+/// its own. This interface is the substitution seam operators and tooling bind
+/// to, mirroring <see cref="Projections.IEdictProjectionReader{TRow}"/> for the
+/// typed projection side. <b>Strictly read-only</b>: recovery is manual
+/// re-emission (for <c>PublishEvent</c>/<c>SendCommand</c>) or manual table
+/// repair (for <c>UpsertRow</c>), so the repository never exposes a write.
 /// </summary>
 public interface IEdictDeadLetterRepository
 {

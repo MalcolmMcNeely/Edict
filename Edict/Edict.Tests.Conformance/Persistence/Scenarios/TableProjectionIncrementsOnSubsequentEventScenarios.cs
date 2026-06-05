@@ -23,7 +23,7 @@ public abstract class TableProjectionIncrementsOnSubsequentEventScenarios<TFixtu
     public async Task HandleAsync_ShouldIncrementRowCount_WhenSubsequentEventArrives()
     {
         var orderId = Guid.NewGuid();
-        var repository = _fixture.GetTableRepository<OrderTableRow>("orderprojection");
+        var repository = _fixture.GetTableStore<OrderTableRow>("orderprojection");
 
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-A"));
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-B"));
