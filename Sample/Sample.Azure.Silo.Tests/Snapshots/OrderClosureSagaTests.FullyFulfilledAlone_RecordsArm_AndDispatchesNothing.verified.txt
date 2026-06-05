@@ -1,0 +1,4 @@
+﻿{
+  PaymentAuthorized: false,
+  FullyFulfilled: true
+}

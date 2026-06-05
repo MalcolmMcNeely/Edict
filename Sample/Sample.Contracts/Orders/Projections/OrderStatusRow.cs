@@ -26,4 +26,7 @@ public sealed class OrderStatusRow : IEdictPersistedState
 
     [Id(6)]
     public DateTimeOffset? ShippedAt { get; set; }
+
+    [Id(7)]
+    public DateTimeOffset? ClosedAt { get; set; }
 }

@@ -9,9 +9,9 @@ using Xunit;
 namespace Sample.Azure.Silo.Tests.Orders;
 
 /// <summary>
-/// Per-state-transition tests for the five timestamp columns added to
+/// Per-state-transition tests for the timestamp columns on
 /// <see cref="OrderStatusRow"/>. Each test drives the lifecycle up to its
-/// target transition and asserts the matching column is stamped — columns
+/// target transition and asserts the matching column is stamped: columns
 /// for transitions that have not yet fired remain null. Status itself is
 /// chaos-reorder variant (the last status-mutating event to land at the
 /// projection wins), so only the timestamp columns are asserted.
@@ -71,7 +71,7 @@ public sealed class OrdersByStatusProjectionBuilderTests
     }
 
     [Fact]
-    public async Task FullLifecycle_PopulatesAllFiveTimestampsInOrder_WithShippedStatus()
+    public async Task FullLifecycle_PopulatesAllSixTimestampsInOrder()
     {
         var orderId = Guid.Parse("99999999-9999-9999-9999-999999999999");
 
@@ -91,16 +91,19 @@ public sealed class OrdersByStatusProjectionBuilderTests
 
         var row = await GetRow(app, orderId);
         Assert.NotNull(row);
-        Assert.Equal("Shipped", row.Status);
         Assert.NotNull(row.PlacedAt);
         Assert.NotNull(row.SubmittedAt);
         Assert.NotNull(row.AuthorizedAt);
         Assert.NotNull(row.FulfilledAt);
         Assert.NotNull(row.ShippedAt);
+        Assert.NotNull(row.ClosedAt);
         Assert.True(row.PlacedAt <= row.SubmittedAt);
         Assert.True(row.SubmittedAt <= row.AuthorizedAt);
         Assert.True(row.AuthorizedAt <= row.FulfilledAt);
+        // Shipping and closing both fall out of OrderFullyFulfilled and race, so each
+        // lands after fulfillment but their order relative to one another is not fixed.
         Assert.True(row.FulfilledAt <= row.ShippedAt);
+        Assert.True(row.FulfilledAt <= row.ClosedAt);
     }
 
     static Task<OrderStatusRow?> GetRow(EdictTestApp app, Guid orderId) =>

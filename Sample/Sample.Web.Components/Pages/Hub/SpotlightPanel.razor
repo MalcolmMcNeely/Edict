@@ -65,6 +65,10 @@ else
         yield return Build("Shipped", Status?.ShippedAt, "edict.event.publish OrderShippedEvent",
             isComplete: Status?.ShippedAt is not null,
             isInProgress: Status?.FulfilledAt is not null && Status?.ShippedAt is null);
+
+        yield return Build("Closed", Status?.ClosedAt, "edict.event.publish OrderClosedEvent",
+            isComplete: Status?.ClosedAt is not null,
+            isInProgress: Status?.FulfilledAt is not null && Status?.ClosedAt is null);
     }
 
     int CountFulfilled() =>

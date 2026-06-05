@@ -81,6 +81,15 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
                 [new EdictRejectionReason("order_cancelled", "Order has been cancelled.")]));
         }
 
+        // Closed is terminal. The OrderClosure barrier Saga and the OrderPayment
+        // saga both react to PaymentAuthorized and target this grain, so a confirm
+        // can lose the race to a close; once closed, confirm must not reopen it.
+        if (State.Status == OrderStatus.Closed)
+        {
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+                [new EdictRejectionReason("order_closed", "Order has been closed.")]));
+        }
+
         State.Status = OrderStatus.Confirmed;
         // Carry the snapshot of line item ids so the OrderFulfillment saga can
         // hand them to FulfillmentCommandHandler without re-fetching the order.
@@ -89,18 +98,42 @@ public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
-    // Driven by the OrderFulfillment saga on OrderFullyFulfilled — the terminal
-    // transition past Confirmed. Only a confirmed order may ship.
+    // Driven by the OrderFulfillment saga on OrderFullyFulfilled. The OrderClosure
+    // barrier saga fires on the same Event, so a close can win the race and land
+    // first: a closed order still records its shipment (Closed stays the terminal
+    // status, shipping does not reopen it), so the demo always shows both. Only an
+    // order that never confirmed rejects.
     Task<EdictCommandResult> HandleAsync(MarkOrderShippedCommand command)
     {
-        if (State.Status != OrderStatus.Confirmed)
+        if (State.Status != OrderStatus.Confirmed && State.Status != OrderStatus.Closed)
         {
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
                 [new EdictRejectionReason("order_not_confirmed", "Order is not confirmed.")]));
         }
 
-        State.Status = OrderStatus.Shipped;
+        if (State.Status == OrderStatus.Confirmed)
+        {
+            State.Status = OrderStatus.Shipped;
+        }
+
         Raise(new OrderShippedEvent(command.OrderId));
+        return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+    }
+
+    // Driven by the OrderClosure barrier saga once both payment authorization and
+    // full fulfillment have landed. Permissive on purpose: it races ConfirmOrder and
+    // MarkOrderShipped on the same trigger Events, so whichever status it finds it
+    // closes. Closed is the sink state; only a cancelled order rejects.
+    Task<EdictCommandResult> HandleAsync(CloseOrderCommand command)
+    {
+        if (State.Status == OrderStatus.Cancelled)
+        {
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+                [new EdictRejectionReason("order_cancelled", "Order has been cancelled.")]));
+        }
+
+        State.Status = OrderStatus.Closed;
+        Raise(new OrderClosedEvent(command.OrderId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

@@ -62,4 +62,11 @@ public sealed partial class OrdersByStatusTableProjectionBuilder : EdictTablePro
         CurrentRow.ShippedAt = edictEvent.OccurredAt;
         return Task.CompletedTask;
     }
+
+    Task HandleAsync(OrderClosedEvent edictEvent)
+    {
+        CurrentRow.Status = "Closed";
+        CurrentRow.ClosedAt = edictEvent.OccurredAt;
+        return Task.CompletedTask;
+    }
 }

@@ -74,7 +74,7 @@
         <h2>Bridged order <span class="hub-orders-meta">keyed by the cart id</span></h2>
         @if (_orderStatus is null)
         {
-            <p class="hub-empty-small">No order yet. On checkout the bridge Saga places one Order carrying the basket; it then flows through payment and fulfillment.</p>
+            <p class="hub-empty-small">No order yet. On checkout the bridge Saga places one Order carrying the basket; it then flows through payment and fulfillment, and a barrier Saga closes it once both payment and fulfillment have landed.</p>
         }
         else
         {
@@ -86,6 +86,7 @@
                     <tr><td>Payment authorized</td><td>@FormatTime(_orderStatus.AuthorizedAt)</td></tr>
                     <tr><td>Fulfilled</td><td>@FormatTime(_orderStatus.FulfilledAt)</td></tr>
                     <tr><td>Shipped</td><td>@FormatTime(_orderStatus.ShippedAt)</td></tr>
+                    <tr><td>Closed</td><td>@FormatTime(_orderStatus.ClosedAt)</td></tr>
                 </tbody>
             </table>
         }
