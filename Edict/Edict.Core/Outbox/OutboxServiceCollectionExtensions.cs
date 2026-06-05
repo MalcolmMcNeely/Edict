@@ -27,7 +27,8 @@ public static class OutboxServiceCollectionExtensions
     public static IServiceCollection AddEdictOutbox(
         this IServiceCollection services,
         Action<EdictOptions>? configure = null,
-        Action<EdictSagaOptions>? configureSaga = null)
+        Action<EdictSagaOptions>? configureSaga = null,
+        Action<EdictCommandHandlerScheduleOptions>? configureSchedule = null)
     {
         if (configure is not null)
         {
@@ -45,6 +46,15 @@ public static class OutboxServiceCollectionExtensions
         else
         {
             services.AddOptions<EdictSagaOptions>();
+        }
+
+        if (configureSchedule is not null)
+        {
+            services.AddOptions<EdictCommandHandlerScheduleOptions>().Configure(configureSchedule);
+        }
+        else
+        {
+            services.AddOptions<EdictCommandHandlerScheduleOptions>();
         }
 
         services.TryAddSingleton(TimeProvider.System);

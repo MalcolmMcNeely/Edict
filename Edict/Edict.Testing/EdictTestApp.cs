@@ -288,6 +288,57 @@ public sealed class EdictTestApp : IAsyncDisposable
         await Drain();
     }
 
+    /// <summary>
+    /// Drives the next round of schedule-timeout fires deterministically, without
+    /// hardcoding the cap. Reads the soonest timeout instant across every grain a
+    /// Command has been routed to, advances the virtual clock to it, fires the
+    /// timeout on every grain now at or past its cap, and drains so the timeout
+    /// outcome (the <c>OnScheduleTimeoutAsync</c> compensation, or the dead-letter
+    /// when no hook is written) lands on the <see cref="Timeline"/>. A no-op when no
+    /// schedule is capped. Chainable and global, like
+    /// <see cref="FireDueSchedulesAsync"/>.
+    /// </summary>
+    public async Task FireScheduleTimeoutsAsync()
+    {
+        var fireables = _context.RoutedGrains.Keys
+            .Select(routed => _cluster.GrainFactory.GetGrain<IEdictScheduleFireable>(routed.Key, routed.GrainClassName))
+            .ToArray();
+
+        DateTimeOffset? soonest = null;
+        var timeoutByGrain = new List<(IEdictScheduleFireable Grain, DateTimeOffset? Timeout)>(fireables.Length);
+        foreach (var fireable in fireables)
+        {
+            var timeout = await fireable.PeekSoonestScheduleTimeoutAsync();
+            timeoutByGrain.Add((fireable, timeout));
+            if (timeout is { } instant && (soonest is null || instant < soonest))
+            {
+                soonest = instant;
+            }
+        }
+
+        if (soonest is null)
+        {
+            return;
+        }
+
+        var now = _context.Clock.GetUtcNow();
+        if (soonest.Value > now)
+        {
+            _context.Clock.Advance(soonest.Value - now);
+        }
+
+        var fireInstant = _context.Clock.GetUtcNow();
+        foreach (var (grain, timeout) in timeoutByGrain)
+        {
+            if (timeout is { } instant && instant <= fireInstant)
+            {
+                await grain.FireDueScheduleTimeoutsAsync();
+            }
+        }
+
+        await Drain();
+    }
+
     public async ValueTask DisposeAsync() => await _cluster.DisposeAsync();
 
     static void ConfigureSerialization(HarnessContext ctx, IServiceCollection services) =>

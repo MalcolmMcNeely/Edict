@@ -1,0 +1,3 @@
+﻿[
+  DefaultTimeout must be greater than zero (or null to opt out) but was -00:05:00.
+]

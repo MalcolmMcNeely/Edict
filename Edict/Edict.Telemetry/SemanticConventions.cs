@@ -200,6 +200,7 @@ public static class SemanticConventions
                 public const string InternalBug = "InternalBug";
                 public const string SagaTimeout = "SagaTimeout";
                 public const string SagaTerminal = "SagaTerminal";
+                public const string ScheduleTimeout = "ScheduleTimeout";
                 public const string Unhandled = "Unhandled";
             }
 

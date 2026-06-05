@@ -121,6 +121,60 @@ public sealed class ScheduleLifecycleTests
         Assert.NotNull(await probe.PeekSoonestScheduleDueAsync());
     }
 
+    [Fact]
+    public async Task Timeout_WithCompensationHook_ShouldRunItAndStopTheSchedule()
+    {
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        // Cap shorter than one cadence so a single timeout fire precedes any tick.
+        await probe.StartWithTimeoutAsync(Cadence, TimeSpan.FromMinutes(1), ScheduleProbeTimeoutBehavior.Compensate);
+
+        _fixture.AdvanceClock(TimeSpan.FromMinutes(1));
+        await probe.FireDueScheduleTimeoutsAsync();
+
+        Assert.Equal(1, await probe.GetTimeoutCounterAsync());
+        // The tick handler never ran, and the schedule is gone (timeout is terminal).
+        Assert.Equal(0, await probe.GetCounterAsync());
+        Assert.Null(await probe.PeekSoonestScheduleTimeoutAsync());
+        Assert.Null(await probe.PeekSoonestScheduleDueAsync());
+    }
+
+    [Fact]
+    public async Task Timeout_WithNoHook_ShouldDeadLetter_StopTheSchedule_AndNotThrow()
+    {
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        await probe.StartWithTimeoutAsync(Cadence, TimeSpan.FromMinutes(1), ScheduleProbeTimeoutBehavior.DeadLetter);
+
+        _fixture.AdvanceClock(TimeSpan.FromMinutes(1));
+        // The unhandled cap dead-letters through DeadLetterPromoter without throwing.
+        await probe.FireDueScheduleTimeoutsAsync();
+
+        Assert.Equal(0, await probe.GetTimeoutCounterAsync());
+        Assert.Null(await probe.PeekSoonestScheduleTimeoutAsync());
+        Assert.Null(await probe.PeekSoonestScheduleDueAsync());
+        // The dead-letter publish drained out of the outbox in the same turn.
+        Assert.Equal(0, await probe.GetPendingOutboxCountAsync());
+    }
+
+    [Fact]
+    public async Task Timeout_Cap_ShouldBeArmedOnce_AndNotPushedByTicks()
+    {
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        // Cadence one minute, cap two minutes: a tick fires at +1m, then the cap
+        // fires at +2m even though the tick advanced the schedule's next due.
+        await probe.StartWithTimeoutAsync(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), ScheduleProbeTimeoutBehavior.Compensate);
+
+        _fixture.AdvanceClock(TimeSpan.FromMinutes(1));
+        await probe.FireDueSchedulesAsync();
+        Assert.Equal(1, await probe.GetCounterAsync());
+
+        _fixture.AdvanceClock(TimeSpan.FromMinutes(1));
+        await probe.FireDueScheduleTimeoutsAsync();
+
+        // The cap fired on schedule despite the intervening tick re-arming the due.
+        Assert.Equal(1, await probe.GetTimeoutCounterAsync());
+        Assert.Null(await probe.PeekSoonestScheduleDueAsync());
+    }
+
     static Task WaitForReactivationAsync(IScheduleProbe probe, Guid previousActivationId) =>
         WaitUntilAsync(async () => await probe.GetActivationIdAsync() != previousActivationId);
 

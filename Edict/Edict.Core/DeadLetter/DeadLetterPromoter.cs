@@ -86,6 +86,56 @@ sealed class DeadLetterPromoter(
         };
     }
 
+    public OutboxEntry PromoteScheduleTimeout(
+        string scheduleMessageType,
+        string sourceGrainKey,
+        string sourceGrainType,
+        string? traceParent,
+        string? traceState,
+        DateTimeOffset now)
+    {
+        // No failing OutboxEntry to deserialise here, so nothing in this method can
+        // throw — it builds the forensic row from the supplied strings only. The
+        // marker type is named, never instantiated, mirroring the saga timeout row
+        // but routed through the promoter as the schedule lifecycle's single
+        // dead-letter choke point.
+        var raised = new EdictDeadLetterRaised
+        {
+            EventId = Guid.NewGuid(),
+            EntryId = Guid.NewGuid(),
+            Kind = SemanticConventions.DeadLetter.Tags.FailureReasonValues.ScheduleTimeout,
+            AttemptCount = 0,
+            DeadLetteredAt = now,
+            SourceGrainKey = sourceGrainKey,
+            SourceGrainType = sourceGrainType,
+            EffectTarget = sourceGrainType,
+            TraceParent = traceParent,
+            ExceptionType = nameof(EdictScheduleTimeoutException),
+            Reason =
+                $"Schedule message '{scheduleMessageType}' hit its timeout cap with no OnScheduleTimeoutAsync hook; "
+                + "the timeout was dead-lettered.",
+        };
+
+        PromotionCount.Add(1,
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Outbox.Tags.EffectKind, OutboxEffectKind.PublishEvent.ToString()),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.DeadLetter.Tags.FailureReason,
+                SemanticConventions.DeadLetter.Tags.FailureReasonValues.ScheduleTimeout),
+            new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, sourceGrainType));
+
+        return new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.PublishEvent,
+            Payload = serializer.SerializeToArray<EdictEvent>(raised),
+            TraceParent = traceParent,
+            TraceState = traceState,
+            AttemptCount = 0,
+            NextAttemptUtc = now,
+        };
+    }
+
     EdictDeadLetterRaised BuildFromPublishEvent(
         OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now)
     {

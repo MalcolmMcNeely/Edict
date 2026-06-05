@@ -290,6 +290,26 @@ public sealed class DeadLetterPromoterNoThrowTests
             measurement.Tag(SemanticConventions.DeadLetter.Tags.PromotionFailureReason));
     }
 
+    [Fact]
+    public void PromoteScheduleTimeout_ShouldNotThrow_AndReturnSyntheticRow_CarryingTheMarkerExceptionName()
+    {
+        var promoter = BuildPromoter();
+
+        var promoted = promoter.PromoteScheduleTimeout(
+            scheduleMessageType: "Sample.FulfillNextLine",
+            sourceGrainKey: "grain-key",
+            sourceGrainType: "Sample.OrderCommandHandler",
+            traceParent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+            traceState: null,
+            now: Now);
+
+        Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
+        var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
+        Assert.Equal(nameof(EdictScheduleTimeoutException), raised.ExceptionType);
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.ScheduleTimeout, raised.Kind);
+        Assert.Equal("Sample.OrderCommandHandler", raised.SourceGrainType);
+    }
+
     static DeadLetterPromoter BuildPromoter(params CommandRoute[] routes)
     {
         var collection = new ServiceCollection();

@@ -13,12 +13,13 @@ public sealed class ScheduleSliceTests
     static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
     static readonly TimeSpan Period = TimeSpan.FromSeconds(2);
 
-    static ScheduleEntry Entry(Guid id, DateTimeOffset dueAt, TimeSpan period) => new()
+    static ScheduleEntry Entry(Guid id, DateTimeOffset dueAt, TimeSpan period, DateTimeOffset? deadlineAt = null) => new()
     {
         ScheduleId = id,
         MessagePayload = [1, 2, 3],
         Period = period,
         DueAt = dueAt,
+        DeadlineAt = deadlineAt,
     };
 
     [Fact]
@@ -122,5 +123,58 @@ public sealed class ScheduleSliceTests
             .Complete(SchedB);
 
         return Verify(slice).DontScrubGuids().DontScrubDateTimes();
+    }
+
+    [Fact]
+    public void TimedOutEntries_ShouldReturnOnlyCappedEntriesWhoseDeadlineIsNowOrPast()
+    {
+        var deadline = Start + TimeSpan.FromMinutes(1);
+        var slice = new ScheduleSlice()
+            .Add(Entry(SchedA, Start + Period, Period, deadlineAt: deadline))
+            .Add(Entry(SchedB, Start + Period, Period, deadlineAt: Start + TimeSpan.FromHours(1)));
+
+        var timedOut = slice.TimedOutEntries(deadline);
+
+        Assert.Equal([SchedA], timedOut.Select(entry => entry.ScheduleId).ToArray());
+    }
+
+    [Fact]
+    public void TimedOutEntries_ShouldExcludeUncappedEntries()
+    {
+        var slice = new ScheduleSlice()
+            .Add(Entry(SchedA, Start + Period, Period, deadlineAt: null));
+
+        Assert.Empty(slice.TimedOutEntries(Start + TimeSpan.FromDays(3650)));
+    }
+
+    [Fact]
+    public void SoonestTimeoutAt_ShouldReturnEarliestDeadlineAcrossCappedSchedules()
+    {
+        var slice = new ScheduleSlice()
+            .Add(Entry(SchedA, Start + Period, Period, deadlineAt: Start + TimeSpan.FromHours(1)))
+            .Add(Entry(SchedB, Start + Period, Period, deadlineAt: Start + TimeSpan.FromMinutes(5)));
+
+        Assert.Equal(Start + TimeSpan.FromMinutes(5), slice.SoonestTimeoutAt);
+    }
+
+    [Fact]
+    public void SoonestTimeoutAt_ShouldBeNull_WhenNoCappedSchedules()
+    {
+        var slice = new ScheduleSlice()
+            .Add(Entry(SchedA, Start + Period, Period, deadlineAt: null));
+
+        Assert.Null(slice.SoonestTimeoutAt);
+    }
+
+    [Fact]
+    public void Continue_ShouldNotResetDeadline_SoTheCapIsArmedOnce()
+    {
+        var deadline = Start + TimeSpan.FromMinutes(1);
+        var slice = new ScheduleSlice()
+            .Add(Entry(SchedA, Start + Period, Period, deadlineAt: deadline))
+            .Continue(SchedA, Start + Period)
+            .Continue(SchedA, Start + Period + Period);
+
+        Assert.Equal(deadline, slice.Active.Single().DeadlineAt);
     }
 }

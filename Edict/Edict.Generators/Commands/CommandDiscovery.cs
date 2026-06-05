@@ -53,6 +53,30 @@ internal static class CommandDiscovery
 
         var commands = new List<CommandModel>();
         var scheduleMessages = new List<ScheduleMessageModel>();
+        var scheduleTimeoutMessages = new List<ScheduleMessageModel>();
+
+        foreach (var method in grain.GetMembers(EdictWellKnownNames.OnScheduleTimeoutMethodName).OfType<IMethodSymbol>())
+        {
+            if (method.Parameters.Length != 1
+                || method.ReturnType.ToDisplayString(FullyQualified) != EdictWellKnownNames.TaskFqn)
+            {
+                continue;
+            }
+
+            if (method.Parameters[0].Type is not INamedTypeSymbol parameterType || !DerivesFromScheduleMessage(parameterType))
+            {
+                continue;
+            }
+
+            var fqn = parameterType.ToDisplayString(FullyQualified);
+            if (scheduleTimeoutMessages.All(m => m.Fqn != fqn))
+            {
+                var messageNamespace = parameterType.ContainingNamespace.IsGlobalNamespace
+                    ? string.Empty
+                    : parameterType.ContainingNamespace.ToDisplayString();
+                scheduleTimeoutMessages.Add(new ScheduleMessageModel(fqn, parameterType.Name, messageNamespace));
+            }
+        }
 
         foreach (var method in grain.GetMembers(EdictWellKnownNames.HandleMethodName).OfType<IMethodSymbol>())
         {
@@ -102,6 +126,7 @@ internal static class CommandDiscovery
 
         commands.Sort(static (a, b) => string.CompareOrdinal(a.SimpleName, b.SimpleName));
         scheduleMessages.Sort(static (a, b) => string.CompareOrdinal(a.SimpleName, b.SimpleName));
+        scheduleTimeoutMessages.Sort(static (a, b) => string.CompareOrdinal(a.SimpleName, b.SimpleName));
 
         var grainNamespace = grain.ContainingNamespace.IsGlobalNamespace
             ? "Edict.Generated"
@@ -122,7 +147,8 @@ internal static class CommandDiscovery
                 : grainFqn,
             grainFqn,
             new EquatableArray<CommandModel>(commands),
-            new EquatableArray<ScheduleMessageModel>(scheduleMessages));
+            new EquatableArray<ScheduleMessageModel>(scheduleMessages),
+            new EquatableArray<ScheduleMessageModel>(scheduleTimeoutMessages));
     }
 
     static CommandModel? MapCommand(INamedTypeSymbol command)

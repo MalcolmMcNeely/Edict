@@ -19,11 +19,62 @@ public sealed class ScheduleHostTests
         var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(new CallLog());
         var harness = BuildHost(state, new CallLog(), new RecordingScheduleTimer(), (_, _) => Task.CompletedTask);
 
-        harness.Host.Schedule([1, 2, 3], Period);
+        harness.Host.Schedule([1, 2, 3], Period, cap: null);
 
         var entry = Assert.Single(state.State.Schedule.Active);
         Assert.Equal(Now + Period, entry.DueAt);
         Assert.Equal(Period, entry.Period);
+        Assert.Null(entry.DeadlineAt);
+    }
+
+    [Fact]
+    public void Schedule_WithCap_ShouldArmDeadlineAtNowPlusCap()
+    {
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(new CallLog());
+        var harness = BuildHost(state, new CallLog(), new RecordingScheduleTimer(), (_, _) => Task.CompletedTask);
+
+        harness.Host.Schedule([1, 2, 3], Period, cap: TimeSpan.FromMinutes(1));
+
+        var entry = Assert.Single(state.State.Schedule.Active);
+        Assert.Equal(Now + TimeSpan.FromMinutes(1), entry.DeadlineAt);
+    }
+
+    [Fact]
+    public async Task FireTimeoutsAsync_ShouldDispatchOnlyTimedOutEntries()
+    {
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(new CallLog());
+        state.State.Schedule = state.State.Schedule
+            .Add(Entry(DueScheduleId, Now + Period) with { DeadlineAt = Now })
+            .Add(Entry(FutureScheduleId, Now + Period) with { DeadlineAt = Now + TimeSpan.FromHours(1) });
+
+        var timedOut = new List<Guid>();
+        var harness = BuildHost(
+            state, new CallLog(), new RecordingScheduleTimer(),
+            dispatch: (_, _) => Task.CompletedTask,
+            dispatchTimeout: (entry, _) =>
+            {
+                timedOut.Add(entry.ScheduleId);
+                return Task.CompletedTask;
+            });
+
+        await harness.Host.FireTimeoutsAsync();
+
+        Assert.Equal([DueScheduleId], timedOut);
+    }
+
+    [Fact]
+    public async Task ReconcileAsync_ShouldArmForTheSoonerOfDueOrTimeout()
+    {
+        var timer = new RecordingScheduleTimer();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(new CallLog());
+        state.State.Schedule = state.State.Schedule
+            .Add(Entry(DueScheduleId, Now + TimeSpan.FromMinutes(5)) with { DeadlineAt = Now + Period });
+
+        var harness = BuildHost(state, new CallLog(), timer, (_, _) => Task.CompletedTask);
+
+        await harness.Host.ReconcileAsync();
+
+        Assert.Equal(Period, Assert.Single(timer.Armings));
     }
 
     [Fact]
@@ -134,7 +185,8 @@ public sealed class ScheduleHostTests
         CountingPersistentState<GrainEnvelope<EdictUnit>> state,
         CallLog log,
         IScheduleTimer timer,
-        Func<ScheduleEntry, DateTimeOffset, Task> dispatch)
+        Func<ScheduleEntry, DateTimeOffset, Task> dispatch,
+        Func<ScheduleEntry, DateTimeOffset, Task>? dispatchTimeout = null)
     {
         var clock = new FakeTimeProvider(Now);
         var host = new ScheduleHost<EdictUnit>(
@@ -143,7 +195,8 @@ public sealed class ScheduleHostTests
             timer,
             clock,
             new EdictOptions(),
-            dispatch);
+            dispatch,
+            dispatchTimeout ?? ((_, _) => Task.CompletedTask));
         return (host, clock);
     }
 

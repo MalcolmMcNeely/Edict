@@ -47,6 +47,26 @@ public sealed record ScheduleSlice
         Active.Count == 0 ? null : Active.Min(entry => entry.DueAt);
 
     /// <summary>
+    /// The capped schedules whose <see cref="ScheduleEntry.DeadlineAt"/> is
+    /// now-or-past. Uncapped schedules (<c>DeadlineAt</c> null) are never timed
+    /// out, so a deliberately perpetual schedule survives indefinitely.
+    /// </summary>
+    public IReadOnlyList<ScheduleEntry> TimedOutEntries(DateTimeOffset now) =>
+        Active.Where(entry => entry.DeadlineAt is { } deadline && deadline <= now).ToArray();
+
+    /// <summary>
+    /// The earliest <see cref="ScheduleEntry.DeadlineAt"/> across capped schedules,
+    /// or <c>null</c> when none are capped. The host arms its timeout fire against
+    /// this; the Test Framework advances its virtual clock to it.
+    /// </summary>
+    public DateTimeOffset? SoonestTimeoutAt =>
+        Active
+            .Where(entry => entry.DeadlineAt is not null)
+            .Select(entry => entry.DeadlineAt)
+            .DefaultIfEmpty(null)
+            .Min();
+
+    /// <summary>
     /// Applies a <c>Continue</c> outcome to the schedule with
     /// <paramref name="scheduleId"/>: advances its <see cref="ScheduleEntry.DueAt"/>
     /// to the first cadence-grid instant strictly after <paramref name="now"/>.

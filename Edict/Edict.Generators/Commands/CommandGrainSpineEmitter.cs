@@ -39,7 +39,7 @@ internal static class CommandGrainSpineEmitter
                             _ => throw new global::Edict.Core.Commands.EdictUnroutableCommandException(
                                 command.GetType()),
                         };
-            {{EmitScheduleDispatch(grain)}}    }
+            {{EmitScheduleDispatch(grain)}}{{EmitScheduleTimeoutDispatch(grain)}}    }
             }
 
             """;
@@ -76,6 +76,45 @@ internal static class CommandGrainSpineEmitter
                             _ => throw new global::Edict.Core.Schedules.EdictUnroutableScheduleMessageException(
                                 message.GetType()),
                         };
+
+            """;
+    }
+
+    // Emits the schedule-timeout dispatch — the type-switch over the consumer's
+    // OnScheduleTimeoutAsync(TMessage) arms — only when the grain writes at least
+    // one timeout hook. A fired cap whose message has no arm returns false so the
+    // lifecycle dead-letters it; a grain with no timeout hook at all inherits the
+    // base default (false for every message) and emits nothing here.
+    static string EmitScheduleTimeoutDispatch(CommandHandlerGrainModel grain)
+    {
+        if (grain.ScheduleTimeoutMessages.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var arms = new StringBuilder();
+        foreach (var message in grain.ScheduleTimeoutMessages)
+        {
+            arms
+                .Append("                case ").Append(message.Fqn).Append(" m:\n")
+                .Append("                    await this.")
+                .Append(EdictWellKnownNames.OnScheduleTimeoutMethodName)
+                .Append("(m);\n")
+                .Append("                    return true;\n");
+        }
+
+        return $$"""
+
+                    protected override async {{EdictWellKnownNames.TaskOfBoolFqn}} DispatchScheduleTimeoutAsync(
+                        global::Edict.Contracts.Schedules.EdictScheduleMessage message)
+                    {
+                        switch (message)
+                        {
+            {{arms.ToString().TrimEnd('\n')}}
+                            default:
+                                return false;
+                        }
+                    }
 
             """;
     }

@@ -23,15 +23,19 @@ public static class EdictSiloBuilderExtensions
     /// <see cref="EdictOptions"/> default to the values previously hardcoded
     /// in mechanism code; the lambda lets a consumer override any subset. The
     /// optional <paramref name="configureSaga"/> lambda tunes the silo-wide
-    /// saga knobs in <see cref="EdictSagaOptions"/> (the 7-day default cap).
+    /// saga knobs in <see cref="EdictSagaOptions"/> (the 7-day default cap). The
+    /// optional <paramref name="configureSchedule"/> lambda tunes the silo-wide
+    /// Command Handler schedule knobs in
+    /// <see cref="EdictCommandHandlerScheduleOptions"/> (its own 7-day default cap).
     /// </summary>
     public static ISiloBuilder AddEdict(
         this ISiloBuilder silo,
         Action<EdictOptions>? configure = null,
-        Action<EdictSagaOptions>? configureSaga = null)
+        Action<EdictSagaOptions>? configureSaga = null,
+        Action<EdictCommandHandlerScheduleOptions>? configureSchedule = null)
     {
         silo.Services.AddEdict();
-        silo.Services.AddEdictOutbox(configure, configureSaga);
+        silo.Services.AddEdictOutbox(configure, configureSaga, configureSchedule);
         silo.Services.AddHostedService<EdictWiringValidator>();
         return silo;
     }

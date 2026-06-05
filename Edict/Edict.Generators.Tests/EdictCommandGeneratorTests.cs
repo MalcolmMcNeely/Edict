@@ -178,6 +178,52 @@ public class EdictCommandGeneratorTests
         Assert.DoesNotContain(generated.Values, content => content.Contains("DispatchScheduleFireAsync", StringComparison.Ordinal));
     }
 
+    const string SchedulingWithTimeoutConsumer = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Schedules;
+        using Edict.Core.Commands;
+
+        namespace Sample;
+
+        public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed partial record FulfillNextLine : EdictScheduleMessage;
+
+        public partial class OrderCommandHandler : EdictCommandHandler
+        {
+            public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+
+            public Task<EdictScheduleResult> HandleAsync(FulfillNextLine message) =>
+                Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+
+            public Task OnScheduleTimeoutAsync(FulfillNextLine message) => Task.CompletedTask;
+        }
+        """;
+
+    [Fact]
+    public Task EdictCommandGenerator_ShouldEmitScheduleTimeoutDispatch_WhenHandlerHasTimeoutArm()
+    {
+        var generated = GeneratorTestHarness.Run(SchedulingWithTimeoutConsumer);
+
+        return Verify(generated);
+    }
+
+    [Fact]
+    public void EdictCommandGenerator_ShouldNotEmitScheduleTimeoutDispatch_WhenHandlerHasNoTimeoutArm()
+    {
+        var generated = GeneratorTestHarness.Run(SchedulingConsumer);
+
+        Assert.DoesNotContain(generated.Values, content => content.Contains("DispatchScheduleTimeoutAsync", StringComparison.Ordinal));
+    }
+
     const string ContractsOnlyConsumer = """
         using System;
 

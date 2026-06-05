@@ -36,4 +36,14 @@ public sealed record ScheduleEntry
     /// <summary>The next instant this schedule is due to fire.</summary>
     [Id(3)]
     public DateTimeOffset DueAt { get; init; }
+
+    /// <summary>
+    /// The absolute instant this schedule hits its timeout cap, armed once at
+    /// registration and never advanced by a fire — a dead-man's switch a healthy
+    /// recurring schedule cannot push forever. <c>null</c> when the schedule is
+    /// uncapped (an explicit <c>Unbounded</c> opt-out, or an inherited silo
+    /// default that was itself null).
+    /// </summary>
+    [Id(4)]
+    public DateTimeOffset? DeadlineAt { get; init; }
 }

@@ -50,6 +50,25 @@ public sealed class EdictWiringValidatorTests
     }
 
     [Fact]
+    public async Task StartAsync_ShouldThrow_WhenScheduleDefaultTimeoutIsNegative()
+    {
+        using var host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddOptions<EdictCommandHandlerScheduleOptions>().Configure(o =>
+                {
+                    o.DefaultTimeout = TimeSpan.FromMinutes(-5);
+                });
+                services.AddHostedService<EdictWiringValidator>();
+            })
+            .Build();
+
+        var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
+
+        Assert.Contains(nameof(EdictCommandHandlerScheduleOptions.DefaultTimeout), failure.Message);
+    }
+
+    [Fact]
     public async Task StartAsync_ShouldThrow_WhenStreamsRegisteredButClaimCheckStoreMissing()
     {
         using var host = new HostBuilder()

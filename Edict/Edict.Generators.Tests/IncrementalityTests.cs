@@ -53,6 +53,12 @@ public class IncrementalityTests
         GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(ScheduleSource);
     }
 
+    [Fact]
+    public void EdictGenerator_RemainsCached_OnUnrelatedEdit_ForScheduleTimeouts()
+    {
+        GeneratorIncrementalityHarness.AssertCachedOnUnrelatedEdit<EdictGenerator>(ScheduleTimeoutSource);
+    }
+
     const string CommandSource = """
         using System;
         using System.Threading.Tasks;
@@ -198,6 +204,36 @@ public class IncrementalityTests
 
             public Task<EdictScheduleResult> HandleAsync(FulfillNextLine message) =>
                 Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+        }
+        """;
+
+    const string ScheduleTimeoutSource = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Schedules;
+        using Edict.Core.Commands;
+
+        namespace Sample;
+
+        public sealed partial record PlaceOrder(Guid OrderId) : EdictCommand
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        public sealed partial record FulfillNextLine : EdictScheduleMessage;
+
+        public partial class OrderCommandHandler : EdictCommandHandler
+        {
+            public Task<EdictCommandResult> HandleAsync(PlaceOrder command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+
+            public Task<EdictScheduleResult> HandleAsync(FulfillNextLine message) =>
+                Task.FromResult<EdictScheduleResult>(new EdictScheduleResult.Complete());
+
+            public Task OnScheduleTimeoutAsync(FulfillNextLine message) => Task.CompletedTask;
         }
         """;
 

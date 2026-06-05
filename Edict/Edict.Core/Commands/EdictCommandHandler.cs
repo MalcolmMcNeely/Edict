@@ -54,6 +54,8 @@ public abstract class EdictCommandHandler<TState>
     OutboxHost<TState>? _host;
     ScheduleHost<TState>? _scheduleHost;
     Serializer? _serializer;
+    EdictCommandHandlerScheduleOptions? _scheduleOptions;
+    IDeadLetterPromoter? _deadLetterPromoter;
     internal List<EdictEvent>? _raisedEvents;
     internal TimeProvider? _timeProvider;
 
@@ -62,6 +64,13 @@ public abstract class EdictCommandHandler<TState>
     ScheduleHost<TState> ScheduleHost => _scheduleHost ??= BuildScheduleHost();
 
     Serializer Serializer => _serializer ??= ServiceProvider.GetRequiredService<Serializer>();
+
+    EdictCommandHandlerScheduleOptions ScheduleOptions =>
+        _scheduleOptions ??= ServiceProvider.GetService<IOptions<EdictCommandHandlerScheduleOptions>>()?.Value
+            ?? new EdictCommandHandlerScheduleOptions();
+
+    IDeadLetterPromoter DeadLetterPromoter =>
+        _deadLetterPromoter ??= ServiceProvider.GetRequiredService<IDeadLetterPromoter>();
 
     /// <summary>
     /// The framework-owned durable aggregate state. The consumer mutates this
@@ -120,6 +129,13 @@ public abstract class EdictCommandHandler<TState>
     public Task<DateTimeOffset?> PeekSoonestScheduleDueAsync() =>
         Task.FromResult(ScheduleHost.SoonestDueAt);
 
+    /// <inheritdoc />
+    public Task FireDueScheduleTimeoutsAsync() => ScheduleHost.FireTimeoutsAsync();
+
+    /// <inheritdoc />
+    public Task<DateTimeOffset?> PeekSoonestScheduleTimeoutAsync() =>
+        Task.FromResult(ScheduleHost.SoonestTimeoutAt);
+
     /// <summary>
     /// Starts a recurring schedule from inside <c>HandleAsync</c>. The
     /// <paramref name="message"/> is persisted (data plus its <c>[Alias]</c>),
@@ -130,11 +146,36 @@ public abstract class EdictCommandHandler<TState>
     /// <see cref="Complete"/>. The staged schedule is durable because the
     /// enclosing command commits the whole envelope; the timer and Reminder arm
     /// on that commit.
+    /// <para>
+    /// <paramref name="timeout"/> caps the schedule's lifetime, armed once here and
+    /// never reset by a fire. An explicit positive <see cref="TimeSpan"/> wins;
+    /// <see cref="EdictSchedule.Unbounded"/> opts out of any cap; omitting it
+    /// inherits <see cref="EdictCommandHandlerScheduleOptions.DefaultTimeout"/>
+    /// (7 days by default, or uncapped when that is null or
+    /// <see cref="EdictSchedule.Unbounded"/>). On cap the schedule runs
+    /// <c>OnScheduleTimeoutAsync(TMessage)</c> if one is written, else dead-letters.
+    /// </para>
     /// </summary>
-    protected void Schedule(EdictScheduleMessage message, TimeSpan every)
+    protected void Schedule(EdictScheduleMessage message, TimeSpan every, TimeSpan? timeout = null)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every);
+        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every, ResolveScheduleCap(timeout));
+    }
+
+    // Resolves the effective timeout duration for a schedule: an explicit timeout:
+    // wins, EdictSchedule.Unbounded (at the call site or as the silo default) means
+    // uncapped (null), and omitting timeout: inherits the silo default. The result
+    // is the cap as a duration from now, or null when the schedule is uncapped.
+    TimeSpan? ResolveScheduleCap(TimeSpan? timeout)
+    {
+        if (timeout is { } explicitTimeout)
+        {
+            return explicitTimeout == EdictSchedule.Unbounded ? null : explicitTimeout;
+        }
+
+        return ScheduleOptions.DefaultTimeout is { } siloDefault && siloDefault != EdictSchedule.Unbounded
+            ? siloDefault
+            : null;
     }
 
     /// <summary>Fire-handler result: fire again on the declared cadence.</summary>
@@ -152,6 +193,16 @@ public abstract class EdictCommandHandler<TState>
     /// </summary>
     protected virtual Task<EdictScheduleResult> DispatchScheduleFireAsync(EdictScheduleMessage message) =>
         throw new EdictUnroutableScheduleMessageException(message.GetType());
+
+    /// <summary>
+    /// Generator override target: type-switches a timed-out message to the
+    /// consumer's matching <c>OnScheduleTimeoutAsync(TMessage)</c> compensation
+    /// hook, returning <c>true</c> when one ran. The base default returns
+    /// <c>false</c> for every message — a schedule whose author wrote no hook
+    /// dead-letters its fired cap rather than throwing.
+    /// </summary>
+    protected virtual Task<bool> DispatchScheduleTimeoutAsync(EdictScheduleMessage message) =>
+        Task.FromResult(false);
 
     // The dispatch delegate ScheduleHost calls per due entry — the hand-written
     // schedule fire lifecycle, parallel to ValidateAndHandleAsync. Deserialize,
@@ -184,6 +235,54 @@ public abstract class EdictCommandHandler<TState>
             : base.State.Schedule.Continue(entry.ScheduleId, now);
 
         await CommitAndDrainRaisedEventsAsync();
+    }
+
+    // The dispatch delegate ScheduleHost calls per timed-out entry. A timeout is
+    // terminal: it removes the schedule in the same commit as its outcome. If the
+    // consumer wrote an OnScheduleTimeoutAsync hook, it runs as compensation
+    // (mutating State / raising events, which commit atomically with the removal);
+    // otherwise the cap dead-letters through DeadLetterPromoter with a no-throw
+    // synthetic row. A hook that throws is rolled back to the durable snapshot and
+    // dead-lettered, so a failing compensation cannot leave the cap re-firing
+    // forever.
+    async Task FireScheduleTimeoutEntryAsync(ScheduleEntry entry, DateTimeOffset now)
+    {
+        var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
+
+        bool handled;
+        try
+        {
+            handled = await DispatchScheduleTimeoutAsync(message);
+        }
+        catch
+        {
+            DiscardRaisedEvents();
+            await ReadStateAsync();
+            handled = false;
+        }
+
+        if (handled)
+        {
+            base.State.Schedule = base.State.Schedule.Complete(entry.ScheduleId);
+            await CommitAndDrainRaisedEventsAsync();
+            return;
+        }
+
+        var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
+        var traceParent = traceId is not null && spanId is not null
+            ? ActivityExtensions.BuildTraceParent(traceId, spanId)
+            : null;
+
+        var deadLetter = DeadLetterPromoter.PromoteScheduleTimeout(
+            scheduleMessageType: message.GetType().FullName ?? message.GetType().Name,
+            sourceGrainKey: this.GetPrimaryKey().ToString(),
+            sourceGrainType: GetType().FullName ?? GetType().Name,
+            traceParent: traceParent,
+            traceState: traceState,
+            now: now);
+
+        base.State.Schedule = base.State.Schedule.Complete(entry.ScheduleId);
+        await Host.EnqueueAndDrainAsync([deadLetter]);
     }
 
     /// <summary>
@@ -362,7 +461,8 @@ public abstract class EdictCommandHandler<TState>
             new GrainScheduleTimer(this),
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
-            FireScheduleEntryAsync);
+            FireScheduleEntryAsync,
+            FireScheduleTimeoutEntryAsync);
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test

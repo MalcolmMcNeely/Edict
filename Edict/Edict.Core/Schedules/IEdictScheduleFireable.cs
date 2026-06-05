@@ -16,4 +16,10 @@ public interface IEdictScheduleFireable : IGrainWithGuidKey
 
     /// <summary>The soonest due instant across this grain's active schedules, or null when none.</summary>
     Task<DateTimeOffset?> PeekSoonestScheduleDueAsync();
+
+    /// <summary>Fires every schedule whose timeout cap is now-or-past at the current framework clock.</summary>
+    Task FireDueScheduleTimeoutsAsync();
+
+    /// <summary>The soonest timeout-cap instant across this grain's capped schedules, or null when none are capped.</summary>
+    Task<DateTimeOffset?> PeekSoonestScheduleTimeoutAsync();
 }

@@ -20,6 +20,7 @@ public class ConfigurationDocCoverageTests
     [
         [typeof(EdictOptions), "core.md"],
         [typeof(EdictSagaOptions), "core.md"],
+        [typeof(EdictCommandHandlerScheduleOptions), "core.md"],
         [typeof(EdictAzureStreamsOptions), "azure-streaming.md"],
         [typeof(EdictAzureBlobClaimCheckOptions), "azure-streaming.md"],
         [typeof(EdictAzurePersistenceOptions), "azure-persistence.md"],

@@ -60,6 +60,10 @@ internal static class EdictWellKnownNames
     // assembly drifts off this value.
     public const string HandleMethodName = "HandleAsync";
 
+    // The schedule-timeout compensation hook the consumer optionally writes per
+    // schedule message; the spine emitter type-switches over its overloads.
+    public const string OnScheduleTimeoutMethodName = "OnScheduleTimeoutAsync";
+
     // ── Edict.Core.Commands ──────────────────────────────────────────────────
     public const string EdictCommandHandlerFqn =
         "global::Edict.Core.Commands.EdictCommandHandler";
@@ -129,6 +133,9 @@ internal static class EdictWellKnownNames
 
     public const string TaskOfEdictScheduleResultFqn =
         "global::System.Threading.Tasks.Task<global::Edict.Contracts.Schedules.EdictScheduleResult>";
+
+    public const string TaskOfBoolFqn =
+        "global::System.Threading.Tasks.Task<bool>";
 
     public const string EdictDispatchOutcomeNotHandledFqn =
         "global::Edict.Core.Idempotency.EdictDispatchOutcome.NotHandled";

@@ -28,6 +28,7 @@ sealed class ScheduleHost<TPayload>
     readonly TimeProvider _timeProvider;
     readonly EdictOptions _options;
     readonly Func<ScheduleEntry, DateTimeOffset, Task> _dispatch;
+    readonly Func<ScheduleEntry, DateTimeOffset, Task> _dispatchTimeout;
 
     bool _reminderRegistered;
 
@@ -37,7 +38,8 @@ sealed class ScheduleHost<TPayload>
         IScheduleTimer timer,
         TimeProvider timeProvider,
         EdictOptions options,
-        Func<ScheduleEntry, DateTimeOffset, Task> dispatch)
+        Func<ScheduleEntry, DateTimeOffset, Task> dispatch,
+        Func<ScheduleEntry, DateTimeOffset, Task> dispatchTimeout)
     {
         _state = state;
         _reminders = reminders;
@@ -45,17 +47,21 @@ sealed class ScheduleHost<TPayload>
         _timeProvider = timeProvider;
         _options = options;
         _dispatch = dispatch;
+        _dispatchTimeout = dispatchTimeout;
     }
 
     public GrainEnvelope<TPayload> State => _state.State;
 
     /// <summary>
-    /// Stages a new schedule, due first at <c>now + period</c>. In-memory only —
-    /// the staging is durable because the consumer calls this inside
-    /// <c>HandleAsync</c>, whose commit persists the whole envelope; the timer and
-    /// Reminder are armed by the post-commit <see cref="ReconcileAsync"/>.
+    /// Stages a new schedule, due first at <c>now + period</c> and capped at
+    /// <c>now + cap</c> when <paramref name="cap"/> is non-null (the resolved
+    /// timeout duration; null leaves the schedule uncapped). In-memory only — the
+    /// staging is durable because the consumer calls this inside <c>HandleAsync</c>,
+    /// whose commit persists the whole envelope; the timer and Reminder are armed
+    /// by the post-commit <see cref="ReconcileAsync"/>. The deadline is anchored to
+    /// the same <c>now</c> as the first due instant and never advanced by a fire.
     /// </summary>
-    public void Schedule(byte[] messagePayload, TimeSpan period)
+    public void Schedule(byte[] messagePayload, TimeSpan period, TimeSpan? cap)
     {
         var now = _timeProvider.GetUtcNow();
         State.Schedule = State.Schedule.Add(new ScheduleEntry
@@ -64,13 +70,16 @@ sealed class ScheduleHost<TPayload>
             MessagePayload = messagePayload,
             Period = period,
             DueAt = now + period,
+            DeadlineAt = cap is { } duration ? now + duration : null,
         });
     }
 
     public DateTimeOffset? SoonestDueAt => State.Schedule.SoonestDueAt;
 
+    public DateTimeOffset? SoonestTimeoutAt => State.Schedule.SoonestTimeoutAt;
+
     /// <summary>
-    /// Fires every schedule due at the current clock through the dispatch
+    /// Fires every schedule due at the current clock through the fire dispatch
     /// delegate, then reconciles the timer and Reminder against the slice the
     /// fires left behind. Due is snapshotted before dispatch, so a fire that
     /// re-arms or completes its own schedule does not change which entries this
@@ -79,12 +88,50 @@ sealed class ScheduleHost<TPayload>
     /// </summary>
     public async Task FireDueAsync()
     {
+        await FireDueCoreAsync();
+        await ReconcileAsync();
+    }
+
+    /// <summary>
+    /// Fires every schedule whose timeout cap is now-or-past through the timeout
+    /// dispatch delegate (which runs the consumer's compensation hook or
+    /// dead-letters and removes the schedule), then reconciles. Snapshotted before
+    /// dispatch like the due path. The Test Framework drives this directly after
+    /// advancing the clock to the soonest cap.
+    /// </summary>
+    public async Task FireTimeoutsAsync()
+    {
+        await FireTimeoutsCoreAsync();
+        await ReconcileAsync();
+    }
+
+    async Task FireDueCoreAsync()
+    {
         var now = _timeProvider.GetUtcNow();
         foreach (var entry in State.Schedule.DueEntries(now))
         {
             await _dispatch(entry, now);
         }
+    }
 
+    async Task FireTimeoutsCoreAsync()
+    {
+        var now = _timeProvider.GetUtcNow();
+        foreach (var entry in State.Schedule.TimedOutEntries(now))
+        {
+            await _dispatchTimeout(entry, now);
+        }
+    }
+
+    /// <summary>
+    /// Reminder tick and grain-timer fire path: the production clock fires timeouts
+    /// first (terminal, so a timed-out schedule is removed before the due pass
+    /// considers it) then due ticks, then reconciles once.
+    /// </summary>
+    public async Task FireDueAndTimeoutsAsync()
+    {
+        await FireTimeoutsCoreAsync();
+        await FireDueCoreAsync();
         await ReconcileAsync();
     }
 
@@ -92,7 +139,7 @@ sealed class ScheduleHost<TPayload>
     public Task ReceiveReminderAsync()
     {
         _reminderRegistered = true;
-        return FireDueAsync();
+        return FireDueAndTimeoutsAsync();
     }
 
     /// <summary>Re-arms the timer and Reminder from durable state when the grain activates.</summary>
@@ -106,16 +153,23 @@ sealed class ScheduleHost<TPayload>
     /// </summary>
     public async Task ReconcileAsync()
     {
-        var soonest = State.Schedule.SoonestDueAt;
-        if (soonest is null)
+        var soonestDue = State.Schedule.SoonestDueAt;
+        if (soonestDue is null)
         {
             _timer.Disarm();
             await UnregisterReminderAsync();
             return;
         }
 
-        var dueIn = soonest.Value - _timeProvider.GetUtcNow();
-        _timer.Arm(dueIn < TimeSpan.Zero ? TimeSpan.Zero : dueIn, _ => FireDueAsync());
+        // Wake for whichever lands first: the next tick or the next cap. A recurring
+        // schedule always has a due instant, so the timer stays armed while active;
+        // a sooner cap just pulls the wake-up earlier.
+        var soonest = State.Schedule.SoonestTimeoutAt is { } timeout && timeout < soonestDue.Value
+            ? timeout
+            : soonestDue.Value;
+
+        var dueIn = soonest - _timeProvider.GetUtcNow();
+        _timer.Arm(dueIn < TimeSpan.Zero ? TimeSpan.Zero : dueIn, _ => FireDueAndTimeoutsAsync());
         await RegisterReminderAsync();
     }
 

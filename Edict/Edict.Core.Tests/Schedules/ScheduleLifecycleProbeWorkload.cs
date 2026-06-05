@@ -21,6 +21,15 @@ public enum ScheduleProbeBehavior
     Throw,
 }
 
+// Whether the probe writes an OnScheduleTimeoutAsync compensation hook
+// (Compensate) or leaves the fired cap to dead-letter (DeadLetter).
+public enum ScheduleProbeTimeoutBehavior
+{
+    DeadLetter,
+    Compensate,
+    CompensateThrows,
+}
+
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Schedules.ScheduleProbeState")]
 public sealed class ScheduleProbeState : IEdictPersistedState
@@ -30,6 +39,12 @@ public sealed class ScheduleProbeState : IEdictPersistedState
 
     [Id(1)]
     public ScheduleProbeBehavior Behavior { get; set; }
+
+    [Id(2)]
+    public ScheduleProbeTimeoutBehavior TimeoutBehavior { get; set; }
+
+    [Id(3)]
+    public int TimeoutCounter { get; set; }
 }
 
 // Constructed inside the grain and passed straight to ValidateAndHandleAsync, so
@@ -58,7 +73,9 @@ public sealed partial record ScheduleTickedEvent(Guid Key, int Counter) : EdictE
 public interface IScheduleProbe : IEdictScheduleFireable
 {
     Task StartAsync(TimeSpan period, ScheduleProbeBehavior behavior);
+    Task StartWithTimeoutAsync(TimeSpan period, TimeSpan timeout, ScheduleProbeTimeoutBehavior timeoutBehavior);
     Task<int> GetCounterAsync();
+    Task<int> GetTimeoutCounterAsync();
     Task<int> GetPendingOutboxCountAsync();
     Task<Guid> GetActivationIdAsync();
     Task DeactivateAsync();
@@ -80,6 +97,36 @@ public partial class ScheduleProbe : EdictCommandHandler<ScheduleProbeState>, IS
             _ => throw new EdictUnroutableScheduleMessageException(message.GetType()),
         };
 
+    // Hand-written timeout dispatch: DeadLetter leaves the cap unhandled (base
+    // default), Compensate runs the hook and returns true, CompensateThrows models
+    // a compensation that faults mid-hook.
+    protected override async Task<bool> DispatchScheduleTimeoutAsync(EdictScheduleMessage message)
+    {
+        if (State.TimeoutBehavior == ScheduleProbeTimeoutBehavior.DeadLetter)
+        {
+            return false;
+        }
+
+        switch (message)
+        {
+            case ScheduleTickMessage:
+                await OnScheduleTimeoutAsync();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    Task OnScheduleTimeoutAsync()
+    {
+        State.TimeoutCounter++;
+        if (State.TimeoutBehavior == ScheduleProbeTimeoutBehavior.CompensateThrows)
+        {
+            throw new InvalidOperationException("compensation hook threw after mutating State.");
+        }
+        return Task.CompletedTask;
+    }
+
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         _activationId = Guid.NewGuid();
@@ -93,6 +140,15 @@ public partial class ScheduleProbe : EdictCommandHandler<ScheduleProbeState>, IS
         {
             State.Behavior = behavior;
             Schedule(new ScheduleTickMessage(), period);
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+        });
+
+    public Task StartWithTimeoutAsync(TimeSpan period, TimeSpan timeout, ScheduleProbeTimeoutBehavior timeoutBehavior) =>
+        ValidateAndHandleAsync(new ScheduleProbeStartCommand(this.GetPrimaryKey()), () =>
+        {
+            State.Behavior = ScheduleProbeBehavior.ContinueNoEvent;
+            State.TimeoutBehavior = timeoutBehavior;
+            Schedule(new ScheduleTickMessage(), period, timeout);
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         });
 
@@ -116,6 +172,8 @@ public partial class ScheduleProbe : EdictCommandHandler<ScheduleProbeState>, IS
     }
 
     public Task<int> GetCounterAsync() => Task.FromResult(State.Counter);
+
+    public Task<int> GetTimeoutCounterAsync() => Task.FromResult(State.TimeoutCounter);
 
     public Task<int> GetPendingOutboxCountAsync() => Task.FromResult(OutboxStateForProbe.Pending.Count);
 

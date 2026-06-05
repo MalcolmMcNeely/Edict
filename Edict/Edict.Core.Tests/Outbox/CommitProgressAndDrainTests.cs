@@ -139,6 +139,9 @@ public sealed class CommitProgressAndDrainTests
     {
         public OutboxEntry Promote(OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now) =>
             failed with { Kind = OutboxEffectKind.PublishEvent };
+
+        public OutboxEntry PromoteScheduleTimeout(string scheduleMessageType, string sourceGrainKey, string sourceGrainType, string? traceParent, string? traceState, DateTimeOffset now) =>
+            throw new NotSupportedException();
     }
 
     sealed class NullStreamProvider : IStreamProvider
