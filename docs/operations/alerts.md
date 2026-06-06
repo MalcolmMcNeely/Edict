@@ -112,7 +112,7 @@ histogram_quantile(0.99,
 
 **Triage.**
 1. Slice by command / event type. A single handler regressing means recent code on that path is the suspect.
-2. Cross-check trace data — the `edict.command` / `edict.event.handle` span carries `edict.command.type` / `edict.event.type` tags. Pick a slow exemplar from the histogram (exemplar wiring is in `SetExemplarFilter(new TraceBasedExemplarFilter())` per the Telemeterized PRD) and follow it through Aspire / Tempo.
+2. Cross-check trace data — the `edict.command.handle` / `edict.event.handle` span carries `edict.command.type` / `edict.event.type` tags. Pick a slow exemplar from the histogram (exemplar wiring is `SetExemplarFilter(ExemplarFilterType.TraceBased)`; see [`observability.md`](observability.md)) and follow it through Aspire / Tempo, then follow the links to the cause.
 3. If the slow span is dominated by a substrate call (Npgsql command, Kafka produce), the substrate is the suspect — `db.client.connection.npgsql.create_time` p99 trending up is the leading indicator. See [`observability.md`](observability.md).
 
 ---

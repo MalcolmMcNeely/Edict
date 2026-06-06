@@ -25,6 +25,25 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics.AddMeter("Edict"));
 ```
 
+## Trace causality: one turn, links across turns
+
+A trace is **one grain's single synchronous turn**. Spans nest parent-child *within* that turn; the moment causality crosses to another turn — the stream hop from publish to handle, a saga's fire-and-forget command dispatch, a schedule or saga-timeout fire, a recovery drain, a dead-letter promotion — the new turn starts its own trace and carries one `ActivityLink` back to the span that caused it. Every span is therefore either nested in its turn's trace or linked to its cause; nothing is a bare orphan.
+
+The link carrier is the W3C trace context already persisted on the wire — `EdictEvent.TraceId/SpanId/TraceState`, `OutboxEntry.TraceParent`, and the arm-context on `ScheduleEntry` and saga state. The consuming turn rebuilds an `ActivityLink` from it; the wire shape is unchanged, only the read-side meaning moved from "my parent" to "the cause I link to." The one cross-activation hop that stays parent-child is the awaited API call `edict.command` (Web) → `edict.command.handle` (silo), because the caller span genuinely contains the callee.
+
+| Trace (one turn) | Root span | Links to |
+|---|---|---|
+| API command | `edict.command` (Web) → `edict.command.handle` (silo) → `edict.event.publish` | — (true root) |
+| Event consumed | `edict.event.handle` → any `edict.command.send` | → the `edict.event.publish` that raised it |
+| Dedup-suppressed redelivery | `edict.event.deduplicated` | → the originating `edict.event.publish` |
+| Saga-dispatched command handled | `edict.command.handle` (linked root) | → the saga's `edict.command.send` |
+| Schedule fire | `edict.schedule.fire` → raised effects | → the command that armed the schedule |
+| Saga-timeout fire | `edict.saga.timeout` → compensation effects | → the context that armed the saga |
+| Dead-letter promotion | `edict.dead_letter.promote` | → the failing entry's originating context |
+| Recovery drain | `edict.event.publish` (root) | → the staging command via the entry's persisted context |
+
+Each trace makes its own head-sampling decision, and the link carries the producing turn's real sampled flag. Tail sampling (or a link-aware sampler) is the lever that keeps a whole link-group together; head sampling at `edict.command` controls volume. The rationale for this model — bounded per-turn traces, honest waterfalls, explicit cross-silo edges — is [ADR-0060](../../adr/0060-trace-causality-at-scale-one-turn-links.md) (supersedes ADR-0003); the operator-side guidance is in [`observability.md`](../../operations/observability.md).
+
 ## Canonical `edict.*` tag taxonomy
 
 Tag keys are stable across declaring types — the same domain property name (`OrderId`, `CustomerReference`) lands under the same key regardless of which command or event declared it. The snake-case derivation matches `System.Text.Json.JsonNamingPolicy.SnakeCaseLower` (`SKU` → `sku`, `HTTPMethod` → `http_method`, `CustomerID` → `customer_id`).
@@ -34,12 +53,13 @@ Span names:
 - `edict.command.send` — issued when a saga's outbox `SendCommand` effect dispatches a command.
 - `edict.command` — `IEdictSender.SendAsync` call-site span. `[EdictTelemeterized]` tags from the command land here.
 - `edict.command.handle` — silo-side command handler invocation. A child of `edict.command` on the awaited API path; on a saga's fire-and-forget dispatch it is a new trace root linking back to `edict.command.send`.
-- `edict.event.publish` — outbox publish of a raised event.
-- `edict.event.handle` — consumer handler invocation. `[EdictTelemeterized]` tags from the event land on both `publish` and `handle` spans.
-- `edict.event.deduplicated` — emitted (with no payload tags) when the dedup ring suppresses an at-least-once redelivery.
-- `edict.event.claim_check.get` / `edict.event.claim_check.put` — claim-check blob operations.
+- `edict.event.publish` — outbox publish of a raised event. Nested in its producer turn.
+- `edict.event.handle` — consumer handler invocation. A new trace root linking back to the `edict.event.publish` that raised the event (the stream hop is the canonical cross-turn link). `[EdictTelemeterized]` tags from the event land on both `publish` and `handle` spans.
+- `edict.event.deduplicated` — emitted (with no payload tags) when the dedup ring suppresses an at-least-once redelivery. A new trace root linking back to the originating `edict.event.publish`, so a suppressed redelivery is visible rather than silent.
+- `edict.event.claim_check.put` / `edict.event.claim_check.get` — claim-check blob operations. PUT nests in the producer turn; GET nests under `edict.event.handle`.
 - `edict.schedule.fire` — a schedule tick or one-shot fire. A new trace root linking back to the command that armed the schedule.
 - `edict.saga.timeout` — a fired saga lifetime cap. A new trace root linking back to the context that armed the saga.
+- `edict.dead_letter.promote` — a dead-letter promotion. A new trace root linking back to the failing entry's originating context, so an operator can pivot from a dead-letter row straight to the trace that produced it.
 - `edict.table.upsert` — table-projection row write.
 
 Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
@@ -78,4 +98,4 @@ Cardinality is bounded at compile time: no metric carries `aggregate_key` or `gr
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Telemeterized`, `EdictCommand`, `Event`.
 - Concepts — [commands.md](commands.md), [events.md](events.md), [dead-letter.md](dead-letter.md), [idempotency.md](idempotency.md), [claim-check.md](claim-check.md).
-- ADRs — [0037 — Telemeterized tag keys carry no message-type prefix](../../adr/0037-telemeterized-tag-keys-no-type-prefix.md), [0038 — Meters naming and cross-cutting attributes](../../adr/0038-meters-naming-and-cross-cutting-attributes.md), [0039 — Metrics cardinality policy](../../adr/0039-metrics-cardinality-policy.md), [0040 — Silo-local metrics cache for observable gauges](../../adr/0040-silo-local-metrics-cache-for-observable-gauges.md).
+- ADRs — [0060 — Trace causality at scale: one turn, links across turns](../../adr/0060-trace-causality-at-scale-one-turn-links.md) (supersedes 0003), [0037 — Telemeterized tag keys carry no message-type prefix](../../adr/0037-telemeterized-tag-keys-no-type-prefix.md), [0038 — Meters naming and cross-cutting attributes](../../adr/0038-meters-naming-and-cross-cutting-attributes.md), [0039 — Metrics cardinality policy](../../adr/0039-metrics-cardinality-policy.md), [0040 — Silo-local metrics cache for observable gauges](../../adr/0040-silo-local-metrics-cache-for-observable-gauges.md).

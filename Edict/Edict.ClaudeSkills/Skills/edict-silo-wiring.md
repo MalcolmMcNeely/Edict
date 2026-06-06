@@ -47,6 +47,22 @@ silo.AddEdict(
 
 A consumer opts a single perpetual schedule out of the cap at its call site with `timeout: EdictSchedule.Unbounded`, which always beats this default. See the `edict-authoring` skill for the `Schedule(...)` call site.
 
+## Telemetry wiring
+
+Edict exposes one `ActivitySource` and one `Meter`, both named `"Edict"` (`EdictDiagnostics.SourceName`). Register exactly those on your OpenTelemetry builder, on both the silo and any Web front end:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddSource(EdictDiagnostics.SourceName))
+    .WithMetrics(metrics => metrics
+        .AddMeter(EdictDiagnostics.SourceName)
+        .SetExemplarFilter(ExemplarFilterType.TraceBased));
+```
+
+Register **only** the Edict source for Edict causality — do not add `AddAspNetCoreInstrumentation()` expecting it to root your command traces. Edict already roots a trace at `edict.command`, and adding the AspNetCore source layers detached `HttpRequestIn` spans over it. The `TraceBasedExemplarFilter` is what lets an operator pivot from a slow metric bucket to a representative trace.
+
+Edict's trace model is **one trace per grain turn, linked across turn boundaries**: each grain turn (command-handle, event-handle, schedule/saga-timeout fire) is its own bounded trace, and an `ActivityLink` connects it to the turn that caused it, rather than nesting everything under the first command. The practical wiring consequence is sampling: each trace makes its own head decision, so head sampling at `edict.command` is your volume lever, but to keep a whole link-group together at the collector you run **tail sampling or a link-aware sampler**. The model and the operator-side detail are in `telemetry.md` and `observability.md` (the latter also maps the substrate meters to wire alongside the Edict meter).
+
 ## Supported pairings
 
 Pick exactly one streaming + one persistence:

@@ -56,9 +56,9 @@ public static class Extensions
             .WithMetrics(metrics =>
             {
                 metrics.AddRuntimeInstrumentation();
-                // Dormant until the metrics PRD lands an Edict instrument; once any
-                // Edict meter is registered, exemplars are sampled from in-flight
-                // traces with zero further wiring.
+                // Attaches a representative trace as an exemplar to every Edict counter and
+                // histogram recorded inside a turn's span, so an operator can pivot from a slow
+                // histogram bucket straight to a trace and follow its links to the cause.
                 metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
             })
             .WithTracing(_ =>

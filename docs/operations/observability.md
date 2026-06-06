@@ -1,10 +1,38 @@
-# Substrate observability
+# Operating Edict telemetry
 
-Edict ships its own `Meter` named `"Edict"` for framework-level concerns — outbox, dead-letter, sagas, claim-check, handler latency. The substrate underneath surfaces its own metrics on its own `Meter`. An operator running Edict in production scrapes both: Edict's `"Edict"` meter for *what the framework decided*, and the substrate's meter for *what the queue/database/stream broker is actually doing*.
+Edict ships its own `Meter` and `ActivitySource`, both named `"Edict"`, for framework-level concerns — outbox, dead-letter, sagas, claim-check, handler latency, and the trace causality graph. The substrate underneath surfaces its own metrics on its own `Meter`. An operator running Edict in production scrapes both: Edict's `"Edict"` meter for *what the framework decided*, and the substrate's meter for *what the queue/database/stream broker is actually doing*.
 
-This page maps the substrate `Meter` names you wire into your OTel `MeterProviderBuilder.AddMeter(...)` alongside `EdictDiagnostics.SourceName`, and gives one line on what each tells you. [`alerts.md`](alerts.md) triage steps reference these by name; if a recipe says "check the substrate's connection-pool gauge," this is the page that names it.
+This page covers two things: how to pivot from an Edict metric to a representative trace (the exemplar→trace pivot, and which metrics deliberately carry no exemplar), how to sample Edict traces at scale, and then the substrate `Meter` map you wire into your OTel `MeterProviderBuilder.AddMeter(...)` alongside `EdictDiagnostics.SourceName`. [`alerts.md`](alerts.md) triage steps reference both by name; if a recipe says "pick a slow exemplar" or "check the substrate's connection-pool gauge," this is the page that explains it.
 
-## How to wire substrate meters
+## Exemplar → trace pivot
+
+Edict's trace model is one trace per grain turn, linked across turn boundaries ([ADR-0060](../adr/0060-trace-causality-at-scale-one-turn-links.md), supersedes ADR-0003; the model is described in [`telemetry.md`](../usage/concepts/telemetry.md)). Exemplars are what let an operator jump from a histogram bucket — "the slow tail of `command.handle.duration`" — to a concrete trace in that bucket. The wiring is a single line on the metrics builder:
+
+```csharp
+metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
+```
+
+With the trace-based filter active, any measurement recorded *while a recording Edict span is current* attaches that span's trace as an exemplar. From a slow bucket in Aspire / Grafana / Tempo you click the exemplar and land on the turn's trace; from there you follow the links to the cause (the publishing turn, the arming command, the failing entry).
+
+Every per-operation Edict counter and histogram is recorded inside its turn's span precisely so the pivot works: `command.handle.duration` inside `edict.command.handle`, `event.handle.duration` / `event.handle.lag` inside `edict.event.handle`, `idempotency.duplicate.count` inside `edict.event.deduplicated`, `claim_check.payload.size` inside `edict.event.claim_check.put` when the event spilled (so the exemplar points at the blob-write trace), and `saga.timeout.fired` inside `edict.saga.timeout`.
+
+### The three carve-outs
+
+Three meters deliberately carry **no** exemplar. Their absence is a documented decision, not a wiring gap — do not chase a missing exemplar on these:
+
+- **The observable gauges** (`outbox.pending.count`, `outbox.oldest_entry.age`, `saga.progress.age`). The gauge callback runs on the scrape thread, decoupled from any grain turn, so there is no operation in flight and no `Activity.Current` to sample — an exemplar is impossible by construction ([ADR-0040](../adr/0040-silo-local-metrics-cache-for-observable-gauges.md)).
+- **`outbox.drain.*`** (`drain.count`, `drain.entries`). A per-pass aggregate that can cover entries staged by many different command turns and traces; a single-trace exemplar would misrepresent the batch, so the framework starts no span for the drain pass ([ADR-0038](../adr/0038-meters-naming-and-cross-cutting-attributes.md)).
+- **`saga.completed`**. Counted only after the saga's terminal write is durable, so a write-fault redelivery cannot double-count it; that durable-commit point sits outside any span (the inline completion path has no handle span there at all). Forcing it under a span would regress exactly-once counting, so it stays the bare cardinality-bounded denominator companion to `saga.timeout.fired` ([ADR-0039](../adr/0039-metrics-cardinality-policy.md)). Pivot to the completing trace from the `edict.command.handle` / `edict.event.handle` spans and their links instead.
+
+## Sampling at scale
+
+Because a trace is one grain turn and turns are connected by `ActivityLink`s, each trace makes its **own** head-sampling decision. The link carries the producing turn's real sampled flag (restore honours the flag byte rather than forcing `Recorded`), so a dropped command yields a fully-dropped turn-trace and a sampled one yields a complete turn-trace — head sampling at `edict.command` is your volume lever.
+
+The catch: head sampling alone can sample one turn *in* and its linked cause *out*, severing "follow the link to the cause." To keep a whole link-group together, run **tail sampling or a link-aware sampler** at the collector — a tail sampler sees all spans of a link-group before deciding, and a link-aware sampler propagates the decision across links. This is the deliberate trade of the per-turn model: bounded, tail-sampleable traces in exchange for a collector that understands links. Set head sampling for volume; set tail/link-aware sampling for causal completeness.
+
+## Substrate meters
+
+The substrate underneath Edict surfaces its own metrics on its own `Meter`. This is the map of those names; [`alerts.md`](alerts.md) treats the framework metric as the **symptom** and the substrate metric as the **suspect**. Wire each substrate `Meter` alongside `EdictDiagnostics.SourceName`:
 
 ```csharp
 builder.Services.AddOpenTelemetry()

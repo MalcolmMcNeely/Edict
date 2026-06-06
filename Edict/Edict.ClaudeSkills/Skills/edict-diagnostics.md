@@ -25,11 +25,13 @@ There is **no `RedriveAsync`**. Recovery is manual: re-emit the source Command o
 
 Never read the underlying `deadletter` table directly. Always go through `IEdictDeadLetterRepository`.
 
-## Stitch the trace
+## Follow the trace
 
-The captured `TraceParent` on a dead-letter row preserves the W3C trace from the original effect. Pasting that trace id into the consumer's observability stack will join the dead-letter span to the originating Command span and any prior event-handle span — the chain is by trace context, not by the Command/Event Guid. The Guid is routing; trace is causality. A saga commonly re-keys, so the Guid will not stitch across domains.
+A trace in Edict is **one grain's single synchronous turn**. Spans nest parent-child within a turn; every asynchronous handoff to another turn (the stream hop, a saga's command dispatch, a schedule or saga-timeout fire, a recovery drain, a dead-letter promotion) starts its *own* trace and carries one `ActivityLink` back to the span that caused it. So you do not read one giant waterfall — you read a small per-turn trace and follow its link to the cause. The chain is by trace context, not by the Command/Event Guid: the Guid is routing, trace is causality, and a saga commonly re-keys so the Guid will not stitch across domains.
 
-When investigating a missing event or unrouted Command, the trace is what stitches the chain. The framework opens a single `ActivitySource` named `"Edict"`; subscribe to that and the spans (`edict.command`, `edict.event.publish`, `edict.event.handle`) carry the causality.
+The captured `TraceParent` on a dead-letter row preserves the W3C context of the failing effect's originating turn. The promotion itself emits a `edict.dead_letter.promote` span that is a new root **linking** to that context, so in the consumer's observability stack you pivot from the dead-letter promote span across its link to the trace of the turn that produced the failure.
+
+When investigating a missing event or unrouted Command, the trace is what stitches the chain. The framework opens a single `ActivitySource` named `"Edict"`; subscribe to that. The span map: `edict.command` → `edict.command.handle` → `edict.event.publish` is one turn (the awaited API call is the one hop that stays parent-child); `edict.event.handle` and `edict.event.deduplicated` are new roots linking back to the `edict.event.publish` that raised the event; `edict.command.send`, `edict.schedule.fire`, `edict.saga.timeout`, and `edict.dead_letter.promote` each link back to their cause. Follow the link, not a nested parent, across every turn boundary.
 
 Each dead-letter row also carries a `CorrelationId`: the chain-stable id every message in one causal chain shares, framework-stamped and propagated across the Saga hop. It is the durable grouping key that survives an unsampled trace (where `TraceParent` is null), so a fleet-wide `ListAllAsync()` grouped by `CorrelationId` shows every failure one Command set in motion. Unlike the `[EdictRouteKey]` Guid (which re-keys across domains) it stays constant end to end.
 
@@ -58,7 +60,7 @@ For any "why does dead-letter behave this way?" or "why no redrive?" question, i
 - ADR-0019 — Deferred dispatch (why `SendCommand` is an Outbox effect, not an inline call).
 - ADR-0020 — Claim check (and the `BlobMissing` failure kind).
 - ADR-0053 — Claim-check key is the event's `EventId` (why `BlobMissing` points at `SourceEventId`).
-- ADR-0003 — Parent/child spans across the stream hop.
+- ADR-0060 — Trace causality at scale: a trace is one grain turn, links across turn boundaries (supersedes ADR-0003's parent-child-across-the-stream-hop model).
 - ADR-0041 — Exception policy.
 - ADR-0050 — Saga absolute lifetime cap (the `SagaTimeout` / `SagaTerminal` dead-letter causes).
 
