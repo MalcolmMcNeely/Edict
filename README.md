@@ -174,10 +174,10 @@ dotnet run --project Sample/Sample.Azure.AppHost
 
 The Aspire dashboard prints a URL on startup. From there, follow two links:
 
-- **Sample.Azure.Web** — the demo at `/`. A paused dashboard of a live order-processing system. Press ▶ to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire. Click any row in the orders table to spotlight it; the right-hand timeline shows that order's state transitions with the span name beside each row, so you can navigate the Aspire trace by reading down the spotlight. Three injection buttons demonstrate the failure modes — poison, oversize-payload (claim check), and saga-rejected commands.
+- **Sample.Azure.Web** — a believable commerce console with five views: **Dashboard** (live order traffic, the order spotlight, a fault-injection panel, fire-one-order, and the dead-letter counter), **Checkout** (cart to order through a bridge saga, with read-your-writes on the checkout click), **Orders** (drive one order's lifecycle, payment compensation, and the notifications panel), **Schedules** (reservation holds, delivery ETA, gateway settlement), and **Operations** (metrics and dead-letter RCA). Press ▶ on the Dashboard to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire.
 - **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
 
-Two spokes hang off the demo: `/dead-letter` lists outbox effects that exhausted their retry budget; `/metrics` shows live tiles for outbox depth, dead-letter rate, handler p99 and stream lag, each with its PromQL recipe inline.
+Each view names the Edict concept it exercises and links to its concept doc. The framing rationale, plus a feature-to-walkthrough-to-test index, lives in [`docs/usage/sample.md`](docs/usage/sample.md); the use-case-to-test map lives in [`docs/usage/testing/sample-map.md`](docs/usage/testing/sample-map.md).
 
 <img src="docs/assets/live-metrics-demo.gif" alt="Edict live metrics dashboard: outbox depth, dead-letter rate, handler p99 and stream lag updating in real time" width="640">
 

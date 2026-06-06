@@ -68,9 +68,9 @@ Every schedule carries an absolute timeout cap, mirroring the [saga lifetime cap
 **The default is finite.** `EdictCommandHandlerScheduleOptions.DefaultTimeout` ships at 7 days, so no Command Handler schedule can tick forever by accident. Resolution precedence at the `Schedule(...)` call site:
 
 ```csharp
-Schedule(new WatchdogPoll(),    every: cadence, timeout: TimeSpan.FromMinutes(5)); // explicit cap wins
-Schedule(new RenewLeaseMessage(), every: cadence, timeout: EdictSchedule.Unbounded); // opt out of any cap
-Schedule(new FulfillNextLine(), every: cadence);                                   // inherit the silo default
+Schedule(new ReconcilePaymentMessage(), every: cadence, timeout: TimeSpan.FromMinutes(5)); // explicit cap wins
+Schedule(new RenewLeaseMessage(), every: cadence, timeout: EdictSchedule.Unbounded);       // opt out of any cap
+Schedule(new FulfillNextLine(), every: cadence);                                           // inherit the silo default
 ```
 
 An explicit positive `timeout:` wins. `EdictSchedule.Unbounded` (a branded sentinel `TimeSpan`, distinct from `null`) opts a legitimately perpetual schedule out of any cap, so "forever" is always a deliberate, visible choice. Omitting `timeout:` inherits `EdictCommandHandlerScheduleOptions.DefaultTimeout`; setting that option to `null` (or `Unbounded`) returns the silo to uncapped command-handler schedules. The option is configured through the `configureSchedule` lambda on `AddEdict()`; see [core configuration](../../configuration/core.md#edictcommandhandlerscheduleoptions).
@@ -78,9 +78,9 @@ An explicit positive `timeout:` wins. `EdictSchedule.Unbounded` (a branded senti
 **When the cap fires**, the framework gives the schedule one chance to compensate through `OnScheduleTimeoutAsync(TMessage)`:
 
 ```csharp
-Task OnScheduleTimeoutAsync(WatchdogPoll message)
+Task OnScheduleTimeoutAsync(ReconcilePaymentMessage message)
 {
-    Raise(new WatchdogEscalatedEvent(State.WatchdogId, State.Polls));
+    Raise(new PaymentReconciliationEscalatedEvent(State.PaymentId, State.Attempts));
     return Task.CompletedTask;
 }
 ```
