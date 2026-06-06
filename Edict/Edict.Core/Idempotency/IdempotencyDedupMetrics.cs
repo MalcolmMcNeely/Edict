@@ -13,11 +13,13 @@ static class IdempotencyDedupMetrics
 
     // The duplicate counter is recorded while the dedup span is current so the
     // TraceBased exemplar filter attaches the suppressed-redelivery trace; a
-    // measurement taken after the span disposed would carry no exemplar.
-    public static void EmitDedupSpanAndHit(EdictEvent edictEvent, string grainTypeName)
+    // measurement taken after the span disposed would carry no exemplar. The reason
+    // distinguishes a committed-window hit from a concurrent in-flight suppression so
+    // the counter reads the two apart without splitting into a second instrument.
+    public static void EmitDedupSpanAndHit(EdictEvent edictEvent, string grainTypeName, string reason)
     {
         using var span = StartDedupSpan(edictEvent);
-        EmitDedupHit(edictEvent, grainTypeName);
+        EmitDedupHit(edictEvent, grainTypeName, reason);
     }
 
     // EdictEventHandler suppresses a redelivery with the dedup span alone, without
@@ -27,11 +29,12 @@ static class IdempotencyDedupMetrics
         using var span = StartDedupSpan(edictEvent);
     }
 
-    public static void EmitDedupHit(EdictEvent edictEvent, string grainTypeName)
+    public static void EmitDedupHit(EdictEvent edictEvent, string grainTypeName, string reason)
     {
         DuplicateCount.Add(1,
             new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name),
-            new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, grainTypeName));
+            new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, grainTypeName),
+            new KeyValuePair<string, object?>(SemanticConventions.Idempotency.Tags.Reason, reason));
     }
 
     static Activity? StartDedupSpan(EdictEvent edictEvent)

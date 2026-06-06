@@ -58,22 +58,32 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
     {
         EnsureWindowInitialized();
 
-        if (Contains(edictEvent.EventId))
+        if (!HandlesType(edictEvent))
+        {
+            // Unhandled types are a pure no-op: no ring slot consumed, no in-flight
+            // claim, no Outbox entry staged. Keeps the dedup window for events this
+            // handler actually handles.
+            return;
+        }
+
+        if (!TryClaimInFlight(edictEvent.EventId))
         {
             IdempotencyDedupMetrics.EmitDedupSpan(edictEvent);
             return;
         }
 
-        if (!HandlesType(edictEvent))
+        // Staging is synchronous up to the commit, so the window is closed today; the
+        // in-flight claim keeps it closed if a future await is added between here and
+        // the commit.
+        try
         {
-            // Unhandled types are a pure no-op: no ring slot consumed,
-            // no Outbox entry staged. Keeps the dedup window for events
-            // this handler actually handles.
-            return;
+            var entry = BuildInvokeHandlerEntry(edictEvent);
+            await CommitAndPersistAsync(edictEvent.EventId, entry);
         }
-
-        var entry = BuildInvokeHandlerEntry(edictEvent);
-        await CommitAndPersistAsync(edictEvent.EventId, entry);
+        finally
+        {
+            ReleaseInFlight(edictEvent.EventId);
+        }
     }
 
     OutboxEntry BuildInvokeHandlerEntry(EdictEvent edictEvent)

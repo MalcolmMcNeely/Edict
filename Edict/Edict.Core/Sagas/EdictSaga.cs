@@ -227,51 +227,58 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     {
         EnsureWindowInitialized();
 
-        if (Contains(edictEvent.EventId))
+        if (!TryClaimInFlight(edictEvent.EventId))
         {
-            IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, SagaType);
+            EmitDedupSuppression(edictEvent);
             return;
         }
 
-        var lifecycle = State.Saga;
-        var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
-
-        if (HandlesEventType(edictEvent)
-            && SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
+        try
         {
-            // Consume the ring slot (so this exact event is not redelivered
-            // forever) and stage a dead-letter in one write; the lifecycle
-            // stays terminal.
-            var terminalDeadLetter = BuildSagaDeadLetterEntry(new EdictSagaTerminalException(
-                $"Saga '{SagaType}' received '{edictEvent.GetType().Name}' after it became terminal ({currentState})."));
+            var lifecycle = State.Saga;
+            var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
+
+            if (HandlesEventType(edictEvent)
+                && SagaLifecycleTransition.Resolve(currentState, SagaTrigger.NewEvent) == SagaTransitionDecision.DeadLetterTerminal)
+            {
+                // Consume the ring slot (so this exact event is not redelivered
+                // forever) and stage a dead-letter in one write; the lifecycle
+                // stays terminal.
+                var terminalDeadLetter = BuildSagaDeadLetterEntry(new EdictSagaTerminalException(
+                    $"Saga '{SagaType}' received '{edictEvent.GetType().Name}' after it became terminal ({currentState})."));
+                _pendingLifecycle = null;
+                await CommitAndPersistAsync(edictEvent.EventId, terminalDeadLetter);
+                return;
+            }
+
+            var outcome = await DispatchAsync(edictEvent);
+            if (!outcome.Handled)
+            {
+                return;
+            }
+
+            var (newLifecycle, capAction) = NextLifecycle(lifecycle, outcome.CompleteRequested, edictEvent);
+            _pendingLifecycle = newLifecycle;
+            await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
             _pendingLifecycle = null;
-            await CommitAndPersistAsync(edictEvent.EventId, terminalDeadLetter);
-            return;
-        }
 
-        var outcome = await DispatchAsync(edictEvent);
-        if (!outcome.Handled)
+            // Count the completion only once the terminal transition is durable; the
+            // dedup ring and terminal guard above make this exactly-once per saga.
+            if (newLifecycle?.State == SagaLifecycleState.Completed)
+            {
+                SagaLifecycleMetrics.EmitCompleted(SagaType);
+            }
+
+            await ApplyCapReminderActionAsync(capAction, newLifecycle);
+
+            // A handler that called Schedule(...) staged an entry the commit above just
+            // made durable; arm its timer and Reminder now.
+            await ReconcileScheduleIfActiveAsync();
+        }
+        finally
         {
-            return;
+            ReleaseInFlight(edictEvent.EventId);
         }
-
-        var (newLifecycle, capAction) = NextLifecycle(lifecycle, outcome.CompleteRequested, edictEvent);
-        _pendingLifecycle = newLifecycle;
-        await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
-        _pendingLifecycle = null;
-
-        // Count the completion only once the terminal transition is durable; the
-        // dedup ring and terminal guard above make this exactly-once per saga.
-        if (newLifecycle?.State == SagaLifecycleState.Completed)
-        {
-            SagaLifecycleMetrics.EmitCompleted(SagaType);
-        }
-
-        await ApplyCapReminderActionAsync(capAction, newLifecycle);
-
-        // A handler that called Schedule(...) staged an entry the commit above just
-        // made durable; arm its timer and Reminder now.
-        await ReconcileScheduleIfActiveAsync();
     }
 
     /// <summary>
@@ -296,31 +303,38 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             return;
         }
 
-        var lifecycle = State.Saga;
-        var priorState = lifecycle?.State;
-
-        // The terminal guard cannot run here: the body is still in the claim-check
-        // store, so the event type is unknown until the InvokeHandler entry
-        // materialises it on the drain. Stage the entry unconditionally and let
-        // the type-aware terminal decision happen in DispatchDeferredAsync, where
-        // the body is in hand: an unhandled type off the shared stream is ignored
-        // rather than dead-lettered.
-        var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false, envelope);
-        _pendingLifecycle = newLifecycle;
-        await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
-        _pendingLifecycle = null;
-
-        if (State.Saga?.State == SagaLifecycleState.Completed && priorState != SagaLifecycleState.Completed)
+        try
         {
-            // The deferred handler called Complete() during the drain the staging
-            // commit kicked off; count and disarm only on that transition, not when
-            // the saga was already terminal before this event arrived.
-            SagaLifecycleMetrics.EmitCompleted(SagaType);
-            await CapReminders.UnregisterReminderAsync(CapReminderName);
+            var lifecycle = State.Saga;
+            var priorState = lifecycle?.State;
+
+            // The terminal guard cannot run here: the body is still in the claim-check
+            // store, so the event type is unknown until the InvokeHandler entry
+            // materialises it on the drain. Stage the entry unconditionally and let
+            // the type-aware terminal decision happen in DispatchDeferredAsync, where
+            // the body is in hand: an unhandled type off the shared stream is ignored
+            // rather than dead-lettered.
+            var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false, envelope);
+            _pendingLifecycle = newLifecycle;
+            await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
+            _pendingLifecycle = null;
+
+            if (State.Saga?.State == SagaLifecycleState.Completed && priorState != SagaLifecycleState.Completed)
+            {
+                // The deferred handler called Complete() during the drain the staging
+                // commit kicked off; count and disarm only on that transition, not when
+                // the saga was already terminal before this event arrived.
+                SagaLifecycleMetrics.EmitCompleted(SagaType);
+                await CapReminders.UnregisterReminderAsync(CapReminderName);
+            }
+            else if (capAction == CapAction.Register && State.Saga is { State: SagaLifecycleState.Live } live)
+            {
+                await ApplyCapReminderActionAsync(CapAction.Register, live);
+            }
         }
-        else if (capAction == CapAction.Register && State.Saga is { State: SagaLifecycleState.Live } live)
+        finally
         {
-            await ApplyCapReminderActionAsync(CapAction.Register, live);
+            ReleaseInFlight(envelope.EventId);
         }
     }
 

@@ -270,6 +270,19 @@ public static class SemanticConventions
     {
         public static class Tags
         {
+            /// <summary>Why a redelivery was suppressed: <see cref="ReasonValues.Window"/>
+            /// when the EventId was already in the committed dedup window, or
+            /// <see cref="ReasonValues.InFlight"/> when a concurrent delivery of the same
+            /// EventId was still in flight on the grain. The set is closed at compile time
+            /// so the dimension stays bounded.</summary>
+            public const string Reason = "edict.idempotency.dedup.reason";
+
+            /// <summary>The closed allowlist of values for <see cref="Reason"/>.</summary>
+            public static class ReasonValues
+            {
+                public const string Window = "window";
+                public const string InFlight = "in_flight";
+            }
         }
 
         public static class Meters

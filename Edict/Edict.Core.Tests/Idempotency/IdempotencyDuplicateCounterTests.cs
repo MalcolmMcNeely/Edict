@@ -8,8 +8,10 @@ namespace Edict.Core.Tests.Idempotency;
 
 public sealed class IdempotencyDuplicateCounterTests
 {
-    [Fact]
-    public void EmitDedupHit_ShouldIncrementCounter_TaggedWithEventTypeAndGrainType()
+    [Theory]
+    [InlineData(SemanticConventions.Idempotency.Tags.ReasonValues.Window)]
+    [InlineData(SemanticConventions.Idempotency.Tags.ReasonValues.InFlight)]
+    public void EmitDedupHit_ShouldIncrementCounter_TaggedWithEventTypeGrainTypeAndReason(string reason)
     {
         var marker = $"IdempotencyDuplicateCounterTest_{Guid.NewGuid():N}";
         var captures = new List<Capture>();
@@ -20,12 +22,13 @@ public sealed class IdempotencyDuplicateCounterTests
             EventId = Guid.NewGuid(),
         };
 
-        IdempotencyDedupMetrics.EmitDedupHit(edictEvent, grainTypeName: marker);
+        IdempotencyDedupMetrics.EmitDedupHit(edictEvent, grainTypeName: marker, reason);
 
         var capture = Assert.Single(captures);
         Assert.Equal(1L, capture.Value);
         Assert.Equal(nameof(OrderPlacedEvent), capture.Tag(SemanticConventions.Events.Tags.Type));
         Assert.Equal(marker, capture.Tag(SemanticConventions.Common.Tags.GrainType));
+        Assert.Equal(reason, capture.Tag(SemanticConventions.Idempotency.Tags.Reason));
     }
 
     static MeterListener StartListener(List<Capture> captures, string grainTypeMarker)

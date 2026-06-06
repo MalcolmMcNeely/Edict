@@ -34,7 +34,8 @@ public sealed class IdempotencyDuplicateExemplarTests
             EventId = Guid.NewGuid(),
         };
 
-        IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, grainTypeName: marker);
+        IdempotencyDedupMetrics.EmitDedupSpanAndHit(
+            edictEvent, grainTypeName: marker, SemanticConventions.Idempotency.Tags.ReasonValues.Window);
 
         Assert.True(sawMeasurement);
         Assert.NotNull(currentAtRecord);

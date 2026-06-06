@@ -199,22 +199,33 @@ public abstract class EdictIdempotencyBase<TPayload>
             return;
         }
 
-        await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
+        try
+        {
+            await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
+        }
+        finally
+        {
+            ReleaseInFlight(envelope.EventId);
+        }
     }
 
     /// <summary>
-    /// Dedup check for the pointer-envelope path: an already-handled wire-frame
-    /// <see cref="EdictEvent.EventId"/> is a redelivery — emit the dedup span and
-    /// metric and report it so the caller can suppress it before staging.
+    /// Dedup gate for the pointer-envelope path. Reserves the wire-frame
+    /// <see cref="EdictEvent.EventId"/> in-flight when it is new and returns
+    /// <c>false</c> so the caller stages it (and releases the reservation in a
+    /// <c>finally</c>). When the id is already committed or already in flight it is a
+    /// redelivery: emit the dedup span and metric and return <c>true</c> so the caller
+    /// suppresses it before staging. Reserving before the first <c>await</c> closes the
+    /// window a concurrently redelivered envelope would otherwise slip through.
     /// </summary>
     private protected bool IsDeferredRedelivery(EdictEventEnvelope envelope)
     {
-        if (!Contains(envelope.EventId))
+        if (TryClaimInFlight(envelope.EventId))
         {
             return false;
         }
 
-        IdempotencyDedupMetrics.EmitDedupSpanAndHit(envelope, GetType().FullName ?? GetType().Name);
+        EmitDedupSuppression(envelope);
         return true;
     }
 
@@ -295,24 +306,31 @@ public abstract class EdictIdempotencyBase<TPayload>
     {
         EnsureWindowInitialized();
 
-        if (Contains(edictEvent.EventId))
+        if (!TryClaimInFlight(edictEvent.EventId))
         {
-            IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, GetType().FullName ?? GetType().Name);
+            EmitDedupSuppression(edictEvent);
             return;
         }
 
-        var outcome = await DispatchAsync(edictEvent);
-
-        if (outcome.Handled)
+        try
         {
-            // The ring slot and any outbox effect the dispatch staged commit in
-            // the SAME one write — a List Projection Builder's row write is an
-            // UpsertRow effect atomic with this ring commit, then drained
-            // at-least-once. Plain consumers stage nothing, so the path stays a
-            // single ring-only write with no engine/reminder churn. The
-            // dedup-window mirror is confirmed only after that write lands, so a
-            // write fault re-dispatches the redelivery instead of suppressing it.
-            await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
+            var outcome = await DispatchAsync(edictEvent);
+
+            if (outcome.Handled)
+            {
+                // The ring slot and any outbox effect the dispatch staged commit in
+                // the SAME one write — a List Projection Builder's row write is an
+                // UpsertRow effect atomic with this ring commit, then drained
+                // at-least-once. Plain consumers stage nothing, so the path stays a
+                // single ring-only write with no engine/reminder churn. The
+                // dedup-window mirror is confirmed only after that write lands, so a
+                // write fault re-dispatches the redelivery instead of suppressing it.
+                await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
+            }
+        }
+        finally
+        {
+            ReleaseInFlight(edictEvent.EventId);
         }
     }
 
@@ -357,6 +375,32 @@ public abstract class EdictIdempotencyBase<TPayload>
     }
 
     private protected bool Contains(Guid eventId) => _dedupMirror!.Contains(eventId);
+
+    /// <summary>
+    /// Reserves <paramref name="eventId"/> against a concurrent duplicate delivery
+    /// before the turn awaits its handler, closing the check-then-dispatch window an
+    /// interleaved redelivery of the same in-flight id would otherwise slip through.
+    /// Returns <c>false</c> when the id is already committed or already reserved (a
+    /// dedup hit). A caller that gets <c>true</c> must release in a <c>finally</c>.
+    /// </summary>
+    private protected bool TryClaimInFlight(Guid eventId) => _dedupMirror!.TryClaimInFlight(eventId);
+
+    /// <summary>Drops the in-flight reservation so a genuine later redelivery (e.g.
+    /// after a write fault) can re-dispatch; the committed window is untouched.</summary>
+    private protected void ReleaseInFlight(Guid eventId) => _dedupMirror!.ReleaseInFlight(eventId);
+
+    /// <summary>
+    /// Emits the dedup span and the duplicate-count hit for a suppressed redelivery,
+    /// tagging whether it was a committed-window hit or a concurrent in-flight
+    /// suppression so the counter reads the two apart.
+    /// </summary>
+    private protected void EmitDedupSuppression(EdictEvent edictEvent)
+    {
+        var reason = Contains(edictEvent.EventId)
+            ? SemanticConventions.Idempotency.Tags.ReasonValues.Window
+            : SemanticConventions.Idempotency.Tags.ReasonValues.InFlight;
+        IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, GetType().FullName ?? GetType().Name, reason);
+    }
 
     /// <summary>
     /// Commits the dedup-window slot for <paramref name="eventId"/> and any
