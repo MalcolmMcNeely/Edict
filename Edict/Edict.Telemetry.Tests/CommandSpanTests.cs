@@ -1,5 +1,7 @@
 using System.Diagnostics;
 
+using Edict.Contracts.Events;
+
 namespace Edict.Telemetry.Tests;
 
 /// <summary>
@@ -256,7 +258,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         Assert.NotNull(edictEvent.SpanId);
     }
 
-    async Task<IReadOnlyList<Edict.Contracts.Events.EdictEvent>> WaitForEventsAsync(
+    async Task<IReadOnlyList<EdictEvent>> WaitForEventsAsync(
         Guid orderId, int expectedCount = 1)
     {
         var captureGrain = fixture.Cluster.GrainFactory.GetGrain<ITelOrderEventCaptureGrain>(orderId);
