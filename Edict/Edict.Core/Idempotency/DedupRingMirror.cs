@@ -12,6 +12,7 @@ namespace Edict.Core.Idempotency;
 sealed class DedupRingMirror
 {
     readonly HashSet<Guid> _set = [];
+    readonly HashSet<Guid> _inFlight = [];
     Guid[] _ring = [];
     int _head;
     int _count;
@@ -50,6 +51,36 @@ sealed class DedupRingMirror
     }
 
     public bool Contains(Guid eventId) => _set.Contains(eventId);
+
+    /// <summary>
+    /// Reserves <paramref name="eventId"/> against concurrent duplicate delivery.
+    /// Returns <c>false</c> when the id is already in the committed window or
+    /// already reserved in-flight (a dedup hit); otherwise records it in the
+    /// in-flight set and returns <c>true</c>. Synchronous, so a caller runs it
+    /// within one grain turn with no yield: the reservation is in place before the
+    /// turn awaits the handler, closing the check-then-dispatch window a redelivery
+    /// of the same in-flight id would otherwise slip through. The in-flight set is
+    /// never persisted and is no part of <see cref="IdempotencyState"/>.
+    /// </summary>
+    public bool TryClaimInFlight(Guid eventId)
+    {
+        if (_set.Contains(eventId) || _inFlight.Contains(eventId))
+        {
+            return false;
+        }
+
+        _inFlight.Add(eventId);
+        return true;
+    }
+
+    /// <summary>
+    /// Drops the in-flight reservation for <paramref name="eventId"/>, making it
+    /// claimable again. Leaves the committed set untouched, so an id that committed
+    /// while in-flight stays suppressed by the window after release. Call from the
+    /// caller's <c>finally</c> so a faulted turn frees the reservation and the
+    /// genuine redelivery re-dispatches.
+    /// </summary>
+    public void ReleaseInFlight(Guid eventId) => _inFlight.Remove(eventId);
 
     /// <summary>
     /// Records a commit at the ring's current head position. When the ring is

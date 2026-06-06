@@ -12,6 +12,98 @@ public sealed class DedupRingMirrorTests
     static readonly Guid EventF = new("ffffffff-0000-0000-0000-000000000006");
 
     [Fact]
+    public void TryClaimInFlight_NeverSeenId_ReturnsTrueAndRecordsClaim()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+
+        var firstClaim = mirror.TryClaimInFlight(EventA);
+        var secondClaim = mirror.TryClaimInFlight(EventA);
+
+        Assert.True(firstClaim);
+        Assert.False(secondClaim);
+    }
+
+    [Fact]
+    public void TryClaimInFlight_IdAlreadyInFlight_ReturnsFalse()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.TryClaimInFlight(EventA);
+
+        var concurrentClaim = mirror.TryClaimInFlight(EventA);
+
+        Assert.False(concurrentClaim);
+    }
+
+    [Fact]
+    public void TryClaimInFlight_IdAlreadyCommitted_ReturnsFalseWithoutDisturbingWindow()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.Commit(EventA);
+
+        var claim = mirror.TryClaimInFlight(EventA);
+
+        Assert.False(claim);
+        Assert.True(mirror.Contains(EventA));
+    }
+
+    [Fact]
+    public void ReleaseInFlight_PreviouslyClaimedId_BecomesClaimableAgain()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.TryClaimInFlight(EventA);
+
+        mirror.ReleaseInFlight(EventA);
+
+        Assert.True(mirror.TryClaimInFlight(EventA));
+    }
+
+    [Fact]
+    public void ReleaseInFlight_CommittedId_StaysSuppressed()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.TryClaimInFlight(EventA);
+        mirror.Commit(EventA);
+
+        mirror.ReleaseInFlight(EventA);
+
+        Assert.True(mirror.Contains(EventA));
+        Assert.False(mirror.TryClaimInFlight(EventA));
+    }
+
+    [Fact]
+    public void Commit_SuppressesIdIndependentOfInFlightState()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.TryClaimInFlight(EventA);
+        mirror.Commit(EventA);
+        mirror.ReleaseInFlight(EventA);
+
+        Assert.True(mirror.Contains(EventA));
+        Assert.False(mirror.TryClaimInFlight(EventA));
+    }
+
+    [Fact]
+    public void Activate_RebuildsCommittedSetWithoutDisturbingInFlightReservations()
+    {
+        var mirror = new DedupRingMirror();
+        mirror.Activate(new Guid[3], head: 0, count: 0);
+        mirror.TryClaimInFlight(EventA);
+
+        var ring = new Guid[3];
+        ring[0] = EventB;
+        mirror.Activate(ring, head: 1, count: 1);
+
+        Assert.True(mirror.Contains(EventB));
+        Assert.False(mirror.TryClaimInFlight(EventA));
+    }
+
+    [Fact]
     public void Activate_FromPartiallyFilledRing_ContainsOnlyPopulatedSlots()
     {
         var ring = new Guid[5];
