@@ -12,7 +12,16 @@ Git SHA: {{git_sha}}
 
 Open-loop Events workload: N=256 producers fire `SendAsync(...)` as fast as they can for 30 s, after a 20 s warmup that lets JIT, grain caches, idempotency rings and the stream pulling agents reach steady state. The reported figure is a single sum of per-aggregate counters read once at window-end, divided by 30 s — no per-event polling, no drain detection. Read this as the rate the substrate's consumer can absorb when the producer is not paced by the consumer; your own workload will only touch this ceiling if its per-event work is no heavier than the bench's counter increment. Saturation runs against the same Testcontainers substrate as the closed-loop sweeps — a real Postgres / Kafka / Azure Storage backend will sit at a different ceiling, generally higher.
 
+Each substrate is measured twice, once per **projection species**, running the identical per-aggregate counter workload so the only thing that varies is where the read model is stored:
+
+- **List (external store)** — the counter lives in an external keyed store, drained at-least-once by an `UpsertRow` outbox effect after each event.
+- **State (in-grain)** — the counter lives in the grain's own durable state and commits **inline** with the dedup ring in a single write: no external store, no outbox effect.
+
+The EPS delta between a substrate's two rows is the storage-commit cost in isolation. The in-grain species is expected to sit higher: it folds the read-model write into the one state write the idempotency ring already makes, rather than staging and draining a second write.
+
 {{table:saturation}}
+
+> **Read the delta, not the absolutes.** The in-grain advantage shown here is the per-event commit saving on a small, hot, per-aggregate counter — the case the State species exists for. It is not a blanket "grain state is faster": a large read model in grain state inflates every activation of that grain, because the whole payload is read and written on each turn, which the external List store avoids. Choose State for small per-aggregate read models and List for large or unbounded ones; this table prices the commit, not the activation.
 
 > **Per-silo baseline.** The published number is the rate **one** Orleans silo sustains on this hardware against the configured substrate. Orleans scales horizontally; an N-silo deployment extrapolates from this baseline modulo cross-silo coordination cost. A single-silo number is not the framework ceiling.
 

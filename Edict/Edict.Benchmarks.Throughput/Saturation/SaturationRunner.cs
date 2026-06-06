@@ -1,6 +1,7 @@
 using Edict.Benchmarks.Throughput.Cluster;
 using Edict.Benchmarks.Throughput.Measurement;
 using Edict.Benchmarks.Throughput.Workload;
+using Edict.Contracts.Projections;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Substrate;
@@ -12,12 +13,19 @@ namespace Edict.Benchmarks.Throughput.Saturation;
 /// <summary>
 /// Drives the saturation methodology — Events only, single parallelism
 /// point, fire-and-forget producers, a single sum-of-counters read at
-/// <c>t = window-end</c>. The substrate is brought up in
-/// <see cref="SubstrateStartMode.Saturation"/> so Kafka consumers attach
-/// <c>AutoOffsetReset = Latest</c>; Azurite is a no-op for the signal. EPS
-/// is the steady-state consumer ceiling
-/// <c>min(producer_rate, consumer_rate)</c>; warmup contribution is
-/// subtracted via a snapshot at warmup-end so the result is window-only.
+/// <c>t = window-end</c>. The substrate is brought up in the species-matched
+/// saturation mode so Kafka consumers attach <c>AutoOffsetReset = Latest</c>;
+/// Azurite is a no-op for the signal. EPS is the steady-state consumer ceiling
+/// <c>min(producer_rate, consumer_rate)</c>; warmup contribution is subtracted via
+/// a snapshot at warmup-end so the result is window-only.
+/// <para>
+/// The two species run the identical producer workload and differ only in how the
+/// window-end count is read, so the EPS delta isolates the storage-commit cost:
+/// the <see cref="ProjectionSpecies.List"/> pass sums the external
+/// <c>BenchCounterRow</c> store-direct, the <see cref="ProjectionSpecies.State"/>
+/// pass sums the in-grain <c>BenchCounterProjection</c> through the projection
+/// reader (one grain hop per aggregate, at window-end only).
+/// </para>
 /// </summary>
 public sealed class SaturationRunner
 {
@@ -30,6 +38,7 @@ public sealed class SaturationRunner
 
     public Task<SaturationResults> RunAsync(
         ISubstrate substrate,
+        ProjectionSpecies species,
         int parallelism,
         TimeSpan warmup,
         TimeSpan window,
@@ -38,14 +47,26 @@ public sealed class SaturationRunner
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(parallelism);
 
-        return ClusterHarness.RunAsync(substrate, SubstrateStartMode.Saturation, async cluster =>
+        var mode = species switch
+        {
+            ProjectionSpecies.List => SubstrateStartMode.SaturationList,
+            ProjectionSpecies.State => SubstrateStartMode.SaturationState,
+            _ => throw new ArgumentOutOfRangeException(nameof(species), species, "Unhandled projection species."),
+        };
+
+        return ClusterHarness.RunAsync(substrate, mode, async cluster =>
         {
             var sender = cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
-            var counterRepository = cluster.Client.ServiceProvider
-                .GetRequiredService<IEdictTableWriteStore<BenchCounterRow>>();
             var aggregatePool = Enumerable.Range(0, 1024)
                 .Select(_ => Guid.NewGuid())
                 .ToArray();
+
+            // The producer workload is identical across species; only the
+            // window-end read differs. The List pass reads the external counter
+            // store directly (off-grain); the State pass reads the in-grain
+            // counter through the projection reader (a grain hop per aggregate),
+            // so the registered read surface is resolved per species.
+            var sumCounters = BuildCounterSummer(species, cluster.Client.ServiceProvider, aggregatePool);
 
             // Warmup phase — producers fire at full rate so the consumer
             // reaches steady-state before the measurement window opens.
@@ -54,19 +75,19 @@ public sealed class SaturationRunner
             // occurrence stderr log fires early on a structurally broken run.
             await FireAndForgetAsync(
                 sender, aggregatePool, parallelism, warmup,
-                new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism} warmup"),
+                new IssuerOutcomeTracker($"{substrate.Name} Saturation {species} N={parallelism} warmup"),
                 cancellationToken);
 
             // Subtracting the warmup-end snapshot from the window-end
             // snapshot leaves only window contributions in the count — the
             // honest steady-state delta the saturation EPS formula needs.
-            var preWindow = await SumCountersAsync(counterRepository, aggregatePool, cancellationToken);
+            var preWindow = await sumCounters(cancellationToken);
 
-            var windowTracker = new IssuerOutcomeTracker($"{substrate.Name} Saturation N={parallelism}");
+            var windowTracker = new IssuerOutcomeTracker($"{substrate.Name} Saturation {species} N={parallelism}");
             await FireAndForgetAsync(
                 sender, aggregatePool, parallelism, window, windowTracker, cancellationToken);
 
-            var postWindow = await SumCountersAsync(counterRepository, aggregatePool, cancellationToken);
+            var postWindow = await sumCounters(cancellationToken);
             var windowEvents = postWindow - preWindow;
             var eps = window.TotalSeconds > 0
                 ? windowEvents / window.TotalSeconds
@@ -74,12 +95,31 @@ public sealed class SaturationRunner
 
             return new SaturationResults(
                 Substrate: substrate.Name,
+                Species: species,
                 EventsPerSecond: eps,
                 WindowSeconds: window.TotalSeconds,
                 ProducerConcurrency: parallelism,
                 AggregateCount: aggregatePool.Length,
                 Health: windowTracker.Build());
         }, cancellationToken);
+    }
+
+    static Func<CancellationToken, Task<long>> BuildCounterSummer(
+        ProjectionSpecies species,
+        IServiceProvider serviceProvider,
+        Guid[] aggregatePool)
+    {
+        switch (species)
+        {
+            case ProjectionSpecies.List:
+                var counterRepository = serviceProvider.GetRequiredService<IEdictTableWriteStore<BenchCounterRow>>();
+                return cancellationToken => SumStoreCountersAsync(counterRepository, aggregatePool, cancellationToken);
+            case ProjectionSpecies.State:
+                var counterReader = serviceProvider.GetRequiredService<IEdictProjectionReader<BenchCounterProjection>>();
+                return cancellationToken => SumStateCountersAsync(counterReader, aggregatePool, cancellationToken);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(species), species, "Unhandled projection species.");
+        }
     }
 
     static async Task FireAndForgetAsync(
@@ -138,7 +178,7 @@ public sealed class SaturationRunner
         }
     }
 
-    static async Task<long> SumCountersAsync(
+    static async Task<long> SumStoreCountersAsync(
         IEdictTableWriteStore<BenchCounterRow> repository,
         Guid[] aggregatePool,
         CancellationToken cancellationToken)
@@ -148,11 +188,28 @@ public sealed class SaturationRunner
         {
             var row = await repository.GetAsync(
                 aggregateId.ToString(),
-                BenchCounterProjectionBuilder.FixedRowKey,
+                BenchCounterListProjectionBuilder.FixedRowKey,
                 cancellationToken);
             if (row is not null)
             {
                 total += row.Count;
+            }
+        }
+        return total;
+    }
+
+    static async Task<long> SumStateCountersAsync(
+        IEdictProjectionReader<BenchCounterProjection> reader,
+        Guid[] aggregatePool,
+        CancellationToken cancellationToken)
+    {
+        var total = 0L;
+        foreach (var aggregateId in aggregatePool)
+        {
+            var read = await reader.ReadAsync(aggregateId, cancellationToken: cancellationToken);
+            if (read.Value is not null)
+            {
+                total += read.Value.Count;
             }
         }
         return total;

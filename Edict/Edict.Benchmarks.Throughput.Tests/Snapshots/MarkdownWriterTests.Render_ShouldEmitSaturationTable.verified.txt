@@ -1,4 +1,6 @@
-﻿| Substrate | Events / sec (end-to-end) | Health |
-| --- | ---: | :---: |
-| azure | 73 | OK (0.00 %) |
-| kafkapostgres | 413 | OK (0.00 %) |
+﻿| Substrate | Projection | Events / sec (end-to-end) | Health |
+| --- | --- | ---: | :---: |
+| azure | List (external store) | 62 | OK (0.00 %) |
+| azure | State (in-grain) | 73 | OK (0.00 %) |
+| kafkapostgres | List (external store) | 413 | OK (0.00 %) |
+| kafkapostgres | State (in-grain) | 504 | OK (0.00 %) |

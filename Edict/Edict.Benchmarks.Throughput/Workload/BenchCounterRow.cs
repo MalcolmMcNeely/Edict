@@ -4,7 +4,7 @@ namespace Edict.Benchmarks.Throughput.Workload;
 
 /// <summary>
 /// Counter-per-aggregate projection row written by
-/// <see cref="BenchCounterProjectionBuilder"/> in the saturation pass.
+/// <see cref="BenchCounterListProjectionBuilder"/> in the List-species saturation pass.
 /// PK is the aggregate ID (the event's <c>[EdictRouteKey]</c>); RK is a fixed
 /// sentinel so each aggregate has exactly one counter row that grows under
 /// load. The harness's saturation read sums <see cref="Count"/> across the

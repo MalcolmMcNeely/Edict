@@ -71,16 +71,23 @@ public static partial class MarkdownWriter
     static string RenderSaturationTable(IReadOnlyList<SaturationResults> results)
     {
         var sb = new StringBuilder();
-        sb.Append("| Substrate | Events / sec (end-to-end) | Health |\n");
-        sb.Append("| --- | ---: | :---: |");
+        sb.Append("| Substrate | Projection | Events / sec (end-to-end) | Health |\n");
+        sb.Append("| --- | --- | ---: | :---: |");
         foreach (var r in results)
         {
             sb.Append('\n');
             sb.Append(CultureInfo.InvariantCulture,
-                $"| {r.Substrate} | {r.EventsPerSecond:F0} | {RenderHealthCell(r.Health)} |");
+                $"| {r.Substrate} | {RenderSpecies(r.Species)} | {r.EventsPerSecond:F0} | {RenderHealthCell(r.Health)} |");
         }
         return sb.ToString();
     }
+
+    static string RenderSpecies(Saturation.ProjectionSpecies species) => species switch
+    {
+        Saturation.ProjectionSpecies.List => "List (external store)",
+        Saturation.ProjectionSpecies.State => "State (in-grain)",
+        _ => species.ToString(),
+    };
 
     static string RenderHealthCell(Measurement.RunHealth health)
     {
@@ -112,7 +119,7 @@ public static partial class MarkdownWriter
             if (!r.Health.IsHealthy && r.Health.Attempted > 0)
             {
                 degraded.Add(string.Create(CultureInfo.InvariantCulture,
-                    $"- **{r.Substrate} / Saturation / N={r.ProducerConcurrency}** — {r.Health.Failed:N0} failed of {r.Health.Attempted:N0} ({r.Health.FailureRate:P2}); breakdown: {r.Health.RenderFailureTypes()}"));
+                    $"- **{r.Substrate} / Saturation {r.Species} / N={r.ProducerConcurrency}** — {r.Health.Failed:N0} failed of {r.Health.Attempted:N0} ({r.Health.FailureRate:P2}); breakdown: {r.Health.RenderFailureTypes()}"));
             }
         }
         if (degraded.Count == 0)

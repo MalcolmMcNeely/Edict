@@ -110,15 +110,17 @@ public sealed class KafkaPostgresSubstrateTests
         Assert.Equal(AutoOffsetReset.Earliest, runtime.KafkaAutoOffsetReset);
     }
 
-    [Fact]
-    public async Task SaturationMode_AppliesLatestAutoOffsetReset()
+    [Theory]
+    [InlineData(SubstrateStartMode.SaturationList)]
+    [InlineData(SubstrateStartMode.SaturationState)]
+    public async Task SaturationMode_AppliesLatestAutoOffsetReset(SubstrateStartMode mode)
     {
-        // Saturation pass measures count-at-window-end on a fresh consumer
+        // Both saturation passes measure count-at-window-end on a fresh consumer
         // group; replaying history would inflate EPS by counting events the
         // producer issued during warmup. Latest is the substrate-level guard.
         var substrate = new KafkaPostgresSubstrate();
         await using var runtime = (KafkaPostgresSubstrateRuntime)await substrate.StartAsync(
-            CancellationToken.None, SubstrateStartMode.Saturation);
+            CancellationToken.None, mode);
 
         Assert.Equal(AutoOffsetReset.Latest, runtime.KafkaAutoOffsetReset);
     }

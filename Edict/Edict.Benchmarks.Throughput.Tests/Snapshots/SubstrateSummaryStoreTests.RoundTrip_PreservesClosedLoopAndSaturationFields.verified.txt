@@ -15,13 +15,25 @@
       }
     }
   ],
-  Saturation: {
-    EventsPerSecond: 373.13,
-    WindowSeconds: 30.0,
-    ProducerConcurrency: 256,
-    AggregateCount: 1024,
-    Health: {
-      Succeeded: 11188
+  Saturation: [
+    {
+      EventsPerSecond: 373.13,
+      WindowSeconds: 30.0,
+      ProducerConcurrency: 256,
+      AggregateCount: 1024,
+      Health: {
+        Succeeded: 11188
+      }
+    },
+    {
+      Species: State,
+      EventsPerSecond: 488.42,
+      WindowSeconds: 30.0,
+      ProducerConcurrency: 256,
+      AggregateCount: 1024,
+      Health: {
+        Succeeded: 14652
+      }
     }
-  }
+  ]
 }

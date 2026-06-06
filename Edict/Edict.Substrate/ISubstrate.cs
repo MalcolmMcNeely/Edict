@@ -18,16 +18,21 @@ public interface ISubstrate
 }
 
 /// <summary>
-/// Selects how a substrate brings up its runtime. Closed-loop is the existing
-/// per-send latency sweep; saturation is the fire-and-forget count-at-window-end
-/// pass introduced for the headline EPS table. Substrates without a meaningful
+/// Selects how a substrate brings up its runtime. Closed-loop is the per-send
+/// latency sweep; the two saturation modes are the fire-and-forget
+/// count-at-window-end passes behind the headline EPS table, one per projection
+/// species — <see cref="SaturationList"/> measures the external List counter,
+/// <see cref="SaturationState"/> the in-grain State counter, so the table can show
+/// the storage-commit cost side by side. Both saturation modes share the same
+/// fresh-consumer-group offset-reset need; substrates without a meaningful
 /// distinction (Azurite — Azure Queue streams have no offset-reset analogue) treat
 /// the value as a hint and may no-op.
 /// </summary>
 public enum SubstrateStartMode
 {
     ClosedLoop,
-    Saturation,
+    SaturationList,
+    SaturationState,
 }
 
 public interface ISubstrateRuntime : IAsyncDisposable

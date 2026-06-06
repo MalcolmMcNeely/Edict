@@ -35,16 +35,31 @@ public sealed class SubstrateSummaryStoreTests
                         Failed: 0,
                         FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
             ],
-            saturation: new SaturationResults(
-                Substrate: "kafkapostgres",
-                EventsPerSecond: 373.13,
-                WindowSeconds: 30,
-                ProducerConcurrency: 256,
-                AggregateCount: 1024,
-                Health: new RunHealth(
-                    Succeeded: 11_188,
-                    Failed: 0,
-                    FailuresByType: ImmutableSortedDictionary<string, long>.Empty)));
+            saturation:
+            [
+                new SaturationResults(
+                    Substrate: "kafkapostgres",
+                    Species: ProjectionSpecies.List,
+                    EventsPerSecond: 373.13,
+                    WindowSeconds: 30,
+                    ProducerConcurrency: 256,
+                    AggregateCount: 1024,
+                    Health: new RunHealth(
+                        Succeeded: 11_188,
+                        Failed: 0,
+                        FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
+                new SaturationResults(
+                    Substrate: "kafkapostgres",
+                    Species: ProjectionSpecies.State,
+                    EventsPerSecond: 488.42,
+                    WindowSeconds: 30,
+                    ProducerConcurrency: 256,
+                    AggregateCount: 1024,
+                    Health: new RunHealth(
+                        Succeeded: 14_652,
+                        Failed: 0,
+                        FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
+            ]);
 
         var path = Path.Combine(Path.GetTempPath(), $"edict-summary-roundtrip-{Guid.NewGuid():N}.json");
         try
@@ -129,14 +144,27 @@ public sealed class SubstrateSummaryStoreTests
                         Health = new RunHealthSummary { Succeeded = 100 },
                     },
                 ],
-                Saturation = new SaturationSummaryRow
-                {
-                    EventsPerSecond = 70,
-                    WindowSeconds = 30,
-                    ProducerConcurrency = 256,
-                    AggregateCount = 1024,
-                    Health = new RunHealthSummary { Succeeded = 2100 },
-                },
+                Saturation =
+                [
+                    new SaturationSummaryRow
+                    {
+                        Species = ProjectionSpecies.List,
+                        EventsPerSecond = 70,
+                        WindowSeconds = 30,
+                        ProducerConcurrency = 256,
+                        AggregateCount = 1024,
+                        Health = new RunHealthSummary { Succeeded = 2100 },
+                    },
+                    new SaturationSummaryRow
+                    {
+                        Species = ProjectionSpecies.State,
+                        EventsPerSecond = 84,
+                        WindowSeconds = 30,
+                        ProducerConcurrency = 256,
+                        AggregateCount = 1024,
+                        Health = new RunHealthSummary { Succeeded = 2520 },
+                    },
+                ],
             },
             new SubstrateSummary
             {
@@ -160,20 +188,20 @@ public sealed class SubstrateSummaryStoreTests
             {
                 Substrate = "kafkapostgres",
                 RunDate = new DateTimeOffset(2026, 5, 28, 0, 0, 0, TimeSpan.Zero),
-                Saturation = new SaturationSummaryRow { EventsPerSecond = 210 },
+                Saturation = [new SaturationSummaryRow { Species = ProjectionSpecies.List, EventsPerSecond = 210 }],
             });
             await SubstrateSummaryStore.WriteAsync(path, new SubstrateSummary
             {
                 Substrate = "kafkapostgres",
                 RunDate = new DateTimeOffset(2026, 5, 29, 0, 0, 0, TimeSpan.Zero),
-                Saturation = new SaturationSummaryRow { EventsPerSecond = 373 },
+                Saturation = [new SaturationSummaryRow { Species = ProjectionSpecies.List, EventsPerSecond = 373 }],
             });
 
             var read = await SubstrateSummaryStore.ReadAsync(path);
 
             Assert.NotNull(read);
             Assert.Equal(new DateTimeOffset(2026, 5, 29, 0, 0, 0, TimeSpan.Zero), read!.RunDate);
-            Assert.Equal(373, read.Saturation!.EventsPerSecond);
+            Assert.Equal(373, Assert.Single(read.Saturation).EventsPerSecond);
         }
         finally
         {
@@ -213,14 +241,27 @@ public sealed class SubstrateSummaryStoreTests
                             Health = new RunHealthSummary { Succeeded = 100 },
                         },
                     ],
-                    Saturation = new SaturationSummaryRow
-                    {
-                        EventsPerSecond = 70,
-                        WindowSeconds = 30,
-                        ProducerConcurrency = 256,
-                        AggregateCount = 1024,
-                        Health = new RunHealthSummary { Succeeded = 2100 },
-                    },
+                    Saturation =
+                    [
+                        new SaturationSummaryRow
+                        {
+                            Species = ProjectionSpecies.List,
+                            EventsPerSecond = 70,
+                            WindowSeconds = 30,
+                            ProducerConcurrency = 256,
+                            AggregateCount = 1024,
+                            Health = new RunHealthSummary { Succeeded = 2100 },
+                        },
+                        new SaturationSummaryRow
+                        {
+                            Species = ProjectionSpecies.State,
+                            EventsPerSecond = 88,
+                            WindowSeconds = 30,
+                            ProducerConcurrency = 256,
+                            AggregateCount = 1024,
+                            Health = new RunHealthSummary { Succeeded = 2640 },
+                        },
+                    ],
                 });
             await SubstrateSummaryStore.WriteAsync(
                 SubstrateSummaryStore.PathFor(directory, "kafkapostgres"),
@@ -244,16 +285,31 @@ public sealed class SubstrateSummaryStoreTests
                                 Failed: 0,
                                 FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
                     ],
-                    saturation: new SaturationResults(
-                        Substrate: "kafkapostgres",
-                        EventsPerSecond: 373,
-                        WindowSeconds: 30,
-                        ProducerConcurrency: 256,
-                        AggregateCount: 1024,
-                        Health: new RunHealth(
-                            Succeeded: 11_188,
-                            Failed: 0,
-                            FailuresByType: ImmutableSortedDictionary<string, long>.Empty))));
+                    saturation:
+                    [
+                        new SaturationResults(
+                            Substrate: "kafkapostgres",
+                            Species: ProjectionSpecies.List,
+                            EventsPerSecond: 373,
+                            WindowSeconds: 30,
+                            ProducerConcurrency: 256,
+                            AggregateCount: 1024,
+                            Health: new RunHealth(
+                                Succeeded: 11_188,
+                                Failed: 0,
+                                FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
+                        new SaturationResults(
+                            Substrate: "kafkapostgres",
+                            Species: ProjectionSpecies.State,
+                            EventsPerSecond: 461,
+                            WindowSeconds: 30,
+                            ProducerConcurrency: 256,
+                            AggregateCount: 1024,
+                            Health: new RunHealth(
+                                Succeeded: 13_830,
+                                Failed: 0,
+                                FailuresByType: ImmutableSortedDictionary<string, long>.Empty)),
+                    ]));
 
             var summaries = await SubstrateSummaryStore.ReadAllAsync(directory);
             var hydrated = SubstrateSummaryStore.Hydrate(summaries);
@@ -306,7 +362,7 @@ public sealed class SubstrateSummaryStoreTests
                     Latency: new LatencyResults(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero),
                     Health: RunHealth.Empty),
             ],
-            saturation: null);
+            saturation: []);
 
         var row = Assert.Single(summary.ClosedLoop);
         Assert.Equal(100, row.CompletedCount);

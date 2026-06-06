@@ -28,6 +28,19 @@
         Attempted: 2100,
         IsHealthy: true
       }
+    },
+    {
+      Substrate: azure,
+      Species: State,
+      EventsPerSecond: 84.0,
+      WindowSeconds: 30.0,
+      ProducerConcurrency: 256,
+      AggregateCount: 1024,
+      Health: {
+        Succeeded: 2520,
+        Attempted: 2520,
+        IsHealthy: true
+      }
     }
   ],
   RunDates: {

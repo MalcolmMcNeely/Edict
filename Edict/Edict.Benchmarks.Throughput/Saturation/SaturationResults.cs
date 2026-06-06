@@ -8,6 +8,8 @@ namespace Edict.Benchmarks.Throughput.Saturation;
 /// window in seconds. Computed once at <c>t = window-end</c>; no per-event
 /// polling, no per-send latency. EPS captures the sustained ceiling
 /// <c>min(producer_rate, consumer_rate)</c> for the substrate.
+/// <see cref="Species"/> identifies which projection species the pass measured,
+/// so a substrate's List and State rows compare the storage-commit cost directly.
 /// <para>
 /// <see cref="Health"/> is the producer-side outcome breakdown: under
 /// fire-and-forget at N=256 the issuer loop catches every non-cancellation
@@ -19,6 +21,7 @@ namespace Edict.Benchmarks.Throughput.Saturation;
 /// </summary>
 public sealed record SaturationResults(
     string Substrate,
+    ProjectionSpecies Species,
     double EventsPerSecond,
     double WindowSeconds,
     int ProducerConcurrency,

@@ -207,14 +207,15 @@ public sealed class NpgsqlPoolPressureProbeTests
                     "ActiveProbeRuntime.Current was null when the silo configurator ran.");
                 runtime.ConfigureSilo(siloBuilder);
 
-                // Mirror ClusterHarness's wrong-mode projection filter for
-                // ClosedLoop. Without this the Counter projection activates on
-                // every BenchEvent alongside BenchProjectionBuilder, doubling
+                // Mirror ClusterHarness's non-active projection filter for
+                // ClosedLoop. Without this both counter projections activate on
+                // every BenchEvent alongside BenchProjectionBuilder, multiplying
                 // consumer write pressure and biasing pool measurements that
                 // are meant to mirror the published Commands-sweep baseline.
                 siloBuilder.Services.PostConfigure<GrainTypeOptions>(o =>
                 {
-                    o.Classes.Remove(typeof(BenchCounterProjectionBuilder));
+                    o.Classes.Remove(typeof(BenchCounterListProjectionBuilder));
+                    o.Classes.Remove(typeof(BenchCounterStateProjectionBuilder));
                 });
             }
         }

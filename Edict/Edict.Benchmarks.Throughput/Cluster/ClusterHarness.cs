@@ -23,12 +23,14 @@ namespace Edict.Benchmarks.Throughput.Cluster;
 /// <para>
 /// Per-<see cref="SubstrateStartMode"/> projection registration is the
 /// load-bearing decision: Orleans assembly-scans the workload assembly and
-/// would otherwise activate both <see cref="BenchProjectionBuilder"/> and
-/// <see cref="BenchCounterProjectionBuilder"/> in every cluster, doubling
-/// the consumer write pressure each event drives. The silo configurator
-/// removes the wrong-mode projection from <see cref="GrainTypeOptions"/>
-/// before the manifest materialises; the client configurator registers
-/// only the matching <see cref="IEdictTableWriteStore{TRow}"/>.
+/// would otherwise activate all three of <see cref="BenchProjectionBuilder"/>,
+/// <see cref="BenchCounterListProjectionBuilder"/>, and
+/// <see cref="BenchCounterStateProjectionBuilder"/> in every cluster, multiplying
+/// the consumer write pressure each event drives. The silo configurator removes
+/// the two non-active projections from <see cref="GrainTypeOptions"/> before the
+/// manifest materialises; the client configurator registers only the matching read
+/// surface (a store for the closed-loop and List passes, nothing for the State
+/// pass — it reads through the projection reader).
 /// </para>
 /// </summary>
 public static class ClusterHarness
@@ -96,20 +98,29 @@ public static class ClusterHarness
                     "ClusterHarness.ActiveRuntime was null when the silo configurator ran.");
                 runtime.ConfigureSilo(siloBuilder);
 
-                // The wrong-mode projection grain is a subscriber to the
-                // Bench stream by way of [ImplicitStreamSubscription]. Removing
-                // it from GrainTypeOptions.Classes drops it from the manifest
-                // before the ImplicitStreamSubscriberTable consults it, so the
-                // stream provider never activates that grain on a Bench event.
-                var wrongMode = Mode switch
+                // All three projection grains subscribe to the Bench stream by way
+                // of [ImplicitStreamSubscription]. Each mode measures exactly one;
+                // removing the other two from GrainTypeOptions.Classes drops them
+                // from the manifest before the ImplicitStreamSubscriberTable
+                // consults it, so the stream provider never activates them on a
+                // Bench event and one pass never contaminates another's consumer
+                // write pressure.
+                var inactiveProjections = Mode switch
                 {
-                    SubstrateStartMode.ClosedLoop => typeof(BenchCounterProjectionBuilder),
-                    SubstrateStartMode.Saturation => typeof(BenchProjectionBuilder),
+                    SubstrateStartMode.ClosedLoop =>
+                        new[] { typeof(BenchCounterListProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
+                    SubstrateStartMode.SaturationList =>
+                        new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
+                    SubstrateStartMode.SaturationState =>
+                        new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterListProjectionBuilder) },
                     _ => throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode."),
                 };
                 siloBuilder.Services.PostConfigure<GrainTypeOptions>(o =>
                 {
-                    o.Classes.Remove(wrongMode);
+                    foreach (var inactiveProjection in inactiveProjections)
+                    {
+                        o.Classes.Remove(inactiveProjection);
+                    }
                 });
             }
         }
@@ -128,17 +139,23 @@ public static class ClusterHarness
                 // PostgresTableWriteStore on Kafka+Postgres) without the
                 // harness branching on substrate kind. Reads go store-direct
                 // (off-grain — the right shape for a latency measurement). Only
-                // the mode's row type registers — the closed-loop sweep reads
-                // BenchEventRow, the saturation pass reads BenchCounterRow.
+                // the mode's read surface registers — the closed-loop sweep reads
+                // BenchEventRow store-direct, the List saturation pass reads the
+                // BenchCounterRow store, and the State saturation pass reads no
+                // table at all: it sums through the AddEdict()-registered
+                // IEdictProjectionReader<BenchCounterProjection> (a grain hop), so
+                // no store is wired here.
                 switch (Mode)
                 {
                     case SubstrateStartMode.ClosedLoop:
                         clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchEventRow>>(serviceProvider =>
                             runtime.CreateRowStore<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
                         break;
-                    case SubstrateStartMode.Saturation:
+                    case SubstrateStartMode.SaturationList:
                         clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchCounterRow>>(serviceProvider =>
-                            runtime.CreateRowStore<BenchCounterRow>(serviceProvider, BenchCounterProjectionBuilder.TableNameLiteral));
+                            runtime.CreateRowStore<BenchCounterRow>(serviceProvider, BenchCounterListProjectionBuilder.TableNameLiteral));
+                        break;
+                    case SubstrateStartMode.SaturationState:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode.");

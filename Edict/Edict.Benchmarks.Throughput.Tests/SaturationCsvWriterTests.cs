@@ -20,6 +20,7 @@ public sealed class SaturationCsvWriterTests
         {
             new SaturationResults(
                 Substrate: "azure",
+                Species: ProjectionSpecies.List,
                 EventsPerSecond: 73.4,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
@@ -27,6 +28,7 @@ public sealed class SaturationCsvWriterTests
                 Health: RunHealth.Empty with { Succeeded = 8400 }),
             new SaturationResults(
                 Substrate: "kafkapostgres",
+                Species: ProjectionSpecies.State,
                 EventsPerSecond: 412.6,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
@@ -48,7 +50,7 @@ public sealed class SaturationCsvWriterTests
         var output = SaturationCsvWriter.Render([]);
 
         Assert.Equal(
-            "substrate,events_per_second,window_seconds,producer_concurrency,aggregate_count,succeeded,failed,failure_rate,failure_types" + Environment.NewLine,
+            "substrate,species,events_per_second,window_seconds,producer_concurrency,aggregate_count,succeeded,failed,failure_rate,failure_types" + Environment.NewLine,
             output);
     }
 }

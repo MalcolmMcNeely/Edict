@@ -196,22 +196,42 @@ public sealed class MarkdownWriterTests
     [Fact]
     public Task Render_ShouldEmitSaturationTable()
     {
+        // Two substrates × two species so the snapshot pins the {List, State}
+        // dimension the side-by-side table is split on.
         var saturation = new[]
         {
             new SaturationResults(
                 Substrate: "azure",
-                EventsPerSecond: 73.4,
+                Species: ProjectionSpecies.List,
+                EventsPerSecond: 62.1,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
                 AggregateCount: 1024,
                 Health: RunHealth.Empty with { Succeeded = 8400 }),
             new SaturationResults(
+                Substrate: "azure",
+                Species: ProjectionSpecies.State,
+                EventsPerSecond: 73.4,
+                WindowSeconds: 30,
+                ProducerConcurrency: 256,
+                AggregateCount: 1024,
+                Health: RunHealth.Empty with { Succeeded = 9900 }),
+            new SaturationResults(
                 Substrate: "kafkapostgres",
+                Species: ProjectionSpecies.List,
                 EventsPerSecond: 412.6,
                 WindowSeconds: 30,
                 ProducerConcurrency: 256,
                 AggregateCount: 1024,
                 Health: RunHealth.Empty with { Succeeded = 41200 }),
+            new SaturationResults(
+                Substrate: "kafkapostgres",
+                Species: ProjectionSpecies.State,
+                EventsPerSecond: 503.9,
+                WindowSeconds: 30,
+                ProducerConcurrency: 256,
+                AggregateCount: 1024,
+                Health: RunHealth.Empty with { Succeeded = 51100 }),
         };
 
         var output = MarkdownWriter.Render(
@@ -259,6 +279,7 @@ public sealed class MarkdownWriterTests
             {
                 new SaturationResults(
                     Substrate: "kafkapostgres",
+                    Species: ProjectionSpecies.List,
                     EventsPerSecond: 412,
                     WindowSeconds: 30,
                     ProducerConcurrency: 256,
@@ -297,6 +318,7 @@ public sealed class MarkdownWriterTests
             {
                 new SaturationResults(
                     Substrate: "kafkapostgres",
+                    Species: ProjectionSpecies.State,
                     EventsPerSecond: 161,
                     WindowSeconds: 30,
                     ProducerConcurrency: 256,

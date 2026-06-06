@@ -69,11 +69,11 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
             await WaitForKafkaReadyAsync(bootstrapServers, cancellationToken);
             var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
-            // Saturation pass measures count-at-window-end on a fresh consumer
-            // group; Latest avoids replaying warmup-window backlog into the
-            // measurement, which would inflate EPS. Closed-loop keeps Earliest so
-            // fresh-group consumers replay deterministically from offset 0.
-            var autoOffsetReset = mode == SubstrateStartMode.Saturation
+            // Both saturation passes measure count-at-window-end on a fresh
+            // consumer group; Latest avoids replaying warmup-window backlog into
+            // the measurement, which would inflate EPS. Closed-loop keeps Earliest
+            // so fresh-group consumers replay deterministically from offset 0.
+            var autoOffsetReset = mode is SubstrateStartMode.SaturationList or SubstrateStartMode.SaturationState
                 ? AutoOffsetReset.Latest
                 : AutoOffsetReset.Earliest;
 
@@ -224,9 +224,8 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
     /// <summary>
     /// Resolved <see cref="AutoOffsetReset"/> the runtime hands to
     /// <c>AddEdictKafkaStreams</c>. Surfaced so the harness (and tests) can
-    /// confirm <see cref="SubstrateStartMode.Saturation"/> mapped to
-    /// <see cref="AutoOffsetReset.Latest"/> without reaching into the silo's
-    /// service provider.
+    /// confirm either saturation mode mapped to <see cref="AutoOffsetReset.Latest"/>
+    /// without reaching into the silo's service provider.
     /// </summary>
     public AutoOffsetReset KafkaAutoOffsetReset { get; }
 

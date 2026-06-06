@@ -106,17 +106,25 @@ foreach (var substrate in substrates)
     await CsvWriter.WriteAsync(closedLoopCsvPath, perSubstrate);
     Console.WriteLine($"  Wrote {closedLoopCsvPath}");
 
-    // Saturation pass — fresh cluster, sat-mode signal, N=256 fire-and-forget,
-    // single sum-of-counters read at window-end. The closed-loop cluster was
-    // torn down inside RunSweepAsync; the saturation runner brings up its own.
-    Console.WriteLine($"Saturating {substrate.Name} — Events: N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
-    var saturationResult = await saturation.RunAsync(
-        substrate, saturationParallelism, saturationWarmup, saturationWindow);
-    Console.WriteLine($"  {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount}) — {FormatHealth(saturationResult.Health)}");
-    saturationCombined.Add(saturationResult);
+    // Saturation passes — fresh cluster per species, sat-mode signal, N=256
+    // fire-and-forget, single sum-of-counters read at window-end. The closed-loop
+    // cluster was torn down inside RunSweepAsync; each saturation pass brings up
+    // its own. Both species run the identical producer workload and differ only in
+    // how the window-end count is read, so the EPS delta isolates the
+    // storage-commit cost (inline grain-state write vs external UpsertRow drain).
+    var substrateSaturation = new List<SaturationResults>();
+    foreach (var species in new[] { ProjectionSpecies.List, ProjectionSpecies.State })
+    {
+        Console.WriteLine($"Saturating {substrate.Name} — Events ({species}): N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
+        var saturationResult = await saturation.RunAsync(
+            substrate, species, saturationParallelism, saturationWarmup, saturationWindow);
+        Console.WriteLine($"  {species}: {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount}) — {FormatHealth(saturationResult.Health)}");
+        substrateSaturation.Add(saturationResult);
+        saturationCombined.Add(saturationResult);
+    }
 
     var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
-    await SaturationCsvWriter.WriteAsync(saturationCsvPath, [saturationResult]);
+    await SaturationCsvWriter.WriteAsync(saturationCsvPath, substrateSaturation);
     Console.WriteLine($"  Wrote {saturationCsvPath}");
 
     // Per-substrate sidecar summary — keyed by substrate name (no date in the
@@ -124,7 +132,7 @@ foreach (var substrate in substrates)
     // markdown render below unions every substrate's summary on disk, so
     // unrun substrates keep their published rows + run date.
     var substrateSummary = SubstrateSummaryStore.BuildFromResults(
-        substrate.Name, perSubstrateRunDate[substrate.Name], perSubstrate, saturationResult);
+        substrate.Name, perSubstrateRunDate[substrate.Name], perSubstrate, substrateSaturation);
     var substrateSummaryPath = SubstrateSummaryStore.PathFor(rawDirectory, substrate.Name);
     await SubstrateSummaryStore.WriteAsync(substrateSummaryPath, substrateSummary);
 }

@@ -30,7 +30,7 @@ public static class SubstrateSummaryStore
         string substrate,
         DateTimeOffset runDate,
         IReadOnlyList<ThroughputResults> closedLoop,
-        SaturationResults? saturation)
+        IReadOnlyList<SaturationResults> saturation)
     {
         var rows = new List<ClosedLoopSummaryRow>();
         foreach (var r in closedLoop)
@@ -52,18 +52,22 @@ public static class SubstrateSummaryStore
             });
         }
 
-        SaturationSummaryRow? saturationRow = null;
-        if (saturation is not null
-            && string.Equals(saturation.Substrate, substrate, StringComparison.OrdinalIgnoreCase))
+        var saturationRows = new List<SaturationSummaryRow>();
+        foreach (var pass in saturation)
         {
-            saturationRow = new SaturationSummaryRow
+            if (!string.Equals(pass.Substrate, substrate, StringComparison.OrdinalIgnoreCase))
             {
-                EventsPerSecond = saturation.EventsPerSecond,
-                WindowSeconds = saturation.WindowSeconds,
-                ProducerConcurrency = saturation.ProducerConcurrency,
-                AggregateCount = saturation.AggregateCount,
-                Health = ToSummary(saturation.Health),
-            };
+                continue;
+            }
+            saturationRows.Add(new SaturationSummaryRow
+            {
+                Species = pass.Species,
+                EventsPerSecond = pass.EventsPerSecond,
+                WindowSeconds = pass.WindowSeconds,
+                ProducerConcurrency = pass.ProducerConcurrency,
+                AggregateCount = pass.AggregateCount,
+                Health = ToSummary(pass.Health),
+            });
         }
 
         return new SubstrateSummary
@@ -71,7 +75,7 @@ public static class SubstrateSummaryStore
             Substrate = substrate,
             RunDate = runDate,
             ClosedLoop = rows,
-            Saturation = saturationRow,
+            Saturation = saturationRows,
         };
     }
 
@@ -147,15 +151,16 @@ public static class SubstrateSummaryStore
                         P99: TimeSpan.FromMilliseconds(row.P99Ms)),
                     Health: FromSummary(row.Health)));
             }
-            if (s.Saturation is not null)
+            foreach (var pass in s.Saturation)
             {
                 saturation.Add(new SaturationResults(
                     Substrate: s.Substrate,
-                    EventsPerSecond: s.Saturation.EventsPerSecond,
-                    WindowSeconds: s.Saturation.WindowSeconds,
-                    ProducerConcurrency: s.Saturation.ProducerConcurrency,
-                    AggregateCount: s.Saturation.AggregateCount,
-                    Health: FromSummary(s.Saturation.Health)));
+                    Species: pass.Species,
+                    EventsPerSecond: pass.EventsPerSecond,
+                    WindowSeconds: pass.WindowSeconds,
+                    ProducerConcurrency: pass.ProducerConcurrency,
+                    AggregateCount: pass.AggregateCount,
+                    Health: FromSummary(pass.Health)));
             }
         }
         return new HydratedSummaries(closedLoop, saturation, runDates);

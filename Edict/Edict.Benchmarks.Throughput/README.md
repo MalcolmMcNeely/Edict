@@ -33,16 +33,16 @@ For each substrate, **two methodologies coexist** (see [ADR-0031](../../docs/adr
 
 Per scenario: 10 s warmup + 30 s measurement window. Produces p50/p95/p99 latency per (substrate, scenario, N).
 
-**Saturation pass** — Events only, fixed N=256 producers fire-and-forget for 30 s after a 20 s warmup. Single sum-of-per-aggregate-counters read at window-end. One EPS row per substrate; no latency surface. The cluster is a fresh `TestCluster` separate from the closed-loop one — single-projection-per-cluster keeps the two measurements from contaminating each other.
+**Saturation pass** — Events only, fixed N=256 producers fire-and-forget for 30 s after a 20 s warmup. Single sum-of-per-aggregate-counters read at window-end; no latency surface. Run once per **projection species** — `SaturationList` (external store counter, summed store-direct) and `SaturationState` (in-grain counter, summed through the projection reader) — so the table shows one EPS row per substrate per species and the delta isolates the storage-commit cost. Each pass is a fresh `TestCluster` separate from the closed-loop one and from the other species, activating only its own projection so the measurements never contaminate each other.
 
 ## Output
 
 - `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>-closedloop.csv` — per-point raw + downsampled latency samples (≤10k rows / point).
-- `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>-saturation.csv` — one row: `(substrate, events_per_second, window_seconds, producer_concurrency, aggregate_count)`.
+- `docs/benchmarks/raw/<yyyy-MM-dd>-<substrate>-saturation.csv` — one row per species: `(substrate, species, events_per_second, window_seconds, producer_concurrency, aggregate_count)`.
 - `docs/benchmarks/throughput.md` — aggregate document, rewritten on every run from `docs/benchmarks/throughput.template.md` via a `{{token}}` replacer. The template is the only hand-curated surface; prose edits go there, never in the regenerated file.
 
 Paths are resolved by walking up from the binary directory until `docs/` is found, so `dotnet run` works from any cwd.
 
 ## Adding a substrate
 
-Implement `ISubstrate` + `ISubstrateRuntime` (in a sibling `Edict.Substrate.<Name>` library — see `Edict.Substrate.Azurite` and `Edict.Substrate.KafkaPostgres`), then add one line to `SubstrateRegistry.Registered`. A substrate that distinguishes saturation mode (e.g. `AutoOffsetReset = Latest` for Kafka) honours `SubstrateStartMode.Saturation` in its `StartAsync(...)`; substrates without a meaningful distinction (Azurite — Azure Queue streams have no offset-reset analogue) ignore the flag. No runner / writer changes.
+Implement `ISubstrate` + `ISubstrateRuntime` (in a sibling `Edict.Substrate.<Name>` library — see `Edict.Substrate.Azurite` and `Edict.Substrate.KafkaPostgres`), then add one line to `SubstrateRegistry.Registered`. A substrate that distinguishes saturation mode (e.g. `AutoOffsetReset = Latest` for Kafka) honours the `SubstrateStartMode.SaturationList` / `SaturationState` modes in its `StartAsync(...)` (both map to the same fresh-group offset reset); substrates without a meaningful distinction (Azurite — Azure Queue streams have no offset-reset analogue) ignore the flag. No runner / writer changes.

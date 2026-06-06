@@ -1,3 +1,5 @@
+using Edict.Benchmarks.Throughput.Saturation;
+
 namespace Edict.Benchmarks.Throughput.Output;
 
 /// <summary>
@@ -15,7 +17,11 @@ public sealed record SubstrateSummary
 
     public IReadOnlyList<ClosedLoopSummaryRow> ClosedLoop { get; init; } = [];
 
-    public SaturationSummaryRow? Saturation { get; init; }
+    /// <summary>
+    /// One row per projection species measured (List and State), so the rendered
+    /// saturation table can compare the storage-commit cost side by side.
+    /// </summary>
+    public IReadOnlyList<SaturationSummaryRow> Saturation { get; init; } = [];
 }
 
 public sealed record ClosedLoopSummaryRow
@@ -39,6 +45,8 @@ public sealed record ClosedLoopSummaryRow
 
 public sealed record SaturationSummaryRow
 {
+    public ProjectionSpecies Species { get; init; }
+
     public double EventsPerSecond { get; init; }
 
     public double WindowSeconds { get; init; }
