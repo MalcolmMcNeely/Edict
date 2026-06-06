@@ -142,6 +142,7 @@ Once all tests are GREEN and any refactoring is done:
 - [ ] Run the full test suite one final time
 - [ ] Commit directly to `main` — no feature branches
 - [ ] Commit with a descriptive message referencing the issue (e.g. `feat: description (#N)`)
+- [ ] If the change is breaking, mark it: use `feat!:`/`fix!:` and add a `BREAKING CHANGE: <what broke>` footer, so the release notes surface it in the Breaking section. A change is breaking when it removes, renames, or alters the signature of a public `Edict*` member — concretely, when the public-surface allow-list in `Edict.Architecture.Tests` changed by anything other than a pure addition. Adding-only is a normal `feat:`. If the issue body carries a `Breaking:` line, honor it rather than re-deriving.
 - [ ] Always include the Co-authored-by trailer: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
 
 ### 7. Close the Issue

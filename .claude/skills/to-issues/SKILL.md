@@ -87,6 +87,10 @@ Avoid specific file paths or code snippets — they go stale fast. Exception: if
 
 Or "None - can start immediately" if no blockers.
 
+## Breaking
+
+`yes` or `no`. `yes` when the slice removes, renames, or alters the signature of a public `Edict*` member (the public-surface allow-list in `Edict.Architecture.Tests` changes by anything other than a pure addition). Carry whatever the grill decided here so the implementation commit marks it `feat!:`/`fix!:` with a `BREAKING CHANGE:` footer without re-deriving it. Omit this section when the grill did not assess breaking-ness.
+
 </issue-template>
 
 Do NOT modify the parent issue's body or labels — only the close-with-comment in step 6.
