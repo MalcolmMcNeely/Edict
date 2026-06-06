@@ -4,9 +4,9 @@
 
 **Sibling docs:**
 - [`theorycraft-multi-tenant-identity-and-surface.md`](theorycraft-multi-tenant-identity-and-surface.md) — the **carry side** of this same feature: the auth story (Entra External ID / multi-tenant Entra), the consumer-facing public surface (`WithTenancy()`, `AddEdictTenancy`, the resolver seam), and the edge-to-saga propagation loop. This doc is the **honour side** (storage scoping). They share three locked decisions (envelope-not-ambient, fail-closed, opt-in wiring) and have one open disagreement to reconcile in the ADR: the tenant-id type (Open Question 2 here vs that doc's Open Question 4).
-- [`theorycraft-keyed-projection-builder.md`](theorycraft-keyed-projection-builder.md) — interacts: a tenant scope must reach keyed-PB grain state the same way it reaches command-handler aggregate state.
-- [`theorycraft-projection-claim-check.md`](theorycraft-projection-claim-check.md) — interacts: claim-check blobs/rows are one of the storage surfaces a tenant scope has to cover, or oversized payloads leak across the boundary while inline rows do not.
-- [`theorycraft-read-your-writes.md`](theorycraft-read-your-writes.md) — interacts: the cursor wait-list is per-grain, so it is already tenant-isolated if the grain key is; no extra work, but worth confirming during design.
+- [`projections.md`](../usage/concepts/projections.md) (ADR-0061, ADR-0057) — interacts: a tenant scope must reach projection grain state the same way it reaches command-handler aggregate state.
+- [`claim-check.md`](../usage/concepts/claim-check.md) — interacts: claim-check blobs/rows are one of the storage surfaces a tenant scope has to cover, or oversized payloads leak across the boundary while inline rows do not.
+- [`read-your-writes.md`](../usage/concepts/read-your-writes.md) (ADR-0058) — interacts: the cursor wait-list is per-grain, so it is already tenant-isolated if the grain key is; no extra work, but worth confirming during design.
 
 ## The problem
 
