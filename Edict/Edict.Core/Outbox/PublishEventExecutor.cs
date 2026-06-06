@@ -27,10 +27,7 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         var (streamName, routeKey) = ResolveStreamAddress(edictEvent);
         var stream = streamProvider.GetStream<EdictEvent>(StreamId.Create(streamName, routeKey));
 
-        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
-
-        using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-            edictEvent.GetType().Name, parentContext);
+        using var publishActivity = StartPublishActivity(edictEvent.GetType().Name, entry, liveWireEvent);
 
         if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
         {
@@ -43,12 +40,11 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         return null;
     }
 
-    public (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
+    public (string StreamName, Guid RouteKey)? TryResolveBatchKey(
         OutboxEntry entry, EdictEvent? liveWireEvent)
     {
         var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-        var (streamName, routeKey) = ResolveStreamAddress(edictEvent);
-        return (streamName, routeKey, edictEvent);
+        return ResolveStreamAddress(edictEvent);
     }
 
     public async Task<IReadOnlyList<OutboxEntry>> ExecuteBatchAsync(
@@ -77,9 +73,7 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
             {
                 var entry = entries[i];
                 var edictEvent = liveWireEvents[i] ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-                var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
-                activities[i] = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-                    edictEvent.GetType().Name, parentContext);
+                activities[i] = StartPublishActivity(edictEvent.GetType().Name, entry, liveWireEvents[i]);
                 if (activities[i] is { } a && tagWriters.TryGet(edictEvent.GetType(), out var write))
                 {
                     write(edictEvent, a);
@@ -99,6 +93,20 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 
         return [];
     }
+
+    // The publish span's relationship to the staging command is decided per entry
+    // from the in-memory live reference. A present reference means the publish runs
+    // in the same turn that raised the event (inline drain), so the span nests under
+    // the staging context as a child. A null reference means the entry was rehydrated
+    // from durable state in a later drain turn (reminder / activation), possibly on
+    // another silo minutes-to-hours later, so the publish is its own trace root that
+    // links back to the staging command rather than nesting under a closed turn.
+    static Activity? StartPublishActivity(string eventTypeName, OutboxEntry entry, EdictEvent? liveWireEvent) =>
+        liveWireEvent is null
+            ? EdictDiagnostics.ActivitySource.StartEdictEventPublishLinked(
+                eventTypeName, ActivityExtensions.BuildLink(entry.TraceParent, entry.TraceState))
+            : EdictDiagnostics.ActivitySource.StartEdictEventPublish(
+                eventTypeName, ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState));
 
     static EdictEvent Stamp(EdictEvent edictEvent, OutboxEntry entry, Activity? publishActivity)
     {

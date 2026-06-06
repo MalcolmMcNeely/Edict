@@ -98,7 +98,7 @@ A consumer does not write `IEdictEventConsumer` directly. The framework's grain 
 | Grain persistence | **In-memory.** `AddMemoryGrainStorage("edict-state")` rather than Azure / Postgres. |
 | Stream hop | **Bypassed.** The in-process publisher dispatches synchronously through `IEdictEventConsumer`; the memory-stream pulling agent is not exercised. |
 | Wire serialisation | **Real.** Events are serialised and deserialised through the same MessagePack contract pipeline production uses. The wire-shape Verify drift guard catches changes here. |
-| Trace / W3C continuity | **Real.** Spans open per publish and per invocation, with the trace parent restored from the event's `TraceId` / `SpanId` (events stamp these at raise). |
+| Trace / W3C continuity | **Real.** Spans open per publish and per invocation, with the same per-turn topology as production: an inline drain nests the publish under the staging command, while a recovery drain (no live event reference) makes the publish its own trace root linking back to the staging command. |
 | Claim check | **In-memory dictionary.** Same threshold, same envelope shape. |
 | `TimeProvider` | **Virtual.** `FakeTimeProvider` advanced by `AdvanceClock`. |
 

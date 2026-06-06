@@ -30,12 +30,16 @@ interface IOutboxEffectExecutor
 
     /// <summary>
     /// Returns the stream address used to coalesce consecutive ready entries
-    /// into one batched dispatch. The optional <c>ResolvedEvent</c> lets the
-    /// host avoid a second deserialise by forwarding it as the live ref into
-    /// <see cref="ExecuteBatchAsync"/>. Default <c>null</c> opts the entry
-    /// out of batching — the host treats it as a singleton group.
+    /// into one batched dispatch. May deserialise the payload to resolve the
+    /// address on a recovery drain, but the resolved event is deliberately not
+    /// forwarded as a live ref: whether the host still holds the live event
+    /// reference (inline drain) or has only the durable payload (recovery drain)
+    /// is the signal the publish span's child-vs-link topology turns on, so the
+    /// host forwards <c>null</c> on recovery and the executor re-deserialises.
+    /// Default <c>null</c> opts the entry out of batching — the host treats it as
+    /// a singleton group.
     /// </summary>
-    (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
+    (string StreamName, Guid RouteKey)? TryResolveBatchKey(
         OutboxEntry entry, EdictEvent? liveWireEvent) => null;
 
     /// <summary>

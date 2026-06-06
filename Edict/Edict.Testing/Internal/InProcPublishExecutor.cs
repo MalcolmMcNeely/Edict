@@ -72,10 +72,17 @@ sealed class InProcPublishExecutor(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
         var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
-        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
 
-        using var publishActivity = EdictDiagnostics.ActivitySource.StartEdictEventPublish(
-            edictEvent.GetType().Name, parentContext);
+        // Mirrors production PublishEventExecutor: a live ref means the publish runs
+        // in the same turn that raised the event (inline drain) so the span nests
+        // under the staging command; a null ref means the entry was rehydrated in a
+        // later drain turn (reminder / activation / dead-letter-raised tail) so the
+        // publish is its own root linking back to the staging command.
+        using var publishActivity = liveWireEvent is null
+            ? EdictDiagnostics.ActivitySource.StartEdictEventPublishLinked(
+                edictEvent.GetType().Name, ActivityExtensions.BuildLink(entry.TraceParent, entry.TraceState))
+            : EdictDiagnostics.ActivitySource.StartEdictEventPublish(
+                edictEvent.GetType().Name, ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState));
 
         if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
         {

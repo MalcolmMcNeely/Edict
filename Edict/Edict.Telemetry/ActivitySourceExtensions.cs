@@ -47,6 +47,26 @@ public static class ActivitySourceExtensions
             parentContext);
 
     /// <summary>
+    /// Starts <c>edict.event.publish</c> as a new trace root carrying one
+    /// <see cref="ActivityLink"/> back to the staging command's context — the
+    /// per-turn form for a recovery drain (reminder / activation), where the entry
+    /// was rehydrated from durable state long after the staging turn closed and so
+    /// publishing it is its own grain turn rather than a child of the producer. A
+    /// <see langword="null"/> <paramref name="link"/> (the entry carried no trace
+    /// context) starts a bare root. The inline drain that still holds the live event
+    /// reference uses <see cref="StartEdictEventPublish"/> and stays a child.
+    /// </summary>
+    public static Activity? StartEdictEventPublishLinked(
+        this ActivitySource source,
+        string eventTypeName,
+        ActivityLink? link)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.Events.Spans.Publish} {eventTypeName}",
+            ActivityKind.Producer,
+            link);
+
+    /// <summary>
     /// Starts the consumer-side <c>edict.event.handle</c> span as a new trace root
     /// carrying one <see cref="ActivityLink"/> back to the publish span — the
     /// per-turn invariant bounds each consumer turn to its own trace while keeping

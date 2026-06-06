@@ -75,7 +75,7 @@ Assert the compensation and dead-letter branches the same way: drive the schedul
 | Grain persistence | **In-memory.** `AddMemoryGrainStorage("edict-state")`. |
 | Stream hop | **Bypassed.** The in-process publisher dispatches synchronously through `IEdictEventConsumer`; the memory-stream pulling agent is not exercised. |
 | Wire serialisation | **Real.** Events round-trip through the same MessagePack pipeline production uses. |
-| Trace / W3C continuity | **Real.** Spans open per publish and per invocation, parent restored from the event's `TraceId`/`SpanId`. |
+| Trace / W3C continuity | **Real.** Spans open per publish and per invocation, with production's per-turn topology: an inline drain nests the publish under the staging command, a recovery drain (no live event reference) makes it its own root linking back. |
 | Claim check | **In-memory dictionary.** Same threshold, same envelope shape. |
 | `TimeProvider` | **Virtual.** `FakeTimeProvider` advanced via `AdvanceClock`. |
 

@@ -368,16 +368,15 @@ sealed class OutboxHost<TPayload>
                 liveRefs?.TryGetValue(entry.EntryId, out live);
                 var executor = _executors[entry.Kind];
                 var resolved = executor.TryResolveBatchKey(entry, live);
-                if (resolved is { } r)
-                {
-                    keyByEntry[entry.EntryId] = (r.StreamName, r.RouteKey);
-                    liveByEntry[entry.EntryId] = r.ResolvedEvent ?? live;
-                }
-                else
-                {
-                    keyByEntry[entry.EntryId] = (string.Empty, entry.EntryId);
-                    liveByEntry[entry.EntryId] = live;
-                }
+                keyByEntry[entry.EntryId] = resolved is { } r
+                    ? (r.StreamName, r.RouteKey)
+                    : (string.Empty, entry.EntryId);
+
+                // Forward only the genuine in-memory reference — null on a recovery
+                // drain. The publish executor branches its span topology on this:
+                // a live ref nests under the staging command (same turn), a null
+                // ref makes the publish its own root linking back (later turn).
+                liveByEntry[entry.EntryId] = live;
             }
 
             var groups = OutboxBatchGrouping.Group(ready, e => keyByEntry[e.EntryId]);

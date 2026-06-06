@@ -53,7 +53,7 @@ Span names:
 - `edict.command.send` — issued when a saga's outbox `SendCommand` effect dispatches a command.
 - `edict.command` — `IEdictSender.SendAsync` call-site span. `[EdictTelemeterized]` tags from the command land here.
 - `edict.command.handle` — silo-side command handler invocation. A child of `edict.command` on the awaited API path; on a saga's fire-and-forget dispatch it is a new trace root linking back to `edict.command.send`.
-- `edict.event.publish` — outbox publish of a raised event. Nested in its producer turn.
+- `edict.event.publish` — outbox publish of a raised event. On an inline drain (the publish runs in the same turn that raised the event) it is nested in its producer turn. On a recovery drain (reminder / activation, where the entry is rehydrated from durable state in a later, possibly cross-silo turn) it is its own trace root linking back to the staging command, per the per-turn invariant.
 - `edict.event.handle` — consumer handler invocation. A new trace root linking back to the `edict.event.publish` that raised the event (the stream hop is the canonical cross-turn link). `[EdictTelemeterized]` tags from the event land on both `publish` and `handle` spans.
 - `edict.event.deduplicated` — emitted (with no payload tags) when the dedup ring suppresses an at-least-once redelivery. A new trace root linking back to the originating `edict.event.publish`, so a suppressed redelivery is visible rather than silent.
 - `edict.event.claim_check.put` / `edict.event.claim_check.get` — claim-check blob operations. PUT nests in the producer turn; GET nests under `edict.event.handle`.

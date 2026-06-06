@@ -98,6 +98,25 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
+    public async Task DrainAsync_RecoveryDrainWithNoLiveRef_ShouldForwardNullToExecutor()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new LiveRefRecordingExecutor();
+        var host = BuildHost(state, log, executor);
+
+        // A direct enqueue+drain with no inline live refs is a recovery drain
+        // (reminder / activation). The engine must hand the publish executor null
+        // so the publish span starts as its own root linking back to the staging
+        // command, not as a child of the closed staging turn. Forwarding a
+        // routing-resolved deserialised event here would silently collapse the
+        // recovery span back to a cross-turn parent-child.
+        await host.EnqueueAndDrainAsync([Entry(1)]);
+
+        Assert.Null(Assert.Single(executor.ReceivedLiveRefs));
+    }
+
+    [Fact]
     public async Task DrainAsync_ConsecutivePublishEntriesSharingBatchKey_ShouldDispatchOneBatch()
     {
         var log = new CallLog();
@@ -304,6 +323,19 @@ public sealed class OutboxHostTests
         }
     }
 
+    sealed class LiveRefRecordingExecutor : IOutboxEffectExecutor
+    {
+        readonly List<EdictEvent?> _receivedLiveRefs = [];
+        public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+        public IReadOnlyList<EdictEvent?> ReceivedLiveRefs => _receivedLiveRefs;
+
+        public Task<OutboxEntry?> ExecuteAsync(OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
+        {
+            _receivedLiveRefs.Add(liveWireEvent);
+            return Task.FromResult<OutboxEntry?>(null);
+        }
+    }
+
     sealed class NoopPromoter : IDeadLetterPromoter
     {
         public OutboxEntry Promote(OutboxEntry failed, Exception exception, string sourceGrainKey, string sourceGrainType, DateTimeOffset now) =>
@@ -343,7 +375,7 @@ public sealed class OutboxHostTests
             TraceState = $"{streamName}|{routeKey:D}",
         };
 
-        public (string StreamName, Guid RouteKey, EdictEvent? ResolvedEvent)? TryResolveBatchKey(
+        public (string StreamName, Guid RouteKey)? TryResolveBatchKey(
             OutboxEntry entry, EdictEvent? liveWireEvent)
         {
             if (entry.TraceState is not { } trace || !trace.Contains('|'))
@@ -351,7 +383,7 @@ public sealed class OutboxHostTests
                 return null;
             }
             var parts = trace.Split('|');
-            return (parts[0], Guid.Parse(parts[1]), null);
+            return (parts[0], Guid.Parse(parts[1]));
         }
 
         public Task<OutboxEntry?> ExecuteAsync(
