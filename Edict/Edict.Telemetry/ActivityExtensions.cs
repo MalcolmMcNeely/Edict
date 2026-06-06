@@ -71,13 +71,25 @@ public static class ActivityExtensions
     public static ActivityContext RestoreFromStrings(
         string? traceId, string? spanId, string? traceState, bool recorded = true)
     {
+        // CreateFromString validates length only at the call boundary and throws on
+        // non-hex content, so right-length-but-malformed ids would escape here. The
+        // restore is reached on the safety-net dead-letter promote path outside any
+        // catch, where a throw poison-loops the reminder — so a malformed id degrades
+        // to default (no context, hence no link) rather than propagating.
         if (traceId is { Length: 32 } && spanId is { Length: 16 })
         {
-            return new ActivityContext(
-                ActivityTraceId.CreateFromString(traceId),
-                ActivitySpanId.CreateFromString(spanId),
-                recorded ? ActivityTraceFlags.Recorded : ActivityTraceFlags.None,
-                traceState);
+            try
+            {
+                return new ActivityContext(
+                    ActivityTraceId.CreateFromString(traceId),
+                    ActivitySpanId.CreateFromString(spanId),
+                    recorded ? ActivityTraceFlags.Recorded : ActivityTraceFlags.None,
+                    traceState);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return default;
+            }
         }
         return default;
     }

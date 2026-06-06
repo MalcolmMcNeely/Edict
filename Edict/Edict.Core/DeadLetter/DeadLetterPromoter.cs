@@ -36,6 +36,17 @@ sealed class DeadLetterPromoter(
         string sourceGrainType,
         DateTimeOffset now)
     {
+        // The promotion runs in a decoupled drain turn, not the command turn that
+        // produced the failure, so its span links back to the entry's persisted
+        // context rather than nesting under it — an operator pivots from the
+        // promoted dead-letter to the originating command trace. Start / SetTag /
+        // Dispose are non-throwing, so the span is safe to open here outside the
+        // body-materialise try/catch on the safety-net path.
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictDeadLetterPromote(
+            sourceGrainType, ActivityExtensions.BuildLink(failed.TraceParent, failed.TraceState));
+        activity?.SetTag(SemanticConventions.Common.Tags.GrainType, sourceGrainType);
+        activity?.SetTag(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString());
+
         // Promote() runs outside the engine's per-group catch. A throw here
         // propagates up the grain drain, skips the state write, leaves the
         // failed entry Pending, and the next reminder fires the same throw —
@@ -62,11 +73,12 @@ sealed class DeadLetterPromoter(
             raised = BuildForSerializationFailure(failed, promotionException, sourceGrainKey, sourceGrainType, now);
         }
 
+        var failureReason = DeadLetterFailureClassifier.Classify(exception, services.GetServices<IDeadLetterFaultClassifier>());
+        activity?.SetTag(SemanticConventions.DeadLetter.Tags.FailureReason, failureReason);
+
         PromotionCount.Add(1,
             new KeyValuePair<string, object?>(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString()),
-            new KeyValuePair<string, object?>(
-                SemanticConventions.DeadLetter.Tags.FailureReason,
-                DeadLetterFailureClassifier.Classify(exception, services.GetServices<IDeadLetterFaultClassifier>())),
+            new KeyValuePair<string, object?>(SemanticConventions.DeadLetter.Tags.FailureReason, failureReason),
             new KeyValuePair<string, object?>(SemanticConventions.Common.Tags.GrainType, sourceGrainType));
 
         // The forensic notification is its own event with its own identity. The
@@ -99,6 +111,14 @@ sealed class DeadLetterPromoter(
         // marker type is named, never instantiated, mirroring the saga timeout row
         // but routed through the promoter as the schedule lifecycle's single
         // dead-letter choke point.
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictDeadLetterPromote(
+            sourceGrainType, ActivityExtensions.BuildLink(traceParent, traceState));
+        activity?.SetTag(SemanticConventions.Common.Tags.GrainType, sourceGrainType);
+        activity?.SetTag(SemanticConventions.Outbox.Tags.EffectKind, OutboxEffectKind.PublishEvent.ToString());
+        activity?.SetTag(
+            SemanticConventions.DeadLetter.Tags.FailureReason,
+            SemanticConventions.DeadLetter.Tags.FailureReasonValues.ScheduleTimeout);
+
         var raised = new EdictDeadLetterRaised
         {
             EventId = Guid.NewGuid(),

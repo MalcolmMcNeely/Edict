@@ -98,6 +98,16 @@ public sealed class ActivityExtensionsTests : IDisposable
     }
 
     [Fact]
+    public void RestoreFromStrings_ShouldReturnDefault_WhenIdsAreRightLengthButNonHex()
+    {
+        // Right length passes the boundary check but the chars are not hex; the
+        // restore must degrade to default rather than throw, because it runs on the
+        // safety-net dead-letter promote path outside any catch.
+        var result = ActivityExtensions.RestoreFromStrings(new string('z', 32), new string('z', 16), null);
+        Assert.Equal(default, result);
+    }
+
+    [Fact]
     public void RestoreFromStrings_ShouldStayRecorded_WhenRecordedTrue()
     {
         var traceId = ActivityTraceId.CreateRandom().ToHexString();

@@ -192,6 +192,15 @@ public static class SemanticConventions
 
     public static class DeadLetter
     {
+        public static class Spans
+        {
+            /// <summary>The dead-letter promotion turn: a failed effect being promoted to a
+            /// forensic dead-letter row. A new trace root linking back to the failing entry's
+            /// originating context, since promotion runs in a decoupled drain turn rather than
+            /// the originating command's.</summary>
+            public const string Promote = "edict.dead_letter.promote";
+        }
+
         public static class Tags
         {
             /// <summary>Closed allowlist classifying the exception that drove a promotion:

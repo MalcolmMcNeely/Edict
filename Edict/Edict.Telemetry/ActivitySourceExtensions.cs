@@ -152,6 +152,26 @@ public static class ActivitySourceExtensions
             ActivityKind.Internal,
             link);
 
+    /// <summary>
+    /// Starts <c>edict.dead_letter.promote</c> as a new trace root carrying one
+    /// <see cref="ActivityLink"/> back to the failing entry's originating context.
+    /// Promotion runs in a decoupled drain turn, not the command turn that produced
+    /// the failure, so a link — not a parent — is the correct relationship, and an
+    /// operator can pivot from a promoted dead-letter to the originating command
+    /// trace. A <see langword="null"/> <paramref name="link"/> (the entry carried no
+    /// trace context) starts a bare root. This sits on the safety-net path: the start,
+    /// any <c>SetTag</c>, and <c>Dispose</c> must not throw.
+    /// </summary>
+    public static Activity? StartEdictDeadLetterPromote(
+        this ActivitySource source,
+        string sourceGrainType,
+        ActivityLink? link)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.DeadLetter.Spans.Promote} {sourceGrainType}",
+            ActivityKind.Internal,
+            link);
+
     public static Activity? StartEdictTableUpsert(
         this ActivitySource source,
         string tableName,

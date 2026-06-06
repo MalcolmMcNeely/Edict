@@ -75,6 +75,49 @@ public sealed class ActivitySourceExtensionsTests : IDisposable
     }
 
     [Fact]
+    public void StartEdictDeadLetterPromote_ShouldBeNewRootLinkingToOriginatingContext_IgnoringAmbientActivity()
+    {
+        var originatingTraceId = ActivityTraceId.CreateRandom();
+        var originatingSpanId = ActivitySpanId.CreateRandom();
+        var link = new ActivityLink(
+            new ActivityContext(originatingTraceId, originatingSpanId, ActivityTraceFlags.Recorded));
+
+        // Promotion runs in a decoupled drain turn, not the originating command's,
+        // so the promote span must NOT inherit whatever turn happens to be ambient.
+        using var ambient = EdictDiagnostics.ActivitySource.StartEdictCommand("ambient turn");
+        Assert.NotNull(ambient);
+
+        using (EdictDiagnostics.ActivitySource.StartEdictDeadLetterPromote("OrderCommandHandler", link))
+        {
+        }
+
+        var promote = Assert.Single(
+            _stopped, a => a.OperationName == $"{SemanticConventions.DeadLetter.Spans.Promote} OrderCommandHandler");
+        Assert.Null(promote.Parent);
+        Assert.Equal(default, promote.ParentSpanId);
+        Assert.NotEqual(ambient!.TraceId, promote.TraceId);
+
+        var onlyLink = Assert.Single(promote.Links);
+        Assert.Equal(originatingTraceId, onlyLink.Context.TraceId);
+        Assert.Equal(originatingSpanId, onlyLink.Context.SpanId);
+    }
+
+    [Fact]
+    public void StartEdictDeadLetterPromote_ShouldBeNewRootWithNoLink_WhenLinkAbsent()
+    {
+        using var ambient = EdictDiagnostics.ActivitySource.StartEdictCommand("ambient turn");
+
+        using (EdictDiagnostics.ActivitySource.StartEdictDeadLetterPromote("OrderCommandHandler", link: null))
+        {
+        }
+
+        var promote = Assert.Single(
+            _stopped, a => a.OperationName == $"{SemanticConventions.DeadLetter.Spans.Promote} OrderCommandHandler");
+        Assert.Null(promote.Parent);
+        Assert.Empty(promote.Links);
+    }
+
+    [Fact]
     public void StartEdictEventHandle_ShouldBeNewRootWithNoLink_WhenLinkAbsent()
     {
         using var ambient = EdictDiagnostics.ActivitySource.StartEdictCommand("ambient turn");
