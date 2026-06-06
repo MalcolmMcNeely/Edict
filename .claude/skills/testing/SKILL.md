@@ -66,12 +66,21 @@ Two rules regardless of shape:
 - **Filter captures by a per-test marker** — the `GrainType` tag, or a unique GUID baked into the instrument's tags. The process-global listener will otherwise see emits from parallel test classes and fail with "more than one element."
 - If sibling classes emit the *same* instrument, bind them into one `[Collection]` so they run serially. Serialisation prevents cross-class capture pollution; it does **not** substitute for the bounded poll, which guards the test's *own* emit landing in time.
 
+## Spans (`ActivityListener`)
+
+`ActivityStopped` is the span counterpart of the `MeterListener` race, and the same discipline applies. The callback fires when a span's `using`-scope unwinds, process-globally, on whatever thread the span ran.
+
+**Wait on the span you assert on — never on a proxy signal plus a fixed delay.** A deferred span (`edict.event.handle`, a saga-dispatched `edict.command.handle`, `edict.schedule.fire`) stops on the outbox-drain / invoke-handler path, a scheduler tick or more *after* any handler-count or event-capture probe a test might await. The probe and the span are separate async paths, so "`await WaitForHandledAsync(...)` then `stopped.Single(handleSpan)`" reads the span list before it has landed. A `Task.Delay(500)` band-aid only widens the window — it still flakes under CI load. This is the bug that bit `CommandSpanTests.HandleSpan_*` and the conformance span-stitch scenarios.
+
+Use the `SpanCapture` helper (one per test assembly): it owns the listener, lock-guards add/read against the cross-thread callback, and exposes `WaitForSpanAsync(predicate, description)` which polls the captured list for the span under assertion with a real deadline. Acquire each span you assert on through it — a span that already stopped synchronously inside the awaited `SendAsync` (the `edict.command` and `edict.event.publish` spans, which complete before delivery) returns immediately, and a deferred one is waited for. Scope the predicate by a per-test marker (the route key, a telemeterized tag, or the link back to the publish span) for the same process-global reason metrics captures are filtered, and keep span-asserting siblings in one `[Collection]`.
+
 ## What not to do
 
 - Don't test that a method was called — verify outcomes, not interactions.
 - Don't use **Moq** or any mocking library for infrastructure boundaries — use real containers in the axis-conformance suites (`Edict.Azure.Streaming.Tests`, `Edict.Azure.Persistence.Tests`, `Edict.Kafka.Tests`, `Edict.Postgres.Tests`).
 - Don't mock away streams/stores in the conformance suites; don't pull Testcontainers into `Edict.Core.Tests`.
 - Don't share mutable state between tests.
+- Don't wait on a proxy signal (a handler or event-capture count) and then assert on a span or metric emitted on a separate async path. Wait on the artifact you assert on; a `Task.Delay` standing in for that wait flakes under CI load.
 - Don't assert on log output or internal exception messages unless the message is part of the public contract.
 - **FluentAssertions is banned** (commercial license) — do not add it or a wrapper.
 - Don't add section-divider comments inside test files. If you want to separate groups, split into separate files.

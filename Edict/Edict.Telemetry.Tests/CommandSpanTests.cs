@@ -13,20 +13,18 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     public async Task Send_ShouldOpenOneEdictSpanPerCommandDispatch()
     {
         var orderId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var commandSpans = stopped.Where(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelPlaceOrderCommand");
+
+        var commandSpans = capture.Snapshot().Where(activity =>
+            activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Single(commandSpans);
     }
 
@@ -34,21 +32,15 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     public async Task Send_ShouldRecordErrorStatus_WhenHandlerThrows()
     {
         var orderId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await Assert.ThrowsAnyAsync<Exception>(
             () => fixture.Sender.SendAsync(new TelFailOrderCommand(orderId)));
 
-        var span = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelFailOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var span = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelFailOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelFailOrderCommand");
         Assert.Equal(ActivityStatusCode.Error, span.Status);
     }
 
@@ -57,20 +49,14 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-TELEM-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
 
-        var span = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var span = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelPlaceOrderCommand");
         Assert.Equal(sku, span.GetTagItem("edict.sku"));
     }
 
@@ -78,23 +64,18 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     public async Task CommandHandleSpan_ShouldBeChildOfWebCommandSpan_OnApiPath()
     {
         var orderId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var commandSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        var handleSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelPlaceOrderCommand");
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command handle span for TelPlaceOrderCommand");
 
         Assert.Equal(commandSpan.TraceId, handleSpan.TraceId);
         Assert.Equal(commandSpan.SpanId, handleSpan.ParentSpanId);
@@ -104,20 +85,14 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     public async Task CommandHandleSpan_ShouldCarryRouteKeyTag()
     {
         var orderId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var handleSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command handle span for TelPlaceOrderCommand");
         Assert.Equal(orderId, handleSpan.GetTagItem(SemanticConventions.Commands.Tags.RouteKey));
     }
 
@@ -126,20 +101,14 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-HANDLE-TELEM-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
 
-        var handleSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command handle span for TelPlaceOrderCommand");
         Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
     }
 
@@ -148,24 +117,18 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-EVTPUB-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
-        await WaitForEventsAsync(orderId);
 
-        var commandSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        var publishSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
-            && a.TraceId == commandSpan.TraceId);
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelPlaceOrderCommand");
+        var publishSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
+                && activity.TraceId == commandSpan.TraceId,
+            "publish span for TelOrderPlacedEvent");
         Assert.Equal(sku, publishSpan.GetTagItem("edict.sku"));
     }
 
@@ -174,21 +137,14 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-EVTHANDLE-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
-        await WaitForEventsAsync(orderId);
 
-        var handleSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
-            && sku.Equals(a.GetTagItem("edict.sku")));
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
+                && sku.Equals(activity.GetTagItem("edict.sku")),
+            "event handle span for TelOrderPlacedEvent");
         Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
     }
 
@@ -197,24 +153,18 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-EVTHANDLE-ROOT-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
-        await WaitForEventsAsync(orderId);
 
-        var publishSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
-            && sku.Equals(a.GetTagItem("edict.sku")));
-        var handleSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
-            && sku.Equals(a.GetTagItem("edict.sku")));
+        var publishSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
+                && sku.Equals(activity.GetTagItem("edict.sku")),
+            "publish span for TelOrderPlacedEvent");
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
+                && sku.Equals(activity.GetTagItem("edict.sku")),
+            "event handle span for TelOrderPlacedEvent");
 
         // The consumer turn is its own trace — it does not share the producer's.
         Assert.Null(handleSpan.Parent);
@@ -231,21 +181,20 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     {
         var orderId = Guid.NewGuid();
         const string sku = "SKU-ORPHAN-SWEEP-1";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
-        await WaitForEventsAsync(orderId);
+
+        // The handle span is the last span in the flow to land, so waiting on it
+        // guarantees the deferred consumer turn is captured before the sweep.
+        await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
+                && sku.Equals(activity.GetTagItem("edict.sku")),
+            "event handle span for TelOrderPlacedEvent");
 
         // The whole command -> handle flow carries the one telemeterized sku, so it
         // scopes the sweep to this turn's spans despite the shared cluster.
-        var flowSpans = stopped.Where(a => sku.Equals(a.GetTagItem("edict.sku"))).ToList();
+        var flowSpans = capture.Snapshot().Where(activity => sku.Equals(activity.GetTagItem("edict.sku"))).ToList();
         Assert.NotEmpty(flowSpans);
 
         // The only spans allowed to start their own trace are the originating Web
@@ -258,9 +207,9 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
             SemanticConventions.Events.Spans.Deduplicated,
         ];
         var detachedRoots = flowSpans
-            .Where(a => a.ParentSpanId == default)
-            .Where(a => !allowedRootPrefixes.Any(prefix => a.OperationName.StartsWith($"{prefix} ")))
-            .Select(a => a.OperationName)
+            .Where(activity => activity.ParentSpanId == default)
+            .Where(activity => !allowedRootPrefixes.Any(prefix => activity.OperationName.StartsWith($"{prefix} ")))
+            .Select(activity => activity.OperationName)
             .ToList();
         Assert.Empty(detachedRoots);
     }
@@ -269,22 +218,17 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
     public async Task PublishSpan_ShouldBeParentChildUnderCommandSpan()
     {
         var orderId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = stopped.Add,
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var commandSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        var publishSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent");
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+            "command span for TelPlaceOrderCommand");
+        var publishSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent",
+            "publish span for TelOrderPlacedEvent");
 
         Assert.Equal(commandSpan.TraceId, publishSpan.TraceId);
         Assert.Equal(commandSpan.SpanId, publishSpan.ParentSpanId);

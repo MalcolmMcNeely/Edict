@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using Edict.Core.Tests.TestSupport;
 using Edict.Telemetry;
 
@@ -25,14 +23,7 @@ public sealed class SagaCommandSpanNestsUnderHandleSpanTests
     public async Task CommandSpan_ShouldNestUnderSagaHandleSpan_AcrossTheDispatchHop()
     {
         var workflowId = Guid.NewGuid();
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity => { lock (stopped) { stopped.Add(activity); } },
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         var publisher = _fixture.GrainFactory.GetGrain<ISpanSagaEventPublisher>(workflowId);
         await publisher.PublishAsync(new SpanSagaTriggerEvent(workflowId) with
@@ -41,22 +32,15 @@ public sealed class SagaCommandSpanNestsUnderHandleSpanTests
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
-        var tracker = _fixture.GrainFactory.GetGrain<ISpanTrackerProbe>(workflowId);
-        await SpanSagaWaiters.WaitForReceivedAsync(tracker);
-
-        // ActivityStopped fires after each executor's using-scope unwinds,
-        // which can lag the visible tracker increment by a tick.
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
-
-        Activity handleSpan;
-        Activity sendSpan;
-        Activity commandSpan;
-        lock (stopped)
-        {
-            handleSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Events.Spans.Handle} SpanSagaTriggerEvent");
-            sendSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand");
-            commandSpan = stopped.Single(a => a.OperationName == $"{SemanticConventions.Commands.Spans.Command} SpanTrackerCommand");
-        }
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} SpanSagaTriggerEvent",
+            "event handle span for SpanSagaTriggerEvent");
+        var sendSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand",
+            "send span for SpanTrackerCommand");
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} SpanTrackerCommand",
+            "command span for SpanTrackerCommand");
 
         Assert.Equal(handleSpan.SpanId, sendSpan.ParentSpanId);
         Assert.Equal(handleSpan.TraceId, sendSpan.TraceId);

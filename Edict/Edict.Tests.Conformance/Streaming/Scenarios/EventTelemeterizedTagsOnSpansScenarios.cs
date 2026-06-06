@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using Edict.Telemetry;
 using Edict.Tests.Conformance.EventHandler;
 
@@ -27,35 +25,18 @@ public abstract class EventTelemeterizedTagsOnSpansScenarios<TFixture>
     {
         var customerId = Guid.NewGuid();
         const string reason = "promo-trace-tag";
-        var stopped = new List<Activity>();
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (stopped) { stopped.Add(a); } },
-        };
-        ActivitySource.AddActivityListener(listener);
+        using var capture = new SpanCapture();
 
         await _fixture.Sender.SendAsync(new NotifyCustomerCommand(customerId, reason));
 
-        var handler = _fixture.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
-        await EmailHandlerWaiters.WaitForHandledAsync(handler);
-
-        // Activity disposal happens after Handle returns; small grace period
-        // for ActivityStopped to deliver the final span.
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
-
-        Activity publishSpan;
-        Activity handleSpan;
-        lock (stopped)
-        {
-            publishSpan = stopped.First(a =>
-                a.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent"
-                && reason.Equals(a.GetTagItem("edict.reason")));
-            handleSpan = stopped.First(a =>
-                a.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
-                && reason.Equals(a.GetTagItem("edict.reason")));
-        }
+        var publishSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent"
+                && reason.Equals(activity.GetTagItem("edict.reason")),
+            "publish span for CustomerNotifiedEvent");
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
+                && reason.Equals(activity.GetTagItem("edict.reason")),
+            "event handle span for CustomerNotifiedEvent");
 
         Assert.Equal(reason, publishSpan.GetTagItem("edict.reason"));
         Assert.Equal(reason, handleSpan.GetTagItem("edict.reason"));
