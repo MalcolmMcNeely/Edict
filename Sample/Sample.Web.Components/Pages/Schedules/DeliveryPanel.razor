@@ -1,0 +1,135 @@
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Delivery.Commands
+@using Sample.Contracts.Delivery.Projections
+@inject IEdictSender Sender
+@inject IEdictProjectionReader<DeliveryStatusRow> DeliveryStatuses
+@implements IDisposable
+
+<section class="hub-controls">
+    <span class="playground-cart">Shipment <code>@FormatShort(_orderId)</code></span>
+    <span class="hub-controls-sep"></span>
+    <button @onclick="OnTrack" disabled="@_tracking">Track a shipment</button>
+    <button @onclick="OnNewShipment">New shipment</button>
+</section>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="hub-message">@_message</div>
+}
+
+<div class="hub-grid">
+    <div class="hub-left">
+        <h2>Delivery ETA <span class="hub-orders-meta">DeliveryStatus projection</span></h2>
+        @if (!_tracking)
+        {
+            <p class="hub-empty-small">No shipment tracked. Tracking arms a recurring schedule on the Command Handler; each fire ticks the ETA down a day and raises a tracking Event, until arrival completes the schedule.</p>
+        }
+        else
+        {
+            <table class="hub-orders">
+                <tbody>
+                    <tr><td>ETA</td><td>@EtaLabel</td></tr>
+                    <tr><td>Status</td><td>@(Delivered ? "Delivered" : "In transit")</td></tr>
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    const int InitialEtaDays = 5;
+
+    Guid _orderId = Guid.NewGuid();
+    bool _tracking;
+    DeliveryStatusRow? _row;
+    string _message = "";
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    // Before the first tick lands the projection has no row yet, so fall back to the
+    // armed ETA the visitor started tracking with.
+    int EtaDaysRemaining => _row?.EtaDaysRemaining ?? InitialEtaDays;
+
+    bool Delivered => _row?.Delivered ?? false;
+
+    string EtaLabel => Delivered ? "Arrived" : $"{EtaDaysRemaining} day{(EtaDaysRemaining == 1 ? "" : "s")}";
+
+    protected override void OnInitialized()
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        if (!_tracking)
+        {
+            return;
+        }
+
+        try
+        {
+            // Cursorless point-get: the recurring schedule advances the ETA on the
+            // silo, and each poll reads the latest projected row so the visitor
+            // watches the count fall toward arrival.
+            _row = (await DeliveryStatuses.GetAsync(_orderId.ToString(), "delivery")).Row;
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    async Task OnTrack()
+    {
+        var result = await Sender.SendAsync(new StartDeliveryTrackingCommand(_orderId, InitialEtaDays));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _tracking = true;
+            _message = $"Tracking armed at {InitialEtaDays} days. The recurring schedule ticks the ETA down to arrival.";
+        }
+        else
+        {
+            _message = Describe("StartDeliveryTracking", result);
+        }
+    }
+
+    void OnNewShipment()
+    {
+        _orderId = Guid.NewGuid();
+        _tracking = false;
+        _row = null;
+        _message = "Started a fresh shipment.";
+    }
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string Describe(string label, EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected rejected
+            ? $"{label} rejected: {string.Join(", ", rejected.Reasons.Select(reason => reason.Code))}."
+            : $"{label} accepted.";
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+}

@@ -1,0 +1,153 @@
+@using Orleans
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Edict.Core.Sagas
+@using Sample.Contracts.Settlement.Commands
+@using Sample.Domain.Settlement.Sagas
+@inject IEdictSender Sender
+@inject IClusterClient ClusterClient
+@implements IDisposable
+
+<section class="hub-controls">
+    <span class="playground-cart">Payment <code>@FormatShort(_paymentId)</code></span>
+    <span class="hub-controls-sep"></span>
+    <button @onclick="OnBeginSettle" disabled="@_settlementBegun">Settle</button>
+    <button @onclick="OnBeginAbandon" disabled="@_settlementBegun">Abandon (short cap)</button>
+    <button @onclick="OnNewSettlement">New settlement</button>
+</section>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="hub-message">@_message</div>
+}
+
+<div class="hub-grid">
+    <div class="hub-left">
+        <h2>Saga progress <span class="hub-orders-meta">read off durable Progress</span></h2>
+        @if (!_settlementBegun)
+        {
+            <p class="hub-empty-small">No settlement yet. Settle polls the gateway and confirms on the second poll; Abandon caps the schedule below one poll cadence, so the schedule timeout compensates.</p>
+        }
+        else
+        {
+            <table class="hub-orders">
+                <tbody>
+                    <tr><td>Polls</td><td>@(_settlementProgress?.Polls ?? 0)</td></tr>
+                    <tr><td>Outcome</td><td>@OutcomeLabel(_settlementProgress?.Outcome)</td></tr>
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    Guid _paymentId = Guid.NewGuid();
+    bool _settlementBegun;
+    GatewaySettlementProgress? _settlementProgress;
+    string _message = "";
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    protected override void OnInitialized()
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        if (!_settlementBegun)
+        {
+            return;
+        }
+
+        try
+        {
+            // The Saga is the single source of truth: its durable Progress carries
+            // the poll count and outcome, read through the same accessor the tests use.
+            var saga = ClusterClient.GetGrain<IEdictSaga>(_paymentId, typeof(GatewaySettlementSaga).FullName);
+            _settlementProgress = (GatewaySettlementProgress)await saga.GetEdictProgressAsync();
+        }
+        catch
+        {
+            // Read-only refresh path: a transient grain hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    async Task OnBeginSettle()
+    {
+        // Uncapped: the schedule is bounded only by the Saga's own lifetime, so it
+        // polls until the gateway settles and confirms on the second poll.
+        var result = await Sender.SendAsync(new BeginGatewaySettlementCommand(_paymentId, PollTimeoutSeconds: 0));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _settlementBegun = true;
+            _message = "Settlement begun uncapped. The Saga is polling; it confirms after the second poll.";
+        }
+        else
+        {
+            _message = Describe("BeginGatewaySettlement", result);
+        }
+    }
+
+    async Task OnBeginAbandon()
+    {
+        // A one-second cap sits below the poll cadence, so the schedule times out
+        // before the first poll and the compensation abandons the settlement.
+        var result = await Sender.SendAsync(new BeginGatewaySettlementCommand(_paymentId, PollTimeoutSeconds: 1));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _settlementBegun = true;
+            _message = "Settlement begun with a cap below the poll cadence. The schedule times out and compensates.";
+        }
+        else
+        {
+            _message = Describe("BeginGatewaySettlement", result);
+        }
+    }
+
+    void OnNewSettlement()
+    {
+        _paymentId = Guid.NewGuid();
+        _settlementBegun = false;
+        _settlementProgress = null;
+        _message = "Started a fresh settlement.";
+    }
+
+    static string OutcomeLabel(GatewaySettlementOutcome? outcome) => outcome switch
+    {
+        GatewaySettlementOutcome.Settled => "Settled",
+        GatewaySettlementOutcome.Abandoned => "Abandoned (schedule-timeout compensation)",
+        _ => "Polling…",
+    };
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string Describe(string label, EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected rejected
+            ? $"{label} rejected: {string.Join(", ", rejected.Reasons.Select(reason => reason.Code))}."
+            : $"{label} accepted.";
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+}

@@ -11,14 +11,18 @@ namespace Sample.Domain.Delivery.CommandHandlers;
 
 /// <summary>
 /// Delivery aggregate, keyed by OrderId. When an order ships it schedules a
-/// <see cref="DeliveryEtaTick"/> on a daily cadence; each fire ticks the ETA down
-/// a day, raises <see cref="DeliveryEtaTickedEvent"/>, and on arrival raises
+/// <see cref="DeliveryEtaTick"/> on a recurring cadence; each fire ticks the ETA
+/// down a day, raises <see cref="DeliveryEtaTickedEvent"/>, and on arrival raises
 /// <see cref="DeliveredEvent"/> and completes the schedule. The whole loop is
 /// durable and survives deactivation: the cadence is declared once at
 /// <c>Schedule(...)</c>, and the fire handler answers only "again or done".
 /// </summary>
 public partial class DeliveryTrackerCommandHandler : EdictCommandHandler<DeliveryTrackerState>
 {
+    // Tuned for demo, not production: a real ETA tick runs on a daily cadence,
+    // shrunk here to seconds so a visitor can watch the ETA count down to arrival.
+    static readonly TimeSpan TickCadence = TimeSpan.FromSeconds(2);
+
     Task<EdictCommandResult> HandleAsync(StartDeliveryTrackingCommand command)
     {
         if (State.EtaDaysRemaining > 0)
@@ -29,7 +33,7 @@ public partial class DeliveryTrackerCommandHandler : EdictCommandHandler<Deliver
 
         State.OrderId = command.OrderId;
         State.EtaDaysRemaining = command.EtaDays;
-        Schedule(new DeliveryEtaTick(), every: TimeSpan.FromDays(1));
+        Schedule(new DeliveryEtaTick(), every: TickCadence);
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

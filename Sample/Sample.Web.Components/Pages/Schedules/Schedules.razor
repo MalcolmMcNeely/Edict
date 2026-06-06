@@ -2,6 +2,16 @@
 
 <PageTitle>Edict — Schedules</PageTitle>
 
-<ConceptHeader Title="Schedules" Concept="EdictSchedule" DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/schedules.md" />
+<ConceptHeader Title="Schedules" />
 
-<p class="placeholder-note">Coming soon: a hold that expires if an order is not confirmed in time, a delivery ETA that ticks on a recurring schedule, and a gateway poll that settles or is abandoned by a sub-cadence cap.</p>
+<ConceptHeader Section="true" Title="Reservations" Concept="EdictSchedule · timeout → compensation"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/schedules.md" />
+<ReservationsPanel />
+
+<ConceptHeader Section="true" Title="Delivery" Concept="EdictSchedule · recurring on a Command Handler"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/schedules.md" />
+<DeliveryPanel />
+
+<ConceptHeader Section="true" Title="Settlements" Concept="EdictSchedule · recurring on a Saga"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/usage/concepts/schedules.md" />
+<SettlementsPanel />

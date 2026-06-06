@@ -1,0 +1,173 @@
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Sample.Contracts.Orders.Commands
+@using Sample.Contracts.Orders.Projections
+@inject IEdictSender Sender
+@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
+@implements IDisposable
+
+<section class="hub-controls">
+    <span class="playground-cart">Order <code>@FormatShort(_orderId)</code></span>
+    <span class="hub-controls-sep"></span>
+    <button @onclick="OnPlace" disabled="@_placed">Place an order</button>
+    <button @onclick="OnConfirm" disabled="@(!_placed || _confirmed || Expired)">Confirm now</button>
+    <button @onclick="OnNewOrder">New order</button>
+</section>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="hub-message">@_message</div>
+}
+
+<div class="hub-grid">
+    <div class="hub-left">
+        <h2>Hold <span class="hub-orders-meta">armed on placement</span></h2>
+        @if (!_placed)
+        {
+            <p class="hub-empty-small">No order placed. Placing one arms a hold (a schedule with a timeout); left unconfirmed it fires CancelOrder, and confirming first makes that expiry a permissive no-op.</p>
+        }
+        else
+        {
+            <table class="hub-orders">
+                <tbody>
+                    <tr><td>State</td><td>@HoldLabel</td></tr>
+                    <tr><td>Order status</td><td>@OrderStatusLabel</td></tr>
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    // Mirrors ReservationSaga.HoldWindow purely for the display countdown; the
+    // authoritative expiry runs server-side on the saga's own schedule.
+    static readonly TimeSpan HoldWindow = TimeSpan.FromMinutes(15);
+
+    Guid _orderId = Guid.NewGuid();
+    bool _placed;
+    bool _confirmed;
+    DateTimeOffset _placedAt;
+    OrderStatusRow? _status;
+    string _message = "";
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    bool Expired => _status?.Status == "Cancelled";
+
+    string HoldLabel
+    {
+        get
+        {
+            if (Expired)
+            {
+                return "Expired — the hold fired CancelOrder and auto-cancelled the order";
+            }
+
+            if (_confirmed)
+            {
+                return "Released — the order confirmed first, so the expiry is now a no-op";
+            }
+
+            var remaining = _placedAt + HoldWindow - DateTimeOffset.UtcNow;
+            return remaining > TimeSpan.Zero
+                ? $"Armed — expires in {remaining:mm\\:ss} unless confirmed"
+                : "Armed — past the window; the expiry fires on the next schedule sweep";
+        }
+    }
+
+    string OrderStatusLabel => _confirmed && _status?.Status != "Cancelled" ? "Confirmed" : _status?.Status ?? "Open";
+
+    protected override void OnInitialized()
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        if (!_placed)
+        {
+            return;
+        }
+
+        try
+        {
+            // Cursorless point-get: the projection does not track Confirmed, so this
+            // read only surfaces the Cancelled the hold's expiry stamps; confirmation
+            // is held locally off the ConfirmOrder result.
+            _status = (await OrdersByStatus.GetAsync(_orderId.ToString(), "status")).Row;
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    async Task OnPlace()
+    {
+        var result = await Sender.SendAsync(new PlaceOrderCommand(_orderId, "RESV-DEMO"));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _placed = true;
+            _placedAt = DateTimeOffset.UtcNow;
+            _message = "Order placed. The reservation hold is armed; confirm it before the window elapses to win the race.";
+        }
+        else
+        {
+            _message = Describe("PlaceOrder", result);
+        }
+    }
+
+    async Task OnConfirm()
+    {
+        var result = await Sender.SendAsync(new ConfirmOrderCommand(_orderId));
+        if (result is EdictCommandResult.Accepted)
+        {
+            _confirmed = true;
+            _message = "Order confirmed. It beat the hold, so the eventual expiry is a permissive no-op.";
+        }
+        else
+        {
+            _message = Describe("ConfirmOrder", result);
+        }
+    }
+
+    void OnNewOrder()
+    {
+        _orderId = Guid.NewGuid();
+        _placed = false;
+        _confirmed = false;
+        _status = null;
+        _message = "Started a fresh order.";
+    }
+
+    static string FormatShort(Guid id) => id.ToString("N")[..8];
+
+    static string Describe(string label, EdictCommandResult result) =>
+        result is EdictCommandResult.Rejected rejected
+            ? $"{label} rejected: {string.Join(", ", rejected.Reasons.Select(reason => reason.Code))}."
+            : $"{label} accepted.";
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+}

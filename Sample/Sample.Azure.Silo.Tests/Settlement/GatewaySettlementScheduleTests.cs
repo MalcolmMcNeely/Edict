@@ -48,7 +48,7 @@ public sealed class GatewaySettlementScheduleTests
         Assert.Equal(1, app.Timeline.Entries.Count(entry =>
             entry.Kind == "Command" && entry.Type == nameof(ConfirmSettlementCommand)));
 
-        // The poll count and terminal outcome the Playground surfaces, read off
+        // The poll count and terminal outcome the Schedules view surfaces, read off
         // the saga's own durable Progress through the same accessor.
         var progress = await app.GetSagaProgress<GatewaySettlementSaga, GatewaySettlementProgress>(paymentId);
 
@@ -73,7 +73,7 @@ public sealed class GatewaySettlementScheduleTests
         Assert.Equal(1, app.Timeline.Entries.Count(entry =>
             entry.Kind == "Command" && entry.Type == nameof(AbandonSettlementCommand)));
 
-        // The compensation outcome the Playground surfaces off the saga's Progress:
+        // The compensation outcome the Schedules view surfaces off the saga's Progress:
         // the poll never settled, so the count stays zero and the outcome is abandoned.
         var progress = await app.GetSagaProgress<GatewaySettlementSaga, GatewaySettlementProgress>(paymentId);
 
