@@ -60,7 +60,7 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
 
         if (Contains(edictEvent.EventId))
         {
-            EmitDedupSpan(edictEvent);
+            IdempotencyDedupMetrics.EmitDedupSpan(edictEvent);
             return;
         }
 

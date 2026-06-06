@@ -229,8 +229,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
         if (Contains(edictEvent.EventId))
         {
-            EmitDedupSpan(edictEvent);
-            IdempotencyDedupMetrics.EmitDedupHit(edictEvent, SagaType);
+            IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, SagaType);
             return;
         }
 

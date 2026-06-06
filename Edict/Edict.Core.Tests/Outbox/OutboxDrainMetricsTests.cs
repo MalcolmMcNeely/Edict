@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 using Edict.Contracts;
@@ -14,6 +15,9 @@ using Orleans.Streams;
 
 namespace Edict.Core.Tests.Outbox;
 
+// The collection serialises the recording-listener test below with the other
+// cluster-free listener classes per the contamination guard.
+[Collection(EdictListenerUnitCollection.Name)]
 public sealed class OutboxDrainMetricsTests
 {
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
@@ -62,6 +66,70 @@ public sealed class OutboxDrainMetricsTests
 
         Assert.Empty(counts);
         Assert.Empty(entries);
+    }
+
+    [Fact]
+    public async Task DrainAsync_ShouldRecordPassAggregate_WithoutASpanInFlight_ByDesign()
+    {
+        // outbox.drain.* is a per-pass aggregate that can cover entries staged by
+        // many different command turns and traces, so the framework starts no span
+        // for it: a single-trace exemplar would misrepresent the batch. Lock that
+        // the drain-pass metrics record with no recording Edict span current.
+        var marker = $"OutboxDrainMetricsTest_{Guid.NewGuid():N}";
+        using var activityListener = StartRecordingEdictListener();
+
+        var sawCount = false;
+        Activity? currentAtRecord = null;
+        using var listener = StartCurrentCapturingListener(marker, current =>
+        {
+            currentAtRecord = current;
+            sawCount = true;
+        });
+
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var host = BuildHost(state, log, new SuccessfulExecutor(), grainTypeName: marker);
+
+        await host.EnqueueAndDrainAsync([Entry(1), Entry(2)]);
+
+        Assert.True(sawCount);
+        Assert.Null(currentAtRecord);
+    }
+
+    static ActivityListener StartRecordingEdictListener()
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
+    static MeterListener StartCurrentCapturingListener(string grainTypeMarker, Action<Activity?> onCount)
+    {
+        var listener = new MeterListener
+        {
+            InstrumentPublished = (inst, l) =>
+            {
+                if (inst.Meter.Name == EdictDiagnostics.SourceName
+                    && inst.Name == SemanticConventions.Outbox.Meters.DrainCount)
+                {
+                    l.EnableMeasurementEvents(inst);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((inst, _, tags, _) =>
+        {
+            if (inst.Name != SemanticConventions.Outbox.Meters.DrainCount) { return; }
+            if ((ToDict(tags).GetValueOrDefault(SemanticConventions.Common.Tags.GrainType) as string) == grainTypeMarker)
+            {
+                onCount(Activity.Current);
+            }
+        });
+        listener.Start();
+        return listener;
     }
 
     static OutboxHost<EdictUnit> BuildHost(

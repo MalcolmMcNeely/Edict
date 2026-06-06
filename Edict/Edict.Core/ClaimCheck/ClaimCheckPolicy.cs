@@ -80,10 +80,6 @@ internal sealed class ClaimCheckPolicy
 
         Activity.Current?.SetTag(SemanticConventions.Events.Tags.ClaimChecked, true);
 
-        PayloadSize.Record(innerBytes.Length,
-            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name),
-            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedTrue));
-
         return new ClaimCheckApplyResult(envelopeBytes, envelope);
     }
 
@@ -108,5 +104,12 @@ internal sealed class ClaimCheckPolicy
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, edictEvent.EventId.ToString());
 
         await _store!.PutAsync(edictEvent.EventId, innerBytes, cancellationToken);
+
+        // Recorded here, inside the PUT span, so the spilled-payload exemplar points
+        // at the blob-write trace rather than landing without one once the span has
+        // disposed.
+        PayloadSize.Record(innerBytes.Length,
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name),
+            new KeyValuePair<string, object?>(SemanticConventions.Events.Tags.ClaimChecked, BoxedTrue));
     }
 }

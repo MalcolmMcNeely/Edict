@@ -214,8 +214,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             return false;
         }
 
-        EmitDedupSpan(envelope);
-        IdempotencyDedupMetrics.EmitDedupHit(envelope, GetType().FullName ?? GetType().Name);
+        IdempotencyDedupMetrics.EmitDedupSpanAndHit(envelope, GetType().FullName ?? GetType().Name);
         return true;
     }
 
@@ -298,8 +297,7 @@ public abstract class EdictIdempotencyBase<TPayload>
 
         if (Contains(edictEvent.EventId))
         {
-            EmitDedupSpan(edictEvent);
-            IdempotencyDedupMetrics.EmitDedupHit(edictEvent, GetType().FullName ?? GetType().Name);
+            IdempotencyDedupMetrics.EmitDedupSpanAndHit(edictEvent, GetType().FullName ?? GetType().Name);
             return;
         }
 
@@ -417,13 +415,6 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// </summary>
     private protected virtual void MarkConsumerProgressDrained()
     {
-    }
-
-    private protected static void EmitDedupSpan(EdictEvent edictEvent)
-    {
-        var link = ActivityExtensions.BuildLink(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
-        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(edictEvent.GetType().Name, link);
-        span?.SetTag(SemanticConventions.Events.Tags.Deduplicated, true);
     }
 
     OutboxHost<TPayload> BuildHost() =>
