@@ -1,17 +1,17 @@
 {
   "substrate": "kafkapostgres",
-  "run_date": "2026-05-30T10:03:06.7418937+00:00",
+  "run_date": "2026-06-06T21:01:03.3422575+00:00",
   "closed_loop": [
     {
       "scenario": "Command acceptance",
       "parallelism": 2,
-      "completed_count": 65838,
-      "elapsed_seconds": 30.0066101,
-      "p50_ms": 0.7819,
-      "p95_ms": 1.3838,
-      "p99_ms": 2.1415,
+      "completed_count": 31510,
+      "elapsed_seconds": 30.0126953,
+      "p50_ms": 1.7308,
+      "p95_ms": 2.453,
+      "p99_ms": 3.584,
       "health": {
-        "succeeded": 65838,
+        "succeeded": 31510,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -19,13 +19,13 @@
     {
       "scenario": "Command acceptance",
       "parallelism": 16,
-      "completed_count": 160004,
-      "elapsed_seconds": 30.011592,
-      "p50_ms": 2.831,
-      "p95_ms": 3.9163,
-      "p99_ms": 5.2643,
+      "completed_count": 74495,
+      "elapsed_seconds": 30.0104724,
+      "p50_ms": 6.0216,
+      "p95_ms": 8.4328,
+      "p99_ms": 11.8197,
       "health": {
-        "succeeded": 160004,
+        "succeeded": 74495,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -33,13 +33,13 @@
     {
       "scenario": "Command acceptance",
       "parallelism": 64,
-      "completed_count": 157949,
-      "elapsed_seconds": 30.0121271,
-      "p50_ms": 11.0651,
-      "p95_ms": 17.5611,
-      "p99_ms": 21.4944,
+      "completed_count": 91482,
+      "elapsed_seconds": 30.0303641,
+      "p50_ms": 20.7025,
+      "p95_ms": 27.6937,
+      "p99_ms": 31.7758,
       "health": {
-        "succeeded": 157949,
+        "succeeded": 91482,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -47,13 +47,13 @@
     {
       "scenario": "Command acceptance (base-typed)",
       "parallelism": 2,
-      "completed_count": 64244,
-      "elapsed_seconds": 30.0126231,
-      "p50_ms": 0.8526,
-      "p95_ms": 1.1854,
-      "p99_ms": 1.9519,
+      "completed_count": 35453,
+      "elapsed_seconds": 30.0052572,
+      "p50_ms": 1.6023,
+      "p95_ms": 2.1604,
+      "p99_ms": 2.9508,
       "health": {
-        "succeeded": 64244,
+        "succeeded": 35453,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -61,13 +61,13 @@
     {
       "scenario": "Command acceptance (base-typed)",
       "parallelism": 16,
-      "completed_count": 154490,
-      "elapsed_seconds": 29.9993038,
-      "p50_ms": 2.9318,
-      "p95_ms": 4.0404,
-      "p99_ms": 5.1425,
+      "completed_count": 84685,
+      "elapsed_seconds": 30.0095768,
+      "p50_ms": 5.3941,
+      "p95_ms": 7.2534,
+      "p99_ms": 8.7805,
       "health": {
-        "succeeded": 154490,
+        "succeeded": 84685,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -75,13 +75,13 @@
     {
       "scenario": "Command acceptance (base-typed)",
       "parallelism": 64,
-      "completed_count": 157706,
-      "elapsed_seconds": 30.0001626,
-      "p50_ms": 11.3549,
-      "p95_ms": 16.9658,
-      "p99_ms": 19.8561,
+      "completed_count": 90532,
+      "elapsed_seconds": 30.0189983,
+      "p50_ms": 20.8425,
+      "p95_ms": 27.9408,
+      "p99_ms": 32.1776,
       "health": {
-        "succeeded": 157706,
+        "succeeded": 90532,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -89,13 +89,13 @@
     {
       "scenario": "Command \u2192 Event delivery",
       "parallelism": 2,
-      "completed_count": 443,
-      "elapsed_seconds": 30.0053622,
-      "p50_ms": 143.1813,
-      "p95_ms": 206.4322,
-      "p99_ms": 211.102,
+      "completed_count": 453,
+      "elapsed_seconds": 29.9992761,
+      "p50_ms": 128.8188,
+      "p95_ms": 194.7771,
+      "p99_ms": 209.1472,
       "health": {
-        "succeeded": 443,
+        "succeeded": 453,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -103,13 +103,13 @@
     {
       "scenario": "Command \u2192 Event delivery",
       "parallelism": 16,
-      "completed_count": 4372,
-      "elapsed_seconds": 30.0068372,
-      "p50_ms": 110.3088,
-      "p95_ms": 177.3234,
-      "p99_ms": 193.3032,
+      "completed_count": 4418,
+      "elapsed_seconds": 30.0231531,
+      "p50_ms": 110.7117,
+      "p95_ms": 176.1301,
+      "p99_ms": 191.4274,
       "health": {
-        "succeeded": 4372,
+        "succeeded": 4418,
         "failed": 0,
         "failures_by_type": {}
       }
@@ -117,27 +117,42 @@
     {
       "scenario": "Command \u2192 Event delivery",
       "parallelism": 64,
-      "completed_count": 10085,
-      "elapsed_seconds": 30.5449805,
-      "p50_ms": 186.7772,
-      "p95_ms": 276.3123,
-      "p99_ms": 303.3306,
+      "completed_count": 10930,
+      "elapsed_seconds": 30.5298476,
+      "p50_ms": 172.7846,
+      "p95_ms": 257.4168,
+      "p99_ms": 280.9851,
       "health": {
-        "succeeded": 10085,
+        "succeeded": 10930,
         "failed": 0,
         "failures_by_type": {}
       }
     }
   ],
-  "saturation": {
-    "events_per_second": 818.5333333333333,
-    "window_seconds": 30,
-    "producer_concurrency": 256,
-    "aggregate_count": 1024,
-    "health": {
-      "succeeded": 24556,
-      "failed": 0,
-      "failures_by_type": {}
+  "saturation": [
+    {
+      "species": "List",
+      "events_per_second": 792.2,
+      "window_seconds": 30,
+      "producer_concurrency": 256,
+      "aggregate_count": 1024,
+      "health": {
+        "succeeded": 23766,
+        "failed": 0,
+        "failures_by_type": {}
+      }
+    },
+    {
+      "species": "State",
+      "events_per_second": 1481.9,
+      "window_seconds": 30,
+      "producer_concurrency": 256,
+      "aggregate_count": 1024,
+      "health": {
+        "succeeded": 44422,
+        "failed": 0,
+        "failures_by_type": {}
+      }
     }
-  }
+  ]
 }
