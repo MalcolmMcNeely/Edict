@@ -1,6 +1,6 @@
 # Edict
 
-[![CI](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/MalcolmMcNeely/Edict/branch/main/graph/badge.svg)](https://codecov.io/gh/MalcolmMcNeely/Edict) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/MalcolmMcNeely/Edict/branch/main/graph/badge.svg)](https://app.codecov.io/gh/MalcolmMcNeely/Edict) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
 
