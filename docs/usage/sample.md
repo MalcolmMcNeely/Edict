@@ -6,7 +6,7 @@ A stranger who clones the repo to evaluate Edict should judge it on something th
 
 Two rules keep it honest, and a future contributor should not undo them for lack of context:
 
-- **Everything in the Sample does something a visitor can see.** Nothing exists only to be exercised by a test and is invisible in the running app. The two former abstract schedule toys were repurposed into domain-meaningful concepts (`Watchdog` became `Reservation`, `Countdown` became `DeliveryTracker`), and the Event Handler's side effect was made visible by having it POST to a real in-process notifications sink.
+- **Everything in the Sample does something a visitor can see.** Nothing exists only to be exercised by a test while staying invisible in the running app. Each schedule drives a domain-meaningful concept the visitor can watch (a reservation hold that expires and auto-cancels, a delivery ETA that ticks down, a gateway settlement that polls until it settles), and the Event Handler's side effect is visible because it POSTs to a real in-process notifications sink that the Orders view renders.
 - **The concept map is documentation, never in-app chrome.** Each view carries one bare concept badge (for example "Saga") plus a "How this works" link to the matching concept doc. That is the entire per-view text budget. The feature index below is the concept shopper's door, kept out of the app.
 
 This is a demo, so the framing decision is not recorded as an ADR (it fails the "hard to reverse" gate). Its rationale lives here instead.
