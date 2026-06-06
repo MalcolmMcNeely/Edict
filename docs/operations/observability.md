@@ -60,6 +60,16 @@ Edict.Postgres uses the Npgsql ADO.NET driver. Npgsql 9+ publishes pool and comm
 
 Tag note: Npgsql 10 uses `db.client.connection.state` (the OTel-spec tag key) but ships singular instrument names — be careful when reading dashboards written for one and not the other.
 
+### Postgres grain-storage transient retry
+
+Edict.Postgres rolls its own grain storage (Orleans' shipped `AdoNetGrainStorage` collapses every `Grain<T>` sharing a `[EdictRouteKey]` into one row), so unlike the Azure pairing it gets no transient-fault resilience from its driver. The provider adds it explicitly: every storage seam retries a transient `NpgsqlException` before surfacing `EdictPostgresStorageException`. One counter on the framework `"Edict"` meter (not the `Npgsql` meter) reports the result.
+
+| Instrument | Type | What it tells you |
+|---|---|---|
+| `edict.postgres.storage.retry.count` | counter (tags: `edict.postgres.storage.operation` ∈ `Read\|Write\|Clear`, `edict.postgres.storage.outcome` ∈ `recovered\|exhausted`) | Grain-storage transient retries that fired. The `recovered` slice means the substrate shed a transient fault that a later attempt cleared; a rising `recovered` rate is an early warning that the Postgres connection path is flapping. The `exhausted` slice means retries no longer cleared it and `EdictPostgresStorageException` surfaced — pair a rising `exhausted` rate with the `Npgsql` pool gauges above to find the saturated resource. Tune the budget with `EdictPostgresPersistenceOptions.StorageRetryCount` / `StorageRetryBaseDelay`. |
+
+This counter carries no exemplar by design: it is recorded from the retry hook, decoupled from any command/event span.
+
 ## Kafka — `Confluent.Kafka` meter
 
 Edict.Kafka uses the Confluent.Kafka .NET wrapper around librdkafka. The wrapper does **not** emit `System.Diagnostics.Metrics` instruments out of the box; you wire `OpenTelemetry.Instrumentation.ConfluentKafka` (or your own statistics callback) to surface them on the `"Confluent.Kafka"` meter.

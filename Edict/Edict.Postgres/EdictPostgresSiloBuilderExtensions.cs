@@ -101,7 +101,8 @@ public static class EdictPostgresSiloBuilderExtensions
                 clusterOptions.ServiceId,
                 serviceProvider.GetRequiredService<Serializer>(),
                 serviceProvider,
-                serviceProvider.GetRequiredService<ILogger<EdictPostgresGrainStorage>>());
+                serviceProvider.GetRequiredService<ILogger<EdictPostgresGrainStorage>>(),
+                new PostgresTransientRetry.Policy(options.StorageRetryCount, options.StorageRetryBaseDelay));
         });
         // PubSubStore stays on Orleans' shipped AdoNet provider — its grain
         // type is Orleans-internal (PubSubRendezvousGrain) and no other

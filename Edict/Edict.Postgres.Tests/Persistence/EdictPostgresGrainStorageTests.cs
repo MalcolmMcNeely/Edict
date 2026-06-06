@@ -40,7 +40,7 @@ public sealed class EdictPostgresGrainStorageTests
     }
 
     EdictPostgresGrainStorage CreateStorage() =>
-        new(_dataSource, "edict-test", _serializer, _services, NullLogger<EdictPostgresGrainStorage>.Instance);
+        new(_dataSource, "edict-test", _serializer, _services, NullLogger<EdictPostgresGrainStorage>.Instance, PostgresTransientRetry.Policy.Default);
 
     [Fact]
     public async Task WriteThenRead_RoundTripsStateAndStartsVersionAtOne()
@@ -172,7 +172,8 @@ public sealed class EdictPostgresGrainStorageTests
         var unreachable = new NpgsqlDataSourceBuilder(
             "Host=127.0.0.1;Port=1;Username=u;Password=p;Database=d;Timeout=2;Command Timeout=2").Build();
         return new EdictPostgresGrainStorage(
-            unreachable, "edict-test", _serializer, _services, NullLogger<EdictPostgresGrainStorage>.Instance);
+            unreachable, "edict-test", _serializer, _services, NullLogger<EdictPostgresGrainStorage>.Instance,
+            new PostgresTransientRetry.Policy(TotalAttempts: 3, BaseDelay: TimeSpan.FromMilliseconds(1)));
     }
 
     static GrainId NewGrainId() => GrainId.Create("agg", Guid.NewGuid().ToString("N"));

@@ -73,4 +73,35 @@ public sealed class EdictPostgresPersistenceOptions
     /// <c>Minimum Pool Size</c> keyword in <see cref="ConnectionString"/>.
     /// </summary>
     public int MinPoolSize { get; set; } = 10;
+
+    /// <summary>
+    /// Total attempts (one try plus retries) the grain-storage seams make against a
+    /// transient Npgsql fault before surfacing <c>EdictPostgresStorageException</c>.
+    /// Default <c>3</c> (one try, two retries).
+    /// <para>
+    /// The Azure pairing gets transient-fault resilience for free from the Azure
+    /// Storage SDK; Postgres does not, because the provider rolls its own grain
+    /// storage (Orleans 10's <c>AdoNetGrainStorage</c> collapses every
+    /// <c>Grain&lt;T&gt;</c> sharing a <c>[EdictRouteKey]</c> into one row), so the
+    /// retry that the Azure SDK applies silently has to be applied here explicitly.
+    /// A transient socket reset that the Azure pairing absorbs would otherwise fail
+    /// a Postgres grain activation outright. Retry is gated on
+    /// <c>NpgsqlException.IsTransient</c>; a non-transient fault surfaces on the
+    /// first attempt with no delay.
+    /// </para>
+    /// </summary>
+    public int StorageRetryCount { get; set; } = 3;
+
+    /// <summary>
+    /// Base delay for the grain-storage transient-retry backoff. Default <c>50 ms</c>,
+    /// applied exponentially with no jitter (50 ms, then 100 ms).
+    /// <para>
+    /// Retrying a write is safe even when the first attempt may already have applied:
+    /// the version-checked <c>INSERT ... ON CONFLICT DO NOTHING RETURNING</c> /
+    /// <c>UPDATE ... WHERE version = @expected RETURNING</c> statements return no row
+    /// on a no-op, so a double-apply degrades to an <c>InconsistentStateException</c>,
+    /// which Orleans handles by deactivating and re-reading rather than corrupting state.
+    /// </para>
+    /// </summary>
+    public TimeSpan StorageRetryBaseDelay { get; set; } = TimeSpan.FromMilliseconds(50);
 }
