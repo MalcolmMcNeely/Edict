@@ -19,17 +19,35 @@ public static class ActivityExtensions
     /// Captures the current activity's W3C trace context into Orleans
     /// <see cref="RequestContext"/> so that <see cref="RestoreFromRequestContext"/>
     /// can reconstitute it on the handler-grain side of the stream hop.
+    /// <paramref name="crossTurnLink"/> marks the captured context as a
+    /// fire-and-forget cross-turn dispatch (a saga's outbox <c>SendCommand</c>),
+    /// so the receiving <c>edict.command.handle</c> links back to it as a new root
+    /// rather than nesting under it as a child.
     /// </summary>
-    public static void CaptureToRequestContext(this Activity activity)
+    public static void CaptureToRequestContext(this Activity activity, bool crossTurnLink = false)
     {
         RequestContext.Set(EdictDiagnostics.TraceIdKey, activity.TraceId.ToHexString());
         RequestContext.Set(EdictDiagnostics.SpanIdKey, activity.SpanId.ToHexString());
         RequestContext.Set(EdictDiagnostics.RecordedKey, activity.Recorded);
+        RequestContext.Set(EdictDiagnostics.CrossTurnLinkKey, crossTurnLink);
         if (activity.TraceStateString is { } traceState)
         {
             RequestContext.Set(EdictDiagnostics.TraceStateKey, traceState);
         }
     }
+
+    /// <summary>
+    /// Whether the trace context currently in <see cref="RequestContext"/> was
+    /// captured as a fire-and-forget cross-turn dispatch — the signal an
+    /// <c>edict.command.handle</c> uses to start a linked root instead of a child.
+    /// </summary>
+    public static bool IsCrossTurnLink() => RequestContext.Get(EdictDiagnostics.CrossTurnLinkKey) is true;
+
+    /// <summary>
+    /// Clears the cross-turn marker once the receiving handle span has consumed it,
+    /// so a command this handler itself dispatches does not inherit the flag.
+    /// </summary>
+    public static void ClearCrossTurnLink() => RequestContext.Remove(EdictDiagnostics.CrossTurnLinkKey);
 
     /// <summary>
     /// Reads the raw trace strings stored by <see cref="CaptureToRequestContext"/>.

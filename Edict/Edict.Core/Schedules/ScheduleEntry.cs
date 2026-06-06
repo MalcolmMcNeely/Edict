@@ -46,4 +46,17 @@ public sealed record ScheduleEntry
     /// </summary>
     [Id(4)]
     public DateTimeOffset? DeadlineAt { get; init; }
+
+    /// <summary>
+    /// The W3C <c>traceparent</c> of the span that armed this schedule, captured at
+    /// <c>Schedule()</c> and persisted so a fire — its own grain turn, decoupled in
+    /// time and possibly across a deactivation — links back to the arming command
+    /// rather than orphaning. <c>null</c> when arming ran with no recording span.
+    /// </summary>
+    [Id(5)]
+    public string? ArmTraceParent { get; init; }
+
+    /// <summary>The <c>tracestate</c> companion to <see cref="ArmTraceParent"/>, riding onto the fire's link.</summary>
+    [Id(6)]
+    public string? ArmTraceState { get; init; }
 }

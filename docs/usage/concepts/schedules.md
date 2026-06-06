@@ -120,6 +120,12 @@ Two differences are worth noting:
 - **The result helpers.** A saga returns `new EdictScheduleResult.Continue()` / `new EdictScheduleResult.Complete()` directly. The `Continue()` / `Complete()` helper methods exist only on `EdictCommandHandler`, because `EdictSaga` already has a lifecycle `Complete()` (the void terminal-success method from [sagas.md](sagas.md)) and overloading it would collide.
 - **Which cap applies.** A saga's schedule is bounded by the **saga's own lifetime cap** (`[EdictSagaTimeout]` or the saga default), never by `EdictCommandHandlerScheduleOptions.DefaultTimeout`. A saga schedule with no explicit `timeout:` inherits the saga cap; an explicit `timeout:` caps it shorter; `EdictSchedule.Unbounded` opts the schedule out so only the saga's own lifetime bounds it. The command-handler schedule default never reaches a saga.
 
+## Tracing a fire back to its origin
+
+A fire is a new grain turn, decoupled in time from the command that armed the schedule (and possibly separated from it by a deactivation), so it is not a child of the arming command's trace. Instead `edict.schedule.fire` opens a **new trace root** carrying one `ActivityLink` back to the arming command. The link rides on an arm-context (the W3C `traceparent` of the arming span) captured at `Schedule(...)` and persisted on the durable `ScheduleEntry`, so it survives the deactivation between arming and firing. Any event the fire raises (or, on a saga, the command it dispatches) nests under `edict.schedule.fire` as parent-child within that turn.
+
+> In the Aspire dashboard, the Sample fulfillment schedule ([`FulfillmentCommandHandler`](../../../Sample/Sample.Domain/Fulfillment/CommandHandlers/FulfillmentCommandHandler.cs)) demonstrates this end to end: placing an order arms `FulfillNextLine` from the fulfillment command handler, and every subsequent `edict.schedule.fire FulfillNextLine` shows a link back to the originating command's span. Follow the link from any fulfillment tick to land on the order that started it.
+
 ## Testing
 
 The in-memory [Test Framework](../testing/seams.md) drives schedules through a virtual clock, with no real timers. After a command arms a schedule, advance it interval-agnostically:

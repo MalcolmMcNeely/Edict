@@ -23,6 +23,13 @@ public sealed partial record SpanTrackerCommand(Guid WorkflowId) : EdictCommand
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
+[EdictStream("SpanTrackerWorkflow")]
+public sealed partial record SpanTrackerRaisedEvent(Guid WorkflowId) : EdictEvent
+{
+    [EdictRouteKey]
+    public Guid WorkflowId { get; init; } = WorkflowId;
+}
+
 [GenerateSerializer]
 [Alias("Edict.Core.Tests.Saga.SpanWorkflowProgress")]
 public sealed class SpanWorkflowProgress : IEdictPersistedState
@@ -66,6 +73,7 @@ public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTracker
     {
         State.Received++;
         State.LastCorrelationId = command.CorrelationId;
+        Raise(new SpanTrackerRaisedEvent(command.WorkflowId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 

@@ -134,8 +134,25 @@ public static class SemanticConventions
         }
     }
 
+    public static class Schedules
+    {
+        public static class Spans
+        {
+            /// <summary>The schedule-fire turn: a recurring tick or one-shot fire dispatched
+            /// off the durable schedule. A new trace root linking back to the arming command.</summary>
+            public const string Fire = "edict.schedule.fire";
+        }
+    }
+
     public static class Sagas
     {
+        public static class Spans
+        {
+            /// <summary>The saga absolute-lifetime cap fire. A new trace root linking back to
+            /// the context that armed the saga on its first handled event.</summary>
+            public const string Timeout = "edict.saga.timeout";
+        }
+
         public static class Tags
         {
             /// <summary>How a fired absolute-lifetime cap resolved:
@@ -279,5 +296,10 @@ public static class SemanticConventions
         public const string SpanId = "edict.cmd-span-id";
         public const string TraceState = "edict.cmd-trace-state";
         public const string Recorded = "edict.cmd-recorded";
+
+        /// <summary>Set when the captured context is a fire-and-forget cross-turn dispatch
+        /// (a saga's outbox <c>SendCommand</c>), so the receiving <c>edict.command.handle</c>
+        /// links back to the send span as a new root instead of nesting under it as a child.</summary>
+        public const string CrossTurnLink = "edict.cmd-cross-turn";
     }
 }

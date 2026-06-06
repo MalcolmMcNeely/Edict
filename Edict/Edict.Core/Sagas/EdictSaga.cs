@@ -157,7 +157,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     protected void Schedule(EdictScheduleMessage message, TimeSpan every, TimeSpan? timeout = null)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every, ResolveScheduleCap(timeout));
+        var armingSpan = Activity.Current;
+        ScheduleHost.Schedule(
+            Serializer.SerializeToArray(message),
+            every,
+            ResolveScheduleCap(timeout),
+            armingSpan?.BuildTraceParent(),
+            armingSpan?.TraceStateString);
     }
 
     // Resolves the effective timeout duration for a saga schedule. Unlike a Command
@@ -250,7 +256,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             return;
         }
 
-        var (newLifecycle, capAction) = NextLifecycle(lifecycle, outcome.CompleteRequested);
+        var (newLifecycle, capAction) = NextLifecycle(lifecycle, outcome.CompleteRequested, edictEvent);
         _pendingLifecycle = newLifecycle;
         await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
         _pendingLifecycle = null;
@@ -300,7 +306,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // the type-aware terminal decision happen in DispatchDeferredAsync, where
         // the body is in hand: an unhandled type off the shared stream is ignored
         // rather than dead-lettered.
-        var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false);
+        var (newLifecycle, capAction) = NextLifecycle(lifecycle, completeRequested: false, envelope);
         _pendingLifecycle = newLifecycle;
         await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
         _pendingLifecycle = null;
@@ -447,6 +453,12 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             return;
         }
 
+        // The fired cap is its own grain turn: a new trace root linking back to the
+        // context that armed the saga. As the current span it makes a compensating
+        // command's edict.command.send (or the dead-letter publish) nest under it.
+        var link = ActivityExtensions.BuildLink(lifecycle?.ArmTraceParent, lifecycle?.ArmTraceState);
+        using var timeoutSpan = EdictDiagnostics.ActivitySource.StartEdictSagaTimeout(GetType().Name, link);
+
         var buffer = _dispatch.Begin();
         await OnSagaTimeoutAsync();
         var command = buffer.Take();
@@ -491,21 +503,35 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         }
     }
 
-    (SagaLifecycle? Lifecycle, CapAction Action) NextLifecycle(SagaLifecycle? existing, bool completeRequested)
+    (SagaLifecycle? Lifecycle, CapAction Action) NextLifecycle(SagaLifecycle? existing, bool completeRequested, EdictEvent armingEvent)
     {
         if (existing is null)
         {
-            // First handled Event: arm the absolute cap anchored here.
+            // First handled Event: arm the absolute cap anchored here, and capture
+            // the arming event's trace context so a fired cap links back to it.
             var declaration = SagaTimeoutAttributeReader.Read(GetType());
             var deadline = SagaDeadlineResolver.Resolve(declaration, SagaOptions.DefaultTimeout, Clock.GetUtcNow());
+            var (armTraceParent, armTraceState) = ArmContextFrom(armingEvent);
 
             if (completeRequested)
             {
                 // Completed inside its very first handler — never arm a cap.
-                return (new SagaLifecycle { State = SagaLifecycleState.Completed, DeadlineAt = deadline }, CapAction.None);
+                return (new SagaLifecycle
+                {
+                    State = SagaLifecycleState.Completed,
+                    DeadlineAt = deadline,
+                    ArmTraceParent = armTraceParent,
+                    ArmTraceState = armTraceState,
+                }, CapAction.None);
             }
 
-            var armed = new SagaLifecycle { State = SagaLifecycleState.Live, DeadlineAt = deadline };
+            var armed = new SagaLifecycle
+            {
+                State = SagaLifecycleState.Live,
+                DeadlineAt = deadline,
+                ArmTraceParent = armTraceParent,
+                ArmTraceState = armTraceState,
+            };
             return (armed, deadline is null ? CapAction.None : CapAction.Register);
         }
 
@@ -518,6 +544,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // subsequent handle leaves the lifecycle untouched.
         return (null, CapAction.None);
     }
+
+    // The arming event's stamped publish context, as a W3C traceparent the fired cap
+    // links back to. Null when the event carried no trace (unsampled or untraced).
+    static (string? TraceParent, string? TraceState) ArmContextFrom(EdictEvent armingEvent) =>
+        armingEvent.TraceId is { Length: 32 } traceId && armingEvent.SpanId is { Length: 16 } spanId
+            ? (ActivityExtensions.BuildTraceParent(traceId, spanId), armingEvent.TraceState)
+            : (null, null);
 
     async Task ApplyCapReminderActionAsync(CapAction action, SagaLifecycle? lifecycle)
     {
@@ -589,6 +622,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
         var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
         var buffer = _dispatch.Begin();
+
+        // The fire is its own grain turn: a new trace root linking back to the event
+        // that armed the schedule. As the current context it makes a Dispatched
+        // command's edict.command.send nest under the fire within the turn.
+        var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
+        using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
+        fireSpan?.CaptureToRequestContext();
 
         EdictScheduleResult result;
         try

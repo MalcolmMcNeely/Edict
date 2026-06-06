@@ -94,6 +94,8 @@ public sealed class EnvelopeStateShapeTests
                 MessagePayload = [4, 5, 6],
                 Period = TimeSpan.FromSeconds(2),
                 DueAt = Now,
+                ArmTraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+                ArmTraceState = "edict=1",
             }),
         };
 
@@ -114,6 +116,8 @@ public sealed class EnvelopeStateShapeTests
             {
                 State = SagaLifecycleState.TimedOut,
                 DeadlineAt = Now,
+                ArmTraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+                ArmTraceState = "edict=1",
             },
         };
 

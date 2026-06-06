@@ -31,12 +31,15 @@ Tag keys are stable across declaring types — the same domain property name (`O
 
 Span names:
 
-- `edict.command.send` — issued at the `IEdictSender.SendAsync` call site.
-- `edict.command` — handler dispatch span. `[EdictTelemeterized]` tags from the command land here.
+- `edict.command.send` — issued when a saga's outbox `SendCommand` effect dispatches a command.
+- `edict.command` — `IEdictSender.SendAsync` call-site span. `[EdictTelemeterized]` tags from the command land here.
+- `edict.command.handle` — silo-side command handler invocation. A child of `edict.command` on the awaited API path; on a saga's fire-and-forget dispatch it is a new trace root linking back to `edict.command.send`.
 - `edict.event.publish` — outbox publish of a raised event.
 - `edict.event.handle` — consumer handler invocation. `[EdictTelemeterized]` tags from the event land on both `publish` and `handle` spans.
 - `edict.event.deduplicated` — emitted (with no payload tags) when the dedup ring suppresses an at-least-once redelivery.
 - `edict.event.claim_check.get` / `edict.event.claim_check.put` — claim-check blob operations.
+- `edict.schedule.fire` — a schedule tick or one-shot fire. A new trace root linking back to the command that armed the schedule.
+- `edict.saga.timeout` — a fired saga lifetime cap. A new trace root linking back to the context that armed the saga.
 - `edict.table.upsert` — table-projection row write.
 
 Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:

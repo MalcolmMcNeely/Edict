@@ -45,7 +45,13 @@ public sealed class EdictSender : IEdictSender
         {
             activity.SetEdictCommandTags(key);
             route.TagWriter?.Invoke(command, activity);
-            activity.CaptureToRequestContext();
+            // On a saga's outbox dispatch the edict.command.send span is already the
+            // cross-turn link carrier in RequestContext; leave it in place so the
+            // receiving handle links to the send rather than to this intervening span.
+            if (!ActivityExtensions.IsCrossTurnLink())
+            {
+                activity.CaptureToRequestContext();
+            }
         }
 
         try
@@ -92,7 +98,10 @@ public sealed class EdictSender : IEdictSender
         {
             activity.SetEdictCommandTags(routeKey);
             extraTags?.Invoke(command, activity);
-            activity.CaptureToRequestContext();
+            if (!ActivityExtensions.IsCrossTurnLink())
+            {
+                activity.CaptureToRequestContext();
+            }
         }
 
         try

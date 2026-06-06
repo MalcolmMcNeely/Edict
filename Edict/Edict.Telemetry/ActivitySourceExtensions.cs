@@ -20,6 +20,23 @@ public static class ActivitySourceExtensions
             ActivityKind.Server,
             parentContext);
 
+    /// <summary>
+    /// Starts <c>edict.command.handle</c> as a new trace root carrying one
+    /// <see cref="ActivityLink"/> back to the <c>edict.command.send</c> context — the
+    /// per-turn form for a saga's fire-and-forget dispatch, where the handled command
+    /// is its own grain turn rather than a child of the producing turn. A
+    /// <see langword="default"/> <paramref name="linkContext"/> starts a bare root.
+    /// </summary>
+    public static Activity? StartEdictCommandHandleLinked(
+        this ActivitySource source,
+        string commandTypeName,
+        ActivityContext linkContext)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.Commands.Spans.Handle} {commandTypeName}",
+            ActivityKind.Server,
+            linkContext.TraceId == default ? null : new ActivityLink(linkContext));
+
     public static Activity? StartEdictEventPublish(
         this ActivitySource source,
         string eventTypeName,
@@ -99,6 +116,41 @@ public static class ActivitySourceExtensions
             $"{SemanticConventions.Commands.Spans.Send} {commandTypeName}",
             ActivityKind.Producer,
             parentContext);
+
+    /// <summary>
+    /// Starts <c>edict.schedule.fire</c> as a new trace root carrying one
+    /// <see cref="ActivityLink"/> back to the command that armed the schedule. A fire
+    /// is its own grain turn, decoupled in time from the arming command, so the
+    /// per-turn invariant bounds it to its own trace while the arm-context keeps the
+    /// originator navigable. A <see langword="null"/> <paramref name="link"/> (the
+    /// schedule was armed with no trace context) starts a bare root.
+    /// </summary>
+    public static Activity? StartEdictScheduleFire(
+        this ActivitySource source,
+        string scheduleMessageTypeName,
+        ActivityLink? link)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.Schedules.Spans.Fire} {scheduleMessageTypeName}",
+            ActivityKind.Internal,
+            link);
+
+    /// <summary>
+    /// Starts <c>edict.saga.timeout</c> as a new trace root carrying one
+    /// <see cref="ActivityLink"/> back to the context that armed the saga on its
+    /// first handled event. A fired cap is its own grain turn, far removed in time
+    /// from the arming event, so it gets its own bounded trace that links to the
+    /// arm-context. A <see langword="null"/> <paramref name="link"/> starts a bare root.
+    /// </summary>
+    public static Activity? StartEdictSagaTimeout(
+        this ActivitySource source,
+        string sagaTypeName,
+        ActivityLink? link)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.Sagas.Spans.Timeout} {sagaTypeName}",
+            ActivityKind.Internal,
+            link);
 
     public static Activity? StartEdictTableUpsert(
         this ActivitySource source,

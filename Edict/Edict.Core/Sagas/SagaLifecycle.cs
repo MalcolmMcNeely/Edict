@@ -29,4 +29,17 @@ public sealed record SagaLifecycle
 
     [Id(1)]
     public DateTimeOffset? DeadlineAt { get; init; }
+
+    /// <summary>
+    /// The W3C <c>traceparent</c> of the context that armed this saga on its first
+    /// handled event, persisted so a fired cap — its own grain turn, far removed in
+    /// time and possibly across a deactivation — links back to that context rather
+    /// than orphaning. <c>null</c> when the arming event carried no trace context.
+    /// </summary>
+    [Id(2)]
+    public string? ArmTraceParent { get; init; }
+
+    /// <summary>The <c>tracestate</c> companion to <see cref="ArmTraceParent"/>, riding onto the cap fire's link.</summary>
+    [Id(3)]
+    public string? ArmTraceState { get; init; }
 }

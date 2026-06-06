@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 
 using Edict.Contracts;
 using Edict.Contracts.Commands;
@@ -159,7 +160,13 @@ public abstract class EdictCommandHandler<TState>
     protected void Schedule(EdictScheduleMessage message, TimeSpan every, TimeSpan? timeout = null)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ScheduleHost.Schedule(Serializer.SerializeToArray(message), every, ResolveScheduleCap(timeout));
+        var armingSpan = Activity.Current;
+        ScheduleHost.Schedule(
+            Serializer.SerializeToArray(message),
+            every,
+            ResolveScheduleCap(timeout),
+            armingSpan?.BuildTraceParent(),
+            armingSpan?.TraceStateString);
     }
 
     // Resolves the effective timeout duration for a schedule: an explicit timeout:
@@ -215,6 +222,13 @@ public abstract class EdictCommandHandler<TState>
     async Task FireScheduleEntryAsync(ScheduleEntry entry, DateTimeOffset now)
     {
         var message = Serializer.Deserialize<EdictScheduleMessage>(entry.MessagePayload);
+
+        // The fire is its own grain turn: a new trace root linking back to the
+        // command that armed the schedule. Capturing it as the current context makes
+        // any event the fire raises nest under it as parent-child within the turn.
+        var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
+        using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
+        fireSpan?.CaptureToRequestContext();
 
         EdictScheduleResult result;
         try
@@ -383,13 +397,30 @@ public abstract class EdictCommandHandler<TState>
     {
         var grainTypeName = GetType().FullName ?? GetType().Name;
 
-        // The silo-side handle span: restored from the command's captured context so
-        // the synchronous awaited dispatch from the Web edict.command span nests its
-        // callee as a child. Wraps validate -> handle -> raise, and carries the same
-        // route-key and [EdictTelemeterized] tags as the Web span so a tag query
-        // resolves on either side.
-        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommandHandle(
-            typeof(TCommand).Name, ActivityExtensions.RestoreFromRequestContext());
+        // The silo-side handle span. On the awaited API path it restores the Web
+        // edict.command context as its parent so the callee nests as a child. On a
+        // saga's fire-and-forget outbox dispatch it is its own grain turn: a new root
+        // linking back to the edict.command.send producer. Either way it wraps
+        // validate -> handle -> raise and carries the same route-key and
+        // [EdictTelemeterized] tags as the producing span so a tag query resolves on
+        // both sides.
+        var producerContext = ActivityExtensions.RestoreFromRequestContext();
+        var isCrossTurnDispatch = ActivityExtensions.IsCrossTurnLink();
+        using var activity = isCrossTurnDispatch
+            ? EdictDiagnostics.ActivitySource.StartEdictCommandHandleLinked(typeof(TCommand).Name, producerContext)
+            : EdictDiagnostics.ActivitySource.StartEdictCommandHandle(typeof(TCommand).Name, producerContext);
+
+        if (isCrossTurnDispatch)
+        {
+            // The dispatched command runs in its own trace, linked to the saga's send
+            // span. Re-anchor RequestContext to this handle span so an event the
+            // handler raises publishes within this turn instead of back under the
+            // saga's send span, and drop the cross-turn marker so a command this
+            // handler itself dispatches is treated normally.
+            ActivityExtensions.ClearCrossTurnLink();
+            activity?.CaptureToRequestContext();
+        }
+
         if (activity is not null)
         {
             activity.SetEdictCommandTags(this.GetPrimaryKey());
