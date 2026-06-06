@@ -23,7 +23,7 @@ public sealed partial class HighThroughputEventHandler : EdictEventHandler
 - **Dedup is keyed by `EventId`,** the framework-assigned Guid stamped once as the event enters the outbox and carried unchanged across redeliveries and producer-side re-publishes. The route key does not deduplicate; only `EventId` does.
 - A suppressed redelivery emits an `edict.event.deduplicated` span (no payload tags) so a forensic dedup hit is visible in traces.
 
-The dedup ring slot, the consumer's payload mutation, and any staged outbox effect (a saga's `SendCommand`, a table-projection's `UpsertRow`) commit in the same one grain-state write — ring-equals-row atomicity. A throw from the consumer's `HandleAsync` leaves the ring slot uncommitted; the framework redelivers. Dedup also holds when two redeliveries of the same `EventId` land concurrently on one grain: a transient in-flight reservation suppresses the second before its handler runs, so the event still applies exactly once.
+The dedup ring slot, the consumer's payload mutation, and any staged outbox effect (a saga's `SendCommand`, a table-projection's `UpsertRow`) commit in the same one grain-state write — ring-equals-row atomicity. A throw from the consumer's `HandleAsync` leaves the ring slot uncommitted; the framework redelivers. A redelivery of an already-handled `EventId` is suppressed by the ring before its handler runs, so the event applies exactly once.
 
 ## Analyzer rules
 

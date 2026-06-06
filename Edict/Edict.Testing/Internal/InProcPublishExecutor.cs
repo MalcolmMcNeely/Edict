@@ -44,6 +44,7 @@ sealed class InProcPublishExecutor(
     readonly ChaosRoller _roller = new(chaos);
     readonly HeldQueue _held = new();
     readonly Lock _heldLock = new();
+    readonly ConcurrentDictionary<SubscriberKey, Task> _deliveryTails = new();
     int _outstandingDispatches;
     ExceptionDispatchInfo? _firstFault;
 
@@ -183,47 +184,54 @@ sealed class InProcPublishExecutor(
         }
 
         var grain = grainFactory.GetGrain<IEdictEventConsumer>(routeKey, grainClass.FullName);
+        var subscriberKey = new SubscriberKey(grainClass, routeKey);
         var deliveries = 1 + _roller.ExtraDeliveries(grainClass);
         for (var i = 0; i < deliveries; i++)
         {
             Interlocked.Increment(ref _outstandingDispatches);
-            _ = DispatchWithRetryAsync(grain, edictEvent);
+            // Serialize deliveries to one consumer activation: each awaits the
+            // previous delivery to the same (grain class, route key) before it
+            // invokes the grain. This mirrors the Orleans pulling agent, which
+            // awaits each OnNextAsync before delivering the next item from the
+            // same stream to the same consumer — distinct events for one activation
+            // are never in flight together, and a redelivery follows the original
+            // rather than racing it. Deliveries to different activations stay
+            // concurrent, as they are across a real cluster.
+            _deliveryTails.AddOrUpdate(
+                subscriberKey,
+                _ => DeliverAfterAsync(Task.CompletedTask, grain, edictEvent),
+                (_, previous) => DeliverAfterAsync(previous, grain, edictEvent));
         }
     }
 
-    // Memory grain storage surfaces an InconsistentStateException whenever two
-    // writes race the same key (the in-process activation's OnDeactivate/reactivate
-    // path can leave a fresh activation with an empty cached ETag while storage
-    // still holds the previous one). In production the consumer's stream would
-    // redeliver; the harness has no such redelivery, so a fire-and-forget fault
-    // silently drops the event and Drain returns thinking everything settled.
-    // Bounded retry restores deterministic delivery for every test cascade.
-    async Task DispatchWithRetryAsync(IEdictEventConsumer grain, EdictEvent edictEvent)
+    async Task DeliverAfterAsync(Task previousDelivery, IEdictEventConsumer grain, EdictEvent edictEvent)
     {
+        // Inherit only ordering from the predecessor, never its failure: a faulted
+        // earlier delivery has already captured its own fault, so swallow the await
+        // and still deliver this event.
         try
         {
-            const int maxAttempts = 16;
-            for (var attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    await grain.OnEdictEventAsync(edictEvent);
-                    return;
-                }
-                catch (Orleans.Storage.InconsistentStateException) when (attempt < maxAttempts)
-                {
-                    await Task.Delay(10);
-                }
-            }
+            await previousDelivery;
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            // One delivery attempt, mirroring a single pulling-agent hand-off.
+            // Serial per-activation delivery means two writes can no longer race
+            // one grain's state, so the InconsistentStateException the harness used
+            // to retry past no longer arises.
+            await grain.OnEdictEventAsync(edictEvent);
         }
         catch (Exception dispatchException)
         {
-            // A saga/projection HandleAsync throw (or an InconsistentStateException
-            // that outlived every retry) propagates out of the grain call here. In
-            // production the consumer's stream would redeliver; the harness has no
-            // such redelivery, so without capture the fault escapes onto the
-            // unobserved task and Drain settles as if the event were delivered.
-            // First writer wins so the earliest fault is the one Drain reports.
+            // A saga/projection HandleAsync throw propagates out of the grain call
+            // here. The harness has no stream to redeliver it, so without capture
+            // the fault would escape onto this unobserved task and Drain would
+            // settle as if the event were delivered. First writer wins so the
+            // earliest fault is the one Drain reports.
             Interlocked.CompareExchange(ref _firstFault, ExceptionDispatchInfo.Capture(dispatchException), null);
         }
         finally

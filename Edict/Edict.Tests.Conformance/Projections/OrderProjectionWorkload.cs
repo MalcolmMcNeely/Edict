@@ -113,18 +113,71 @@ public sealed partial class GlobalOrderProjectionBuilder : EdictListProjectionBu
 public interface IOrderProjectionAccess : IGrainWithGuidKey
 {
     Task<int> GetOrderCountAsync();
+
+    /// <summary>
+    /// The high-water mark of handler turns that were in-flight on this one
+    /// activation at the same moment. One means every event was delivered and
+    /// handled to completion before the next began; greater than one means the
+    /// runtime ran two turns of this activation concurrently. Used by the
+    /// real-stream delivery-serialization guard.
+    /// </summary>
+    Task<int> GetMaxConcurrentHandlerTurnsAsync();
+}
+
+/// <summary>
+/// Sentinel an <see cref="OrderProjectionWorkload"/>-style burst test stamps on
+/// <c>PlaceOrderCommand.Sku</c> so <see cref="OrderProjectionBuilder"/> only arms
+/// its turn-overlap instrumentation for that test's events, leaving every other
+/// scenario's handler timing untouched.
+/// </summary>
+public static class ConcurrencyProbe
+{
+    public const string Sku = "edict-delivery-serialization-probe";
+
+    // Long enough that an entire burst of events for one aggregate arrives while
+    // the first turn is still parked here: if the runtime ever ran a second turn
+    // of the activation concurrently, the high-water mark would spike well above
+    // one. Serial delivery pins it at one regardless.
+    public static readonly TimeSpan HandlerHold = TimeSpan.FromMilliseconds(750);
 }
 
 public sealed partial class OrderProjectionBuilder : EdictProjectionBuilderBase<EdictUnit>, IOrderProjectionAccess
 {
     int _orderCount;
+    int _activeHandlerTurns;
+    int _maxConcurrentHandlerTurns;
 
     public Task<int> GetOrderCountAsync() => Task.FromResult(_orderCount);
 
-    Task HandleAsync(OrderPlacedEvent edictEvent)
+    public Task<int> GetMaxConcurrentHandlerTurnsAsync() => Task.FromResult(_maxConcurrentHandlerTurns);
+
+    async Task HandleAsync(OrderPlacedEvent edictEvent)
     {
+        if (edictEvent.Sku != ConcurrencyProbe.Sku)
+        {
+            _orderCount++;
+            return;
+        }
+
+        // Hold the turn parked at an await. If the runtime ever delivered a
+        // second event to this activation before this turn finished, both turns
+        // would be counted in-flight here and the high-water mark would exceed
+        // one. A real Orleans pulling agent delivers one stream's events to a
+        // single consumer serially, so it stays at one.
+        var active = Interlocked.Increment(ref _activeHandlerTurns);
+        if (active > _maxConcurrentHandlerTurns)
+        {
+            _maxConcurrentHandlerTurns = active;
+        }
+        try
+        {
+            await Task.Delay(ConcurrencyProbe.HandlerHold);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeHandlerTurns);
+        }
         _orderCount++;
-        return Task.CompletedTask;
     }
 }
 
