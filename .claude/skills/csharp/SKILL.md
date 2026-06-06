@@ -107,6 +107,52 @@ public sealed class OrderState : IEdictPersistedState
 }
 ```
 
+## Projection species (ADR-0061)
+
+A Projection Builder comes in two species over the abstract root `EdictProjectionBuilderBase<TPayload>` (which a consumer never derives directly). Choose where the read model lives by the base you derive:
+
+- **State Projection Builder** — `EdictProjectionBuilder<TProjection>`. The read model lives in the grain's own durable state, committed inline with the dedup ring in one write (no outbox effect). Mutate the `Projection` accessor inside `HandleAsync`. Use it for a **small, hot, per-aggregate** read model (one object per grain): the commit and read are cheaper and read-your-writes resolves the instant the write lands. The cost is that the whole read model loads with the grain, so keep it deliberately small.
+- **List Projection Builder** — `EdictListProjectionBuilder<TListProjection>`. The read model lives in an external composite-key store, written through an `UpsertRow` outbox effect drained at-least-once. Use it for a **large or unbounded** read model, or one queried across many keys.
+
+The decision is by the size and shape of the read model, not by caution. Putting a durable read model in grain state "to be safe" is the State species' deliberate trade-off, not a safety hedge: it is the wrong call for a read model that grows.
+
+```csharp
+using Edict.Contracts.Events;
+using Edict.Core.Projections;
+
+public sealed partial class DeliveryStatusProjectionBuilder : EdictProjectionBuilder<DeliveryStatusRow>
+{
+    Task HandleAsync(DeliveryEtaTickedEvent edictEvent)
+    {
+        Projection.EtaDaysRemaining = edictEvent.EtaDaysRemaining;
+        return Task.CompletedTask;
+    }
+
+    Task HandleAsync(DeliveredEvent edictEvent)
+    {
+        Projection.Delivered = true;
+        return Task.CompletedTask;
+    }
+}
+```
+
+The `TProjection` payload is an `IEdictPersistedState` `sealed class` authored exactly like aggregate state or saga progress — `{ get; set; }` properties, `[GenerateSerializer]`, a frozen-literal `[Alias]`, `[Id(n)]` on every property:
+
+```csharp
+[GenerateSerializer]
+[Alias("Sample.Contracts.Delivery.Projections.DeliveryStatusRow")]
+public sealed class DeliveryStatusRow : IEdictPersistedState
+{
+    [Id(0)]
+    public int EtaDaysRemaining { get; set; }
+
+    [Id(1)]
+    public bool Delivered { get; set; }
+}
+```
+
+The application reads through the matching reader — `IEdictProjectionReader<TProjection>.ReadAsync(key)` for the State species, `IEdictListProjectionReader<TListProjection>` (`GetAsync` / `QueryPartitionAsync`) for the List species — both registered automatically by `AddEdict()`. See [projections.md](../../../docs/usage/concepts/projections.md).
+
 ## Comment policy
 
 Comments are differentiated by kind. Each kind has a different bar.

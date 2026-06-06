@@ -35,4 +35,4 @@ The dedup ring slot, the consumer's payload mutation, and any staged outbox effe
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Idempotency Base`, `Event`, `Event Handler`, `Saga`, `Projection Builder`.
 - Configuration — [core.md](../../configuration/core.md) — the canonical reference for `IdempotencyWindowSize`.
-- Concepts — [events.md](events.md), [event-handlers.md](event-handlers.md), [sagas.md](sagas.md), [projection-builders.md](projection-builders.md), [telemetry.md](telemetry.md).
+- Concepts — [events.md](events.md), [event-handlers.md](event-handlers.md), [sagas.md](sagas.md), [projections.md](projections.md), [telemetry.md](telemetry.md).

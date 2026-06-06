@@ -84,7 +84,7 @@ Azurite's table emulator is close enough that the conformance battery runs again
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`.
-- Concepts — [dead-letter.md](../concepts/dead-letter.md), [table-projections.md](../concepts/table-projections.md), [projection-builders.md](../concepts/projection-builders.md), [idempotency.md](../concepts/idempotency.md).
+- Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [idempotency.md](../concepts/idempotency.md).
 - Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).
 - ADRs — [0021 — Grain state on blob substrate](../../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0018 — Dead letter (forensic-only)](../../adr/0018-dead-letter-forensic-only.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md).

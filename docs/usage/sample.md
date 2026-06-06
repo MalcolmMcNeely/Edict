@@ -25,7 +25,7 @@ Navigation is five production-language entries. Each names one Edict concept and
 
 | View | Concept badge | How this works |
 |---|---|---|
-| **Dashboard** (`/`) | ListProjection | [Projection Builders](concepts/projection-builders.md) |
+| **Dashboard** (`/`) | ListProjection | [Projections](concepts/projections.md) |
 | **Checkout** (`/checkout`) | Saga (bridge) | [Sagas](concepts/sagas.md) |
 | **Orders** (`/orders`) | Saga | [Sagas](concepts/sagas.md) |
 | **Schedules** (`/schedules`) | EdictSchedule | [Schedules](concepts/schedules.md) |
@@ -63,5 +63,5 @@ The fault-injection buttons drive synthetic diagnostic grains, kept as honest op
 
 - [Sample testing map](testing/sample-map.md): the 1:1 use-case-to-test mapping and the dedup flagship.
 - [Getting started](getting-started.md): install, the smallest valid handler, and silo and client wiring.
-- Concepts: [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projection Builders](concepts/projection-builders.md), [Dead Letter](concepts/dead-letter.md), [Read-your-writes](concepts/read-your-writes.md).
+- Concepts: [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projections](concepts/projections.md), [Dead Letter](concepts/dead-letter.md), [Read-your-writes](concepts/read-your-writes.md).
 - [`CONTEXT.md`](../../CONTEXT.md): the canonical domain language.

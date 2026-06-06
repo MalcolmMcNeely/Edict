@@ -73,6 +73,6 @@ builder.Services.AddEdict();
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Domain Stream`, `Event`, `Outbox`.
 - Configuration — [kafka.md](../../configuration/kafka.md) — the options table, tuning guidance, and connection-string format.
-- Concepts — [events.md](../concepts/events.md), [event-handlers.md](../concepts/event-handlers.md), [projection-builders.md](../concepts/projection-builders.md), [telemetry.md](../concepts/telemetry.md).
+- Concepts — [events.md](../concepts/events.md), [event-handlers.md](../concepts/event-handlers.md), [projections.md](../concepts/projections.md), [telemetry.md](../concepts/telemetry.md).
 - Wiring — [azure-persistence.md](azure-persistence.md), [postgres.md](postgres.md).
 - ADRs — [0028 — Custom Kafka stream provider](../../adr/0028-custom-kafka-stream-provider.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md).

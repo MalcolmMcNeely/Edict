@@ -114,5 +114,5 @@ A consumer reading the Edict source tree will see `Edict.Testing` referenced by 
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Sender`, `Idempotency Base`, `Outbox`, `Saga`, `Projection Builder`.
 - Testing — [setup.md](setup.md), [probes.md](probes.md), [chaos.md](chaos.md).
-- Concepts — [event-handlers.md](../concepts/event-handlers.md), [sagas.md](../concepts/sagas.md), [projection-builders.md](../concepts/projection-builders.md).
+- Concepts — [event-handlers.md](../concepts/event-handlers.md), [sagas.md](../concepts/sagas.md), [projections.md](../concepts/projections.md).
 - ADRs — [0017 — Hand-authored AddEdict](../../adr/0017-hand-authored-addedict.md), [0024 — Test layering](../../adr/0024-test-layering.md), [0025 — Chaos-default models at-least-once delivery](../../adr/0025-chaos-default-models-at-least-once-delivery.md).

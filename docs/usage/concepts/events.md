@@ -33,4 +33,4 @@ A consumer never sees `EdictEventEnvelope` on a `HandleAsync` signature; the rec
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Event`, `RouteKey`, `Domain Stream`, `Event Envelope`.
-- Concepts — [commands.md](commands.md), [event-handlers.md](event-handlers.md), [projection-builders.md](projection-builders.md), [sagas.md](sagas.md), [claim-check.md](claim-check.md), [telemetry.md](telemetry.md).
+- Concepts — [commands.md](commands.md), [event-handlers.md](event-handlers.md), [projections.md](projections.md), [sagas.md](sagas.md), [claim-check.md](claim-check.md), [telemetry.md](telemetry.md).

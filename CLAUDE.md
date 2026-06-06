@@ -82,7 +82,7 @@ When the conversation touches these topics, read the linked depth before answeri
 | Dead-letter, forensics | `docs/usage/concepts/dead-letter.md` + ADR-0018, 0041 |
 | Claim-check, oversized payloads | `docs/usage/concepts/claim-check.md` + ADR-0020 |
 | Saga, multi-step workflows | `docs/usage/concepts/sagas.md` + ADR-0016 |
-| Table projection, read models | `docs/usage/concepts/table-projections.md` + ADR-0011, 0013 |
+| Projections, read models (State + List species) | `docs/usage/concepts/projections.md` + ADR-0061, 0011, 0013 |
 | Source generation, codegen ordering | `csharp` skill body + ADR-0005, 0033 |
 | Substrate, harness, conformance | ADR-0054 (axis batteries, supersedes 0027), 0030 |
 | Configuration, options, tuning | `docs/configuration` + ADR-0023 |

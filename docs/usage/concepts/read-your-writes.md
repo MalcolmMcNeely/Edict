@@ -53,12 +53,12 @@ When one correlation produces several Events to the *same* projection, `CursorRe
 
 ## How the wait works
 
-The read routes through the Projection Builder grain (see [table-projections.md](table-projections.md)), so the activation that owns the rows is on the read path and can park the wait. The grain keeps a bounded, persisted ring of recently processed correlation ids — modelled on the dedup ring, sized by `EdictOptions.CorrelationWindowSize` (default 100) — that advances on the same commit as the dedup ring, so it costs no extra write and survives a deactivate/reactivate. The "is this correlation processed" check the wait consults is marked only *after* the row write has drained to the store, so a `CursorReached` answer implies the row is readable. A read that arrives before the write has drained parks as a waiter and is signalled at end-of-turn once the row lands.
+The read routes through the Projection Builder grain (see [projections.md](projections.md)), so the activation that owns the rows is on the read path and can park the wait. The grain keeps a bounded, persisted ring of recently processed correlation ids — modelled on the dedup ring, sized by `EdictOptions.CorrelationWindowSize` (default 100) — that advances on the same commit as the dedup ring, so it costs no extra write and survives a deactivate/reactivate. The "is this correlation processed" check the wait consults is marked only *after* the row write has drained to the store, so a `CursorReached` answer implies the row is readable. A read that arrives before the write has drained parks as a waiter and is signalled at end-of-turn once the row lands.
 
 ## Surface
 
 - **`EdictCursor`** (`Edict.Contracts.Commands`) — `readonly record struct EdictCursor(Guid CorrelationId)`. Echoed on `EdictCommandResult.Accepted`.
-- **`IEdictProjectionReader<TRow>.GetAsync(partitionKey, rowKey, after, timeout, cancellationToken)`** and **`QueryPartitionAsync(partitionKey, after, timeout, cancellationToken)`** (`Edict.Contracts.Projections`) — `after` and `timeout` are optional; omit both for a plain read.
+- **`IEdictProjectionReader<TProjection>.ReadAsync(key, after, timeout, cancellationToken)`** (the in-grain State species) and **`IEdictListProjectionReader<TListProjection>.GetAsync(partitionKey, rowKey, after, timeout, cancellationToken)`** / **`QueryPartitionAsync(partitionKey, after, timeout, cancellationToken)`** (the external List species) (`Edict.Contracts.Projections`) — `after` and `timeout` are optional; omit both for a plain read. See [projections.md](projections.md).
 - **`EdictProjectionRead<TRow>`** / **`EdictProjectionPartitionRead<TRow>`** (`Edict.Contracts.Projections`) — the tri-state results.
 - **`EdictReadStatus`** (`Edict.Contracts.Projections`) — `Immediate`, `CursorReached`, `CursorTimedOut`.
 - **`EdictOptions.CorrelationWindowSize`** and **`EdictOptions.ProjectionReadTimeout`** — see [core.md](../../configuration/core.md).
@@ -66,6 +66,6 @@ The read routes through the Projection Builder grain (see [table-projections.md]
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Correlation Id`, `EdictCursor`, `Projection Read`, `Projection Reader`, `Command Result`.
-- Concepts — [table-projections.md](table-projections.md), [projection-builders.md](projection-builders.md), [idempotency.md](idempotency.md), [events.md](events.md).
+- Concepts — [projections.md](projections.md), [idempotency.md](idempotency.md), [events.md](events.md).
 - Configuration — [core.md](../../configuration/core.md) — `CorrelationWindowSize`, `ProjectionReadTimeout`.
 - ADR — [0058 — Read-your-writes via correlation cursor](../../adr/0058-read-your-writes-via-correlation-cursor.md), [0057 — Projection reads through the grain](../../adr/0057-projection-reads-through-the-grain.md).
