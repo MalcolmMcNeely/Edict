@@ -1,3 +1,4 @@
+using Edict.Telemetry;
 using Edict.Tests.Conformance.EventHandler;
 
 using Xunit;
@@ -28,6 +29,7 @@ public abstract class EventHandlerDedupsWithinRingScenarios<TFixture>
         var customerId = Guid.NewGuid();
         var publisher = _fixture.GrainFactory.GetGrain<IEmailEventPublisher>(customerId);
         var handler = _fixture.GrainFactory.GetGrain<IEmailHandlerProbe>(customerId);
+        using var capture = new SpanCapture();
 
         var eventId = Guid.NewGuid();
         var edictEvent = new CustomerNotifiedEvent(customerId, "first") with
@@ -41,12 +43,23 @@ public abstract class EventHandlerDedupsWithinRingScenarios<TFixture>
             OccurredAt = DateTimeOffset.UtcNow,
         };
 
+        // Handle the first delivery and let its dedup-ring entry commit before the
+        // redelivery arrives, so the duplicate hits a populated ring rather than
+        // racing the first event's own staging.
         await publisher.PublishAsync(edictEvent);
         await EmailHandlerWaiters.WaitForHandledAsync(handler);
 
+        // Suppression emits the edict.event.deduplicated span; waiting on it proves
+        // the redelivery reached the ring and was dropped, the positive signal a fixed
+        // delay only stood in for. CustomerNotifiedEvent dedups in no other scenario
+        // and the collection runs serially, so the span is unambiguously this turn's.
         await publisher.PublishAsync(duplicate);
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Deduplicated} CustomerNotifiedEvent",
+            "deduplicated span for the redelivered CustomerNotifiedEvent");
 
-        Assert.Single(await handler.GetHandledEventIdsAsync());
+        // The handler ran for the first delivery only; the redelivery never reached it.
+        var handledEventId = Assert.Single(await handler.GetHandledEventIdsAsync());
+        Assert.Equal(eventId, handledEventId);
     }
 }
