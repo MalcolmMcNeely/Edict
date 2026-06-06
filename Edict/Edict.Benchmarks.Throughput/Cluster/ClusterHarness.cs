@@ -15,7 +15,7 @@ namespace Edict.Benchmarks.Throughput.Cluster;
 /// Brings up a substrate runtime + Orleans <see cref="TestCluster"/> for one
 /// measurement pass and tears them down on exit. Both methodologies — the
 /// closed-loop sweep and the saturation pass — go through here so the
-/// substrate-bridge static and the Silo/Client configurators live in one
+/// substrate-bridge registry and the Silo/Client configurators live in one
 /// place. The workload-specific repository registrations land on the client
 /// builder here too: the substrate seam stays workload-free, so
 /// the harness is the layer that knows about <c>BenchEventRow</c> /
@@ -46,8 +46,7 @@ public static class ClusterHarness
 
         await using var runtime = await substrate.StartAsync(cancellationToken, mode);
 
-        ActiveRuntime.Current = runtime;
-        ActiveRuntime.Mode = mode;
+        var contextKey = ClusterContextRegistry.Register(new ClusterContext(runtime, mode));
         try
         {
             var clusterBuilder = new TestClusterBuilder();
@@ -62,8 +61,9 @@ public static class ClusterHarness
             // defaults plan for, surfacing as bursts of "Failed to connect to
             // 127.0.0.1:<port>" during the saturation pass.
             clusterBuilder.Options.InitialSilosCount = 1;
-            clusterBuilder.AddSiloBuilderConfigurator<ActiveRuntime.SiloConfigurator>();
-            clusterBuilder.AddClientBuilderConfigurator<ActiveRuntime.ClientConfigurator>();
+            clusterBuilder.Properties[ClusterContextRegistry.ContextKeyProperty] = contextKey;
+            clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
+            clusterBuilder.AddClientBuilderConfigurator<ClientConfigurator>();
             var cluster = clusterBuilder.Build();
             await cluster.DeployAsync();
             try
@@ -77,89 +77,81 @@ public static class ClusterHarness
         }
         finally
         {
-            ActiveRuntime.Current = null;
+            ClusterContextRegistry.Unregister(contextKey);
         }
     }
 
-    static class ActiveRuntime
+    sealed class SiloConfigurator : ISiloConfigurator
     {
-        // Cross-process bridge for TestClusterBuilder's parameterless-ctor
-        // configurators. The harness serialises substrate runs so a static is
-        // safe — one cluster up at a time.
-        public static ISubstrateRuntime? Current { get; set; }
-
-        public static SubstrateStartMode Mode { get; set; }
-
-        public sealed class SiloConfigurator : ISiloConfigurator
+        public void Configure(ISiloBuilder siloBuilder)
         {
-            public void Configure(ISiloBuilder siloBuilder)
-            {
-                var runtime = Current ?? throw new InvalidOperationException(
-                    "ClusterHarness.ActiveRuntime was null when the silo configurator ran.");
-                runtime.ConfigureSilo(siloBuilder);
+            var key = siloBuilder.Configuration[ClusterContextRegistry.ContextKeyProperty]
+                ?? throw new InvalidOperationException("ClusterContextKey missing from silo configuration.");
+            var context = ClusterContextRegistry.Get(key);
+            context.Runtime.ConfigureSilo(siloBuilder);
 
-                // All three projection grains subscribe to the Bench stream by way
-                // of [ImplicitStreamSubscription]. Each mode measures exactly one;
-                // removing the other two from GrainTypeOptions.Classes drops them
-                // from the manifest before the ImplicitStreamSubscriberTable
-                // consults it, so the stream provider never activates them on a
-                // Bench event and one pass never contaminates another's consumer
-                // write pressure.
-                var inactiveProjections = Mode switch
-                {
-                    SubstrateStartMode.ClosedLoop =>
-                        new[] { typeof(BenchCounterListProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
-                    SubstrateStartMode.SaturationList =>
-                        new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
-                    SubstrateStartMode.SaturationState =>
-                        new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterListProjectionBuilder) },
-                    _ => throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode."),
-                };
-                siloBuilder.Services.PostConfigure<GrainTypeOptions>(o =>
-                {
-                    foreach (var inactiveProjection in inactiveProjections)
-                    {
-                        o.Classes.Remove(inactiveProjection);
-                    }
-                });
-            }
-        }
-
-        public sealed class ClientConfigurator : IClientBuilderConfigurator
-        {
-            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+            // All three projection grains subscribe to the Bench stream by way
+            // of [ImplicitStreamSubscription]. Each mode measures exactly one;
+            // removing the other two from GrainTypeOptions.Classes drops them
+            // from the manifest before the ImplicitStreamSubscriberTable
+            // consults it, so the stream provider never activates them on a
+            // Bench event and one pass never contaminates another's consumer
+            // write pressure.
+            var inactiveProjections = context.Mode switch
             {
-                var runtime = Current ?? throw new InvalidOperationException(
-                    "ClusterHarness.ActiveRuntime was null when the client configurator ran.");
-                runtime.ConfigureClient(clientBuilder);
-                // Workload-specific repository — the substrate library stays
-                // workload-free, so the harness registers its own row type
-                // here. The runtime's CreateRowStore<T> seam picks the
-                // substrate-correct store (AzureTableWriteStore on Azurite,
-                // PostgresTableWriteStore on Kafka+Postgres) without the
-                // harness branching on substrate kind. Reads go store-direct
-                // (off-grain — the right shape for a latency measurement). Only
-                // the mode's read surface registers — the closed-loop sweep reads
-                // BenchEventRow store-direct, the List saturation pass reads the
-                // BenchCounterRow store, and the State saturation pass reads no
-                // table at all: it sums through the AddEdict()-registered
-                // IEdictProjectionReader<BenchCounterProjection> (a grain hop), so
-                // no store is wired here.
-                switch (Mode)
+                SubstrateStartMode.ClosedLoop =>
+                    new[] { typeof(BenchCounterListProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
+                SubstrateStartMode.SaturationList =>
+                    new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterStateProjectionBuilder) },
+                SubstrateStartMode.SaturationState =>
+                    new[] { typeof(BenchProjectionBuilder), typeof(BenchCounterListProjectionBuilder) },
+                _ => throw new ArgumentOutOfRangeException(nameof(siloBuilder), context.Mode, "Unhandled substrate start mode."),
+            };
+            siloBuilder.Services.PostConfigure<GrainTypeOptions>(grainTypeOptions =>
+            {
+                foreach (var inactiveProjection in inactiveProjections)
                 {
-                    case SubstrateStartMode.ClosedLoop:
-                        clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchEventRow>>(serviceProvider =>
-                            runtime.CreateRowStore<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
-                        break;
-                    case SubstrateStartMode.SaturationList:
-                        clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchCounterRow>>(serviceProvider =>
-                            runtime.CreateRowStore<BenchCounterRow>(serviceProvider, BenchCounterListProjectionBuilder.TableNameLiteral));
-                        break;
-                    case SubstrateStartMode.SaturationState:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unhandled substrate start mode.");
+                    grainTypeOptions.Classes.Remove(inactiveProjection);
                 }
+            });
+        }
+    }
+
+    sealed class ClientConfigurator : IClientBuilderConfigurator
+    {
+        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+        {
+            var key = configuration[ClusterContextRegistry.ContextKeyProperty]
+                ?? throw new InvalidOperationException("ClusterContextKey missing from client configuration.");
+            var context = ClusterContextRegistry.Get(key);
+            context.Runtime.ConfigureClient(clientBuilder);
+            // Workload-specific repository — the substrate library stays
+            // workload-free, so the harness registers its own row type
+            // here. The runtime's CreateRowStore<T> seam picks the
+            // substrate-correct store (AzureTableWriteStore on Azurite,
+            // PostgresTableWriteStore on Kafka+Postgres) without the
+            // harness branching on substrate kind. Reads go store-direct
+            // (off-grain — the right shape for a latency measurement). Only
+            // the mode's read surface registers — the closed-loop sweep reads
+            // BenchEventRow store-direct, the List saturation pass reads the
+            // BenchCounterRow store, and the State saturation pass reads no
+            // table at all: it sums through the AddEdict()-registered
+            // IEdictProjectionReader<BenchCounterProjection> (a grain hop), so
+            // no store is wired here.
+            switch (context.Mode)
+            {
+                case SubstrateStartMode.ClosedLoop:
+                    clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchEventRow>>(serviceProvider =>
+                        context.Runtime.CreateRowStore<BenchEventRow>(serviceProvider, BenchProjectionBuilder.TableNameLiteral));
+                    break;
+                case SubstrateStartMode.SaturationList:
+                    clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchCounterRow>>(serviceProvider =>
+                        context.Runtime.CreateRowStore<BenchCounterRow>(serviceProvider, BenchCounterListProjectionBuilder.TableNameLiteral));
+                    break;
+                case SubstrateStartMode.SaturationState:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(configuration), context.Mode, "Unhandled substrate start mode.");
             }
         }
     }

@@ -128,7 +128,7 @@ public sealed class AzuriteSubstrateTests
             {
                 var runtime = Current ?? throw new InvalidOperationException("Substrate runtime not set");
                 runtime.ConfigureClient(clientBuilder);
-                // Mirrors the production ActiveRuntime.ClientConfigurator —
+                // Mirrors the production ClusterHarness.ClientConfigurator —
                 // workload row store lives in the harness, picked through the
                 // runtime's CreateRowStore<T> seam.
                 clientBuilder.Services.AddSingleton<IEdictTableWriteStore<BenchEventRow>>(serviceProvider =>
