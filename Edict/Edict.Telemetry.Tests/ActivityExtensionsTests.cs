@@ -97,6 +97,133 @@ public sealed class ActivityExtensionsTests : IDisposable
     }
 
     [Fact]
+    public void RestoreFromStrings_ShouldStayRecorded_WhenRecordedTrue()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+
+        var restored = ActivityExtensions.RestoreFromStrings(traceId, spanId, null, recorded: true);
+
+        Assert.Equal(ActivityTraceFlags.Recorded, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void RestoreFromStrings_ShouldStayDropped_WhenRecordedFalse()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+
+        var restored = ActivityExtensions.RestoreFromStrings(traceId, spanId, null, recorded: false);
+
+        Assert.Equal(ActivityTraceFlags.None, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void RestoreFromRequestContext_ShouldStayRecorded_WhenCapturedActivityWasSampled()
+    {
+        using var sampledSource = new ActivitySource("Edict.Test.Sampled");
+        using var recordedListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == sampledSource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = _ => { },
+        };
+        ActivitySource.AddActivityListener(recordedListener);
+
+        ActivityContext restored;
+        using (var activity = sampledSource.StartActivity("sampled"))
+        {
+            Assert.True(activity!.Recorded);
+            activity.CaptureToRequestContext();
+            restored = ActivityExtensions.RestoreFromRequestContext();
+        }
+
+        Assert.Equal(ActivityTraceFlags.Recorded, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void RestoreFromRequestContext_ShouldStayDropped_WhenCapturedActivityWasNotSampled()
+    {
+        using var unsampledSource = new ActivitySource("Edict.Test.Unsampled");
+        using var propagationOnlyListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == unsampledSource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.PropagationData,
+            ActivityStopped = _ => { },
+        };
+        ActivitySource.AddActivityListener(propagationOnlyListener);
+
+        ActivityContext restored;
+        using (var activity = unsampledSource.StartActivity("dropped"))
+        {
+            Assert.False(activity!.Recorded);
+            activity.CaptureToRequestContext();
+            restored = ActivityExtensions.RestoreFromRequestContext();
+        }
+
+        Assert.Equal(ActivityTraceFlags.None, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void RestoreFromTraceParent_ShouldStayRecorded_WhenFlagByteIsSampled()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+        var sampledTraceParent = $"00-{traceId}-{spanId}-01";
+
+        var restored = ActivityExtensions.RestoreFromTraceParent(sampledTraceParent, null);
+
+        Assert.Equal(ActivityTraceFlags.Recorded, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void RestoreFromTraceParent_ShouldStayDropped_WhenFlagByteIsUnsampled()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+        var unsampledTraceParent = $"00-{traceId}-{spanId}-00";
+
+        var restored = ActivityExtensions.RestoreFromTraceParent(unsampledTraceParent, null);
+
+        Assert.Equal(ActivityTraceFlags.None, restored.TraceFlags & ActivityTraceFlags.Recorded);
+    }
+
+    [Fact]
+    public void BuildLink_ShouldReturnLinkWithMatchingContext_WhenTraceParentValid()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+        var traceParent = ActivityExtensions.BuildTraceParent(traceId, spanId);
+
+        var link = ActivityExtensions.BuildLink(traceParent, null);
+
+        Assert.NotNull(link);
+        Assert.Equal(traceId, link.Value.Context.TraceId.ToHexString());
+        Assert.Equal(spanId, link.Value.Context.SpanId.ToHexString());
+    }
+
+    [Fact]
+    public void BuildLink_ShouldReturnNull_WhenTraceParentNull()
+        => Assert.Null(ActivityExtensions.BuildLink(null, null));
+
+    [Fact]
+    public void BuildLink_ShouldReturnNull_WhenTraceParentMalformed()
+        => Assert.Null(ActivityExtensions.BuildLink("garbage", null));
+
+    [Fact]
+    public void BuildLink_ShouldCarryTraceState_OntoLink()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+        var traceParent = ActivityExtensions.BuildTraceParent(traceId, spanId);
+
+        var link = ActivityExtensions.BuildLink(traceParent, "vendor=abc");
+
+        Assert.NotNull(link);
+        Assert.Equal("vendor=abc", link.Value.Context.TraceState);
+    }
+
+    [Fact]
     public void BuildTraceParent_Activity_ShouldReturnW3CFormatReflectingRecordingFlag()
     {
         Activity? captured;

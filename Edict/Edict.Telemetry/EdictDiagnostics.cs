@@ -25,4 +25,5 @@ public static class EdictDiagnostics
     internal const string TraceIdKey = SemanticConventions.RequestContext.TraceId;
     internal const string SpanIdKey = SemanticConventions.RequestContext.SpanId;
     internal const string TraceStateKey = SemanticConventions.RequestContext.TraceState;
+    internal const string RecordedKey = SemanticConventions.RequestContext.Recorded;
 }

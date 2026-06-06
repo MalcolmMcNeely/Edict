@@ -11,6 +11,15 @@ public static class ActivitySourceExtensions
     public static Activity? StartEdictCommand(this ActivitySource source, string operationName)
         => source.StartActivity(operationName);
 
+    public static Activity? StartEdictCommandHandle(
+        this ActivitySource source,
+        string commandTypeName,
+        ActivityContext parentContext)
+        => source.StartActivity(
+            $"{SemanticConventions.Commands.Spans.Handle} {commandTypeName}",
+            ActivityKind.Server,
+            parentContext);
+
     public static Activity? StartEdictEventPublish(
         this ActivitySource source,
         string eventTypeName,

@@ -32,6 +32,7 @@ public static class SemanticConventions
         public static class Spans
         {
             public const string Command = "edict.command";
+            public const string Handle = "edict.command.handle";
             public const string Send = "edict.command.send";
         }
 
@@ -277,5 +278,6 @@ public static class SemanticConventions
         public const string TraceId = "edict.cmd-trace-id";
         public const string SpanId = "edict.cmd-span-id";
         public const string TraceState = "edict.cmd-trace-state";
+        public const string Recorded = "edict.cmd-recorded";
     }
 }

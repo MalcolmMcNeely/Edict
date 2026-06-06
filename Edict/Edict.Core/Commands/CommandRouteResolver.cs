@@ -40,4 +40,14 @@ internal sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRout
 
         return !routes.TryGetValue(command.GetType(), out var route) ? throw new EdictUnroutableCommandException(command.GetType()) : route;
     }
+
+    /// <summary>
+    /// Non-throwing lookup used on the silo side to write a command's
+    /// <c>[EdictTelemeterized]</c> tags onto the handle span. Returns
+    /// <see langword="false"/> for a command the route map does not contain so a
+    /// missing entry degrades to an untagged span rather than a throw on the
+    /// handle path.
+    /// </summary>
+    internal bool TryGetRoute(EdictCommand command, out CommandRoute? route) =>
+        routes.TryGetValue(command.GetType(), out route);
 }

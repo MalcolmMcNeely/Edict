@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 
 using Orleans.Runtime;
 
@@ -23,6 +24,7 @@ public static class ActivityExtensions
     {
         RequestContext.Set(EdictDiagnostics.TraceIdKey, activity.TraceId.ToHexString());
         RequestContext.Set(EdictDiagnostics.SpanIdKey, activity.SpanId.ToHexString());
+        RequestContext.Set(EdictDiagnostics.RecordedKey, activity.Recorded);
         if (activity.TraceStateString is { } traceState)
         {
             RequestContext.Set(EdictDiagnostics.TraceStateKey, traceState);
@@ -44,16 +46,19 @@ public static class ActivityExtensions
     /// <summary>
     /// Reconstitutes an <see cref="ActivityContext"/> from raw W3C hex strings.
     /// Returns <see langword="default"/> when the strings are absent or malformed.
+    /// <paramref name="recorded"/> sets the sampled flag on the restored context so
+    /// a dropped head decision stays dropped across the hop and a sampled one stays
+    /// recorded — the caller supplies the real flag instead of the context forcing it.
     /// </summary>
     public static ActivityContext RestoreFromStrings(
-        string? traceId, string? spanId, string? traceState)
+        string? traceId, string? spanId, string? traceState, bool recorded = true)
     {
         if (traceId is { Length: 32 } && spanId is { Length: 16 })
         {
             return new ActivityContext(
                 ActivityTraceId.CreateFromString(traceId),
                 ActivitySpanId.CreateFromString(spanId),
-                ActivityTraceFlags.Recorded,
+                recorded ? ActivityTraceFlags.Recorded : ActivityTraceFlags.None,
                 traceState);
         }
         return default;
@@ -61,12 +66,15 @@ public static class ActivityExtensions
 
     /// <summary>
     /// Convenience: reads from <see cref="RequestContext"/> and converts to
-    /// <see cref="ActivityContext"/> in one call.
+    /// <see cref="ActivityContext"/> in one call, honouring the sampled flag the
+    /// capturing command span carried so the restored context reflects the real
+    /// head-sampling decision.
     /// </summary>
     public static ActivityContext RestoreFromRequestContext()
     {
         var (traceId, spanId, traceState) = ReadRequestContext();
-        return RestoreFromStrings(traceId, spanId, traceState);
+        var recorded = RequestContext.Get(EdictDiagnostics.RecordedKey) is true;
+        return RestoreFromStrings(traceId, spanId, traceState, recorded);
     }
 
     /// <summary>
@@ -100,8 +108,26 @@ public static class ActivityExtensions
         }
 
         var parts = traceParent.Split('-');
-        return parts.Length == 4
-            ? RestoreFromStrings(parts[1], parts[2], traceState)
-            : default;
+        if (parts.Length != 4)
+        {
+            return default;
+        }
+
+        var recorded = byte.TryParse(parts[3], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var flags)
+            && (flags & (byte)ActivityTraceFlags.Recorded) != 0;
+        return RestoreFromStrings(parts[1], parts[2], traceState, recorded);
+    }
+
+    /// <summary>
+    /// Builds an <see cref="ActivityLink"/> from a persisted W3C <c>traceparent</c>
+    /// and <c>tracestate</c> — the cross-turn causal edge used where a span links
+    /// back to the context that caused it rather than nesting under it. Returns
+    /// <see langword="null"/> when the traceparent is absent or malformed; the
+    /// tracestate rides onto the link's context.
+    /// </summary>
+    public static ActivityLink? BuildLink(string? traceParent, string? traceState)
+    {
+        var context = RestoreFromTraceParent(traceParent, traceState);
+        return context.TraceId == default ? null : new ActivityLink(context);
     }
 }

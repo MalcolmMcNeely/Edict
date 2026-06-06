@@ -24,8 +24,10 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        Assert.Equal($"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand", span.OperationName);
+        var commandSpans = stopped.Where(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        Assert.Single(commandSpans);
     }
 
     [Fact]
@@ -44,7 +46,9 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await Assert.ThrowsAnyAsync<Exception>(
             () => fixture.Sender.SendAsync(new TelFailOrderCommand(orderId)));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var span = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelFailOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(ActivityStatusCode.Error, span.Status);
     }
 
@@ -64,8 +68,79 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var span = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Equal(sku, span.GetTagItem("edict.sku"));
+    }
+
+    [Fact]
+    public async Task CommandHandleSpan_ShouldBeChildOfWebCommandSpan_OnApiPath()
+    {
+        var orderId = Guid.NewGuid();
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
+
+        var commandSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        var handleSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+
+        Assert.Equal(commandSpan.TraceId, handleSpan.TraceId);
+        Assert.Equal(commandSpan.SpanId, handleSpan.ParentSpanId);
+    }
+
+    [Fact]
+    public async Task CommandHandleSpan_ShouldCarryRouteKeyTag()
+    {
+        var orderId = Guid.NewGuid();
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, "SKU-1"));
+
+        var handleSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        Assert.Equal(orderId, handleSpan.GetTagItem(SemanticConventions.Commands.Tags.RouteKey));
+    }
+
+    [Fact]
+    public async Task CommandHandleSpan_ShouldWriteTelemeterizedCommandPropertiesAsEdictTags()
+    {
+        var orderId = Guid.NewGuid();
+        const string sku = "SKU-HANDLE-TELEM-1";
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
+
+        var handleSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
+            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+        Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
     }
 
     [Fact]

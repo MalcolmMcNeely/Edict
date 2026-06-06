@@ -382,6 +382,24 @@ public abstract class EdictCommandHandler<TState>
         where TCommand : EdictCommand
     {
         var grainTypeName = GetType().FullName ?? GetType().Name;
+
+        // The silo-side handle span: restored from the command's captured context so
+        // the synchronous awaited dispatch from the Web edict.command span nests its
+        // callee as a child. Wraps validate -> handle -> raise, and carries the same
+        // route-key and [EdictTelemeterized] tags as the Web span so a tag query
+        // resolves on either side.
+        using var activity = EdictDiagnostics.ActivitySource.StartEdictCommandHandle(
+            typeof(TCommand).Name, ActivityExtensions.RestoreFromRequestContext());
+        if (activity is not null)
+        {
+            activity.SetEdictCommandTags(this.GetPrimaryKey());
+            if (ServiceProvider.GetService<CommandRouteResolver>() is { } resolver
+                && resolver.TryGetRoute(command, out var route))
+            {
+                route!.TagWriter?.Invoke(command, activity);
+            }
+        }
+
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
         if (validator is not null)

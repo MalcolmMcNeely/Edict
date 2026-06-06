@@ -59,8 +59,11 @@ public sealed class CommandValidatorTests
         var orderId = Guid.NewGuid();
         await _fixture.Sender.SendAsync(new CheckSkuCommand(orderId, string.Empty));
 
-        var span = stopped.Single(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
-        Assert.Equal(ActivityStatusCode.Unset, span.Status);
+        // A validation rejection is a normal return, not a fault, on both the Web
+        // command span and the silo command-handle span that now carry the route key.
+        var spans = stopped.Where(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey))).ToList();
+        Assert.NotEmpty(spans);
+        Assert.All(spans, span => Assert.Equal(ActivityStatusCode.Unset, span.Status));
     }
 
     [Fact]
