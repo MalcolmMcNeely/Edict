@@ -73,6 +73,14 @@ public class SkillPrescriptionTests
         Assert.Contains("edict_describe_mcp_state", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EdictDiagnosticsSkill_ReferencesCheckConfigurationFromTheBootFailurePath()
+    {
+        var body = LoadSkillBody("edict-diagnostics");
+
+        Assert.Contains("edict_check_configuration", body, StringComparison.Ordinal);
+    }
+
     [Theory]
     [MemberData(nameof(HandlerRoleNames))]
     public void EdictMcp_HandlerRole_EveryEnumValueIsCoveredByScanner(string roleName)

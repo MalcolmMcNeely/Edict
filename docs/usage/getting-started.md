@@ -186,6 +186,8 @@ await host.StopAsync();
 
 To run locally, start Azurite (the [Azurite docs](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) cover Docker, npm, and the VS Code extension), then launch the silo and the client.
 
+> **Check your wiring before you boot.** Once the silo's `AddEdict*` chain is in place, ask your agent to run the `edict_check_configuration` MCP tool. It reads your `Program.cs` and returns a best-effort verdict of any required-but-unset knobs and known footguns, so you reach a host that starts without trial-and-error. See [MCP tools](agentic/mcp-tools.md#edict_check_configuration).
+
 ## Next steps
 
 - **Concepts** — [Commands](concepts/commands.md), [Validators](concepts/validators.md), [Events](concepts/events.md), [Event Handlers](concepts/event-handlers.md), [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projections](concepts/projections.md), [Idempotency](concepts/idempotency.md), [Claim Check](concepts/claim-check.md), [Dead Letter](concepts/dead-letter.md), [Telemetry](concepts/telemetry.md).

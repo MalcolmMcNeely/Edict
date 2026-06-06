@@ -67,6 +67,12 @@ For any "why does dead-letter behave this way?" or "why no redrive?" question, i
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any dead-letter, outbox, or trace "why" question rather than guessing.
 
+## When the silo threw at boot
+
+The failures above are all runtime: the silo started, then something went wrong on a turn. A silo that throws *during* host start is a different class of fault, and it is almost always a wiring-time configuration mistake. Edict validates its whole configuration once at host start through `EdictWiringValidator`, which aggregates every problem into a single `EdictWiringException` (a missing required knob, an out-of-range value, a stream provider with no persistence to pair it with). That exception is the ground-truth verdict, but it only fires once you can already start the host.
+
+To localise the fault *before* re-running the host, invoke **`edict_check_configuration`**. It reads `Program.cs`, works out which option knobs the consumer set inside each `AddEdict*` call, and returns a best-effort verdict: required-but-unset knobs (an empty Kafka `BootstrapServers`, an unset Postgres `ConnectionString`), known footguns (an explicitly-assigned `ReplicationFactor` opting into strict mode), and incomplete extension combinations (a stream provider wired with no persistence). It resolves only set-versus-not-set and is explicitly advisory: `EdictWiringValidator`, which runs at host start with live DI, remains ground truth. Reach for it first when a silo aborts at boot, then confirm against the `EdictWiringException` message itself.
+
 ## When MCP results look off
 
 If a Dead Letter query returns empty when you know rows exist, or `edict_list_handlers` returns nothing when handlers are obviously present, the MCP server may have indexed the wrong workspace. Invoke **`edict_describe_mcp_state`** before re-running the lookup — it reports the loaded solution path, the indexed-handler count, and the registered tool list. A mismatch between the reported solution and the consumer's actual workspace explains the surprising empty result, and the `--solution` override in `.mcp.json` is the documented fix.

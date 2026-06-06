@@ -35,6 +35,10 @@ Edict validates its configuration once, at host start, through a hosted service 
 
 Validation never silently clamps an out-of-range value. An `OutboxJitterFraction` outside `[0, 1]`, an `OutboxBaseDelay` above `OutboxMaxDelay`, an `OutboxDrainReminderPeriod` below Orleans' one-minute reminder floor, a non-positive `IdempotencyWindowSize` or `OutboxMaxAttempts` — each is a startup failure with a named message, never a quietly corrected value. A misconfigured silo does not boot.
 
+## Check it before you boot
+
+`EdictWiringValidator` is the ground-truth verdict, but it only fires once the host can start. To catch a missing required knob or a known footgun *before* that, your agent can run the `edict_check_configuration` MCP tool: it reads `Program.cs`, works out which of the very knobs documented on these pages you have actually set inside each `AddEdict*` call, and returns a best-effort verdict of required-but-unset knobs, footgun assignments, and incomplete extension combinations. It resolves only set-versus-not-set and defers to `EdictWiringValidator` as ground truth. See [MCP tools](../usage/agentic/mcp-tools.md#edict_check_configuration).
+
 ## See also
 
 - [getting-started.md](../usage/getting-started.md) — the supported pairing matrix and `dotnet add package` lines.

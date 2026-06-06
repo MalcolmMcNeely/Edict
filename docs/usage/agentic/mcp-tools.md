@@ -1,6 +1,6 @@
 # MCP tools
 
-Six tools ship with `edict-mcp`. You don't call them directly — you ask the agent (Claude Code, Cursor, etc.) for what you want, one of the five skills fires, and the skill body tells the agent which tool to reach for. This page shows the kind of prompt that triggers each tool and what comes back. The end-to-end walkthrough lives in [skills.md](skills.md).
+Seven tools ship with `edict-mcp`. You don't call them directly — you ask the agent (Claude Code, Cursor, etc.) for what you want, one of the five skills fires, and the skill body tells the agent which tool to reach for. This page shows the kind of prompt that triggers each tool and what comes back. The end-to-end walkthrough lives in [skills.md](skills.md).
 
 ## driftStatus
 
@@ -30,6 +30,14 @@ Called alongside `edict_list_handlers` before code is written. You get the same 
 > "Set up the Azure Blob claim-check store."
 
 `edict-silo-wiring` fires on any `Program.cs` edit. The agent calls `edict_describe_silo_wiring` before suggesting any wiring change. You get two arrays — `wired` (the `AddEdict*` extensions already in the chain) and `missing` (known extensions an agent should consider) — each with the declaring assembly and a one-line purpose. For the claim-check request `AddEdictAzureBlobClaimCheck` shows up in `missing` and the agent recommends exactly that extension instead of guessing your silo's substrate from grep.
+
+## edict_check_configuration
+
+> "Is my silo wired correctly enough to start?"
+
+`edict-silo-wiring` fires after the `AddEdict*` chain is in place, and `edict-diagnostics` fires when a silo throws at boot. The agent calls `edict_check_configuration` to get a verdict on the *configuration inside* the wiring, not just which extensions are present. It reads `Program.cs`, works out which option knobs you have set inside each `AddEdict*` call (resolving set-versus-not-set even when the value comes from a variable or `IConfiguration`, not a literal), and returns findings in three categories: required-but-unset knobs (an empty Kafka `BootstrapServers`, an unset Postgres `ConnectionString`, and a soft reminder to confirm an Azure `QueueServiceClient` is set on the options or registered in DI), known footguns (an explicitly-assigned `ReplicationFactor` opting the topic provisioner into strict mode, which throws on a one-broker dev cluster), and incomplete extension combinations (a stream provider wired with no persistence provider, or `AddEdictAzureBlobClaimCheck` wired alongside Postgres persistence). Each finding carries a severity, a category, the options type, the knob name, a message, and a source location.
+
+The cross-extension findings reuse the same wired-extension view as `edict_describe_silo_wiring`, so the two tools never disagree about what is wired. The verdict is **best-effort and advisory**: it resolves only whether a knob is set, never whether the value is sensible, and it defers to `EdictWiringValidator` — which runs at host start with live DI and aggregates every problem into one `EdictWiringException` — as ground truth. A brand-new project is the degenerate case where almost everything is missing, so the same tool that diagnoses an established silo walks a fresh one off the ground.
 
 ## edict_describe_glossary_term
 
