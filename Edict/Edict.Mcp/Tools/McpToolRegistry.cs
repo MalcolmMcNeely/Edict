@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using Edict.Mcp.Configuration;
 using Edict.Mcp.Docs;
 using Edict.Mcp.Handlers;
 using Edict.Mcp.SiloWiring;
@@ -50,6 +51,7 @@ sealed class McpToolRegistry
         : this(
             BuildHandlerInventoryProvider(workspaceProvider, new HandlerScanner()),
             BuildSiloWiringReportProvider(workspaceProvider, new SiloWiringScanner()),
+            BuildConfigurationCheckReportProvider(workspaceProvider, new ConfigurationCheckScanner()),
             BuildVersionReportProvider(workspaceProvider, new EdictVersionInspector()),
             BuildSkillBodiesReportProvider(workspaceProvider, new EdictSkillsManifestInspector()),
             docs,
@@ -60,6 +62,7 @@ sealed class McpToolRegistry
     internal McpToolRegistry(
         Func<CancellationToken, Task<HandlerInventory>> inventoryProvider,
         Func<CancellationToken, Task<SiloWiringReport>> siloWiringReportProvider,
+        Func<CancellationToken, Task<ConfigurationCheckReport>> configurationCheckReportProvider,
         Func<CancellationToken, Task<EdictVersionReport>> versionReportProvider,
         Func<SkillBodiesReport> skillBodiesProvider,
         DocsLookup docs,
@@ -71,6 +74,7 @@ sealed class McpToolRegistry
         var listHandlers = new ListHandlersTool(inventoryProvider, versionReportProvider);
         var listRouteKeys = new ListRouteKeysTool(inventoryProvider, versionReportProvider);
         var describeSiloWiring = new DescribeSiloWiringTool(siloWiringReportProvider, versionReportProvider);
+        var checkConfiguration = new CheckConfigurationTool(configurationCheckReportProvider);
         Tools =
         [
             new McpToolDescriptor(
@@ -103,6 +107,11 @@ sealed class McpToolRegistry
                 Description: "Locates Program.cs in the loaded solution, walks the ISiloBuilder invocation chain, and reports the AddEdict* extensions that are wired plus the known-but-missing ones an agent should consider before suggesting wiring changes (for example AddEdictAzureBlobClaimCheck when the consumer asks for a Claim Check setup).",
                 InputSchema: EmptyInputSchema,
                 InvokeAsync: describeSiloWiring.InvokeAsync),
+            new McpToolDescriptor(
+                Name: "edict_check_configuration",
+                Description: "Reads Program.cs in the loaded solution, determines which option knobs the consumer has set inside each AddEdict* call, and returns a best-effort verdict of required-but-unset knobs: an empty Kafka BootstrapServers, an unset Postgres ConnectionString, and a soft reminder to confirm an Azure QueueServiceClient is set on the options or registered in DI. Each finding carries a severity, category, options type, knob name, message, and source location. This tool is best-effort and resolves only set-versus-not-set, not whether a value is sensible; EdictWiringValidator, which runs at host start with live DI, is ground truth.",
+                InputSchema: EmptyInputSchema,
+                InvokeAsync: checkConfiguration.InvokeAsync),
         ];
     }
 
@@ -127,6 +136,17 @@ sealed class McpToolRegistry
     static Func<CancellationToken, Task<SiloWiringReport>> BuildSiloWiringReportProvider(
         MSBuildWorkspaceProvider workspaceProvider,
         SiloWiringScanner scanner)
+    {
+        return async cancellationToken =>
+        {
+            var solution = await workspaceProvider.LoadSolutionAsync(cancellationToken);
+            return await scanner.ScanAsync(solution, cancellationToken);
+        };
+    }
+
+    static Func<CancellationToken, Task<ConfigurationCheckReport>> BuildConfigurationCheckReportProvider(
+        MSBuildWorkspaceProvider workspaceProvider,
+        ConfigurationCheckScanner scanner)
     {
         return async cancellationToken =>
         {

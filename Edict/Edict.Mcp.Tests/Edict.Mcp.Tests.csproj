@@ -9,6 +9,17 @@
         <ProjectReference Include="..\Edict.Mcp\Edict.Mcp.csproj" />
     </ItemGroup>
 
+    <!-- The catalogue drift guard reflects over the real options classes. Edict.Mcp itself
+         stays substrate-neutral (asserted by McpSubstrateNeutralityTests); only this test
+         project references the provider assemblies. -->
+    <ItemGroup>
+        <ProjectReference Include="..\Edict.Contracts\Edict.Contracts.csproj" />
+        <ProjectReference Include="..\Edict.Azure.Streaming\Edict.Azure.Streaming.csproj" />
+        <ProjectReference Include="..\Edict.Azure.Persistence\Edict.Azure.Persistence.csproj" />
+        <ProjectReference Include="..\Edict.Kafka\Edict.Kafka.csproj" />
+        <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
+    </ItemGroup>
+
     <ItemGroup>
         <Compile Remove="Fixtures\**\*.cs" />
         <None Remove="Fixtures\**\*.cs" />

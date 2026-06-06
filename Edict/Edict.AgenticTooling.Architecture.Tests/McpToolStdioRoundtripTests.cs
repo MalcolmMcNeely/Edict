@@ -40,6 +40,10 @@ public class FixtureLibraryStdioRoundtripTests
         VerifyToolCall(server.Session, "edict_describe_silo_wiring");
 
     [Fact]
+    public Task CheckConfiguration_ReturnsBeforeFixtureConfigurationReport() =>
+        VerifyToolCall(server.Session, "edict_check_configuration");
+
+    [Fact]
     public Task DescribeGlossaryTerm_DomainStream_ReturnsTermBody() =>
         VerifyToolCall(server.Session, "edict_describe_glossary_term",
             new Dictionary<string, object?> { ["term"] = "Domain Stream" });

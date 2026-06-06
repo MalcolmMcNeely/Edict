@@ -16,6 +16,15 @@ Before you propose adding or removing an `AddEdict*` call, invoke **`edict_descr
 
 This is the load-bearing trigger for this skill: call `edict_describe_silo_wiring` before any wiring change. Guessing the silo's substrate from grep or naming hints is exactly the failure mode the tool exists to prevent.
 
+## Check the configuration after wiring
+
+Once the `AddEdict*` chain is in place, run **`edict_check_configuration`** before you call the silo done. It reads `Program.cs`, works out which option knobs the consumer has set inside each `AddEdict*` call, and returns a best-effort verdict of required-but-unset knobs:
+
+- An empty Kafka `BootstrapServers` (required, no default) or an unset Postgres `ConnectionString` (required, no default) is reported as an error: the host will not start until it is set.
+- The Azure streaming case is a soft reminder to confirm a `QueueServiceClient` is set on the options or registered in DI (for example via `AddAzureClients`), so the tool does not falsely fail a DI-registered client.
+
+A brand-new project is the degenerate case where almost everything is missing, so the same check that diagnoses an established silo walks a fresh one off the ground. The tool is best-effort and resolves only set-versus-not-set: `EdictWiringValidator`, which runs at host start with live DI, is ground truth.
+
 ## The AddEdict* matrix
 
 | Extension | Assembly | Purpose |

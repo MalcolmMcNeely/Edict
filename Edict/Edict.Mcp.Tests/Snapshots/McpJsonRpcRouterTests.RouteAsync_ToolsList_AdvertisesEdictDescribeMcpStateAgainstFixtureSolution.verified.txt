@@ -66,6 +66,14 @@
           "type": "object",
           "properties": {}
         }
+      },
+      {
+        "name": "edict_check_configuration",
+        "description": "Reads Program.cs in the loaded solution, determines which option knobs the consumer has set inside each AddEdict* call, and returns a best-effort verdict of required-but-unset knobs: an empty Kafka BootstrapServers, an unset Postgres ConnectionString, and a soft reminder to confirm an Azure QueueServiceClient is set on the options or registered in DI. Each finding carries a severity, category, options type, knob name, message, and source location. This tool is best-effort and resolves only set-versus-not-set, not whether a value is sensible; EdictWiringValidator, which runs at host start with live DI, is ground truth.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       }
     ]
   }

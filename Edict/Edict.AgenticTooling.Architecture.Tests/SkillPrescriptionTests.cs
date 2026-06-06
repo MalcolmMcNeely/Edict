@@ -47,6 +47,16 @@ public class SkillPrescriptionTests
     }
 
     [Fact]
+    public void EdictSiloWiringSkill_CoLocatesCheckConfigurationWithBefore()
+    {
+        var body = LoadSkillBody("edict-silo-wiring");
+
+        Assert.True(
+            IsCoLocatedWithBefore(body, "edict_check_configuration"),
+            "edict-silo-wiring skill must co-locate `edict_check_configuration` with the word `before` so the after-wiring prescription survives.");
+    }
+
+    [Fact]
     public void EdictContractsSkill_ReferencesGlossaryTermLookup()
     {
         var body = LoadSkillBody("edict-contracts");

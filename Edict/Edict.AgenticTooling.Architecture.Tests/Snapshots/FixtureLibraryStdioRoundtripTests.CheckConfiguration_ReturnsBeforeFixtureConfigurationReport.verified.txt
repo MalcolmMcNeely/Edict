@@ -1,0 +1,21 @@
+﻿{
+  "programSourceLocation": {
+    "filePath": "FixtureLibrary/Program.cs",
+    "line": 1,
+    "column": 1
+  },
+  "findings": [
+    {
+      "severity": "info",
+      "category": "requiredMissing",
+      "optionsType": "EdictAzureStreamsOptions",
+      "knob": "QueueServiceClient",
+      "message": "Confirm a QueueServiceClient is set somewhere: on EdictAzureStreamsOptions in the AddEdictAzureStreams configure lambda, or registered in DI (for example via AddAzureClients).",
+      "sourceLocation": {
+        "filePath": "FixtureLibrary/Program.cs",
+        "line": 13,
+        "column": 14
+      }
+    }
+  ]
+}
