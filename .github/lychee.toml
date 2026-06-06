@@ -3,8 +3,13 @@
 # Skip self-referencing GitHub URLs to `main` so a PR adding the target file
 # does not fail against the pre-merge main branch. Intra-repo health is
 # already covered by the relative-path links in the same docs.
+#
+# dotnet.microsoft.com sits behind Akamai bot-detection that 403s any
+# non-browser user-agent, so the .NET badge target fails CI despite being a
+# stable canonical URL that resolves fine in a browser.
 exclude = [
     '^https://github\.com/MalcolmMcNeely/Edict/blob/main/',
+    '^https://dotnet\.microsoft\.com/',
 ]
 
 # Localhost references in code blocks are not real targets.
