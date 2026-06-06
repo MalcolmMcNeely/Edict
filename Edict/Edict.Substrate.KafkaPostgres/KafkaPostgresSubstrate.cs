@@ -210,7 +210,7 @@ public sealed class KafkaPostgresSubstrateRuntime : ISubstrateRuntime
             client.Services.AddEdict();
             client.Services.AddSingleton(dataSource);
             // The dead-letter forensic facade reads through the projection grain
-            // now, so AddEdict()'s auto-registered IEdictProjectionReader serves it
+            // now, so AddEdict()'s auto-registered IEdictListProjectionReader serves it
             // with no substrate-side repository wiring.
         };
     }

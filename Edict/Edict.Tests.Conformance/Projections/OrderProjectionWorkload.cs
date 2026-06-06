@@ -1,3 +1,4 @@
+using Edict.Contracts;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
@@ -114,7 +115,7 @@ public interface IOrderProjectionAccess : IGrainWithGuidKey
     Task<int> GetOrderCountAsync();
 }
 
-public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder, IOrderProjectionAccess
+public sealed partial class OrderProjectionBuilder : EdictProjectionBuilderBase<EdictUnit>, IOrderProjectionAccess
 {
     int _orderCount;
 

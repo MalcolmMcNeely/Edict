@@ -3,7 +3,7 @@
 @using Sample.Contracts.Orders.Commands
 @using Sample.Contracts.Orders.Projections
 @inject IEdictSender Sender
-@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
+@inject IEdictListProjectionReader<OrderStatusRow> OrdersByStatus
 @implements IDisposable
 
 <section class="hub-controls">
@@ -110,7 +110,7 @@
             // Cursorless point-get: the projection does not track Confirmed, so this
             // read only surfaces the Cancelled the hold's expiry stamps; confirmation
             // is held locally off the ConfirmOrder result.
-            _status = (await OrdersByStatus.GetAsync(_orderId.ToString(), "status")).Row;
+            _status = (await OrdersByStatus.GetAsync(_orderId.ToString(), "status")).Value;
         }
         catch
         {

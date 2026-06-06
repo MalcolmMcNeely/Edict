@@ -178,6 +178,15 @@ sealed class OutboxHost<TPayload>
                 onDrained();
             }
         }
+        else
+        {
+            // No staged effect means the consumer payload is already durable in
+            // the write that just succeeded (an in-grain projection commits its
+            // read model inline), so read-your-writes can be signalled now. A
+            // write fault threw above before reaching here, so the hook never
+            // fires ahead of durability.
+            onDrained?.Invoke();
+        }
     }
 
     /// <summary>Removes this grain's cache entry. Called by the hosting base's

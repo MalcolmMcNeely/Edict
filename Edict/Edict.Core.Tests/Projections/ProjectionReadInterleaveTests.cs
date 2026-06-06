@@ -16,6 +16,7 @@ public class ProjectionReadInterleaveTests
     [Theory]
     [InlineData(nameof(IEdictProjectionBuilder.EdictReadRowAsync))]
     [InlineData(nameof(IEdictProjectionBuilder.EdictReadPartitionAsync))]
+    [InlineData(nameof(IEdictProjectionBuilder.EdictReadAsync))]
     public void ProjectionReadMethod_ShouldBeMarkedAlwaysInterleave(string methodName)
     {
         var method = typeof(IEdictProjectionBuilder).GetMethod(methodName)

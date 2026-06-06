@@ -4,7 +4,7 @@ internal sealed record ProjectionGrainModel(
     string Namespace,
     string GrainName,
     string GrainTypeName,
-    string? RowFqn,
+    string? ReadModelFqn,
     EquatableArray<ProjectionHandlerModel> Handlers);
 
 internal sealed record ProjectionHandlerModel(

@@ -95,6 +95,7 @@ public static class EdictServiceCollectionExtensions
 
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton(new ProjectionReadRouteResolver(projectionReadRoutes));
+        services.AddSingleton(typeof(IEdictListProjectionReader<>), typeof(EdictListProjectionReader<>));
         services.AddSingleton(typeof(IEdictProjectionReader<>), typeof(EdictProjectionReader<>));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
@@ -110,10 +111,10 @@ public static class EdictServiceCollectionExtensions
 
         // The forensic facade reads the dead-letter projection through the grain
         // like any other projection, so it needs no storage seam of its own —
-        // the IEdictProjectionReader resolves the singleton dead-letter grain.
+        // the List reader resolves the singleton dead-letter grain.
         services.AddSingleton<IEdictDeadLetterRepository>(serviceProvider =>
             new GrainBackedDeadLetterRepository(
-                serviceProvider.GetRequiredService<IEdictProjectionReader<EdictDeadLetterEntry>>()));
+                serviceProvider.GetRequiredService<IEdictListProjectionReader<EdictDeadLetterEntry>>()));
 
         // Receiver-side wiring lives on the framework's front door rather
         // than AddEdictOutbox: every EdictIdempotencyBase consumer resolves

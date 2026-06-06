@@ -31,7 +31,7 @@ builder.UseOrleansClient(client =>
     });
 });
 
-// Projection reads route through the grain via IEdictProjectionReader<TRow>;
+// Projection reads route through the grain via IEdictListProjectionReader<TListProjection>;
 // AddEdict() registers it open-generic plus the dead-letter forensic facade, so
 // the read tier needs no table-storage wiring of its own.
 builder.Services.AddEdict();

@@ -75,11 +75,25 @@ internal static class EdictWellKnownNames
         "global::Edict.Core.Commands.EdictCommandValidator";
 
     // ── Edict.Core.Projections ───────────────────────────────────────────────
-    public const string EdictProjectionBuilderFqn =
+    // The renamed abstract root both projection species derive from. Generics
+    // stripped, so both EdictListProjectionBuilder<TListProjection> (closing the
+    // root on EdictUnit) and the in-grain EdictProjectionBuilder<TProjection>
+    // (closing it on the projection type) classify. Leaving the classifier
+    // pointed at the bare EdictProjectionBuilder name would silently stop the
+    // List species from being generated — it compiles, emits nothing, no
+    // diagnostic.
+    public const string EdictProjectionBuilderBaseFqn =
+        "global::Edict.Core.Projections.EdictProjectionBuilderBase";
+
+    // The concrete in-grain (State) species. Generics stripped, so the open
+    // generic EdictProjectionBuilder<TProjection> matches; the projection type
+    // (its sole type arg) keys the read facade's route.
+    public const string EdictStateProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictProjectionBuilder";
 
     // The concrete List species. Generics stripped, so the open generic
-    // EdictListProjectionBuilder<TRow> matches; the row type is its sole type arg.
+    // EdictListProjectionBuilder<TListProjection> matches; the row type is its
+    // sole type arg.
     public const string EdictListProjectionBuilderFqn =
         "global::Edict.Core.Projections.EdictListProjectionBuilder";
 

@@ -6,11 +6,11 @@ namespace Edict.Core.Projections;
 
 /// <summary>
 /// Grain-boundary carrier for a read that crossed the projection grain: the
-/// payload (a single row as <see cref="object"/>, or the partition's rows) plus the
-/// <see cref="EdictReadStatus"/> the in-grain cursor wait resolved. The
-/// <c>IEdictProjectionReader&lt;TRow&gt;</c> facade casts the payload back to the
-/// typed row and re-wraps it as the consumer-facing
-/// <see cref="EdictProjectionRead{TRow}"/> / <see cref="EdictProjectionPartitionRead{TRow}"/>.
+/// payload (a single row, the partition's rows, or the whole in-grain projection,
+/// as <see cref="object"/>) plus the <see cref="EdictReadStatus"/> the in-grain
+/// cursor wait resolved. The reader facades cast the payload back to the typed
+/// read model and re-wrap it as the consumer-facing
+/// <see cref="EdictProjectionRead{TValue}"/> / <see cref="EdictProjectionPartitionRead{TRow}"/>.
 /// Status must cross the boundary because only the grain knows whether the wait
 /// reached the cursor or timed out.
 /// <para>

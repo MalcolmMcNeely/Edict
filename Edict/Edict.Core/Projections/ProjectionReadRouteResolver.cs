@@ -1,22 +1,24 @@
 namespace Edict.Core.Projections;
 
 /// <summary>
-/// Pure routing core for projection reads: given a read-model row type, returns
-/// the projection grain class name used to disambiguate the many grain classes
-/// that share the <see cref="IEdictProjectionBuilder"/> interface. The map is
-/// generator-fed (one entry per <c>EdictListProjectionBuilder&lt;TRow&gt;</c>),
+/// Pure routing core for projection reads: given a read-model type, returns the
+/// projection grain class name used to disambiguate the many grain classes that
+/// share the <see cref="IEdictProjectionBuilder"/> interface. Both reader facades
+/// resolve through this one map; it is generator-fed (one entry per species — the
+/// row type for an <c>EdictListProjectionBuilder&lt;TListProjection&gt;</c>, the
+/// projection type for an <c>EdictProjectionBuilder&lt;TProjection&gt;</c>),
 /// mirroring the command-side <c>CommandRouteResolver</c>; no Orleans dependency,
 /// so it stays unit-testable without a cluster.
 /// </summary>
 internal sealed class ProjectionReadRouteResolver(IReadOnlyDictionary<Type, string> routes)
 {
-    /// <summary>Returns the projection grain class name that owns <paramref name="rowType"/>.</summary>
-    public string Resolve(Type rowType)
+    /// <summary>Returns the projection grain class name that owns <paramref name="readModelType"/>.</summary>
+    public string Resolve(Type readModelType)
     {
-        ArgumentNullException.ThrowIfNull(rowType);
+        ArgumentNullException.ThrowIfNull(readModelType);
 
-        return routes.TryGetValue(rowType, out var grainClassName)
+        return routes.TryGetValue(readModelType, out var grainClassName)
             ? grainClassName
-            : throw new EdictUnreadableProjectionException(rowType);
+            : throw new EdictUnreadableProjectionException(readModelType);
     }
 }

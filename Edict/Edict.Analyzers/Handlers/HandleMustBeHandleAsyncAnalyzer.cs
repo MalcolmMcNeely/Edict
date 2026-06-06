@@ -88,7 +88,7 @@ public sealed class HandleMustBeHandleAsyncAnalyzer : DiagnosticAnalyzer
             if (genericsStrippedFqn == EdictWellKnownNames.EdictCommandHandlerFqn
                 || genericsStrippedFqn == EdictWellKnownNames.EdictEventHandlerFqn
                 || genericsStrippedFqn == EdictWellKnownNames.EdictSagaFqn
-                || genericsStrippedFqn == EdictWellKnownNames.EdictProjectionBuilderFqn)
+                || genericsStrippedFqn == EdictWellKnownNames.EdictProjectionBuilderBaseFqn)
             {
                 return true;
             }

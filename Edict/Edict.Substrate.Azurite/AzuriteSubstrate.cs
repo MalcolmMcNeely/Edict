@@ -198,7 +198,7 @@ public sealed class AzuriteSubstrateRuntime : ISubstrateRuntime
             client.Services.AddSingleton(tableClient);
             client.Services.AddEdict();
             // The dead-letter forensic facade reads through the projection grain
-            // now, so AddEdict()'s auto-registered IEdictProjectionReader serves it
+            // now, so AddEdict()'s auto-registered IEdictListProjectionReader serves it
             // with no substrate-side repository wiring.
         };
     }

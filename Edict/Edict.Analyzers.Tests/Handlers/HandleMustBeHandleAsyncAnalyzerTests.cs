@@ -118,7 +118,7 @@ public class HandleMustBeHandleAsyncAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public partial class OrderProjectionBuilder : EdictProjectionBuilderBase<Edict.Contracts.EdictUnit>
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }

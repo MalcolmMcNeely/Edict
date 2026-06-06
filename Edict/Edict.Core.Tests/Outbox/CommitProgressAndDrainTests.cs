@@ -99,6 +99,50 @@ public sealed class CommitProgressAndDrainTests
         Assert.Empty(state.State.Outbox.Pending);
     }
 
+    [Fact]
+    public async Task CommitProgressAndDrain_NoStagedEffect_FiresOnDrainedAfterSuccessfulWrite()
+    {
+        // Arrange — an in-grain projection commits its payload inline and stages
+        // no outbox effect, so read-your-writes can only be signalled by the
+        // post-write hook firing on the effect-free path.
+        var state = new FaultInjectingPersistentState();
+        state.State.Idempotency.HandledEventIds = new Guid[4];
+        var host = BuildHost(state, []);
+        var onDrainedCount = 0;
+
+        // Act
+        await host.CommitProgressAndDrainAsync(
+            applyProgress: () => { },
+            rollbackProgress: () => { },
+            stagedEffect: null,
+            onDrained: () => onDrainedCount++);
+
+        // Assert — the payload is durable after the write, so the cursor
+        // coordinator is signalled exactly once.
+        Assert.Equal(1, onDrainedCount);
+    }
+
+    [Fact]
+    public async Task CommitProgressAndDrain_NoStagedEffect_WriteFault_DoesNotFireOnDrained()
+    {
+        // Arrange
+        var state = new FaultInjectingPersistentState { FailOnWrite = 1 };
+        state.State.Idempotency.HandledEventIds = new Guid[4];
+        var host = BuildHost(state, []);
+        var onDrainedCount = 0;
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() => host.CommitProgressAndDrainAsync(
+            applyProgress: () => { },
+            rollbackProgress: () => { },
+            stagedEffect: null,
+            onDrained: () => onDrainedCount++));
+
+        // Assert — the write never landed, so the payload is not durable and the
+        // cursor must not be marked visible.
+        Assert.Equal(0, onDrainedCount);
+    }
+
     static OutboxHost<EdictUnit> BuildHost(
         IPersistentState<GrainEnvelope<EdictUnit>> state,
         IReadOnlyList<IOutboxEffectExecutor> executors) =>

@@ -48,7 +48,7 @@ public sealed class GrainMustBePartialAnalyzer : DiagnosticAnalyzer
         }
 
         var isCommandHandler = DerivesFrom(type, EdictWellKnownNames.EdictCommandHandlerFqn);
-        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderFqn);
+        var isProjectionBuilder = !isCommandHandler && DerivesFrom(type, EdictWellKnownNames.EdictProjectionBuilderBaseFqn);
 
         if (!isCommandHandler && !isProjectionBuilder)
         {

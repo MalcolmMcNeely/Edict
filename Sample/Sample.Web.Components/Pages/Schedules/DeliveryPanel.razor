@@ -3,7 +3,7 @@
 @using Sample.Contracts.Delivery.Commands
 @using Sample.Contracts.Delivery.Projections
 @inject IEdictSender Sender
-@inject IEdictProjectionReader<DeliveryStatusRow> DeliveryStatuses
+@inject IEdictListProjectionReader<DeliveryStatusRow> DeliveryStatuses
 @implements IDisposable
 
 <section class="hub-controls">
@@ -88,7 +88,7 @@
             // Cursorless point-get: the recurring schedule advances the ETA on the
             // silo, and each poll reads the latest projected row so the visitor
             // watches the count fall toward arrival.
-            _row = (await DeliveryStatuses.GetAsync(_orderId.ToString(), "delivery")).Row;
+            _row = (await DeliveryStatuses.GetAsync(_orderId.ToString(), "delivery")).Value;
         }
         catch
         {

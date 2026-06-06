@@ -87,7 +87,7 @@ public static class EdictTypeClassifier
                 return EdictTypeKind.EventHandler;
             }
 
-            if (genericsStrippedFqn == EdictWellKnownNames.EdictProjectionBuilderFqn)
+            if (genericsStrippedFqn == EdictWellKnownNames.EdictProjectionBuilderBaseFqn)
             {
                 return EdictTypeKind.ProjectionBuilder;
             }

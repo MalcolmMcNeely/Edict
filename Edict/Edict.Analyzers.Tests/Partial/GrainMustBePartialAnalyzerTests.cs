@@ -62,7 +62,7 @@ public class GrainMustBePartialAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public partial class OrderProjectionBuilder : EdictProjectionBuilderBase<Edict.Contracts.EdictUnit>
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -89,7 +89,7 @@ public class GrainMustBePartialAnalyzerTests
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public class OrderProjectionBuilder : EdictProjectionBuilder
+            public class OrderProjectionBuilder : EdictProjectionBuilderBase<Edict.Contracts.EdictUnit>
             {
                 public Task Handle(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -100,7 +100,7 @@ public class GrainMustBePartialAnalyzerTests
         var d = Assert.Single(diagnostics);
         Assert.Equal("EDICT001", d.Id);
         Assert.Contains("OrderProjectionBuilder", d.GetMessage());
-        // Line 12 (0-indexed): "public class OrderProjectionBuilder : EdictProjectionBuilder"
+        // Line 12 (0-indexed): "public class OrderProjectionBuilder : EdictProjectionBuilderBase<Edict.Contracts.EdictUnit>"
         Assert.Equal(12, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

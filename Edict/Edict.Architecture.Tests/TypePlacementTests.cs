@@ -74,6 +74,7 @@ public class TypePlacementTests
     public void IEdictProjectionReader_ShouldResideInEdictContracts()
     {
         var rule = Interfaces().That().HaveNameStartingWith("IEdictProjectionReader")
+            .Or().HaveNameStartingWith("IEdictListProjectionReader")
             .Should().ResideInNamespaceMatching(@"^Edict\.Contracts\.Projections$");
 
         rule.Check(Architecture);
@@ -100,7 +101,7 @@ public class TypePlacementTests
     [Fact]
     public void EdictProjectionBuilder_ShouldResideInEdictCore()
     {
-        var rule = Classes().That().HaveNameMatching("^EdictProjectionBuilder$")
+        var rule = Classes().That().HaveNameStartingWith("EdictProjectionBuilder")
             .Should().ResideInNamespaceMatching(@"^Edict\.Core\.Projections$");
 
         rule.Check(Architecture);

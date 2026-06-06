@@ -104,19 +104,43 @@ public class EdictTypeClassifierTests
     }
 
     [Fact]
-    public void Classify_ReturnsProjectionBuilder_ForPartialClassDerivingFromEdictProjectionBuilder()
+    public void Classify_ReturnsProjectionBuilder_ForPartialClassDerivingFromStateProjectionBuilder()
     {
         const string source = """
+            using Edict.Contracts.Persistence;
             using Edict.Core.Projections;
 
             namespace Sample;
 
-            public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public sealed class OrderProjection : IEdictPersistedState { }
+
+            public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder<OrderProjection>
             {
             }
             """;
 
-        Assert.Equal(EdictTypeKind.ProjectionBuilder, ClassifyFirstTypeDeclaration(source));
+        Assert.Equal(EdictTypeKind.ProjectionBuilder, ClassifyFirstTypeDeclaration(source, skip: 1));
+    }
+
+    [Fact]
+    public void Classify_ReturnsProjectionBuilder_ForPartialClassDerivingFromListProjectionBuilder()
+    {
+        const string source = """
+            using Edict.Contracts.Persistence;
+            using Edict.Contracts.TableStorage;
+            using Edict.Core.Projections;
+
+            namespace Sample;
+
+            public sealed class OrderStatusRow : IEdictPersistedState { }
+
+            public sealed partial class OrderProjectionBuilder(IEdictTableStoreFactory factory)
+                : EdictListProjectionBuilder<OrderStatusRow>(factory)
+            {
+            }
+            """;
+
+        Assert.Equal(EdictTypeKind.ProjectionBuilder, ClassifyFirstTypeDeclaration(source, skip: 1));
     }
 
     [Fact]

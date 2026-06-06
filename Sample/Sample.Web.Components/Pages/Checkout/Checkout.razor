@@ -4,7 +4,7 @@
 @using Sample.Contracts.Cart.Commands
 @using Sample.Contracts.Orders.Projections
 @inject IEdictSender Sender
-@inject IEdictProjectionReader<OrderStatusRow> OrdersByStatus
+@inject IEdictListProjectionReader<OrderStatusRow> OrdersByStatus
 
 <PageTitle>Edict — Checkout</PageTitle>
 
@@ -100,7 +100,7 @@
             // comes back on this same click. The correlation propagates through the
             // bridge, so the cursor reaches the Order keyed by the cart id.
             var read = await OrdersByStatus.GetAsync(_cartId.ToString(), "status", after: accepted.Cursor);
-            _orderStatus = read.Row;
+            _orderStatus = read.Value;
             _message = read.Status == EdictReadStatus.CursorReached
                 ? "Checked out. The bridge Saga placed an Order and the cursor read it straight back: no poll, no lag."
                 : "Checked out. The read timed out before the projection caught up; showing the latest row.";

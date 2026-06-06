@@ -283,6 +283,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Projections.EdictProjectionPartitionRead`1",
         "Edict.Contracts.Projections.EdictProjectionRead`1",
         "Edict.Contracts.Projections.EdictReadStatus",
+        "Edict.Contracts.Projections.IEdictListProjectionReader`1",
         "Edict.Contracts.Projections.IEdictProjectionReader`1",
         "Edict.Contracts.Routing.EdictEventStreamAccessor",
         "Edict.Contracts.Routing.EdictEventStreamsAttribute",
@@ -331,8 +332,10 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Outbox.OutboxServiceCollectionExtensions",
         "Edict.Core.Outbox.OutboxSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Outbox.UpsertRowEffect", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
-        "Edict.Core.Projections.EdictProjectionBuilder",
         "Edict.Core.Projections.EdictListProjectionBuilder`1",
+        "Edict.Core.Projections.EdictListProjectionReader`1", // [EditorBrowsable(Never)] facade; public for open-generic DI registration.
+        "Edict.Core.Projections.EdictProjectionBuilder`1", // In-grain State species (bare name, generic over the projection payload).
+        "Edict.Core.Projections.EdictProjectionBuilderBase`1", // Abstract root both species derive from.
         "Edict.Core.Projections.EdictProjectionReader`1", // [EditorBrowsable(Never)] facade; public for open-generic DI registration.
         "Edict.Core.Projections.EdictUnreadableProjectionException",
         "Edict.Core.Projections.EdictUnsupportedProjectionReadException",
@@ -358,14 +361,19 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Idempotency.Invokable_IEdictEventConsumer_GrainReference_AE8589E1",
         "OrleansCodeGen.Edict.Core.Correlation.Codec_CorrelationProgress",
         "OrleansCodeGen.Edict.Core.Correlation.Copier_CorrelationProgress",
+        "OrleansCodeGen.Edict.Core.Projections.Codec_EdictUnsupportedProjectionReadException", // [GenerateSerializer]: the only projection-read exception that crosses the grain boundary to the reader.
         "OrleansCodeGen.Edict.Core.Projections.Codec_Invokable_IEdictProjectionBuilder_GrainReference_29999D4E",
         "OrleansCodeGen.Edict.Core.Projections.Codec_Invokable_IEdictProjectionBuilder_GrainReference_D6B10A4C",
+        "OrleansCodeGen.Edict.Core.Projections.Codec_Invokable_IEdictProjectionBuilder_GrainReference_E9C0DEAA",
         "OrleansCodeGen.Edict.Core.Projections.Codec_ProjectionReadResult`1",
+        "OrleansCodeGen.Edict.Core.Projections.Copier_EdictUnsupportedProjectionReadException",
         "OrleansCodeGen.Edict.Core.Projections.Copier_Invokable_IEdictProjectionBuilder_GrainReference_29999D4E",
         "OrleansCodeGen.Edict.Core.Projections.Copier_Invokable_IEdictProjectionBuilder_GrainReference_D6B10A4C",
+        "OrleansCodeGen.Edict.Core.Projections.Copier_Invokable_IEdictProjectionBuilder_GrainReference_E9C0DEAA",
         "OrleansCodeGen.Edict.Core.Projections.Copier_ProjectionReadResult`1",
         "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_29999D4E",
         "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_D6B10A4C",
+        "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_E9C0DEAA",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_GrainEnvelope`1",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxEntry",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxSlice",

@@ -14,15 +14,17 @@ public class ProjectionHandleSignatureAnalyzerTests
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Projections;
             namespace Sample;
+            public sealed class OrderProjection : IEdictPersistedState { }
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder<OrderProjection>
             {
                 Task HandleAsync(OrderPlacedEvent e) => Task.CompletedTask;
             }
@@ -34,22 +36,24 @@ public class ProjectionHandleSignatureAnalyzerTests
     }
 
     [Fact]
-    public void EDICT009_ShouldRaiseOnMethod_WhenProjectionHandleReturnsWrongType()
+    public void EDICT009_ShouldRaiseOnMethod_WhenStateProjectionHandleReturnsWrongType()
     {
         const string source = """
             using System;
             using System.Threading.Tasks;
             using Edict.Contracts.Commands;
             using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Projections;
             namespace Sample;
+            public sealed class OrderProjection : IEdictPersistedState { }
             [EdictStream("Orders")]
             public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
             {
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
             }
-            public partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder<OrderProjection>
             {
                 Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);
             }
@@ -61,8 +65,44 @@ public class ProjectionHandleSignatureAnalyzerTests
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("OrderPlacedEvent", d.GetMessage());
         Assert.Contains("OrderProjectionBuilder", d.GetMessage());
-        // Line 14 (0-indexed): "Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);"
-        Assert.Equal(14, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 16 (0-indexed): "Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);"
+        Assert.Equal(16, d.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
+    [Fact]
+    public void EDICT009_ShouldRaiseOnMethod_WhenListProjectionHandleReturnsWrongType()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
+            using Edict.Contracts.TableStorage;
+            using Edict.Core.Projections;
+            namespace Sample;
+            [EdictStream("Orders")]
+            public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
+            {
+                [EdictRouteKey]
+                public Guid OrderId { get; init; } = OrderId;
+            }
+            public sealed class OrderStatusRow : IEdictPersistedState { }
+            public partial class OrderListProjectionBuilder(IEdictTableStoreFactory factory)
+                : EdictListProjectionBuilder<OrderStatusRow>(factory)
+            {
+                protected override string TableName => "orders";
+                protected override string GetRowKey(EdictEvent edictEvent) => "row";
+                Task<bool> HandleAsync(OrderPlacedEvent e) => Task.FromResult(true);
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new ProjectionHandleSignatureAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT009", d.Id);
+        Assert.Contains("OrderPlacedEvent", d.GetMessage());
+        Assert.Contains("OrderListProjectionBuilder", d.GetMessage());
     }
 
     [Fact]
@@ -71,11 +111,12 @@ public class ProjectionHandleSignatureAnalyzerTests
         const string source = """
             using System;
             using System.Threading.Tasks;
-            using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Projections;
             namespace Sample;
+            public sealed class OrderProjection : IEdictPersistedState { }
             public class NotAnEvent { }
-            public partial class OrderProjectionBuilder : EdictProjectionBuilder
+            public partial class OrderProjectionBuilder : EdictProjectionBuilder<OrderProjection>
             {
                 Task HandleAsync(NotAnEvent e) => Task.CompletedTask;
             }
@@ -87,7 +128,7 @@ public class ProjectionHandleSignatureAnalyzerTests
         Assert.Equal("EDICT009", d.Id);
         Assert.Contains("NotAnEvent", d.GetMessage());
         Assert.Contains("OrderProjectionBuilder", d.GetMessage());
-        // Line 8 (0-indexed): "Task HandleAsync(NotAnEvent e) => Task.CompletedTask;"
-        Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
+        // Line 9 (0-indexed): "Task HandleAsync(NotAnEvent e) => Task.CompletedTask;"
+        Assert.Equal(9, d.Location.GetLineSpan().StartLinePosition.Line);
     }
 }

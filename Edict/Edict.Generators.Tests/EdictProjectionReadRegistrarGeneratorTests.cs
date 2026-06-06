@@ -42,11 +42,55 @@ public class EdictProjectionReadRegistrarGeneratorTests
         }
         """;
 
-    // A projection on the abstract root with no List row contributes no read
-    // route — the read facade only addresses row-bearing List projections.
+    // The in-grain State species keeps its read model in the payload slot and is
+    // read by projection type, so the registrar maps that type to the grain class
+    // exactly like the List species maps its row type.
+    const string StateProjectionConsumer = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Events;
+        using Edict.Contracts.Persistence;
+        using Edict.Core.Projections;
+        using MessagePack;
+        using Orleans;
+
+        namespace Sample;
+
+        [MessagePackObject(keyAsPropertyName: true)]
+        [EdictStream("Orders")]
+        public sealed partial record OrderPlacedEvent(Guid OrderId) : EdictEvent
+        {
+            [EdictRouteKey]
+            public Guid OrderId { get; init; } = OrderId;
+        }
+
+        [GenerateSerializer]
+        [Alias("sample-delivery-status")]
+        public sealed class DeliveryStatus : IEdictPersistedState
+        {
+            [Id(0)]
+            public int MinutesAway { get; set; }
+        }
+
+        public sealed partial class DeliveryStatusProjectionBuilder : EdictProjectionBuilder<DeliveryStatus>
+        {
+            Task HandleAsync(OrderPlacedEvent edictEvent)
+            {
+                Projection.MinutesAway = 30;
+                return Task.CompletedTask;
+            }
+        }
+        """;
+
+    // A projection on the abstract root with no species base (a bespoke
+    // grain-interface projection) contributes no read route — the reader facades
+    // only address row-bearing List projections and payload-bearing State
+    // projections.
     const string RootProjectionConsumer = """
         using System.Threading.Tasks;
 
+        using Edict.Contracts;
         using Edict.Contracts.Events;
         using Edict.Core.Projections;
         using MessagePack;
@@ -61,7 +105,7 @@ public class EdictProjectionReadRegistrarGeneratorTests
             public System.Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
+        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilderBase<EdictUnit>
         {
             Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
         }
@@ -75,7 +119,14 @@ public class EdictProjectionReadRegistrarGeneratorTests
     }
 
     [Fact]
-    public void EdictProjectionReadRegistrar_ShouldNotEmit_ForRootProjectionWithoutRow()
+    public Task EdictProjectionReadRegistrar_ShouldMapProjectionTypeToGrainClassName_ForStateSpecies()
+    {
+        var generated = GeneratorTestHarness.RunProjectionReadRegistrarGenerator(StateProjectionConsumer);
+        return Verify(generated);
+    }
+
+    [Fact]
+    public void EdictProjectionReadRegistrar_ShouldNotEmit_ForRootProjectionWithoutReadModel()
     {
         var generated = GeneratorTestHarness.RunProjectionReadRegistrarGenerator(RootProjectionConsumer);
         Assert.Empty(generated);

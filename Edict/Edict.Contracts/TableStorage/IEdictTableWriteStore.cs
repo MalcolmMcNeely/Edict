@@ -7,10 +7,10 @@ namespace Edict.Contracts.TableStorage;
 /// base owns the load→apply→writeback orchestration and serves reads on the
 /// consumer's behalf; this interface keeps the backing store trivial to
 /// implement. Consumers never type it — they read through the
-/// <c>IEdictProjectionReader&lt;TRow&gt;</c> facade, which routes through the grain.
+/// <c>IEdictListProjectionReader&lt;TListProjection&gt;</c> facade, which routes through the grain.
 /// <para>
 /// Stays <c>public</c> only because the consumer-facing
-/// <c>EdictListProjectionBuilder&lt;TRow&gt;</c> ctor takes
+/// <c>EdictListProjectionBuilder&lt;TListProjection&gt;</c> ctor takes
 /// <c>IEdictTableStoreFactory</c>, whose <c>CreateAsync&lt;T&gt;</c> returns
 /// this type — flipping it to internal fires CS0050 on a public base ctor's
 /// signature. Hidden from consumer IntelliSense because the consumer never

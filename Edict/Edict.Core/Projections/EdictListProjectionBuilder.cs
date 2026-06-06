@@ -1,5 +1,6 @@
 using System.Diagnostics;
 
+using Edict.Contracts;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Contracts.TableStorage;
@@ -29,14 +30,14 @@ namespace Edict.Core.Projections;
 /// double-apply gap — it is no longer an accepted limitation.
 /// </para>
 /// </summary>
-public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilder
-    where TRow : class, IEdictPersistedState, new()
+public abstract class EdictListProjectionBuilder<TListProjection>(IEdictTableStoreFactory writeStoreFactory) : EdictProjectionBuilderBase<EdictUnit>
+    where TListProjection : class, IEdictPersistedState, new()
 {
-    IEdictTableWriteStore<TRow>? _writeStore;
+    IEdictTableWriteStore<TListProjection>? _writeStore;
     Serializer? _cachedSerializer;
     TypeConverter? _cachedTypeConverter;
-    readonly InvocationScope<ProjectionRowBox<TRow>> _row = new();
-    (string PartitionKey, string RowKey, TRow Row)? _lastWrittenRow;
+    readonly InvocationScope<ProjectionRowBox<TListProjection>> _row = new();
+    (string PartitionKey, string RowKey, TListProjection Row)? _lastWrittenRow;
 
     /// <summary>Provider-specific table or collection name for this projection.</summary>
     protected abstract string TableName { get; }
@@ -65,7 +66,7 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
     /// when the row type is immutable (e.g. a record with <c>init</c>-only
     /// properties).
     /// </summary>
-    protected TRow CurrentRow
+    protected TListProjection CurrentRow
     {
         get => _row.Current.Row;
         set => _row.Current.Row = value;
@@ -74,7 +75,7 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         await base.OnActivateAsync(cancellationToken);
-        _writeStore = await writeStoreFactory.CreateAsync<TRow>(TableName, cancellationToken);
+        _writeStore = await writeStoreFactory.CreateAsync<TListProjection>(TableName, cancellationToken);
     }
 
     /// <summary>
@@ -96,8 +97,9 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
 
     /// <summary>
     /// Wraps every handler call with load-apply-stage. The base
-    /// <see cref="EdictProjectionBuilder.DispatchEventAsync{TEvent}"/> default is a
-    /// direct handler call; this override loads the row into a per-invocation
+    /// <see cref="EdictProjectionBuilderBase{TPayload}"/> dispatch seam stashes the
+    /// correlation and calls the handler with no effect; this override loads the
+    /// row into a per-invocation
     /// box, runs the handler, then returns the computed row as an
     /// <see cref="OutboxEffectKind.UpsertRow"/> effect (the actual store write
     /// happens in the engine drain, atomic with the dedup-ring commit). The box
@@ -118,7 +120,7 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
         var box = _row.Begin();
         box.Row = _lastWrittenRow is { } cached && cached.PartitionKey == partitionKey && cached.RowKey == rowKey
             ? cached.Row
-            : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new TRow();
+            : await _writeStore!.GetAsync(partitionKey, rowKey) ?? new TListProjection();
 
         // Remember this event's correlation so the commit advances the
         // read-your-writes ring for it alongside the dedup-ring commit.
@@ -130,7 +132,7 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
         return EdictDispatchOutcome.HandledWith(BuildUpsertEntry(partitionKey, rowKey, box.Row));
     }
 
-    OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, TRow row)
+    OutboxEntry BuildUpsertEntry(string partitionKey, string rowKey, TListProjection row)
     {
         // The row type identity that travels with the effect is the
         // frozen [Alias] literal, captured here via TypeConverter.Format so the
@@ -144,10 +146,10 @@ public abstract class EdictListProjectionBuilder<TRow>(IEdictTableStoreFactory w
             TableName = TableName,
             PartitionKey = partitionKey,
             RowKey = rowKey,
-            RowAlias = typeConverter.Format(typeof(TRow)),
+            RowAlias = typeConverter.Format(typeof(TListProjection)),
             // Stage as object so the wire bytes carry the Orleans type id;
             // the drain decodes via Deserialize<object> and gets the concrete
-            // row instance back without needing TRow at runtime.
+            // row instance back without needing TListProjection at runtime.
             RowBytes = serializer.SerializeToArray<object>(row),
         };
 

@@ -7,7 +7,7 @@ namespace Edict.Core.Tests.DeadLetter;
 
 public class GrainBackedDeadLetterRepositoryTests
 {
-    sealed class StubReader(IReadOnlyList<EdictDeadLetterEntry> rows) : IEdictProjectionReader<EdictDeadLetterEntry>
+    sealed class StubReader(IReadOnlyList<EdictDeadLetterEntry> rows) : IEdictListProjectionReader<EdictDeadLetterEntry>
     {
         public string? LastPartitionKey { get; private set; }
 

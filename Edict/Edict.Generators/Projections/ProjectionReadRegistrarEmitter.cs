@@ -9,7 +9,7 @@ internal static class ProjectionReadRegistrarEmitter
     public static string Emit(ImmutableArray<ProjectionGrainModel> grains)
     {
         var ordered = grains
-            .Where(grain => grain.RowFqn is not null)
+            .Where(grain => grain.ReadModelFqn is not null)
             .OrderBy(grain => grain.GrainTypeName, System.StringComparer.Ordinal)
             .ToArray();
 
@@ -17,7 +17,7 @@ internal static class ProjectionReadRegistrarEmitter
         foreach (var grain in ordered)
         {
             entries.Append("            routes[typeof(")
-                .Append(grain.RowFqn)
+                .Append(grain.ReadModelFqn)
                 .Append(")] = \"")
                 .Append(grain.GrainTypeName)
                 .Append("\";\n");

@@ -45,7 +45,7 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictProjectionBuilderFqn))
+        if (!DerivesFrom(method.ContainingType, EdictWellKnownNames.EdictProjectionBuilderBaseFqn))
         {
             return;
         }
@@ -71,12 +71,17 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    // The root is generic (EdictProjectionBuilderBase<TPayload>), so match on the
+    // generics-stripped open-definition FQN; both species reach the root through
+    // their species base, so both are flagged.
     static bool DerivesFrom(INamedTypeSymbol type, string fqn)
     {
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.ConstructedFrom.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn
-                || current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == fqn)
+            var currentFqn = current.IsGenericType
+                ? current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics)
+                : current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            if (currentFqn == fqn)
             {
                 return true;
             }
@@ -84,6 +89,9 @@ public sealed class ProjectionHandleSignatureAnalyzer : DiagnosticAnalyzer
 
         return false;
     }
+
+    static readonly SymbolDisplayFormat FullyQualifiedNoGenerics =
+        SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None);
 
     static bool DerivesFromEvent(INamedTypeSymbol type)
     {

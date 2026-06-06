@@ -6,7 +6,7 @@ namespace Edict.Contracts.DeadLetter;
 /// projection is itself a singleton List Projection Builder), so it rides the
 /// same read mechanism as every other projection and needs no storage seam of
 /// its own. This interface is the substitution seam operators and tooling bind
-/// to, mirroring <see cref="Projections.IEdictProjectionReader{TRow}"/> for the
+/// to, mirroring <see cref="Projections.IEdictListProjectionReader{TListProjection}"/> for the
 /// typed projection side. <b>Strictly read-only</b>: recovery is manual
 /// re-emission (for <c>PublishEvent</c>/<c>SendCommand</c>) or manual table
 /// repair (for <c>UpsertRow</c>), so the repository never exposes a write.

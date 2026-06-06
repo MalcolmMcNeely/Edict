@@ -144,7 +144,7 @@ public sealed class AzurePersistenceRecoveryFixture : IAsyncLifetime
             clientBuilder.Configure<ClientMessagingOptions>(options => options.ResponseTimeout = TimeSpan.FromMinutes(2));
             clientBuilder.Services.AddSingleton(ctx.TableServiceClient);
             // The dead-letter forensic facade reads through the projection grain;
-            // AddEdict() registers the IEdictProjectionReader that backs it.
+            // AddEdict() registers the IEdictListProjectionReader that backs it.
             clientBuilder.Services.AddEdict();
         }
     }

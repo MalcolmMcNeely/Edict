@@ -173,7 +173,7 @@ public sealed class EdictGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(projectionGrains.Collect(), static (spc, allGrains) =>
         {
-            if (allGrains.All(static grain => grain.RowFqn is null))
+            if (allGrains.All(static grain => grain.ReadModelFqn is null))
             {
                 return;
             }

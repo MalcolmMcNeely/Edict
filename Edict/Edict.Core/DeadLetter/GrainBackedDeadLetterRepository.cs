@@ -7,7 +7,7 @@ namespace Edict.Core.DeadLetter;
 // the same read mechanism as every other projection: the reader addresses the
 // grain by its singleton routing key and the grain maps to its own store
 // partition internally. ListAsync filters the fleet-wide partition by source.
-sealed class GrainBackedDeadLetterRepository(IEdictProjectionReader<EdictDeadLetterEntry> reader)
+sealed class GrainBackedDeadLetterRepository(IEdictListProjectionReader<EdictDeadLetterEntry> reader)
     : IEdictDeadLetterRepository
 {
     static string SingletonPartition => EdictDeadLetterRaised.SingletonGrainKey.ToString();

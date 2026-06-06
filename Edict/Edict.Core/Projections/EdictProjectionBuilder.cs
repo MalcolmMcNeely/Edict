@@ -1,175 +1,29 @@
-using Edict.Contracts.Configuration;
-using Edict.Contracts.Projections;
-using Edict.Core.Correlation;
-using Edict.Core.Idempotency;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Edict.Contracts.Persistence;
 
 namespace Edict.Core.Projections;
 
 /// <summary>
-/// Marker base for the projection-builder species and the home of the
-/// read-your-writes mechanism. The dispatch seam (<c>DispatchEventAsync</c>) lives
-/// on the shared idempotency root <see cref="EdictIdempotencyBase{TPayload}"/> so
-/// sagas share it too; <see cref="EdictListProjectionBuilder{TRow}"/> overrides it
-/// for load-apply-writeback. This root carries the grain read surface
-/// (<see cref="IEdictProjectionBuilder"/>): the cursor wait and tri-state assembly
-/// live here so every concrete species answers reads through the same mechanism,
-/// while the actual store read is delegated to <see cref="ReadRowAsync"/> /
-/// <see cref="ReadPartitionAsync"/>, which a species with a row store overrides.
-/// The default read throws because a projection with no row store (one that
-/// exposes its state through a bespoke grain interface) has nothing to return.
-/// <para>
-/// The processed-correlation ring advances on the same atomic write as the
-/// dedup-ring commit (<see cref="ApplyConsumerProgress"/>), and the in-memory
-/// wait mirror is signalled only after the row write has drained
-/// (<see cref="MarkConsumerProgressDrained"/>), so a <c>CursorReached</c> answer
-/// implies the row is readable.
-/// </para>
+/// Projection builder whose read model lives in the grain's own durable state and
+/// commits inline with the dedup ring in one write. No external store, no outbox
+/// effect, and read-your-writes resolves the instant the write lands. Structurally
+/// a saga without <c>Dispatch</c>: the consumer mutates <see cref="Projection"/>
+/// inside a <c>HandleAsync</c> and the payload write rides the dedup-ring commit
+/// atomically. Best for a small, hot, per-aggregate read model; the cost is that
+/// the read model inflates grain activation, which is the consumer's call to make.
+/// For a large or unbounded read model, use
+/// <see cref="EdictListProjectionBuilder{TListProjection}"/> instead.
 /// </summary>
-public abstract class EdictProjectionBuilder : EdictIdempotencyBase, IEdictProjectionBuilder
+public abstract class EdictProjectionBuilder<TProjection> : EdictProjectionBuilderBase<TProjection>
+    where TProjection : IEdictPersistedState, new()
 {
-    readonly CursorWaitCoordinator _coordinator = new();
-    TimeProvider? _clock;
-    EdictOptions? _options;
-    Guid[]? _seededRing;
-    Guid _pendingCorrelationId;
-    CorrelationRing.Revert _correlationRevert;
-    bool _correlationApplied;
-
-    TimeProvider Clock => _clock ??= ServiceProvider.GetRequiredService<TimeProvider>();
-
-    EdictOptions Options => _options ??= ServiceProvider.GetService<IOptions<EdictOptions>>()?.Value ?? new EdictOptions();
-
     /// <summary>
-    /// Maximum number of distinct correlation ids this projection remembers for
-    /// read-your-writes. Resolved once and cached: the ring advances on the
-    /// per-event hot path, so a DI lookup per event is wasted work.
+    /// The in-grain read model. The consumer mutates this inside a
+    /// <c>HandleAsync</c>; it is the payload slot of the persisted envelope,
+    /// committed atomically with the dedup ring. Mirrors a saga's <c>Progress</c>.
     /// </summary>
-    int CorrelationWindowSize => Options.CorrelationWindowSize;
+    protected TProjection Projection => State.Payload;
 
-    public override async Task OnActivateAsync(CancellationToken cancellationToken)
-    {
-        await base.OnActivateAsync(cancellationToken);
-
-        // Seed the wait mirror from the persisted ring after drain-on-activation
-        // has made the store consistent, so a post-reactivation read of a
-        // still-remembered correlation answers CursorReached immediately.
-        SeedCoordinatorFromState();
-    }
-
-    /// <inheritdoc />
-    public async Task<ProjectionReadResult<object?>> EdictReadRowAsync(string rowKey, Guid? afterCorrelationId, TimeSpan? timeout)
-    {
-        var status = await AwaitCursorAsync(afterCorrelationId, timeout);
-        var row = await ReadRowAsync(rowKey);
-        return new ProjectionReadResult<object?>(row, status);
-    }
-
-    /// <inheritdoc />
-    public async Task<ProjectionReadResult<IReadOnlyList<object>>> EdictReadPartitionAsync(Guid? afterCorrelationId, TimeSpan? timeout)
-    {
-        var status = await AwaitCursorAsync(afterCorrelationId, timeout);
-        var rows = await ReadPartitionAsync();
-        return new ProjectionReadResult<IReadOnlyList<object>>(rows, status);
-    }
-
-    /// <summary>Point-gets the row at <paramref name="rowKey"/>. Overridden by a species with a row store.</summary>
-    protected virtual Task<object?> ReadRowAsync(string rowKey) =>
-        throw new EdictUnsupportedProjectionReadException(GetType());
-
-    /// <summary>Returns every row in this projection's partition. Overridden by a species with a row store.</summary>
-    protected virtual Task<IReadOnlyList<object>> ReadPartitionAsync() =>
-        throw new EdictUnsupportedProjectionReadException(GetType());
-
-    /// <summary>
-    /// Captures the correlation the current event carries so the commit advances
-    /// the processed-correlation ring for it. Called by the dispatch override
-    /// before the row is staged, so the value is in hand when the commit runs.
-    /// </summary>
-    private protected void StashCorrelation(Guid correlationId) => _pendingCorrelationId = correlationId;
-
-    async Task<EdictReadStatus> AwaitCursorAsync(Guid? afterCorrelationId, TimeSpan? timeout)
-    {
-        if (afterCorrelationId is not { } correlationId || correlationId == Guid.Empty)
-        {
-            return EdictReadStatus.Immediate;
-        }
-
-        var effectiveTimeout = CursorWaitCoordinator.ResolveTimeout(timeout, Options.ProjectionReadTimeout);
-
-        // Caller cancellation is honoured at the reader facade before the grain
-        // hop; an in-flight bounded wait always terminates on its own clock, and
-        // an explicit-indefinite wait is pinned by this in-flight call.
-        return await _coordinator.WaitAsync(correlationId, effectiveTimeout, Clock, CancellationToken.None);
-    }
-
-    private protected override void ApplyConsumerProgress()
-    {
-        _correlationApplied = false;
-        if (_pendingCorrelationId == Guid.Empty)
-        {
-            return;
-        }
-
-        EnsureCorrelationWindow();
-        _correlationRevert = CorrelationRing.Apply(State.Correlation!, CorrelationWindowSize, _pendingCorrelationId);
-        _correlationApplied = true;
-    }
-
-    private protected override void RollbackConsumerProgress()
-    {
-        if (_correlationApplied)
-        {
-            CorrelationRing.RollBack(State.Correlation!, _correlationRevert);
-            _correlationApplied = false;
-        }
-    }
-
-    private protected override void MarkConsumerProgressDrained()
-    {
-        if (_pendingCorrelationId != Guid.Empty)
-        {
-            _coordinator.MarkProcessed(_pendingCorrelationId);
-
-            // Clear it so a later commit that staged no fresh correlation (e.g. the
-            // deferred claim-check intake) cannot re-mark this one.
-            _pendingCorrelationId = Guid.Empty;
-        }
-    }
-
-    void SeedCoordinatorFromState()
-    {
-        if (State.Correlation is { } ring)
-        {
-            _coordinator.Activate(ring.CorrelationIds, ring.Head, ring.Count);
-            _seededRing = ring.CorrelationIds;
-        }
-        else
-        {
-            _coordinator.Activate([], 0, 0);
-            _seededRing = null;
-        }
-    }
-
-    void EnsureCorrelationWindow()
-    {
-        State.Correlation ??= new CorrelationProgress();
-        if (State.Correlation.CorrelationIds.Length != CorrelationWindowSize)
-        {
-            State.Correlation.CorrelationIds = new Guid[CorrelationWindowSize];
-            State.Correlation.Head = 0;
-            State.Correlation.Count = 0;
-        }
-
-        // Re-seed the wait mirror when the ring array reference changes (first
-        // populate, or a window-size change swaps the array); steady state hits
-        // the reference-equal early-out.
-        if (_seededRing is null || !ReferenceEquals(_seededRing, State.Correlation.CorrelationIds))
-        {
-            _coordinator.Activate(State.Correlation.CorrelationIds, State.Correlation.Head, State.Correlation.Count);
-            _seededRing = State.Correlation.CorrelationIds;
-        }
-    }
+    /// <summary>Serves a consumer read of the whole in-grain projection. The
+    /// read-your-writes wait runs on the base before this returns.</summary>
+    protected override Task<object?> ReadAsync() => Task.FromResult<object?>(Projection);
 }

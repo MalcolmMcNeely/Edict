@@ -17,9 +17,11 @@ namespace Edict.Core.Projections;
 /// get no client proxy (the same constraint that makes <c>IEdictSaga</c>
 /// hand-written).
 /// <para>
-/// Rows cross the grain boundary as <see cref="object"/> so the non-generic
-/// interface can serve every row type; the <c>IEdictProjectionReader&lt;TRow&gt;</c>
-/// facade casts back to the typed row.
+/// Read models cross the grain boundary as <see cref="object"/> so the
+/// non-generic interface can serve every species; the
+/// <c>IEdictListProjectionReader&lt;TListProjection&gt;</c> and
+/// <c>IEdictProjectionReader&lt;TProjection&gt;</c> facades cast back to the typed
+/// read model.
 /// </para>
 /// </summary>
 public interface IEdictProjectionBuilder : IEdictEventConsumer
@@ -43,4 +45,13 @@ public interface IEdictProjectionBuilder : IEdictEventConsumer
     /// </summary>
     [AlwaysInterleave]
     Task<ProjectionReadResult<IReadOnlyList<object>>> EdictReadPartitionAsync(Guid? afterCorrelationId, TimeSpan? timeout);
+
+    /// <summary>
+    /// Returns the whole in-grain projection payload, with the same optional
+    /// read-your-writes wait as <see cref="EdictReadRowAsync"/>. Served by the
+    /// in-grain State species; the List species throws
+    /// <see cref="EdictUnsupportedProjectionReadException"/> for this read.
+    /// </summary>
+    [AlwaysInterleave]
+    Task<ProjectionReadResult<object?>> EdictReadAsync(Guid? afterCorrelationId, TimeSpan? timeout);
 }

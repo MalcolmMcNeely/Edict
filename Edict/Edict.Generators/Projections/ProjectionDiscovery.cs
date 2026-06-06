@@ -83,20 +83,28 @@ internal static class ProjectionDiscovery
             grainNamespace,
             grain.Name,
             grainTypeName,
-            FindRowFqn(grain),
+            FindReadModelFqn(grain),
             new EquatableArray<ProjectionHandlerModel>(handlers));
     }
 
-    // The List species closes EdictListProjectionBuilder<TRow>; the row type is
-    // its sole type argument and keys the read facade's route. A future
-    // grain-state species derives from EdictProjectionBuilder without this base,
-    // so it carries no row route here.
-    static string? FindRowFqn(INamedTypeSymbol grain)
+    // Both species carry a read-route keyed by their read-model type, taken from
+    // the sole type argument of the species base: the row type for
+    // EdictListProjectionBuilder<TListProjection>, the projection type for the
+    // in-grain EdictProjectionBuilder<TProjection>. A projection on the abstract
+    // root directly (a bespoke grain-interface projection) matches neither and so
+    // carries no read-route.
+    static string? FindReadModelFqn(INamedTypeSymbol grain)
     {
         for (var current = grain.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.IsGenericType
-                && current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics) == EdictWellKnownNames.EdictListProjectionBuilderFqn)
+            if (!current.IsGenericType)
+            {
+                continue;
+            }
+
+            var openFqn = current.OriginalDefinition.ToDisplayString(FullyQualifiedNoGenerics);
+            if (openFqn == EdictWellKnownNames.EdictListProjectionBuilderFqn
+                || openFqn == EdictWellKnownNames.EdictStateProjectionBuilderFqn)
             {
                 return current.TypeArguments[0].ToDisplayString(FullyQualified);
             }

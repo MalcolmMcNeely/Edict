@@ -139,8 +139,10 @@ public class IncrementalityTests
         using System.Threading.Tasks;
 
         using Edict.Contracts.Events;
+        using Edict.Contracts.Persistence;
         using Edict.Core.Projections;
         using MessagePack;
+        using Orleans;
 
         namespace Sample;
 
@@ -152,9 +154,21 @@ public class IncrementalityTests
             public Guid OrderId { get; init; } = OrderId;
         }
 
-        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder
+        [GenerateSerializer]
+        [Alias("sample-order-projection")]
+        public sealed class OrderProjection : IEdictPersistedState
         {
-            Task HandleAsync(OrderPlacedEvent edictEvent) => Task.CompletedTask;
+            [Id(0)]
+            public int Count { get; set; }
+        }
+
+        public sealed partial class OrderProjectionBuilder : EdictProjectionBuilder<OrderProjection>
+        {
+            Task HandleAsync(OrderPlacedEvent edictEvent)
+            {
+                Projection.Count++;
+                return Task.CompletedTask;
+            }
         }
         """;
 
