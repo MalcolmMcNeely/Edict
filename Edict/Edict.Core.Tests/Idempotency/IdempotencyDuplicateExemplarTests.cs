@@ -45,25 +45,6 @@ public sealed class IdempotencyDuplicateExemplarTests
         Assert.True(currentAtRecord.Recorded);
     }
 
-    [Fact]
-    public void EmitDedupSpan_ShouldEmitSpanOnly_WithoutRecordingCounter()
-    {
-        var marker = $"IdempotencyDuplicateExemplarTest_{Guid.NewGuid():N}";
-        using var activityListener = StartRecordingEdictListener();
-
-        var sawMeasurement = false;
-        using var meterListener = StartListener(marker, (_, _) => sawMeasurement = true);
-
-        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), "SKU")
-        {
-            EventId = Guid.NewGuid(),
-        };
-
-        IdempotencyDedupMetrics.EmitDedupSpan(edictEvent);
-
-        Assert.False(sawMeasurement);
-    }
-
     static ActivityListener StartRecordingEdictListener()
     {
         var listener = new ActivityListener

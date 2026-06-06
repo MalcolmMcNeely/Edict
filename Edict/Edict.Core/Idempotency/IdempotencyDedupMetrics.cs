@@ -14,19 +14,12 @@ static class IdempotencyDedupMetrics
     // The duplicate counter is recorded while the dedup span is current so the
     // TraceBased exemplar filter attaches the suppressed-redelivery trace; a
     // measurement taken after the span disposed would carry no exemplar. The reason
-    // distinguishes a committed-window hit from a concurrent in-flight suppression so
-    // the counter reads the two apart without splitting into a second instrument.
+    // distinguishes a committed-window hit from a defense-in-depth in-flight reservation
+    // hit so the counter reads the two apart without splitting into a second instrument.
     public static void EmitDedupSpanAndHit(EdictEvent edictEvent, string grainTypeName, string reason)
     {
         using var span = StartDedupSpan(edictEvent);
         EmitDedupHit(edictEvent, grainTypeName, reason);
-    }
-
-    // EdictEventHandler suppresses a redelivery with the dedup span alone, without
-    // the duplicate counter the idempotency base and saga paths emit.
-    public static void EmitDedupSpan(EdictEvent edictEvent)
-    {
-        using var span = StartDedupSpan(edictEvent);
     }
 
     public static void EmitDedupHit(EdictEvent edictEvent, string grainTypeName, string reason)

@@ -190,44 +190,8 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// <c>EdictDeadLetterRaised</c> with the <c>BlobMissing</c> failure kind,
     /// the envelope's <see cref="EdictEvent.EventId"/> locating the parked body.
     /// </summary>
-    private protected virtual async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
-    {
-        EnsureWindowInitialized();
-
-        if (IsDeferredRedelivery(envelope))
-        {
-            return;
-        }
-
-        try
-        {
-            await CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope));
-        }
-        finally
-        {
-            ReleaseInFlight(envelope.EventId);
-        }
-    }
-
-    /// <summary>
-    /// Dedup gate for the pointer-envelope path. Reserves the wire-frame
-    /// <see cref="EdictEvent.EventId"/> in-flight when it is new and returns
-    /// <c>false</c> so the caller stages it (and releases the reservation in a
-    /// <c>finally</c>). When the id is already committed or already in flight it is a
-    /// redelivery: emit the dedup span and metric and return <c>true</c> so the caller
-    /// suppresses it before staging. Reserving before the first <c>await</c> closes the
-    /// window a concurrently redelivered envelope would otherwise slip through.
-    /// </summary>
-    private protected bool IsDeferredRedelivery(EdictEventEnvelope envelope)
-    {
-        if (TryClaimInFlight(envelope.EventId))
-        {
-            return false;
-        }
-
-        EmitDedupSuppression(envelope);
-        return true;
-    }
+    private protected virtual Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope) =>
+        GuardDedupClaimAsync(envelope, () => CommitAndPersistAsync(envelope.EventId, BuildInvokeHandlerEntry(envelope)));
 
     /// <summary>
     /// Builds the <see cref="OutboxEffectKind.InvokeHandler"/> entry that carries
@@ -302,17 +266,8 @@ public abstract class EdictIdempotencyBase<TPayload>
     /// consumer's <c>HandleAsync(TEvent)</c> runs off the stream-callback path with
     /// retry/backoff/dead-letter wrapping.
     /// </summary>
-    protected virtual async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
-    {
-        EnsureWindowInitialized();
-
-        if (!TryClaimInFlight(edictEvent.EventId))
-        {
-            EmitDedupSuppression(edictEvent);
-            return;
-        }
-
-        try
+    protected virtual Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _) =>
+        GuardDedupClaimAsync(edictEvent, async () =>
         {
             var outcome = await DispatchAsync(edictEvent);
 
@@ -327,12 +282,7 @@ public abstract class EdictIdempotencyBase<TPayload>
                 // write fault re-dispatches the redelivery instead of suppressing it.
                 await CommitAndPersistAsync(edictEvent.EventId, outcome.StagedEffect);
             }
-        }
-        finally
-        {
-            ReleaseInFlight(edictEvent.EventId);
-        }
-    }
+        });
 
     /// <summary>
     /// Called by the generated <c>DispatchAsync</c> for each matched event type.
@@ -390,9 +340,38 @@ public abstract class EdictIdempotencyBase<TPayload>
     private protected void ReleaseInFlight(Guid eventId) => _dedupMirror!.ReleaseInFlight(eventId);
 
     /// <summary>
+    /// The one dedup-claim guard every event-consuming path runs through. Initialises
+    /// the window, reserves the in-flight slot for <paramref name="edictEvent"/>'s
+    /// <see cref="EdictEvent.EventId"/>, and on a hit (already committed, or already
+    /// reserved as defense-in-depth) emits the uniform suppression signal and returns
+    /// without running <paramref name="handlerBody"/>. On a fresh claim it runs the
+    /// body and releases the reservation in a <c>finally</c>, so the claim/release
+    /// pairing can never be silently dropped from a path.
+    /// </summary>
+    private protected async Task GuardDedupClaimAsync(EdictEvent edictEvent, Func<Task> handlerBody)
+    {
+        EnsureWindowInitialized();
+
+        if (!TryClaimInFlight(edictEvent.EventId))
+        {
+            EmitDedupSuppression(edictEvent);
+            return;
+        }
+
+        try
+        {
+            await handlerBody();
+        }
+        finally
+        {
+            ReleaseInFlight(edictEvent.EventId);
+        }
+    }
+
+    /// <summary>
     /// Emits the dedup span and the duplicate-count hit for a suppressed redelivery,
-    /// tagging whether it was a committed-window hit or a concurrent in-flight
-    /// suppression so the counter reads the two apart.
+    /// tagging whether it was a committed-window hit or a defense-in-depth in-flight
+    /// reservation hit so the counter reads the two apart.
     /// </summary>
     private protected void EmitDedupSuppression(EdictEvent edictEvent)
     {

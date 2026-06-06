@@ -71,6 +71,7 @@ Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 - `edict.outbox.effect_kind` — on outbox drain spans and metrics.
 - `edict.dead_letter.failure_reason` — on dead-letter metrics. A closed allowlist: `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `SagaTimeout`, `SagaTerminal`, `Unhandled`.
 - `edict.saga.timeout.outcome` — on the saga timeout-fired counter. A closed allowlist: `compensated`, `deadlettered`.
+- `edict.idempotency.dedup.reason` — on the duplicate-suppression counter. A closed allowlist: `window` (the EventId was already in the committed dedup window) and `in_flight` (the EventId's slot was still reserved on the grain, retained as defense-in-depth since serial stream delivery makes a concurrent same-id redelivery structurally impossible).
 
 The full set lives in `Edict.Telemetry.SemanticConventions`.
 
@@ -85,7 +86,7 @@ Instrument names follow OpenTelemetry semantic-convention suffixes (`.count`, `.
 - `edict.saga.timeout.fired` — count of fired absolute lifetime caps, tagged `edict.saga.timeout.outcome` (`compensated` when the `OnSagaTimeoutAsync` override dispatched a Command, else `deadlettered`).
 - `edict.saga.completed` — count of sagas that reached `Completed` via `Complete()`. With `timeout.fired` it makes the health ratio `fired / (fired + completed)` computable, separating a handful of timeouts among millions from a rising failure trend. Both counters are tagged by saga type (`edict.grain.type`), so they join `progress.age` on one dimension.
 - `edict.dead_letter.promotion.count` / `edict.dead_letter.promotion.failure.count` — dead-letter rate and promotion failures.
-- `edict.idempotency.duplicate.count` — dedup-ring hit rate.
+- `edict.idempotency.duplicate.count` — dedup-ring hit rate, tagged `edict.idempotency.dedup.reason` (`window` or `in_flight`). Every suppressing consumer path (projection, saga, event handler, pointer-envelope intake) records it through one shared guard.
 - `edict.claim_check.payload.size` — claim-check body size histogram.
 
 Cardinality is bounded at compile time: no metric carries `aggregate_key` or `grain_key`. Per-grain forensic detail belongs on spans (the trace already carries `edict.command.route_key`), not on metrics. Tests that need per-aggregate specificity use a `MeterListener` (for the metric) plus an `ActivityListener` (for the span) — the dual-listener pattern.

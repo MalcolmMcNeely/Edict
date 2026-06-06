@@ -54,36 +54,18 @@ public abstract class EdictEventHandler : EdictIdempotencyBase
     protected abstract bool HandlesType(EdictEvent edictEvent);
 
     /// <inheritdoc />
-    protected override async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
+    protected override Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
     {
-        EnsureWindowInitialized();
-
         if (!HandlesType(edictEvent))
         {
             // Unhandled types are a pure no-op: no ring slot consumed, no in-flight
             // claim, no Outbox entry staged. Keeps the dedup window for events this
             // handler actually handles.
-            return;
+            return Task.CompletedTask;
         }
 
-        if (!TryClaimInFlight(edictEvent.EventId))
-        {
-            IdempotencyDedupMetrics.EmitDedupSpan(edictEvent);
-            return;
-        }
-
-        // Staging is synchronous up to the commit, so the window is closed today; the
-        // in-flight claim keeps it closed if a future await is added between here and
-        // the commit.
-        try
-        {
-            var entry = BuildInvokeHandlerEntry(edictEvent);
-            await CommitAndPersistAsync(edictEvent.EventId, entry);
-        }
-        finally
-        {
-            ReleaseInFlight(edictEvent.EventId);
-        }
+        return GuardDedupClaimAsync(edictEvent, () =>
+            CommitAndPersistAsync(edictEvent.EventId, BuildInvokeHandlerEntry(edictEvent)));
     }
 
     OutboxEntry BuildInvokeHandlerEntry(EdictEvent edictEvent)

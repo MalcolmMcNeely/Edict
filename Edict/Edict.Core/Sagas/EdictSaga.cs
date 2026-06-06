@@ -223,17 +223,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// handler — whose commit also arms the cap on the first handle or
     /// terminalises it when the handler called <see cref="Complete"/>.
     /// </summary>
-    protected override async Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _)
-    {
-        EnsureWindowInitialized();
-
-        if (!TryClaimInFlight(edictEvent.EventId))
-        {
-            EmitDedupSuppression(edictEvent);
-            return;
-        }
-
-        try
+    protected override Task OnStreamEventAsync(EdictEvent edictEvent, StreamSequenceToken? _) =>
+        GuardDedupClaimAsync(edictEvent, async () =>
         {
             var lifecycle = State.Saga;
             var currentState = lifecycle?.State ?? SagaLifecycleState.Live;
@@ -274,12 +265,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             // A handler that called Schedule(...) staged an entry the commit above just
             // made durable; arm its timer and Reminder now.
             await ReconcileScheduleIfActiveAsync();
-        }
-        finally
-        {
-            ReleaseInFlight(edictEvent.EventId);
-        }
-    }
+        });
 
     /// <summary>
     /// Deferred (pointer-envelope) intake: dedup-first → arm → stage, with the
@@ -294,16 +280,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     /// drain it triggers have settled, so a <see cref="Complete"/> the deferred
     /// handler called wins over a needless registration.
     /// </summary>
-    private protected override async Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope)
-    {
-        EnsureWindowInitialized();
-
-        if (IsDeferredRedelivery(envelope))
-        {
-            return;
-        }
-
-        try
+    private protected override Task StagePointerEnvelopeForDeferredDispatchAsync(EdictEventEnvelope envelope) =>
+        GuardDedupClaimAsync(envelope, async () =>
         {
             var lifecycle = State.Saga;
             var priorState = lifecycle?.State;
@@ -331,12 +309,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             {
                 await ApplyCapReminderActionAsync(CapAction.Register, live);
             }
-        }
-        finally
-        {
-            ReleaseInFlight(envelope.EventId);
-        }
-    }
+        });
 
     /// <summary>
     /// Deferred-dispatch callback: runs the handler off the engine drain and, when
