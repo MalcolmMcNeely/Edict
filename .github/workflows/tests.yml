@@ -1,0 +1,119 @@
+name: Tests
+
+# Reusable test workflow — the single source of truth for how the suite runs.
+# Both CI and Publish call this so they can never diverge on test execution.
+#
+# Two axes, mirroring ADR-0054:
+#   * fast-tests   — container-free projects. The whole solution builds once here,
+#                    so this job also doubles as the "everything compiles" gate,
+#                    then each project tests with --no-build. The find auto-excludes
+#                    the Testcontainers-backed projects (Edict.Tests.Conformance is
+#                    excluded for free — its name does not match *.Tests.csproj).
+#   * docker-tests — one matrix leg per Testcontainers-backed project, so each gets a
+#                    dedicated runner and Docker daemon (no cross-test container
+#                    contention). A new container-backed project needs adding here;
+#                    container-free ones join fast-tests automatically.
+on:
+  workflow_call:
+    inputs:
+      upload-coverage:
+        description: 'Collect and upload coverage to Codecov'
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+jobs:
+  fast-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore
+        run: dotnet restore Edict/Edict.slnx
+
+      - name: Build
+        run: dotnet build Edict/Edict.slnx --configuration Release --no-restore
+
+      - name: Test (container-free projects)
+        shell: bash
+        env:
+          UPLOAD_COVERAGE: ${{ inputs.upload-coverage }}
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find . -name '*.Tests.csproj' \
+            -not -path '*Benchmarks*' \
+            -not -path '*Edict.Azure.Streaming.Tests*' \
+            -not -path '*Edict.Azure.Persistence.Tests*' \
+            -not -path '*Edict.Kafka.Tests*' \
+            -not -path '*Edict.Postgres.Tests*' \
+            -not -path '*Edict.Pairing.Tests*' | sort)
+          coverage_args=()
+          if [ "$UPLOAD_COVERAGE" = "true" ]; then
+            coverage_args=(--collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage")
+          fi
+          for project in "${projects[@]}"; do
+            echo "::group::Testing $project"
+            dotnet test "$project" --configuration Release --no-build "${coverage_args[@]}"
+            echo "::endgroup::"
+          done
+
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.upload-coverage }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ${{ github.workspace }}/coverage
+          fail_ci_if_error: false
+
+  docker-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - Edict/Edict.Azure.Streaming.Tests/Edict.Azure.Streaming.Tests.csproj
+          - Edict/Edict.Azure.Persistence.Tests/Edict.Azure.Persistence.Tests.csproj
+          - Edict/Edict.Kafka.Tests/Edict.Kafka.Tests.csproj
+          - Edict/Edict.Postgres.Tests/Edict.Postgres.Tests.csproj
+          - Edict/Edict.Pairing.Tests/Edict.Pairing.Tests.csproj
+          - Edict/Edict.Tests.Conformance/Edict.Tests.Conformance.csproj
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Test ${{ matrix.project }}
+        shell: bash
+        env:
+          UPLOAD_COVERAGE: ${{ inputs.upload-coverage }}
+        run: |
+          set -euo pipefail
+          coverage_args=()
+          if [ "$UPLOAD_COVERAGE" = "true" ]; then
+            coverage_args=(--collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage")
+          fi
+          dotnet test "${{ matrix.project }}" --configuration Release "${coverage_args[@]}"
+
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.upload-coverage }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ${{ github.workspace }}/coverage
+          fail_ci_if_error: false

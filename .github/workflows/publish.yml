@@ -20,7 +20,13 @@ on:
       - 'v*'
 
 jobs:
+  # Gate the release on the same isolated test shape CI uses — the tag is only
+  # pushed and packages only ship if this passes (publish needs it).
+  test:
+    uses: ./.github/workflows/tests.yml
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     environment: nuget
     permissions:
@@ -95,17 +101,6 @@ jobs:
 
       - name: Build
         run: dotnet build Edict/Edict.slnx --configuration Release --no-restore
-
-      - name: Test (excluding Edict.Benchmarks.Throughput.Tests)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t projects < <(find . \( -name '*.Tests.csproj' -o -name 'Edict.Tests.Conformance.csproj' \) -not -path '*Edict.Benchmarks.Throughput.Tests*' | sort)
-          for project in "${projects[@]}"; do
-            echo "::group::Testing $project"
-            dotnet test "$project" --configuration Release --no-build
-            echo "::endgroup::"
-          done
 
       - name: Pack
         run: dotnet pack Edict/Edict.slnx --configuration Release --output ./artifacts
