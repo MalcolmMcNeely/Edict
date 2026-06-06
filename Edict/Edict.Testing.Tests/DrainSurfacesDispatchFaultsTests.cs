@@ -82,7 +82,7 @@ public sealed class DrainSurfacesDispatchFaultsTests
     }
 
     [Fact]
-    public async Task ExhaustedInconsistentStateRetry_IsSurfaced_NotSwallowed()
+    public async Task ProjectionThrowingInconsistentState_SurfacesFromDrain_WithNoSpecialRetry()
     {
         var widgetId = Guid.Parse("dddddddd-0000-0000-0000-000000000001");
 
@@ -225,9 +225,10 @@ public sealed class RaceRow : IEdictPersistedState
     public int Hits { get; set; }
 }
 
-// Always throws the storage race the harness's bounded retry exists for. Every
-// retry attempt hits it, so the exhausted retry must surface the fault rather
-// than swallow it onto the unobserved dispatch task.
+// Throws InconsistentStateException straight from HandleAsync. Serial per-activation
+// delivery means the harness no longer manufactures the concurrent-write etag race
+// that exception once stood for, so it is not special-cased: it surfaces from Drain
+// like any other dispatch fault rather than being retried past.
 public sealed partial class RaceProjectionBuilder : EdictListProjectionBuilder<RaceRow>
 {
     public RaceProjectionBuilder(IEdictTableStoreFactory storeFactory)

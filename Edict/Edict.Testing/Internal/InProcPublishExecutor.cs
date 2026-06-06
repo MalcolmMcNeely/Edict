@@ -53,8 +53,7 @@ sealed class InProcPublishExecutor(
     /// <summary>
     /// The first dispatch fault that escaped a fire-and-forget delivery, captured
     /// with its original stack so <c>Drain</c> can rethrow it unwrapped. Null
-    /// until a saga/projection <c>HandleAsync</c> throws (or an
-    /// <c>InconsistentStateException</c> outlives every retry).
+    /// until a saga or projection <c>HandleAsync</c> throws.
     /// </summary>
     public ExceptionDispatchInfo? FirstFault => Volatile.Read(ref _firstFault);
 
