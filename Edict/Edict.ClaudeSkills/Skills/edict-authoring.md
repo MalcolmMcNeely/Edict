@@ -50,6 +50,21 @@ Task<EdictCommandResult> HandleAsync(CheckoutCartCommand command)
 }
 ```
 
+**A handler may raise more than one Event in a turn.** The Sample's `PlaceOrderFromCartCommand` handler raises a `LineItemAddedEvent` per basket SKU and then one `OrderSubmittedEvent`; all of them commit on the same atomic write and publish in `Raise` order. The multi-event shape is fully supported — reach for it when the turn produced genuinely distinct facts (a per-line event *and* an order-level event), not to split one fact into pieces.
+
+```csharp
+foreach (var sku in command.Skus)
+{
+    var lineItemId = Guid.NewGuid();
+    State.Items.Add(new OrderLine { LineItemId = lineItemId, Sku = sku, Quantity = 1 });
+    Raise(new LineItemAddedEvent(command.OrderId, lineItemId, sku, 1));
+}
+
+Raise(new OrderSubmittedEvent(command.OrderId, command.Skus.Count * LineItemAmount));
+```
+
+The full worked reference is `Sample.Domain/Orders/CommandHandlers/OrderCommandHandler.cs`. Weigh the shape against the read-your-writes guidance below: a correlation with several effects on one projection reports `CursorReached` on its *first* applied effect, not its last, so where exact read-your-writes matters, prefer one Event per Command.
+
 ## Authoring a Command Validator
 
 Derive from `EdictCommandValidator<TCommand>` in `Edict.Core.Commands`. The base is a thin shim over FluentValidation's `AbstractValidator<TCommand>` — the rule DSL is unchanged. Author rules with `RuleFor(c => c.Property)`, gate them with `When(...)`, and attach a stable identifier with `WithErrorCode("snake_case_code")`. The framework copies each `ValidationFailure.ErrorCode` onto the resulting `EdictRejectionReason.Code` and ships the failure list back as `EdictCommandResult.Rejected` — failures are never thrown.
@@ -80,6 +95,44 @@ RuleFor(c => c).Custom((command, ctx) =>
 
 Decide between Validator and `HandleAsync` by the mutation line: if the rejection is knowable from current state alone, it belongs in the Validator; if it is only knowable mid-mutation (a derived value computed during the handler), it stays in `HandleAsync` and returns its own `Rejected`. Validators are stateless and have no `Raise`, no `Dispatch`, and no access to streams or the outbox.
 
+## Authoring an Event Handler
+
+Derive from `EdictEventHandler` in `Edict.Core.EventHandler` and write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event. An Event Handler is the terminal side-effect grain: it reacts to something that *has happened* by reaching outside Edict (email, an HTTP call, a non-Edict store). It never owns events, so it has no `Raise`, no `Dispatch`, and no durable `State`.
+
+Resolve an injected collaborator off the grain's `ServiceProvider`. The Sample's `OrderEmailEventHandler` delegates to a consumer-registered `IEmailNotifier`, passing the `EventId` as the idempotency key (the handler runs at-least-once), and falls back to a structured log line when no notifier is wired so the side-effect path still surfaces without forcing every test to fake the collaborator:
+
+```csharp
+public sealed partial class OrderEmailEventHandler(ILogger<OrderEmailEventHandler> logger) : EdictEventHandler
+{
+    Task HandleAsync(OrderPlacedEvent edictEvent)
+    {
+        if (ServiceProvider.GetService<IEmailNotifier>() is { } notifier)
+        {
+            return notifier.SendOrderPlacedAsync(edictEvent.OrderId, edictEvent.EventId);
+        }
+
+        logger.LogInformation(
+            "Simulated email send for order {OrderId} (idempotency key {EventId}).",
+            edictEvent.OrderId,
+            edictEvent.EventId);
+        return Task.CompletedTask;
+    }
+}
+```
+
+The full worked reference is `Sample.Domain/Orders/EventHandlers/OrderEmailEventHandler.cs`.
+
+To assert the side effect fired without calling the real dependency, swap the collaborator through the test harness's `Replace<TService>` seam. A recording fake handed to `Replace<IEmailNotifier>` wins on the silo container, so the handler's deferred invocation routes through it:
+
+```csharp
+var fake = new RecordingEmailNotifier();
+await using var app = await EdictTestApp.StartAsync(b => b
+    .WithConsumer(typeof(OrderCommandHandler).Assembly)
+    .Replace<IEmailNotifier>(fake));
+```
+
+See the `edict-testing` skill for `Replace<TService>` in full.
+
 ## Authoring a Saga
 
 Derive from `EdictSaga<TProgress>` in `Edict.Core.Sagas` and write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event. Each handler mutates the durable `Progress` and issues at most one Command via `Dispatch`. "At most one" means the floor is zero: a handler that mutates `Progress` and dispatches nothing is a valid handle, not a dropped one. The mutation commits on the same atomic write as the dedup-ring slot, so the accumulate-now, act-on-a-later-Event pattern is first-class. Beyond that, a saga has a lifecycle every author has to decide about.
@@ -107,6 +160,30 @@ protected override Task OnSagaTimeoutAsync()
     return Task.CompletedTask;
 }
 ```
+
+**The barrier/join shape builds on the dispatch-nothing floor.** When a workflow must wait on *several* Events before acting, each arm records its fact in `Progress` and dispatches nothing; the arm that completes the set trips the join, issues the single Command, and calls `Complete()`. The barrier lives entirely in durable `Progress`, so it holds across reactivation and across whichever arm lands first. The Sample's `OrderClosureSaga` closes an order only once *both* payment authorization and full fulfillment have arrived, in either order:
+
+```csharp
+Task HandleAsync(PaymentAuthorizedEvent edictEvent)
+{
+    Progress.PaymentAuthorized = true;
+    CloseIfBothArmsLanded(edictEvent.OrderId);
+    return Task.CompletedTask;
+}
+
+void CloseIfBothArmsLanded(Guid orderId)
+{
+    if (!Progress.PaymentAuthorized || !Progress.FullyFulfilled)
+    {
+        return;
+    }
+
+    Dispatch(new CloseOrderCommand(orderId));
+    Complete();
+}
+```
+
+The full worked reference is `Sample.Domain/Orders/Sagas/OrderClosureSaga.cs`.
 
 `edict_list_handlers` reports each saga's effective cap (a duration, `unbounded`, or `default`) alongside its role, so the inventory check above also tells you which sagas already carry an explicit `[EdictSagaTimeout]`.
 
@@ -179,6 +256,57 @@ Task OnScheduleTimeoutAsync(PollGatewayMessage message)
 ```
 
 `edict_list_handlers` reports, per Command Handler and Saga, whether it registers a schedule and the source of that schedule's timeout cap (`inheritsSiloDefault` for a Command Handler, `inheritsSagaCap` for a Saga). It does not report the per-schedule `timeout:` literal, so the inventory tells you *which* handlers schedule, not the exact cap value at each call site.
+
+## Authoring a Projection Builder
+
+Both species write one `Task HandleAsync(TEvent edictEvent)` per subscribed Event and are forward-only: Edict is event-driven, not event-sourced, so a builder only ever sees events from its subscription forward, never a historical replay. The base type picks the species.
+
+**State species** — derive from `EdictProjectionBuilder<TRow>` in `Edict.Core.Projections` for a single-grain, in-grain view. Mutate the durable `Projection` member directly; it commits as part of the grain's state write, with no external store and no row key. The Sample's `DeliveryStatusProjectionBuilder` folds two events into one forward-only view:
+
+```csharp
+public sealed partial class DeliveryStatusProjectionBuilder : EdictProjectionBuilder<DeliveryStatusRow>
+{
+    Task HandleAsync(DeliveryEtaTickedEvent edictEvent)
+    {
+        Projection.EtaDaysRemaining = edictEvent.EtaDaysRemaining;
+        return Task.CompletedTask;
+    }
+
+    Task HandleAsync(DeliveredEvent edictEvent)
+    {
+        Projection.Delivered = true;
+        return Task.CompletedTask;
+    }
+}
+```
+
+**List species** — derive from `EdictListProjectionBuilder<TRow>` in `Edict.Core.Projections` for an external-store read model that grows past what fits in grain state. Take the `IEdictTableStoreFactory` through the constructor to the base, override `TableName`, and override `GetRowKey(EdictEvent)` to derive the row key for the event being handled. Each `HandleAsync` then mutates the `CurrentRow` the framework selected for that key. The Sample's `LineItemFulfillmentProjectionBuilder` keys one row per line item off a dynamic `LineItemId`:
+
+```csharp
+public sealed partial class LineItemFulfillmentProjectionBuilder : EdictListProjectionBuilder<LineItemFulfillmentRow>
+{
+    public LineItemFulfillmentProjectionBuilder(IEdictTableStoreFactory storeFactory)
+        : base(storeFactory) { }
+
+    protected override string TableName => "lineitemfulfillment";
+
+    protected override string GetRowKey(EdictEvent edictEvent) => edictEvent switch
+    {
+        LineItemAddedEvent added => added.LineItemId.ToString(),
+        LineItemFulfilledEvent fulfilled => fulfilled.LineItemId.ToString(),
+        _ => "",
+    };
+
+    Task HandleAsync(LineItemAddedEvent edictEvent)
+    {
+        CurrentRow.LineItemId = edictEvent.LineItemId;
+        CurrentRow.Status = LineItemFulfillmentStatus.Pending;
+        return Task.CompletedTask;
+    }
+}
+```
+
+The full worked references are `Sample.Domain/Delivery/ProjectionBuilders/DeliveryStatusProjectionBuilder.cs` (State) and `Sample.Domain/Fulfillment/ProjectionBuilders/LineItemFulfillmentProjectionBuilder.cs` (List).
 
 ## Reading a List Projection, and read-your-writes
 
