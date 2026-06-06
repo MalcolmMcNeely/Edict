@@ -1,9 +1,10 @@
 @using Edict.Contracts.Commands
+@using Edict.Contracts.Projections
 @using Edict.Contracts.Sending
 @using Sample.Contracts.Delivery.Commands
 @using Sample.Contracts.Delivery.Projections
 @inject IEdictSender Sender
-@inject IEdictListProjectionReader<DeliveryStatusRow> DeliveryStatuses
+@inject IEdictProjectionReader<DeliveryStatusRow> DeliveryStatuses
 @implements IDisposable
 
 <section class="hub-controls">
@@ -85,10 +86,11 @@
 
         try
         {
-            // Cursorless point-get: the recurring schedule advances the ETA on the
-            // silo, and each poll reads the latest projected row so the visitor
-            // watches the count fall toward arrival.
-            _row = (await DeliveryStatuses.GetAsync(_orderId.ToString(), "delivery")).Value;
+            // Cursorless point-read of the in-grain projection: the recurring
+            // schedule advances the ETA on the silo, and each poll reads the
+            // latest projected state so the visitor watches the count fall toward
+            // arrival.
+            _row = (await DeliveryStatuses.ReadAsync(_orderId)).Value;
         }
         catch
         {

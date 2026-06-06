@@ -31,9 +31,12 @@ builder.UseOrleansClient(client =>
     });
 });
 
-// Projection reads route through the grain via IEdictListProjectionReader<TListProjection>;
-// AddEdict() registers it open-generic plus the dead-letter forensic facade, so
-// the read tier needs no table-storage wiring of its own.
+// Projection reads route through the grain via the two reader species:
+// IEdictListProjectionReader<TListProjection> for external-store List projections
+// and IEdictProjectionReader<TProjection> for in-grain State projections (the
+// Delivery panel reads its DeliveryStatus this way). AddEdict() registers both
+// open-generic plus the dead-letter forensic facade, so the read tier needs no
+// table-storage wiring of its own.
 builder.Services.AddEdict();
 
 // Hosts the in-memory notifications sink the silo POSTs to over HTTP and the

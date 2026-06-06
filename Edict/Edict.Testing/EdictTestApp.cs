@@ -3,6 +3,7 @@ using System.Reflection;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Projections;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -12,6 +13,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.EventHandler;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
+using Edict.Core.Projections;
 using Edict.Core.Sagas;
 using Edict.Core.Schedules;
 using Edict.Core.Serialization;
@@ -154,6 +156,22 @@ public sealed class EdictTestApp : IAsyncDisposable
     {
         var store = await _context.TableStoreFactory.CreateAsync<TRow>(tableName);
         return await store.GetAsync(partitionKey, rowKey);
+    }
+
+    /// <summary>
+    /// Typed probe over the in-grain (State) projection reader: returns the read
+    /// model an <see cref="EdictProjectionBuilder{TProjection}"/> committed for the
+    /// supplied routing <paramref name="key"/>, or <c>null</c> when the projection's
+    /// <c>HandleAsync</c> never ran for this key. The read goes through the same
+    /// <see cref="IEdictProjectionReader{TProjection}"/> seam the application tier
+    /// binds to. Call <see cref="Drain"/> first so the inline write has landed; the
+    /// cursorless read then answers immediately.
+    /// </summary>
+    public async Task<TProjection?> ReadProjectionAsync<TProjection>(Guid key)
+        where TProjection : class
+    {
+        var reader = _cluster.Client.ServiceProvider.GetRequiredService<IEdictProjectionReader<TProjection>>();
+        return (await reader.ReadAsync(key)).Value;
     }
 
     /// <summary>

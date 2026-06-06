@@ -9,10 +9,12 @@ using Xunit;
 namespace Sample.Azure.Silo.Tests.Delivery;
 
 /// <summary>
-/// Per-tick tests for <see cref="DeliveryStatusRow"/>, the read model the Schedules
-/// Delivery sub-section reads to show the ETA ticking down. Each interval-agnostic
-/// FireDueSchedulesAsync drives one recurring fire whose DeliveryEtaTickedEvent
-/// lands on the row; arrival flips Delivered.
+/// Per-tick tests for <see cref="DeliveryStatusRow"/>, the in-grain State
+/// projection the Schedules Delivery sub-section reads to show the ETA ticking
+/// down. Each interval-agnostic FireDueSchedulesAsync drives one recurring fire
+/// whose DeliveryEtaTickedEvent mutates the in-grain projection; arrival flips
+/// Delivered. The read goes through <see cref="EdictTestApp.ReadProjectionAsync{TProjection}"/>,
+/// the consumer reader seam, not grain storage.
 /// </summary>
 public sealed class DeliveryStatusProjectionBuilderTests
 {
@@ -30,10 +32,10 @@ public sealed class DeliveryStatusProjectionBuilderTests
         await app.FireDueSchedulesAsync();
         await app.Drain();
 
-        var row = await GetRow(app, orderId);
-        Assert.NotNull(row);
-        Assert.Equal(2, row.EtaDaysRemaining);
-        Assert.False(row.Delivered);
+        var projection = await app.ReadProjectionAsync<DeliveryStatusRow>(orderId);
+        Assert.NotNull(projection);
+        Assert.Equal(2, projection.EtaDaysRemaining);
+        Assert.False(projection.Delivered);
     }
 
     [Fact]
@@ -51,15 +53,9 @@ public sealed class DeliveryStatusProjectionBuilderTests
         await app.FireDueSchedulesAsync();
         await app.Drain();
 
-        var row = await GetRow(app, orderId);
-        Assert.NotNull(row);
-        Assert.Equal(0, row.EtaDaysRemaining);
-        Assert.True(row.Delivered);
+        var projection = await app.ReadProjectionAsync<DeliveryStatusRow>(orderId);
+        Assert.NotNull(projection);
+        Assert.Equal(0, projection.EtaDaysRemaining);
+        Assert.True(projection.Delivered);
     }
-
-    static Task<DeliveryStatusRow?> GetRow(EdictTestApp app, Guid orderId) =>
-        app.GetProjectionRow<DeliveryStatusRow>(
-            tableName: "deliverystatus",
-            partitionKey: orderId.ToString(),
-            rowKey: "delivery");
 }
