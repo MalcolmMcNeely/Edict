@@ -54,7 +54,8 @@ static class ConfigurationKnobCatalogue
             new("ConsumerGroupId", KnobRequirement.None),
             new("PartitionCount", KnobRequirement.None),
             new("PartitionCountByStream", KnobRequirement.None),
-            new("ReplicationFactor", KnobRequirement.None),
+            new("ReplicationFactor", KnobRequirement.None,
+                Footgun: "Assigning ReplicationFactor opts into strict mode: the topic provisioner stops auto-clamping to the available broker count and throws at topic provisioning when the cluster cannot satisfy it, so a one-broker dev cluster will fail. Omit it to keep the auto-clamp."),
             new("MinInSyncReplicas", KnobRequirement.None),
             new("Compression", KnobRequirement.None),
             new("MessageTimeout", KnobRequirement.None),
@@ -75,4 +76,16 @@ static class ConfigurationKnobCatalogue
             new("StorageRetryBaseDelay", KnobRequirement.None),
         ]),
     ];
+
+    // Cross-extension knowledge, hand-authored like the per-knob requirements: which AddEdict*
+    // calls bring a stream provider and which bring a persistence provider, plus the one
+    // claim-check store that is redundant once Postgres persistence is wired.
+    public const string AzureBlobClaimCheckExtension = "AddEdictAzureBlobClaimCheck";
+    public const string PostgresPersistenceExtension = "AddEdictPostgresPersistence";
+
+    public static IReadOnlyList<string> StreamProviderExtensions { get; } =
+        ["AddEdictAzureStreams", "AddEdictKafkaStreams"];
+
+    public static IReadOnlyList<string> PersistenceProviderExtensions { get; } =
+        ["AddEdictAzurePersistence", PostgresPersistenceExtension];
 }

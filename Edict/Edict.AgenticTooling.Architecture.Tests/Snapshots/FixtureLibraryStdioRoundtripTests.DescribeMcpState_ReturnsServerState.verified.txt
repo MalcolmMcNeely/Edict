@@ -42,7 +42,7 @@
     },
     {
       "name": "edict_check_configuration",
-      "description": "Reads Program.cs in the loaded solution, determines which option knobs the consumer has set inside each AddEdict* call, and returns a best-effort verdict of required-but-unset knobs: an empty Kafka BootstrapServers, an unset Postgres ConnectionString, and a soft reminder to confirm an Azure QueueServiceClient is set on the options or registered in DI. Each finding carries a severity, category, options type, knob name, message, and source location. This tool is best-effort and resolves only set-versus-not-set, not whether a value is sensible; EdictWiringValidator, which runs at host start with live DI, is ground truth."
+      "description": "Reads Program.cs in the loaded solution, determines which option knobs the consumer has set inside each AddEdict* call, and returns a best-effort verdict across three finding categories: required-but-unset knobs (an empty Kafka BootstrapServers, an unset Postgres ConnectionString, and a soft reminder to confirm an Azure QueueServiceClient is set on the options or registered in DI); per-knob footguns (an explicitly assigned Kafka ReplicationFactor opts into strict topic provisioning that throws on a one-broker dev cluster); and cross-extension completeness (a stream provider wired with no persistence provider, or an Azure Blob claim-check wired redundantly alongside Postgres persistence). Each finding carries a severity, category, message, and source location, plus the options type and knob name where one applies. This tool is best-effort and resolves only set-versus-not-set, not whether a value is sensible; EdictWiringValidator, which runs at host start with live DI, is ground truth."
     }
   ]
 }

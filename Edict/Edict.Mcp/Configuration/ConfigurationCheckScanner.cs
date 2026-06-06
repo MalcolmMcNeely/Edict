@@ -1,4 +1,5 @@
 using Edict.Mcp.Handlers;
+using Edict.Mcp.SiloWiring;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,16 +12,22 @@ sealed class ConfigurationCheckScanner
     const string ProgramFileName = "Program.cs";
     const string AddEdictPrefix = "AddEdict";
 
+    readonly SiloWiringScanner siloWiringScanner = new();
+
     public ConfigurationCheckReport Scan(IEnumerable<Compilation> compilations, string? solutionDirectory)
     {
-        foreach (var compilation in compilations)
+        var compilationList = compilations as IReadOnlyCollection<Compilation> ?? compilations.ToList();
+        foreach (var compilation in compilationList)
         {
             var programTree = compilation.SyntaxTrees.FirstOrDefault(IsProgramCs);
             if (programTree is null)
             {
                 continue;
             }
-            return BuildReport(compilation, programTree, solutionDirectory);
+            var wiredExtensions = siloWiringScanner.Scan(compilationList, solutionDirectory).Wired
+                .Select(entry => entry.ExtensionName)
+                .ToHashSet(StringComparer.Ordinal);
+            return BuildReport(compilation, programTree, solutionDirectory, wiredExtensions);
         }
         return new ConfigurationCheckReport(ProgramSourceLocation: null, Findings: []);
     }
@@ -49,13 +56,17 @@ sealed class ConfigurationCheckScanner
         return string.Equals(Path.GetFileName(syntaxTree.FilePath), ProgramFileName, StringComparison.OrdinalIgnoreCase);
     }
 
-    static ConfigurationCheckReport BuildReport(Compilation compilation, SyntaxTree programTree, string? solutionDirectory)
+    static ConfigurationCheckReport BuildReport(
+        Compilation compilation,
+        SyntaxTree programTree,
+        string? solutionDirectory,
+        IReadOnlySet<string> wiredExtensions)
     {
         var semanticModel = compilation.GetSemanticModel(programTree);
         var root = programTree.GetRoot();
 
         var wiredExtensionLocations = CollectWiredExtensions(root, semanticModel, solutionDirectory);
-        var assignedKnobs = CollectAssignedKnobs(root, semanticModel);
+        var assignedKnobs = CollectAssignedKnobs(root, semanticModel, solutionDirectory);
 
         var findings = new List<ConfigurationFinding>();
         foreach (var entry in ConfigurationKnobCatalogue.Entries)
@@ -66,17 +77,19 @@ sealed class ConfigurationCheckScanner
             }
             foreach (var knob in entry.Knobs)
             {
-                if (knob.Requirement == KnobRequirement.None)
+                var isAssigned = assignedKnobs.TryGetValue((entry.OptionsTypeName, knob.Name), out var assignmentLocation);
+                if (knob.Requirement != KnobRequirement.None && !isAssigned)
                 {
-                    continue;
+                    findings.Add(BuildRequiredMissingFinding(entry, knob, location));
                 }
-                if (assignedKnobs.Contains((entry.OptionsTypeName, knob.Name)))
+                if (knob.Footgun is not null && isAssigned)
                 {
-                    continue;
+                    findings.Add(BuildFootgunFinding(entry, knob, assignmentLocation ?? location));
                 }
-                findings.Add(BuildRequiredMissingFinding(entry, knob, location));
             }
         }
+
+        findings.AddRange(BuildCrossExtensionFindings(wiredExtensions, wiredExtensionLocations));
 
         var programLocation = new SourceLocationInfo(
             FilePath: RelativisePath(programTree.FilePath, solutionDirectory),
@@ -113,9 +126,12 @@ sealed class ConfigurationCheckScanner
         return wired;
     }
 
-    static HashSet<(string OptionsType, string Knob)> CollectAssignedKnobs(SyntaxNode root, SemanticModel semanticModel)
+    static Dictionary<(string OptionsType, string Knob), SourceLocationInfo?> CollectAssignedKnobs(
+        SyntaxNode root,
+        SemanticModel semanticModel,
+        string? solutionDirectory)
     {
-        var assigned = new HashSet<(string, string)>();
+        var assigned = new Dictionary<(string, string), SourceLocationInfo?>();
         foreach (var assignment in root.DescendantNodes().OfType<AssignmentExpressionSyntax>())
         {
             if (semanticModel.GetSymbolInfo(assignment.Left).Symbol is not IPropertySymbol property)
@@ -127,7 +143,12 @@ sealed class ConfigurationCheckScanner
             {
                 continue;
             }
-            assigned.Add((containingType, property.Name));
+            var key = (containingType, property.Name);
+            if (assigned.ContainsKey(key))
+            {
+                continue;
+            }
+            assigned[key] = ResolveLocation(assignment.Left.GetLocation(), solutionDirectory);
         }
         return assigned;
     }
@@ -154,6 +175,50 @@ sealed class ConfigurationCheckScanner
             knob.Name,
             message,
             location);
+    }
+
+    static ConfigurationFinding BuildFootgunFinding(
+        ConfigurationOptionsEntry entry,
+        ConfigurationKnob knob,
+        SourceLocationInfo? location)
+    {
+        return new ConfigurationFinding(
+            ConfigurationFindingSeverity.Warning,
+            ConfigurationFindingCategory.Footgun,
+            entry.OptionsTypeName,
+            knob.Name,
+            knob.Footgun!,
+            location);
+    }
+
+    static IEnumerable<ConfigurationFinding> BuildCrossExtensionFindings(
+        IReadOnlySet<string> wiredExtensions,
+        IReadOnlyDictionary<string, SourceLocationInfo?> wiredExtensionLocations)
+    {
+        var wiredStreamProvider = ConfigurationKnobCatalogue.StreamProviderExtensions.FirstOrDefault(wiredExtensions.Contains);
+        var hasPersistenceProvider = ConfigurationKnobCatalogue.PersistenceProviderExtensions.Any(wiredExtensions.Contains);
+        if (wiredStreamProvider is not null && !hasPersistenceProvider)
+        {
+            yield return new ConfigurationFinding(
+                ConfigurationFindingSeverity.Error,
+                ConfigurationFindingCategory.CrossExtension,
+                OptionsType: null,
+                Knob: null,
+                Message: $"{wiredStreamProvider} is wired but no persistence provider is: this silo cannot persist grain state. Wire AddEdictAzurePersistence or AddEdictPostgresPersistence.",
+                wiredExtensionLocations.GetValueOrDefault(wiredStreamProvider));
+        }
+
+        if (wiredExtensions.Contains(ConfigurationKnobCatalogue.AzureBlobClaimCheckExtension)
+            && wiredExtensions.Contains(ConfigurationKnobCatalogue.PostgresPersistenceExtension))
+        {
+            yield return new ConfigurationFinding(
+                ConfigurationFindingSeverity.Warning,
+                ConfigurationFindingCategory.CrossExtension,
+                OptionsType: null,
+                Knob: null,
+                Message: $"{ConfigurationKnobCatalogue.AzureBlobClaimCheckExtension} is wired alongside Postgres persistence, which already provides a claim-check store: the Azure Blob claim-check store is redundant. Remove it unless you intend the claim check to live in Azure Blob storage.",
+                wiredExtensionLocations.GetValueOrDefault(ConfigurationKnobCatalogue.AzureBlobClaimCheckExtension));
+        }
     }
 
     static bool IsAddEdictOnSiloBuilder(IMethodSymbol method)

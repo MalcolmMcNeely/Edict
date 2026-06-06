@@ -25,6 +25,7 @@ public class ConfigurationCheckScannerTests
                     {
                         siloBuilder
                             .AddEdict()
+                            .AddEdictAzurePersistence()
                             .AddEdictKafkaStreams(options => { options.ConsumerGroupId = "orders"; });
                     }
                 }
@@ -95,6 +96,7 @@ public class ConfigurationCheckScannerTests
                     {
                         siloBuilder
                             .AddEdict()
+                            .AddEdictAzurePersistence()
                             .AddEdictAzureStreams(options => { });
                     }
                 }
@@ -130,6 +132,7 @@ public class ConfigurationCheckScannerTests
                     {
                         siloBuilder
                             .AddEdict()
+                            .AddEdictAzurePersistence()
                             .AddEdictAzureStreams(options => { options.QueueServiceClient = new object(); });
                     }
                 }
@@ -162,6 +165,7 @@ public class ConfigurationCheckScannerTests
                         var brokers = "localhost:9092";
                         siloBuilder
                             .AddEdict()
+                            .AddEdictAzurePersistence()
                             .AddEdictKafkaStreams(options => { options.BootstrapServers = brokers; });
                     }
                 }
@@ -206,6 +210,173 @@ public class ConfigurationCheckScannerTests
 
         // Assert
         Assert.Empty(report.Findings);
+    }
+
+    [Fact]
+    public void Scan_ReplicationFactorAssignedExplicitly_EmitsStrictModeFootgunWarning()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .AddEdictPostgresPersistence(options => { options.ConnectionString = "Host=localhost"; })
+                            .AddEdictKafkaStreams(options => { options.BootstrapServers = "localhost:9092"; options.ReplicationFactor = 3; });
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var finding = Assert.Single(report.Findings);
+        Assert.Equal(ConfigurationFindingSeverity.Warning, finding.Severity);
+        Assert.Equal(ConfigurationFindingCategory.Footgun, finding.Category);
+        Assert.Equal("EdictKafkaStreamsOptions", finding.OptionsType);
+        Assert.Equal("ReplicationFactor", finding.Knob);
+    }
+
+    [Fact]
+    public void Scan_ReplicationFactorLeftUnset_EmitsNoFootgun()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .AddEdictPostgresPersistence(options => { options.ConnectionString = "Host=localhost"; })
+                            .AddEdictKafkaStreams(options => { options.BootstrapServers = "localhost:9092"; });
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        Assert.Empty(report.Findings);
+    }
+
+    [Fact]
+    public void Scan_StreamProviderWiredWithNoPersistence_EmitsCrossExtensionCompletenessFinding()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .AddEdictAzureStreams(options => { options.QueueServiceClient = new object(); });
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var finding = Assert.Single(report.Findings);
+        Assert.Equal(ConfigurationFindingSeverity.Error, finding.Severity);
+        Assert.Equal(ConfigurationFindingCategory.CrossExtension, finding.Category);
+    }
+
+    [Fact]
+    public void Scan_StreamProviderWiredAlongsidePersistence_EmitsNoCompletenessFinding()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .AddEdictAzurePersistence()
+                            .AddEdictAzureStreams(options => { options.QueueServiceClient = new object(); });
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        Assert.Empty(report.Findings);
+    }
+
+    [Fact]
+    public void Scan_AzureBlobClaimCheckWiredAlongsidePostgresPersistence_EmitsRedundantClaimCheckFinding()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .AddEdictPostgresPersistence(options => { options.ConnectionString = "Host=localhost"; })
+                            .AddEdictAzureBlobClaimCheck();
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var finding = Assert.Single(report.Findings);
+        Assert.Equal(ConfigurationFindingSeverity.Warning, finding.Severity);
+        Assert.Equal(ConfigurationFindingCategory.CrossExtension, finding.Category);
     }
 
     [Fact]
@@ -266,6 +437,7 @@ public class ConfigurationCheckScannerTests
             {
                 public string BootstrapServers { get; set; } = "";
                 public string ConsumerGroupId { get; set; } = "edict-silo";
+                public short ReplicationFactor { get; set; } = 3;
             }
 
             public sealed class EdictPostgresPersistenceOptions
@@ -300,6 +472,16 @@ public class ConfigurationCheckScannerTests
             public static class EdictPostgresSiloBuilderExtensions
             {
                 public static ISiloBuilder AddEdictPostgresPersistence(this ISiloBuilder siloBuilder, Action<EdictPostgresPersistenceOptions> configure) => siloBuilder;
+            }
+
+            public static class EdictAzurePersistenceSiloBuilderExtensions
+            {
+                public static ISiloBuilder AddEdictAzurePersistence(this ISiloBuilder siloBuilder) => siloBuilder;
+            }
+
+            public static class EdictAzureClaimCheckSiloBuilderExtensions
+            {
+                public static ISiloBuilder AddEdictAzureBlobClaimCheck(this ISiloBuilder siloBuilder) => siloBuilder;
             }
 
             public static class EdictAzureStreamingSiloBuilderExtensions
