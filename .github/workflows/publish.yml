@@ -1,6 +1,20 @@
 name: Publish
 
 on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump applied to the latest v* tag'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      dry_run:
+        description: 'Dry run: push to the NuGet test gallery, skip the real tag, nuget.org push, and Release'
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -12,6 +26,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Guard dispatch to main
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error::Release dispatch must run from main, got ${{ github.ref }}"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -21,6 +41,34 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Compute next version
+        id: version
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$latest" ]; then
+            latest="v0.0.0"
+          fi
+          IFS='.' read -r major minor patch <<< "${latest#v}"
+          case "${{ github.event.inputs.bump }}" in
+            patch) patch=$((patch + 1)) ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+          esac
+          next="v${major}.${minor}.${patch}"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "Latest tag '$latest' + ${{ github.event.inputs.bump }} -> $next"
+
+      - name: Create and push tag
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.version.outputs.next }}"
+          git push origin "${{ steps.version.outputs.next }}"
 
       - name: Restore
         run: dotnet restore Edict/Edict.slnx
@@ -45,7 +93,7 @@ jobs:
       - name: Push
         shell: bash
         env:
-          DRYRUN: ${{ contains(github.ref_name, 'dryrun') }}
+          DRYRUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
         run: |
           if [ "$DRYRUN" = "true" ]; then
             dotnet nuget push "./artifacts/*.nupkg" \
@@ -60,9 +108,10 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        if: ${{ !contains(github.ref_name, 'dryrun') }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && steps.version.outputs.next || github.ref_name }}
           files: |
             ./artifacts/*.nupkg
             ./artifacts/*.snupkg
