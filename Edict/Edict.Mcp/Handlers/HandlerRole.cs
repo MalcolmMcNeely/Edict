@@ -6,6 +6,6 @@ enum HandlerRole
     CommandValidator,
     EventHandler,
     Saga,
-    ProjectionBuilder,
+    StateProjectionBuilder,
     ListProjectionBuilder,
 }

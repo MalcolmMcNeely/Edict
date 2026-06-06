@@ -61,15 +61,17 @@ static class HandlerRoleFixtures
                 }
             }
             """,
-        HandlerRole.ProjectionBuilder => """
+        HandlerRole.StateProjectionBuilder => """
             using Edict.Contracts.Events;
+            using Edict.Contracts.Persistence;
             using Edict.Core.Projections;
 
             namespace Acme.Fixture
             {
+                public sealed record OrderActivityState : IEdictPersistedState;
                 [EdictStream("Orders")]
                 public sealed record OrderPlaced : EdictEvent;
-                public sealed partial class OrderActivityProjection : EdictProjectionBuilder
+                public sealed partial class OrderActivityProjection : EdictProjectionBuilder<OrderActivityState>
                 {
                     System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
@@ -144,8 +146,8 @@ static class HandlerRoleFixtures
         namespace Edict.Core.Projections
         {
             using Edict.Contracts.Persistence;
-            public abstract class EdictProjectionBuilder { }
-            public abstract class EdictListProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
+            public abstract class EdictProjectionBuilder<TProjection> where TProjection : IEdictPersistedState, new() { }
+            public abstract class EdictListProjectionBuilder<TListProjection> where TListProjection : class, IEdictPersistedState, new() { }
         }
         """;
 }

@@ -438,7 +438,7 @@ public class HandlerScannerTests
     }
 
     [Fact]
-    public void Scan_ProjectionBuilderAndListProjectionBuilder_AreRecognisedAndDistinguishedByRole()
+    public void Scan_StateProjectionBuilderAndListProjectionBuilder_AreRecognisedAndDistinguishedByRole()
     {
         // Arrange
         const string consumerSource = """
@@ -448,12 +448,13 @@ public class HandlerScannerTests
 
             namespace Acme.Reporting
             {
+                public sealed record OrderActivityState : IEdictPersistedState;
                 public sealed record OrdersByStatusRow : IEdictPersistedState;
 
                 [EdictStream("Orders")]
                 public sealed record OrderPlaced : EdictEvent;
 
-                public sealed partial class OrderActivityProjection : EdictProjectionBuilder
+                public sealed partial class OrderActivityProjection : EdictProjectionBuilder<OrderActivityState>
                 {
                     System.Threading.Tasks.Task HandleAsync(OrderPlaced edictEvent) => System.Threading.Tasks.Task.CompletedTask;
                 }
@@ -473,7 +474,7 @@ public class HandlerScannerTests
         // Assert
         var activity = Assert.Single(inventory.Handlers, entry => entry.DeclaringTypeName == "Acme.Reporting.OrderActivityProjection");
         var byStatus = Assert.Single(inventory.Handlers, entry => entry.DeclaringTypeName == "Acme.Reporting.OrdersByStatusProjection");
-        Assert.Equal(HandlerRole.ProjectionBuilder, activity.Role);
+        Assert.Equal(HandlerRole.StateProjectionBuilder, activity.Role);
         Assert.Equal(HandlerRole.ListProjectionBuilder, byStatus.Role);
     }
 
@@ -676,8 +677,8 @@ public class HandlerScannerTests
         namespace Edict.Core.Projections
         {
             using Edict.Contracts.Persistence;
-            public abstract class EdictProjectionBuilder { }
-            public abstract class EdictListProjectionBuilder<T> : EdictProjectionBuilder where T : class, IEdictPersistedState, new() { }
+            public abstract class EdictProjectionBuilder<TProjection> where TProjection : IEdictPersistedState, new() { }
+            public abstract class EdictListProjectionBuilder<TListProjection> where TListProjection : class, IEdictPersistedState, new() { }
         }
 
         namespace Edict.Contracts.Schedules

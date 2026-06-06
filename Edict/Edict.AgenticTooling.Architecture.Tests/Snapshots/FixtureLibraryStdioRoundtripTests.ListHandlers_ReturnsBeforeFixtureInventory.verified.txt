@@ -2,7 +2,7 @@
   "handlers": [
     {
       "declaringTypeName": "FixtureLibrary.Activity.OrderActivityProjection",
-      "role": "projectionBuilder",
+      "role": "stateProjectionBuilder",
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",
