@@ -6,6 +6,7 @@ using Orleans.Runtime;
 
 namespace Edict.Telemetry.Tests;
 
+[Collection(ActivityListenerUnitCollection.Name)]
 public sealed class ActivityExtensionsTests : IDisposable
 {
     readonly ActivityListener _listener;
@@ -201,6 +202,24 @@ public sealed class ActivityExtensionsTests : IDisposable
         Assert.Equal(traceId, link.Value.Context.TraceId.ToHexString());
         Assert.Equal(spanId, link.Value.Context.SpanId.ToHexString());
     }
+
+    [Fact]
+    public void BuildLink_ShouldReturnLinkFromStampedStrings_WhenTraceIdAndSpanIdValid()
+    {
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var spanId = ActivitySpanId.CreateRandom().ToHexString();
+
+        var link = ActivityExtensions.BuildLink(traceId, spanId, "vendor=abc");
+
+        Assert.NotNull(link);
+        Assert.Equal(traceId, link.Value.Context.TraceId.ToHexString());
+        Assert.Equal(spanId, link.Value.Context.SpanId.ToHexString());
+        Assert.Equal("vendor=abc", link.Value.Context.TraceState);
+    }
+
+    [Fact]
+    public void BuildLink_FromStrings_ShouldReturnNull_WhenTraceIdAbsent()
+        => Assert.Null(ActivityExtensions.BuildLink(null, null, null));
 
     [Fact]
     public void BuildLink_ShouldReturnNull_WhenTraceParentNull()

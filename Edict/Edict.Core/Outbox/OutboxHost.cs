@@ -263,6 +263,11 @@ sealed class OutboxHost<TPayload>
         }
 
         var policy = _claimCheckPolicy!;
+        // The producer turn for any claim-check PUT the policy fires: the same
+        // command context the events ride to the wire, so a spilled body's blob
+        // write nests in the originating turn instead of orphaning off a null
+        // Activity.Current at enqueue.
+        var producerContext = ActivityExtensions.RestoreFromTraceParent(traceParent, traceState);
         // Assign EventId once, as the event enters the Outbox, before the policy
         // serialises the payload — so the persisted bytes carry the stable
         // identity and a re-drain deserialises the same id. OccurredAt was
@@ -271,7 +276,7 @@ sealed class OutboxHost<TPayload>
         // inherits it from the message that caused it, carried unchanged so the
         // whole chain shares one chain-stable token.
         var results = await Task.WhenAll(events.Select(edictEvent =>
-            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId }, cancellationToken)));
+            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId }, producerContext, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);

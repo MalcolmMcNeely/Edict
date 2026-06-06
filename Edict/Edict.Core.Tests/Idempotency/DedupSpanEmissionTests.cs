@@ -34,10 +34,16 @@ public sealed class DedupSpanEmissionTests
         ActivitySource.AddActivityListener(listener);
 
         var sharedEventId = Guid.NewGuid();
+        // The publish span's identity rides on the wire event; the dedup span links
+        // back to it, so stamp it as PublishEventExecutor would in production.
+        var publishTraceId = ActivityTraceId.CreateRandom().ToHexString();
+        var publishSpanId = ActivitySpanId.CreateRandom().ToHexString();
         var edictEvent = new DedupSpanTestEvent(grainId, 1) with
         {
             EventId = sharedEventId,
             OccurredAt = DateTimeOffset.UtcNow,
+            TraceId = publishTraceId,
+            SpanId = publishSpanId,
         };
 
         await publisher.PublishAsync(edictEvent);
@@ -60,5 +66,12 @@ public sealed class DedupSpanEmissionTests
 
         Assert.NotNull(dedupSpan);
         Assert.Equal(true, dedupSpan!.GetTagItem(SemanticConventions.Events.Tags.Deduplicated));
+
+        // A suppressed redelivery is its own consumer turn: a new trace root that
+        // links back to the publish span rather than nesting under it.
+        Assert.Null(dedupSpan.Parent);
+        var link = Assert.Single(dedupSpan.Links);
+        Assert.Equal(publishTraceId, link.Context.TraceId.ToHexString());
+        Assert.Equal(publishSpanId, link.Context.SpanId.ToHexString());
     }
 }

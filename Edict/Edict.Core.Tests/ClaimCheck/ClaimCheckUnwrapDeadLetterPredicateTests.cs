@@ -22,6 +22,7 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
         var result = await unwrap.ApplyAsync(
             envelope,
             consumerType: typeof(EdictDeadLetterProjectionBuilder),
+            parentContext: default,
             CancellationToken.None);
 
         Assert.Same(envelope, result);
@@ -45,6 +46,7 @@ public sealed class ClaimCheckUnwrapDeadLetterPredicateTests
         var result = await unwrap.ApplyAsync(
             envelope,
             consumerType: typeof(SomeOtherProjection),
+            parentContext: default,
             CancellationToken.None);
 
         Assert.Equal([fetchId], store.Gets.Select(g => g.EventId));

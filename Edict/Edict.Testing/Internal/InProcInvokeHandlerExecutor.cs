@@ -39,12 +39,20 @@ sealed class InProcInvokeHandlerExecutor(
         }
 
         var staged = serializer.Deserialize<EdictEvent>(entry.Payload);
-        var materialised = await unwrap.ApplyAsync(
-            staged, consumerType ?? typeof(object), CancellationToken.None);
 
-        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
+        // Open the consumer turn first so the claim-check fetch nests under it,
+        // then rename once the inner type is known (mirrors the production executor).
+        var link = ActivityExtensions.BuildLink(entry.TraceParent, entry.TraceState);
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
-            materialised.GetType().Name, parentContext);
+            staged.GetType().Name, link);
+
+        var materialised = await unwrap.ApplyAsync(
+            staged, consumerType ?? typeof(object), span?.Context ?? default, CancellationToken.None);
+
+        if (span is not null)
+        {
+            span.DisplayName = $"{SemanticConventions.Events.Spans.Handle} {materialised.GetType().Name}";
+        }
 
         var stagedEffect = await deferredDispatch(materialised);
 

@@ -24,7 +24,8 @@ internal sealed class ClaimCheckUnwrap
         _shouldFetchForConsumer = shouldFetchForConsumer ?? (_ => true);
     }
 
-    public async Task<EdictEvent> ApplyAsync(EdictEvent incoming, Type consumerType, CancellationToken cancellationToken)
+    public async Task<EdictEvent> ApplyAsync(
+        EdictEvent incoming, Type consumerType, ActivityContext parentContext, CancellationToken cancellationToken)
     {
         if (incoming is not EdictEventEnvelope envelope)
         {
@@ -42,8 +43,11 @@ internal sealed class ClaimCheckUnwrap
         }
 
         var eventId = envelope.EventId;
+        // Nest the blob fetch under the consumer turn from the explicit context:
+        // at handle entry Activity.Current is null, so a bare StartActivity would
+        // spawn a detached root for every claim-checked event.
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
-            SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client);
+            SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client, parentContext);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, eventId.ToString());
 
         var bytes = await _store!.GetAsync(eventId, cancellationToken);

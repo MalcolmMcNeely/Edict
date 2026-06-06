@@ -17,6 +17,7 @@ using static VerifyXunit.Verifier;
 
 namespace Edict.Core.Tests.EventHandler;
 
+[Collection(TestSupport.EdictListenerUnitCollection.Name)]
 public sealed class InvokeHandlerExecutorTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -131,7 +132,7 @@ public sealed class InvokeHandlerExecutorTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ShouldNestInvocationSpanUnderCapturedTraceParent_WhenEntryCarriesTraceParent()
+    public async Task ExecuteAsync_ShouldStartHandleSpanAsNewRootLinkingToCapturedTraceParent_WhenEntryCarriesTraceParent()
     {
         var capturedTraceId = "0123456789abcdef0123456789abcdef";
         var capturedSpanId = "fedcba9876543210";
@@ -168,9 +169,17 @@ public sealed class InvokeHandlerExecutorTests
 
         // Filter by operation name — parallel tests sharing the process-wide
         // ActivityListener mechanism may surface unrelated edict.* spans here.
-        var span = Assert.Single(stopped, a => a.OperationName == $"{SemanticConventions.Events.Spans.Handle} OrderPlacedEvent");
-        Assert.Equal(capturedTraceId, span.TraceId.ToHexString());
-        Assert.Equal(capturedSpanId, span.ParentSpanId.ToHexString());
+        // The entry stages a wrapper frame, so the inner type lands on the exported
+        // DisplayName; OperationName stays the staged frame's name.
+        var span = Assert.Single(stopped, a => a.DisplayName == $"{SemanticConventions.Events.Spans.Handle} OrderPlacedEvent");
+
+        // The consumer turn is a new trace root linking back to the publish span,
+        // not a child of it — the captured traceparent is the link target.
+        Assert.Equal(default, span.ParentSpanId);
+        Assert.NotEqual(capturedTraceId, span.TraceId.ToHexString());
+        var link = Assert.Single(span.Links);
+        Assert.Equal(capturedTraceId, link.Context.TraceId.ToHexString());
+        Assert.Equal(capturedSpanId, link.Context.SpanId.ToHexString());
     }
 
     [Fact]

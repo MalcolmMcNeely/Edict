@@ -14,6 +14,7 @@ using Orleans.Serialization;
 
 namespace Edict.Core.Tests.ClaimCheck;
 
+[Collection(TestSupport.EdictListenerUnitCollection.Name)]
 public sealed class ClaimCheckPolicyTests
 {
     static readonly Serializer Serializer = BuildSerializer();
@@ -26,7 +27,7 @@ public sealed class ClaimCheckPolicyTests
         var expected = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store, new StubEdictEventStreamAccessors());
 
-        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
+        var result = await policy.ApplyAsync(edictEvent, default, CancellationToken.None);
 
         Assert.Equal(expected, result.Payload);
         Assert.Same(edictEvent, result.WireEvent);
@@ -44,7 +45,7 @@ public sealed class ClaimCheckPolicyTests
         var innerBytes = Serializer.SerializeToArray<EdictEvent>(edictEvent);
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
-        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
+        var result = await policy.ApplyAsync(edictEvent, default, CancellationToken.None);
 
         Assert.Single(store.Puts);
         Assert.Equal(innerBytes, store.Puts[0].Payload.ToArray());
@@ -68,7 +69,7 @@ public sealed class ClaimCheckPolicyTests
         var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256)) { EventId = stampedId };
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
 
-        var result = await policy.ApplyAsync(edictEvent, CancellationToken.None);
+        var result = await policy.ApplyAsync(edictEvent, default, CancellationToken.None);
 
         // The receiver dedups on the envelope id before fetching the blob, so it
         // must equal the inner event's stamped id — otherwise every oversized
@@ -92,7 +93,7 @@ public sealed class ClaimCheckPolicyTests
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 1, store, accessors);
 
         var exception = await Assert.ThrowsAsync<EdictEnvelopeOverflowException>(
-            () => policy.ApplyAsync(edictEvent, CancellationToken.None));
+            () => policy.ApplyAsync(edictEvent, default, CancellationToken.None));
 
         Assert.Equal(routeKey, exception.RouteKey);
         Assert.Equal(typeof(OrderPlacedEvent).FullName, exception.EventType);
@@ -118,14 +119,49 @@ public sealed class ClaimCheckPolicyTests
         using (var parent = EdictDiagnostics.ActivitySource.StartActivity($"{SemanticConventions.Events.Spans.Publish} OrderPlacedEvent"))
         {
             Assert.NotNull(parent);
-            await policy.ApplyAsync(edictEvent, CancellationToken.None);
+            await policy.ApplyAsync(edictEvent, parent.Context, CancellationToken.None);
             Assert.Equal(true, parent.GetTagItem(SemanticConventions.Events.Tags.ClaimChecked));
         }
 
-        var put = stopped.Single(a => a.OperationName == SemanticConventions.ClaimCheck.Spans.Put);
+        // Scope to this test's PUT by its unique key: the process-wide listener
+        // also catches PUT spans from other claim-check unit classes run in parallel.
+        var put = stopped.Single(a =>
+            a.OperationName == SemanticConventions.ClaimCheck.Spans.Put
+            && edictEvent.EventId.ToString().Equals(a.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key)));
         Assert.Equal(nameof(OrderPlacedEvent), put.GetTagItem(SemanticConventions.Events.Tags.Type));
         Assert.NotNull(put.GetTagItem(SemanticConventions.Events.Tags.SizeBytes));
         Assert.Equal(edictEvent.EventId.ToString(), put.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_ShouldNestPutSpanUnderProducerContext_NotAmbient()
+    {
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var store = new RecordingStore();
+        var edictEvent = new OrderPlacedEvent(Guid.NewGuid(), new string('x', 256)) { EventId = Guid.NewGuid() };
+        var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, store, new StubEdictEventStreamAccessors());
+
+        // The producer turn is supplied explicitly — mirroring drain-time where
+        // Activity.Current is null, so the PUT must parent from the passed context.
+        var producerContext = new ActivityContext(
+            ActivityTraceId.CreateRandom(), ActivitySpanId.CreateRandom(), ActivityTraceFlags.Recorded);
+        Assert.Null(Activity.Current);
+
+        await policy.ApplyAsync(edictEvent, producerContext, CancellationToken.None);
+
+        var put = stopped.Single(a =>
+            a.OperationName == SemanticConventions.ClaimCheck.Spans.Put
+            && edictEvent.EventId.ToString().Equals(a.GetTagItem(SemanticConventions.ClaimCheck.Tags.Key)));
+        Assert.Equal(producerContext.TraceId, put.TraceId);
+        Assert.Equal(producerContext.SpanId, put.ParentSpanId);
     }
 
     static Serializer BuildSerializer()

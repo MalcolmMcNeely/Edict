@@ -130,4 +130,18 @@ public static class ActivityExtensions
         var context = RestoreFromTraceParent(traceParent, traceState);
         return context.TraceId == default ? null : new ActivityLink(context);
     }
+
+    /// <summary>
+    /// Builds an <see cref="ActivityLink"/> directly from an event's stamped
+    /// W3C hex <paramref name="traceId"/> / <paramref name="spanId"/> and
+    /// <paramref name="traceState"/> — the form the generated consumer spine,
+    /// the dedup span, and the dead-letter projection carry, where the cause is
+    /// the event's publish span rather than a persisted traceparent. Returns
+    /// <see langword="null"/> when the ids are absent or malformed.
+    /// </summary>
+    public static ActivityLink? BuildLink(string? traceId, string? spanId, string? traceState)
+    {
+        var context = RestoreFromStrings(traceId, spanId, traceState);
+        return context.TraceId == default ? null : new ActivityLink(context);
+    }
 }

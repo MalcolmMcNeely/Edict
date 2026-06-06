@@ -33,16 +33,28 @@ sealed class InvokeHandlerExecutor(
         EdictEvent? liveWireEvent)
     {
         var staged = serializer.Deserialize<EdictEvent>(entry.Payload);
-        var materialised = await unwrap.ApplyAsync(
-            staged, consumerType ?? typeof(object), CancellationToken.None);
 
-        var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
+        // Open the consumer turn first so the claim-check fetch nests under it; a
+        // pointer envelope's inner type is unknown until the fetch returns, so the
+        // span starts named for the staged frame and its DisplayName is corrected
+        // once unwrapped. The common raw-event path stages the event itself, so the
+        // name is already right and the rename is a no-op; only an oversized
+        // (pointer-envelope) event leaves OperationName on the wrapper while the
+        // exported DisplayName carries the inner type.
+        var link = ActivityExtensions.BuildLink(entry.TraceParent, entry.TraceState);
         using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
-            materialised.GetType().Name, parentContext);
+            staged.GetType().Name, link);
 
-        if (span is not null && tagWriters.TryGet(materialised.GetType(), out var write))
+        var materialised = await unwrap.ApplyAsync(
+            staged, consumerType ?? typeof(object), span?.Context ?? default, CancellationToken.None);
+
+        if (span is not null)
         {
-            write(materialised, span);
+            span.DisplayName = $"{SemanticConventions.Events.Spans.Handle} {materialised.GetType().Name}";
+            if (tagWriters.TryGet(materialised.GetType(), out var write))
+            {
+                write(materialised, span);
+            }
         }
 
         var eventTypeTag = new KeyValuePair<string, object?>(

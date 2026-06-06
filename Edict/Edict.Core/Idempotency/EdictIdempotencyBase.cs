@@ -172,7 +172,10 @@ public abstract class EdictIdempotencyBase<TPayload>
         }
 
         var unwrap = _unwrap ??= ServiceProvider.GetRequiredService<ClaimCheckUnwrap>();
-        var materialised = await unwrap.ApplyAsync(incoming, GetType(), CancellationToken.None);
+        // The inline branch only ever sees non-pointer frames (pointer envelopes
+        // are staged for deferred dispatch above), so no GET span fires here and
+        // there is no consumer-turn span to parent it under yet.
+        var materialised = await unwrap.ApplyAsync(incoming, GetType(), default, CancellationToken.None);
         await OnStreamEventAsync(materialised, token);
     }
 
@@ -418,8 +421,8 @@ public abstract class EdictIdempotencyBase<TPayload>
 
     private protected static void EmitDedupSpan(EdictEvent edictEvent)
     {
-        var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
-        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(edictEvent.GetType().Name, parentContext);
+        var link = ActivityExtensions.BuildLink(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
+        using var span = EdictDiagnostics.ActivitySource.StartEdictEventDeduplicated(edictEvent.GetType().Name, link);
         span?.SetTag(SemanticConventions.Events.Tags.Deduplicated, true);
     }
 

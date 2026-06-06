@@ -11,7 +11,7 @@ namespace Edict.Azure.Streaming.Tests.Telemetry;
 public sealed class CommandPublishHandleSpanStitchTests(AqsStreamingFixture fixture)
 {
     [Fact]
-    public async Task CommandPublishHandleSpans_ShouldFormParentChildTree_AcrossAzureQueueHop()
+    public async Task CommandPublishParentChild_AndHandleLinksToPublish_AcrossAzureQueueHop()
     {
         var customerId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -47,13 +47,20 @@ public sealed class CommandPublishHandleSpanStitchTests(AqsStreamingFixture fixt
             publishSpan = stopped.First(a =>
                 a.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent"
                 && a.ParentSpanId == commandSpan.SpanId);
+            // Scope to the handle span that links to this publish — the link both
+            // identifies it across the hop and is the property under test.
             handleSpan = stopped.First(a =>
                 a.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
-                && a.ParentSpanId == publishSpan.SpanId);
+                && a.Links.Any(link => link.Context.SpanId == publishSpan.SpanId));
         }
 
+        // Command -> publish stays one parent-child trace (a synchronous turn).
         Assert.Equal(commandSpan.TraceId, publishSpan.TraceId);
-        Assert.Equal(commandSpan.TraceId, handleSpan.TraceId);
+
+        // The consumer turn is its own trace, linked back to publish across the hop.
+        Assert.Equal(default, handleSpan.ParentSpanId);
+        Assert.NotEqual(commandSpan.TraceId, handleSpan.TraceId);
+        Assert.Equal(publishSpan.TraceId, handleSpan.Links.Single().Context.TraceId);
     }
 }
 

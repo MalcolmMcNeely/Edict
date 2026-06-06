@@ -141,7 +141,7 @@ Once all tests are GREEN and any refactoring is done:
 
 - [ ] Run the full test suite one final time
 - [ ] Commit directly to `main` — no feature branches
-- [ ] Commit with a descriptive message referencing the issue (e.g. `feat: description (#N)`)
+- [ ] Commit with a descriptive message referencing the issue, choosing the Conventional-Commit prefix that matches the work: `feat:` for a consumer-facing capability, `fix:` for a consumer-facing bug fix, and `docs:` / `chore:` / `ci:` / `refactor:` / `test:` for non-shipping work. The prefix is load-bearing: `git-cliff` builds the GitHub Release notes from it (`feat:` becomes Features, `fix:` becomes Fixes, breaking becomes Breaking Changes; `docs:`, `chore:`, and every other prefix are dropped). A fix mislabelled `feat:` lands in the wrong section; a chore mislabelled `feat:` invents a phantom Feature in the notes. The subject line is printed verbatim, so write it as the release-note line it will become (e.g. `fix: stop the dead-letter promoter throwing on an unknown effect kind (#N)`).
 - [ ] If the change is breaking, mark it: use `feat!:`/`fix!:` and add a `BREAKING CHANGE: <what broke>` footer, so the release notes surface it in the Breaking section. A change is breaking when it removes, renames, or alters the signature of a public `Edict*` member — concretely, when the public-surface allow-list in `Edict.Architecture.Tests` changed by anything other than a pure addition. Adding-only is a normal `feat:`. If the issue body carries a `Breaking:` line, honor it rather than re-deriving.
 - [ ] Always include the Co-authored-by trailer: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
 

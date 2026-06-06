@@ -186,13 +186,83 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
         await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
         await WaitForEventsAsync(orderId);
 
-        var commandSpan = stopped.Single(a =>
-            a.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         var handleSpan = stopped.Single(a =>
             a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
-            && a.TraceId == commandSpan.TraceId);
+            && sku.Equals(a.GetTagItem("edict.sku")));
         Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
+    }
+
+    [Fact]
+    public async Task HandleSpan_ShouldBeNewRootLinkingToPublishSpan()
+    {
+        var orderId = Guid.NewGuid();
+        const string sku = "SKU-EVTHANDLE-ROOT-1";
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
+        await WaitForEventsAsync(orderId);
+
+        var publishSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
+            && sku.Equals(a.GetTagItem("edict.sku")));
+        var handleSpan = stopped.Single(a =>
+            a.OperationName == $"{SemanticConventions.Events.Spans.Handle} TelOrderPlacedEvent"
+            && sku.Equals(a.GetTagItem("edict.sku")));
+
+        // The consumer turn is its own trace — it does not share the producer's.
+        Assert.Null(handleSpan.Parent);
+        Assert.NotEqual(publishSpan.TraceId, handleSpan.TraceId);
+
+        // ...but it links back to the publish span via the event's stamped context.
+        var onlyLink = Assert.Single(handleSpan.Links);
+        Assert.Equal(publishSpan.TraceId, onlyLink.Context.TraceId);
+        Assert.Equal(publishSpan.SpanId, onlyLink.Context.SpanId);
+    }
+
+    [Fact]
+    public async Task NoEdictSpanIsADetachedRoot_ExceptTheIntendedNewRoots()
+    {
+        var orderId = Guid.NewGuid();
+        const string sku = "SKU-ORPHAN-SWEEP-1";
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await fixture.Sender.SendAsync(new TelPlaceOrderCommand(orderId, sku));
+        await WaitForEventsAsync(orderId);
+
+        // The whole command -> handle flow carries the one telemeterized sku, so it
+        // scopes the sweep to this turn's spans despite the shared cluster.
+        var flowSpans = stopped.Where(a => sku.Equals(a.GetTagItem("edict.sku"))).ToList();
+        Assert.NotEmpty(flowSpans);
+
+        // The only spans allowed to start their own trace are the originating Web
+        // command and the per-turn consumer roots (handle / deduplicated). Every
+        // other Edict span must nest under an explicit parent context.
+        string[] allowedRootPrefixes =
+        [
+            SemanticConventions.Commands.Spans.Command,
+            SemanticConventions.Events.Spans.Handle,
+            SemanticConventions.Events.Spans.Deduplicated,
+        ];
+        var detachedRoots = flowSpans
+            .Where(a => a.ParentSpanId == default)
+            .Where(a => !allowedRootPrefixes.Any(prefix => a.OperationName.StartsWith($"{prefix} ")))
+            .Select(a => a.OperationName)
+            .ToList();
+        Assert.Empty(detachedRoots);
     }
 
     [Fact]

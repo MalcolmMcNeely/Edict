@@ -53,9 +53,9 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
         {
             case EdictDeadLetterRaised raised:
             {
-                var parentContext = ActivityExtensions.RestoreFromStrings(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
+                var link = ActivityExtensions.BuildLink(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                 using var span = EdictDiagnostics.ActivitySource.StartEdictEventHandle(
-                    nameof(EdictDeadLetterRaised), parentContext);
+                    nameof(EdictDeadLetterRaised), link);
                 return await DispatchEventAsync(raised, HandleAsync);
             }
             default:

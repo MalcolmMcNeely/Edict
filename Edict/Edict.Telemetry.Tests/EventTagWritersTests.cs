@@ -21,6 +21,7 @@ file sealed partial record UntaggedEvent(Guid Id) : EdictEvent
     public Guid Id { get; init; } = Id;
 }
 
+[Collection(ActivityListenerUnitCollection.Name)]
 public class EventTagWritersTests
 {
     [Fact]

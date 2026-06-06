@@ -8,12 +8,12 @@ using Xunit;
 namespace Edict.Tests.Conformance.Streaming;
 
 /// <summary>
-/// Streaming-axis conformance that the deferred <c>edict.event.handle</c> span
-/// nests under the originating <c>edict.event.publish</c> span across the stream
-/// hop. The producer-side publish span (opened by the outbox executor) and the
-/// consumer-side invocation span (opened by <c>InvokeHandlerExecutor</c>) must
-/// share a trace and parent-child link — a substrate-dependent property, since
-/// the trace context must survive the real stream hop.
+/// Streaming-axis conformance that the deferred <c>edict.event.handle</c> span is
+/// a new trace root carrying one <see cref="ActivityLink"/> back to the
+/// originating <c>edict.event.publish</c> span across the stream hop. Under the
+/// per-turn model the consumer turn is its own bounded trace, so the link — not a
+/// shared trace — is what survives the real stream hop, a substrate-dependent
+/// property since the publish span's identity must ride the event across it.
 /// </summary>
 public abstract class EventHandlerSpanStitchAcrossOutboxHopScenarios<TFixture>
     where TFixture : StreamingConformanceFixture
@@ -26,7 +26,7 @@ public abstract class EventHandlerSpanStitchAcrossOutboxHopScenarios<TFixture>
     }
 
     [Fact]
-    public async Task DeferredInvocationSpan_ShouldNestUnderPublishSpan_AcrossStreamHop()
+    public async Task DeferredInvocationSpan_ShouldBeNewRootLinkingToPublishSpan_AcrossStreamHop()
     {
         var customerId = Guid.NewGuid();
         var stopped = new List<Activity>();
@@ -53,11 +53,16 @@ public abstract class EventHandlerSpanStitchAcrossOutboxHopScenarios<TFixture>
         {
             publishSpan = stopped.First(a =>
                 a.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent");
+            // Scope to the handle span that links to this publish — the link both
+            // identifies it across the hop and is the property under test.
             invocationSpan = stopped.First(a =>
                 a.OperationName == $"{SemanticConventions.Events.Spans.Handle} CustomerNotifiedEvent"
-                && a.ParentSpanId == publishSpan.SpanId);
+                && a.Links.Any(link => link.Context.SpanId == publishSpan.SpanId));
         }
 
-        Assert.Equal(publishSpan.TraceId, invocationSpan.TraceId);
+        // A new trace root, not a child of publish, but linked back to it.
+        Assert.Equal(default, invocationSpan.ParentSpanId);
+        Assert.NotEqual(publishSpan.TraceId, invocationSpan.TraceId);
+        Assert.Equal(publishSpan.TraceId, invocationSpan.Links.Single().Context.TraceId);
     }
 }

@@ -12,6 +12,7 @@ using Orleans.Serialization;
 
 namespace Edict.Core.Tests.Outbox;
 
+[Collection(TestSupport.EdictListenerUnitCollection.Name)]
 public sealed class PublishEventExecutorTests
 {
     static readonly Serializer Serializer = BuildSerializer();

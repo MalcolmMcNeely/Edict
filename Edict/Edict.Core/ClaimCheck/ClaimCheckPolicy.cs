@@ -47,7 +47,8 @@ internal sealed class ClaimCheckPolicy
     /// stored payload as before. Throws <see cref="EdictEnvelopeOverflowException"/>
     /// when the wrapped envelope still exceeds <see cref="MaxEnvelopeBytes"/>.
     /// </summary>
-    public async Task<ClaimCheckApplyResult> ApplyAsync(EdictEvent edictEvent, CancellationToken cancellationToken)
+    public async Task<ClaimCheckApplyResult> ApplyAsync(
+        EdictEvent edictEvent, ActivityContext producerContext, CancellationToken cancellationToken)
     {
         var innerBytes = _serializer.SerializeToArray<EdictEvent>(edictEvent);
         if (innerBytes.Length <= _thresholdBytes)
@@ -58,7 +59,7 @@ internal sealed class ClaimCheckPolicy
             return new ClaimCheckApplyResult(innerBytes, edictEvent);
         }
 
-        await PutAsync(edictEvent, innerBytes, cancellationToken);
+        await PutAsync(edictEvent, innerBytes, producerContext, cancellationToken);
 
         var (innerStreamName, innerRouteKey) = _accessors.Resolve(edictEvent);
         // The pointer envelope IS keyed by the inner event's already-stamped
@@ -94,10 +95,14 @@ internal sealed class ClaimCheckPolicy
     /// </summary>
     public readonly record struct ClaimCheckApplyResult(byte[] Payload, EdictEvent WireEvent);
 
-    async Task PutAsync(EdictEvent edictEvent, byte[] innerBytes, CancellationToken cancellationToken)
+    async Task PutAsync(
+        EdictEvent edictEvent, byte[] innerBytes, ActivityContext producerContext, CancellationToken cancellationToken)
     {
+        // Nest in the producer turn from the explicitly-supplied context: at
+        // enqueue Activity.Current may already be off the originating span, so a
+        // bare StartActivity would spawn a detached root for every spilled event.
         using var span = EdictDiagnostics.ActivitySource.StartActivity(
-            SemanticConventions.ClaimCheck.Spans.Put, ActivityKind.Client);
+            SemanticConventions.ClaimCheck.Spans.Put, ActivityKind.Client, producerContext);
         span?.SetTag(SemanticConventions.Events.Tags.Type, edictEvent.GetType().Name);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, innerBytes.Length);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, edictEvent.EventId.ToString());

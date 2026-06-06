@@ -33,7 +33,7 @@ public sealed class ClaimCheckPolicyMetricsTests
 
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 30_720, store: null, new StubEdictEventStreamAccessors());
 
-        await policy.ApplyAsync(edictEvent, CancellationToken.None);
+        await policy.ApplyAsync(edictEvent, default, CancellationToken.None);
 
         var capture = Assert.Single(captures);
         Assert.Equal(expectedSize, capture.Value);
@@ -55,7 +55,7 @@ public sealed class ClaimCheckPolicyMetricsTests
 
         var policy = new ClaimCheckPolicy(Serializer, thresholdBytes: 64, new InMemoryStore(), new StubEdictEventStreamAccessors());
 
-        await policy.ApplyAsync(edictEvent, CancellationToken.None);
+        await policy.ApplyAsync(edictEvent, default, CancellationToken.None);
 
         var capture = Assert.Single(captures);
         Assert.Equal(innerSize, capture.Value);
