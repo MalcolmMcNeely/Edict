@@ -62,6 +62,26 @@ jobs:
           echo "next=$next" >> "$GITHUB_OUTPUT"
           echo "Latest tag '$latest' + ${{ github.event.inputs.bump }} -> $next"
 
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            git-cliff --config cliff.toml --unreleased --output RELEASE_NOTES.md
+          else
+            git-cliff --config cliff.toml --latest --output RELEASE_NOTES.md
+          fi
+          {
+            echo "## Release notes preview"
+            echo
+            cat RELEASE_NOTES.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create and push tag
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false' }}
         run: |
@@ -112,7 +132,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && steps.version.outputs.next || github.ref_name }}
+          body_path: RELEASE_NOTES.md
           files: |
             ./artifacts/*.nupkg
             ./artifacts/*.snupkg
-          generate_release_notes: true
