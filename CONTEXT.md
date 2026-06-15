@@ -45,6 +45,14 @@ _Avoid_: authoring it by hand (the framework stamps it; a caller may supply one 
 The actor on whose authority a Command was issued or an Event raised: a human user, a service identity, or a consumer-minted system identity for non-user work. An opaque consumer-supplied string, resolved at the edge from the authenticated claim, stamped on the message at origin and carried unchanged through the consequential Command/Event/schedule chain. A durable field on `EdictCommand` and `EdictEvent` (mirroring the Correlation Id), with `RequestContext` only as the per-turn relay.
 _Avoid_: trusting a principal read from a Command body (confused-deputy); conflating it with the **data subject** (the person the data is *about* — a distinct, deferred concept); Edict-side validation of its format (the consumer's domain); a framework-supplied "system" sentinel (the consumer mints their own for non-user origins).
 
+**Origin send**:
+A Command send a consumer writes at the edge of a causal chain — `IEdictSender.SendAsync(command)` — where the **Principal** is stamped for the first time (from the edge resolver, or explicitly via the `SendAsync(command, principal)` overload). The fail-closed gate and the opt-in `EDICT023` analyzer apply here and only here.
+_Avoid_: treating a **Relayed send** as an origin (it inherits, never re-resolves); calling a raised Event an origin (Events inherit in-turn and are never origin-sent).
+
+**Relayed send**:
+A Command send the framework issues on a consumer's behalf as a consequence of a turn already in flight — a Saga's `Dispatch`, the outbox `SendCommand` effect, a schedule fire — which inherits the **Principal** from the per-turn relay or the schedule arm-context rather than re-resolving it. Carries the `IsCrossTurnLink()` marker, so it passes the origin fail-closed gate untouched and is never an `EDICT023` call site (a consumer never writes one).
+_Avoid_: flagging or failing-closed on a relayed send; confusing the per-turn `RequestContext` relay (ephemeral) with the durable Principal field that re-seeds it at each grain entry.
+
 **EdictCursor**:
 The opaque read-your-writes token echoed on `EdictCommandResult.Accepted`, wrapping the Command's Correlation Id. A consumer feeds it to a Projection Read as `after:` to wait, briefly and boundedly, until the work the Command set in motion is visible.
 _Avoid_: unwrapping it to the bare Guid on the read path (pass the cursor); minting one to force a wait on work no Command set in motion; reading a returned cursor as proof the whole chain has landed (it names the chain; the read decides visibility).
