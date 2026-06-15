@@ -167,7 +167,8 @@ public abstract class EdictCommandHandler<TState>
             every,
             ResolveScheduleCap(timeout),
             armingSpan?.BuildTraceParent(),
-            armingSpan?.TraceStateString);
+            armingSpan?.TraceStateString,
+            PrincipalRelay.Current());
     }
 
     // Resolves the effective timeout duration for a schedule: an explicit timeout:
@@ -230,6 +231,7 @@ public abstract class EdictCommandHandler<TState>
         var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
         using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
         fireSpan?.CaptureToRequestContext();
+        PrincipalRelay.Seed(entry.ArmPrincipal);
 
         EdictScheduleResult result;
         try
@@ -249,7 +251,10 @@ public abstract class EdictCommandHandler<TState>
             ? base.State.Schedule.Complete(entry.ScheduleId)
             : base.State.Schedule.Continue(entry.ScheduleId, now);
 
-        await CommitAndDrainRaisedEventsAsync();
+        // A fire is a fresh causal root (new correlation) but stays attributed to the
+        // arming principal carried durably in the entry, so a recurring job's events
+        // are still ascribed to whoever armed it across reactivation.
+        await CommitAndDrainRaisedEventsAsync(Guid.NewGuid(), entry.ArmPrincipal);
     }
 
     // The dispatch delegate ScheduleHost calls per timed-out entry. A timeout is
@@ -431,6 +436,11 @@ public abstract class EdictCommandHandler<TState>
                 route!.TagWriter?.Invoke(command, activity);
             }
         }
+
+        // Seed the turn's principal off the inbound command so a schedule the handler
+        // arms inherits the originating actor through the relay, the same slot that
+        // already persists this command's trace context for the fire to link back to.
+        PrincipalRelay.Seed(command.Principal);
 
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 

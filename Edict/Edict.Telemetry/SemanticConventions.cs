@@ -323,5 +323,10 @@ public static class SemanticConventions
         /// (a saga's outbox <c>SendCommand</c>), so the receiving <c>edict.command.handle</c>
         /// links back to the send span as a new root instead of nesting under it as a child.</summary>
         public const string CrossTurnLink = "edict.cmd-cross-turn";
+
+        /// <summary>The per-turn relay slot for the inbound message's principal, seeded at a
+        /// grain entry so an internal send issued later in the turn (a saga <c>Dispatch</c>,
+        /// a schedule arm) inherits the actor without the durable field being threaded by hand.</summary>
+        public const string Principal = "edict.principal";
     }
 }

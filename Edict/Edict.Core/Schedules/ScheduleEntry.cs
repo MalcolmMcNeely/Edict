@@ -1,5 +1,7 @@
 using System.ComponentModel;
 
+using Edict.Contracts.Audit;
+
 namespace Edict.Core.Schedules;
 
 /// <summary>
@@ -59,4 +61,14 @@ public sealed record ScheduleEntry
     /// <summary>The <c>tracestate</c> companion to <see cref="ArmTraceParent"/>, riding onto the fire's link.</summary>
     [Id(6)]
     public string? ArmTraceState { get; init; }
+
+    /// <summary>
+    /// The principal that armed this schedule, captured at <c>Schedule()</c> off the
+    /// turn relay and persisted so a fire — its own grain turn, decoupled in time and
+    /// possibly across a deactivation where ambient context cannot survive — stays
+    /// attributed to whoever armed it rather than to nobody. <c>null</c> when arming
+    /// ran with no principal in scope.
+    /// </summary>
+    [Id(7)]
+    public EdictPrincipal? ArmPrincipal { get; init; }
 }

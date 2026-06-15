@@ -445,6 +445,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Telemetry.ActivitySourceExtensions",
         "Edict.Telemetry.EdictDiagnostics",
         "Edict.Telemetry.IEventTagWriters",
+        "Edict.Telemetry.PrincipalRelay",
         "Edict.Telemetry.SemanticConventions",
     };
 

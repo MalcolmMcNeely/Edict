@@ -163,7 +163,8 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             every,
             ResolveScheduleCap(timeout),
             armingSpan?.BuildTraceParent(),
-            armingSpan?.TraceStateString);
+            armingSpan?.TraceStateString,
+            PrincipalRelay.Current());
     }
 
     // Resolves the effective timeout duration for a saga schedule. Unlike a Command
@@ -354,6 +355,11 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     {
         var buffer = _dispatch.Begin();
 
+        // Seed the turn's principal off the handled event so a Dispatch the handler
+        // issues, or a Schedule it arms, inherits the originating actor through the
+        // relay rather than threading the durable field by hand.
+        PrincipalRelay.Seed(edictEvent.Principal);
+
         await handler(edictEvent);
 
         // Build the SendCommand entry here, while the handle span is still
@@ -361,11 +367,13 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // command nest under the saga handle span as parent-child even when a
         // crash-recovery drain runs much later. Stamp the handled event's
         // correlation onto the outbound command so the chain survives the hop;
-        // SendAsync's mint-if-empty then honours it rather than starting anew.
+        // SendAsync's mint-if-empty then honours it rather than starting anew. The
+        // principal rides off the same relay so the command stays attributed to the
+        // actor whose event triggered it, carried durably in the serialized effect.
         var command = buffer.Take();
         var effect = command is null
             ? null
-            : BuildSendCommandEntry(command with { CorrelationId = edictEvent.CorrelationId });
+            : BuildSendCommandEntry(command with { CorrelationId = edictEvent.CorrelationId, Principal = PrincipalRelay.Current() });
 
         ReportSagaProgress();
 
@@ -615,6 +623,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
         using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
         fireSpan?.CaptureToRequestContext();
+        PrincipalRelay.Seed(entry.ArmPrincipal);
 
         EdictScheduleResult result;
         try
@@ -628,8 +637,11 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             return;
         }
 
+        // A fire stays attributed to the arming principal carried durably in the
+        // entry, so a Dispatched poll-then-send command is ascribed to whoever armed
+        // the schedule even across a reactivation.
         var command = buffer.Take();
-        var effect = command is null ? null : BuildSendCommandEntry(command);
+        var effect = command is null ? null : BuildSendCommandEntry(command with { Principal = entry.ArmPrincipal });
 
         var nextSchedule = result is EdictScheduleResult.Complete
             ? base.State.Schedule.Complete(entry.ScheduleId)

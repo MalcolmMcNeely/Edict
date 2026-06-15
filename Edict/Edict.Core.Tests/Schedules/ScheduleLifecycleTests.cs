@@ -1,3 +1,5 @@
+using Edict.Contracts.Audit;
+
 using Orleans;
 
 using Xunit;
@@ -122,6 +124,48 @@ public sealed class ScheduleLifecycleTests
             ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
             tick => tick.Key == probeId);
         Assert.NotEqual(Guid.Empty, published.CorrelationId);
+    }
+
+    [Fact]
+    public async Task Fire_RaisingEvent_ShouldCarryTheArmingPrincipal()
+    {
+        var probeId = Guid.NewGuid();
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
+
+        _fixture.AdvanceClock(Cadence);
+        await probe.FireDueSchedulesAsync();
+
+        // A fire has no inbound message, so the only source of the actor is the
+        // principal persisted in the schedule's arm-context: the recurring job stays
+        // attributed to whoever armed it. Filter by this probe's key — the capturing
+        // executor's queue is shared across the (serial) schedule tests.
+        var published = Assert.Single(
+            ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
+            tick => tick.Key == probeId);
+        Assert.Equal(EdictPrincipal.Of("scheduler-bob"), published.Principal);
+    }
+
+    [Fact]
+    public async Task Fire_AfterReactivation_ShouldStillCarryTheArmingPrincipal()
+    {
+        var probeId = Guid.NewGuid();
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
+
+        // Force a reactivation between arming and firing: the arm-context principal
+        // survives only because it is durable schedule state, not ambient context.
+        var activationBeforeDeactivation = await probe.GetActivationIdAsync();
+        await probe.DeactivateAsync();
+        await WaitForReactivationAsync(probe, activationBeforeDeactivation);
+
+        _fixture.AdvanceClock(Cadence);
+        await probe.FireDueSchedulesAsync();
+
+        var published = Assert.Single(
+            ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
+            tick => tick.Key == probeId);
+        Assert.Equal(EdictPrincipal.Of("scheduler-bob"), published.Principal);
     }
 
     [Fact]

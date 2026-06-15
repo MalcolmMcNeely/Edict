@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Configuration;
 using Edict.Core.Outbox;
 
@@ -61,7 +62,13 @@ sealed class ScheduleHost<TPayload>
     /// by the post-commit <see cref="ReconcileAsync"/>. The deadline is anchored to
     /// the same <c>now</c> as the first due instant and never advanced by a fire.
     /// </summary>
-    public void Schedule(byte[] messagePayload, TimeSpan period, TimeSpan? cap, string? armTraceParent = null, string? armTraceState = null)
+    public void Schedule(
+        byte[] messagePayload,
+        TimeSpan period,
+        TimeSpan? cap,
+        string? armTraceParent = null,
+        string? armTraceState = null,
+        EdictPrincipal? armPrincipal = null)
     {
         var now = _timeProvider.GetUtcNow();
         State.Schedule = State.Schedule.Add(new ScheduleEntry
@@ -73,6 +80,7 @@ sealed class ScheduleHost<TPayload>
             DeadlineAt = cap is { } duration ? now + duration : null,
             ArmTraceParent = armTraceParent,
             ArmTraceState = armTraceState,
+            ArmPrincipal = armPrincipal,
         });
     }
 

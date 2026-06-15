@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
@@ -73,6 +74,7 @@ public sealed partial record ScheduleTickedEvent(Guid Key, int Counter) : EdictE
 public interface IScheduleProbe : IEdictScheduleFireable
 {
     Task StartAsync(TimeSpan period, ScheduleProbeBehavior behavior);
+    Task StartWithPrincipalAsync(TimeSpan period, EdictPrincipal principal);
     Task StartWithTimeoutAsync(TimeSpan period, TimeSpan timeout, ScheduleProbeTimeoutBehavior timeoutBehavior);
     Task<int> GetCounterAsync();
     Task<int> GetTimeoutCounterAsync();
@@ -139,6 +141,16 @@ public partial class ScheduleProbe : EdictCommandHandler<ScheduleProbeState>, IS
         ValidateAndHandleAsync(new ScheduleProbeStartCommand(this.GetPrimaryKey()), () =>
         {
             State.Behavior = behavior;
+            Schedule(new ScheduleTickMessage(), period);
+            return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+        });
+
+    // Arms a raising schedule through a start command carrying a principal, so the
+    // turn relay seeds it and Schedule() captures it as the entry's arm-context.
+    public Task StartWithPrincipalAsync(TimeSpan period, EdictPrincipal principal) =>
+        ValidateAndHandleAsync(new ScheduleProbeStartCommand(this.GetPrimaryKey()) { Principal = principal }, () =>
+        {
+            State.Behavior = ScheduleProbeBehavior.ContinueRaiseEvent;
             Schedule(new ScheduleTickMessage(), period);
             return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
         });

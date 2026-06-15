@@ -1,4 +1,5 @@
 using Edict.Contracts;
+using Edict.Contracts.Audit;
 using Edict.Core.Idempotency;
 using Edict.Core.Outbox;
 using Edict.Core.Sagas;
@@ -96,6 +97,7 @@ public sealed class EnvelopeStateShapeTests
                 DueAt = Now,
                 ArmTraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
                 ArmTraceState = "edict=1",
+                ArmPrincipal = EdictPrincipal.Of("scheduler-bob"),
             }),
         };
 
