@@ -10,8 +10,9 @@ sealed class SiloWiringScanner
     const string SiloBuilderFullName = "Orleans.Hosting.ISiloBuilder";
     const string ProgramFileName = "Program.cs";
     const string AddEdictPrefix = "AddEdict";
+    const string AuditOnSwitchName = "WithAudit";
 
-    static readonly SiloWiringEntry[] KnownExtensions =
+    internal static readonly SiloWiringEntry[] KnownExtensions =
     [
         new("AddEdict", "Edict.Core", "Registers the Edict framework: handler discovery, outbox, telemetry."),
         new("AddEdictAzureStreams", "Edict.Azure.Streaming", "Wires the Azure Queue stream provider."),
@@ -19,6 +20,7 @@ sealed class SiloWiringScanner
         new("AddEdictAzurePersistence", "Edict.Azure.Persistence", "Wires Azure Table Storage as the grain-state provider."),
         new("AddEdictPostgresPersistence", "Edict.Postgres", "Wires PostgreSQL as the grain-state provider."),
         new("AddEdictKafkaStreams", "Edict.Kafka", "Wires the Kafka stream provider."),
+        new("WithAudit", "Edict.Core", "Turns on audit capture: stamps origin principals and writes each decision to the WORM audit store."),
     ];
 
     public SiloWiringReport Scan(IEnumerable<Compilation> compilations, string? solutionDirectory)
@@ -71,7 +73,7 @@ sealed class SiloWiringScanner
         foreach (var invocation in invocationsInSourceOrder)
         {
             var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-            if (symbol is null || !IsAddEdictOnSiloBuilder(symbol))
+            if (symbol is null || !IsEdictExtensionOnSiloBuilder(symbol))
             {
                 continue;
             }
@@ -93,9 +95,11 @@ sealed class SiloWiringScanner
         return new SiloWiringReport(programLocation, wired, missing);
     }
 
-    static bool IsAddEdictOnSiloBuilder(IMethodSymbol method)
+    static bool IsEdictExtensionOnSiloBuilder(IMethodSymbol method)
     {
-        if (!method.Name.StartsWith(AddEdictPrefix, StringComparison.Ordinal))
+        var isEdictExtensionName = method.Name.StartsWith(AddEdictPrefix, StringComparison.Ordinal)
+            || method.Name == AuditOnSwitchName;
+        if (!isEdictExtensionName)
         {
             return false;
         }

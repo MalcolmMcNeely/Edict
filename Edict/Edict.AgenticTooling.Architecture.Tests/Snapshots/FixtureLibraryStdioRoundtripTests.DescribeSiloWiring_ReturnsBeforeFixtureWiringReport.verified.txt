@@ -36,6 +36,11 @@
       "extensionName": "AddEdictKafkaStreams",
       "declaringAssembly": "Edict.Kafka",
       "purpose": "Wires the Kafka stream provider."
+    },
+    {
+      "extensionName": "WithAudit",
+      "declaringAssembly": "Edict.Core",
+      "purpose": "Turns on audit capture: stamps origin principals and writes each decision to the WORM audit store."
     }
   ],
   "driftStatus": "no-edict-references"

@@ -40,6 +40,38 @@ public class SiloWiringScannerTests
     }
 
     [Fact]
+    public void Scan_ProgramCsCallsWithAudit_ReportsAuditOnSwitchAsWired()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .WithAudit();
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new SiloWiringScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        Assert.Contains(report.Wired, entry => entry.ExtensionName == "WithAudit");
+        Assert.DoesNotContain(report.Missing, entry => entry.ExtensionName == "WithAudit");
+    }
+
+    [Fact]
     public void Scan_ClaimCheckMissing_SurfacesAddEdictAzureBlobClaimCheckInMissingList()
     {
         // Arrange
@@ -161,6 +193,11 @@ public class SiloWiringScannerTests
             public static class EdictSiloBuilderExtensions
             {
                 public static ISiloBuilder AddEdict(this ISiloBuilder siloBuilder) => siloBuilder;
+            }
+
+            public static class EdictAuditSiloBuilderExtensions
+            {
+                public static ISiloBuilder WithAudit(this ISiloBuilder siloBuilder) => siloBuilder;
             }
 
             public static class EdictAzureStreamingSiloBuilderExtensions

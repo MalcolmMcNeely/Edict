@@ -36,6 +36,7 @@ A brand-new project is the degenerate case where almost everything is missing, s
 | `AddEdictAzurePersistence(...)` | `Edict.Azure.Persistence` | Azure Table Storage as the grain-state provider. |
 | `AddEdictPostgresPersistence(...)` | `Edict.Postgres` | PostgreSQL as the grain-state provider. |
 | `AddEdictKafkaStreams(...)` | `Edict.Kafka` | Kafka as the stream provider. |
+| `WithAudit()` | `Edict.Core` | Turns on audit capture for the silo. Pairs with `silo.Services.AddEdictAudit(resolver)` (the origin principal resolver). Optional; see the auditing section. |
 
 Each `AddEdict*` extension that takes a `(...)` argument accepts an `Action<T>` over its options class. The canonical reference for every options property, its default, and its validation rule is the `docs/configuration` folder in the Edict repository — `core.md` for the provider-agnostic knobs, plus the page matching your streaming and persistence choice. Reach for it before hand-tuning a literal in `Program.cs`.
 
@@ -58,7 +59,7 @@ A consumer opts a single perpetual schedule out of the cap at its call site with
 
 ## Auditing: enable EDICT023 when you adopt it
 
-When you wire auditing (`AddEdictAudit(resolver)` on the silo and client), the runtime fails closed at the origin: an originating `SendAsync` with no resolved principal throws before anything is persisted. Pair that wiring with the opt-in **`EDICT023`** analyzer so the same gap is caught at compile time instead of at runtime. It is off by default — an analyzer cannot see that `AddEdictAudit` was wired in this (often separate) assembly — so enable it per project in `.editorconfig`:
+Auditing is two calls on a silo: `silo.WithAudit()` arms capture (it writes each decision to the WORM audit store the persistence provider registered), and `silo.Services.AddEdictAudit(resolver)` registers the origin principal resolver. A client that only issues commands registers `AddEdictAudit(resolver)` alone. `edict_describe_silo_wiring` reports `WithAudit` as the silo on-switch, so confirm it is wired (not just the resolver) before you call a capturing silo done. Once wired, the runtime fails closed at the origin: an originating `SendAsync` with no resolved principal throws before anything is persisted. Pair that wiring with the opt-in **`EDICT023`** analyzer so the same gap is caught at compile time instead of at runtime. It is off by default — an analyzer cannot see that `AddEdictAudit` was wired in this (often separate) assembly — so enable it per project in `.editorconfig`:
 
 ```ini
 [*.cs]
