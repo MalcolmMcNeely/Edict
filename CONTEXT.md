@@ -41,6 +41,10 @@ _Avoid_: returning domain payloads through a command; throwing for expected reje
 A framework-stamped Guid that rides every Command and Event on one causal chain. It is minted if absent when a Command is first sent and inherited by every message that chain causes — a Command's raised Events, a Saga's dispatched Command — so a timer or schedule fire, having no upstream message, starts a fresh chain. It is the chain-stable identifier behind read-your-writes and an optional grouping dimension on dead-letter rows.
 _Avoid_: authoring it by hand (the framework stamps it; a caller may supply one but need not); conflating it with the per-message `[RouteKey]` Guid (which re-keys across domains) or with W3C trace context (the observability twin, null when unsampled); expecting a per-hop causation parent (it is constant across the chain, not a parent pointer).
 
+**Principal** (`EdictPrincipal`):
+The actor on whose authority a Command was issued or an Event raised: a human user, a service identity, or a consumer-minted system identity for non-user work. An opaque consumer-supplied string, resolved at the edge from the authenticated claim, stamped on the message at origin and carried unchanged through the consequential Command/Event/schedule chain. A durable field on `EdictCommand` and `EdictEvent` (mirroring the Correlation Id), with `RequestContext` only as the per-turn relay.
+_Avoid_: trusting a principal read from a Command body (confused-deputy); conflating it with the **data subject** (the person the data is *about* — a distinct, deferred concept); Edict-side validation of its format (the consumer's domain); a framework-supplied "system" sentinel (the consumer mints their own for non-user origins).
+
 **EdictCursor**:
 The opaque read-your-writes token echoed on `EdictCommandResult.Accepted`, wrapping the Command's Correlation Id. A consumer feeds it to a Projection Read as `after:` to wait, briefly and boundedly, until the work the Command set in motion is visible.
 _Avoid_: unwrapping it to the bare Guid on the read path (pass the cursor); minting one to force a wait on work no Command set in motion; reading a returned cursor as proof the whole chain has landed (it names the chain; the read decides visibility).
@@ -112,6 +116,14 @@ _Avoid_: an in-grain dead-letter slice or cap; blocking aggregate intake when do
 **Fault Classification**:
 Mapping a dead-lettered failure to one of a closed allow-list of failure-reason buckets (an RCA dimension on the dead-letter metrics): framework causes are classified in `Edict.Core`, while each persistence/streaming provider recognises its own driver faults through a registered `IDeadLetterFaultClassifier` consulted only when no framework cause matched.
 _Avoid_: inventing a new bucket value (the set is closed for metric cardinality); name-matching a provider's exception types inside `Edict.Core`; letting a provider classifier override a framework cause or throw on the promoter's no-throw path.
+
+**Audit Record** (`EdictAuditRecord`):
+An immutable, attributable statement that a decision happened: a Command's `Accepted`/`Rejected` outcome (captured at C1, `EdictCommandHandler.ValidateAndHandleAsync`) or an Event's occurrence (captured at E1, the outbox enqueue point), committed atomically in the decision's own grain-state write and drained to a tamper-evident store. Holds attribution (Principal), causal spine (Correlation Id, record id), message type, outcome, and a payload hash plus a reference into a separate payload store — never the body inline. Read back through `IEdictAuditRepository`.
+_Avoid_: conflating it with the dead-letter row (a separate forensic sibling, not a unified type with an outcome discriminator); inlining the payload into the chain (it must stay separately addressable); reading it as event sourcing (no replay, no rebuild); capturing it from a stream subscriber (that misses Commands and rejections).
+
+**Audit Chain**:
+The per-aggregate hash chain that makes one Command Handler aggregate's audit history tamper-evident: `prev_hash` lives in the grain's state, `this_hash` is computed over the stored record bytes, and global cross-aggregate order is reconstructed at query time from the Correlation Id and `OccurredAt`. Verified through `IEdictAuditRepository.VerifyEntityChainAsync`.
+_Avoid_: a single global chain (a bottleneck sequencer grain Orleans warns against); recomputing the hash from a fresh re-serialization rather than the stored bytes (a MessagePack version bump would break verification); expecting tamper-*prevention* from it (it is tamper-*evidence*; infrastructure WORM is the prevention layer).
 
 **Event Envelope** (`EdictEventEnvelope`):
 The universal wire-format wrapper carried on every Edict stream hop, holding either an inline payload or a Claim Check pointer and unwrapped before dispatch.

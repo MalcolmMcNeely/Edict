@@ -142,6 +142,8 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** One grain write covers both.
+- **Read-your-writes.** A command returns a cursor; a query waits briefly with `after:` until the projection has applied that write before answering, so a user reliably sees their own change.
+- **Projection species.** Two projection builders over one root: in-grain state for small, hot, per-id read models, and an external list for large or unbounded ones. The consumer picks per read model.
 - **Effectively-once.** Per-consumer dedup in the base class.
 - **Retries that don't block.** Failing outbox entries back off independently.
 - **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
@@ -157,8 +159,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
 - **External-work primitive.** Dispatch a slow out-of-grain operation (API call, batch job, external process), park via reminder, resume with the result to issue a command. Orleans grain turns should stay short, and there is no framework-shape way to do this today.
-- **Read-your-writes cursor.** Commands return a cursor identifying the event they raised; queries accept an `after: X` parameter and wait briefly until the projection has applied X before answering. Today consumers poll-and-retry or hand-track sequences to give users the obvious experience of seeing their own writes.
-- **Keyed projection builder.** A second species of projection builder whose read model lives in grain state — sibling to today's table projection. Reads stay fast for per-id "give me the record for {id}" shapes; consumers today either over-design a table projection or hand-roll a stateful grain.
+- **Regulator-grade audit log.** An ALCOA++ attributable, tamper-evident record of every command decision (accept *and* reject) and every event, committed atomically with the action under an authenticated principal and drained to a WORM store you query by correlation, principal, or entity. Today consumers hand-roll audit out of dead-letter rows and traces, neither of which captures a rejection or proves the record was not altered.
 - **Tenant-scoped substrate.** A tenant scope carried on the message envelope that every storage provider honours, so one deployment can serve many customers with isolation enforced at the store, not just hoped for in queries. Today the only safe multi-tenant path is a separate deployment per customer; pooled compute would leak, because grain state, projections, claim-check blobs, and the dead-letter pool all share partitions.
 - **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider: no public-API changes, and provider-specific fault classification is a registered extension point.
 
