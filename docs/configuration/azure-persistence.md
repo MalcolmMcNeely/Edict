@@ -7,6 +7,8 @@
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `GrainStateContainerName` | `"edict-state"` | Azure Blob container holding the Edict grain-state slot. Single-blob ETag atomicity covers the `[PersistentState("state", "edict-state")]` slot every framework grain base writes through. |
+| `AuditTableName` | `"edictauditrecord"` | Azure Table holding the audit chain, written as one fan-out append row per access path (correlation, principal, entity) so each query is a single partition scan. The chain is tamper-**evidence** via its per-aggregate hash chain, which `VerifyEntityChainAsync` re-walks to surface an altered record. Note the honest limitation: unlike the Postgres chain (a WORM trigger that refuses an `UPDATE`/`DELETE` outright), the Azure-Table chain has no infra tamper-**prevention** until the deferred blob-sealing slice — a privileged operator can rewrite a row, and detection rests entirely on the hash chain. |
+| `AuditPayloadContainerName` | `"edict-audit-payload"` | Azure Blob container holding the captured message bodies, one write-once blob per audit record id. Append-only by upload contract (`overwrite: false`); container-level immutability sealing is the deferred blob-sealing slice. |
 | `TableServiceClient` | `null` | Optional `TableServiceClient`. A DI-registered singleton instance takes precedence so an `AddAzureClients()`-style power-user setup works without double-registration. |
 | `BlobServiceClient` | `null` | Optional `BlobServiceClient` for grain-state blobs. Same DI-precedence rule. |
 

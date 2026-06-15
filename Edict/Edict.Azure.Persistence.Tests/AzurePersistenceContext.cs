@@ -35,7 +35,10 @@ sealed record AzurePersistenceContext(
     int? ClaimCheckThresholdBytes,
     OutboxFaultState OutboxFault,
     StorageFaultState StorageFault,
-    TimeProvider? ClockOverride);
+    TimeProvider? ClockOverride,
+    bool EnableAudit,
+    string AuditTableName,
+    string AuditPayloadContainerName);
 
 static class AzurePersistenceContextRegistry
 {

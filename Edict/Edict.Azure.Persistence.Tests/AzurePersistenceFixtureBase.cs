@@ -1,14 +1,17 @@
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 
+using Edict.Azure.Persistence.Audit;
 using Edict.Azure.Persistence.TableStorage;
 using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
@@ -64,6 +67,10 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     protected BlobServiceClient BlobServiceClient => _blobServiceClient;
 
+    protected TableServiceClient TableServiceClient => _tableServiceClient;
+
+    internal Serializer ClientSerializer => Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
+
     // IEdictClaimCheckStore is internal, so this is private-protected — the
     // claim-check subclasses that read it are derived and in this assembly.
     private protected IEdictClaimCheckStore ClaimCheckStore { get; private set; } = null!;
@@ -71,6 +78,10 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
     protected string ClaimCheckContainerName { get; private set; } = "";
 
     protected string GrainStateContainerName { get; private set; } = "";
+
+    protected string AuditTableName { get; private set; } = "";
+
+    protected string AuditPayloadContainerName { get; private set; } = "";
 
     // Per-shape knobs — a subclass overrides only the ones it needs.
     protected virtual Action<EdictOptions>? ConfigureOptions => null;
@@ -86,6 +97,17 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
     // and runs on TimeProvider.System.
     protected virtual TimeProvider? ClockOverride => null;
 
+    // The audit fixture turns this on to wire the Azure audit stores + WithAudit and
+    // an origin resolver on the silo and client; every other fixture leaves it off
+    // and never captures.
+    protected virtual bool EnableAudit => false;
+
+    // The known principal the audit fixture's origin resolver yields, so a conformance
+    // scenario can assert attribution. Static because the nested configurators
+    // (constructed by Orleans) reach it; the audit fixture surfaces it as the instance
+    // IAuditConformanceFixture.AuditPrincipal.
+    internal static EdictPrincipal KnownAuditPrincipal => EdictPrincipal.Of("auditor-bob");
+
     public override async Task InitializeAsync()
     {
         _connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
@@ -95,11 +117,21 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
         var token = Guid.NewGuid().ToString("N");
         GrainStateContainerName = $"edict-state-{token}";
         ClaimCheckContainerName = $"edict-claim-check-{token}";
+        AuditTableName = $"edictauditrecord{token}";
+        AuditPayloadContainerName = $"edict-audit-payload-{token}";
 
         // Built eagerly off the grain task scheduler — a sync-over-async path in
         // a lazy singleton factory deadlocks first-time container creation.
         ClaimCheckStore = await AzureBlobClaimCheckStore.CreateAsync(
             _blobServiceClient, ClaimCheckContainerName);
+
+        if (EnableAudit)
+        {
+            // Provision the audit table + payload container off the grain scheduler,
+            // so the silo-side singleton factories do no first-resolve I/O.
+            await AzureTableAuditStore.ProvisionAsync(_tableServiceClient, AuditTableName);
+            await AzureBlobAuditPayloadStore.ProvisionAsync(_blobServiceClient, AuditPayloadContainerName);
+        }
 
         var context = new AzurePersistenceContext(
             _tableServiceClient,
@@ -112,7 +144,10 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             ClaimCheckThresholdBytes,
             OutboxFault,
             StorageFault,
-            ClockOverride);
+            ClockOverride,
+            EnableAudit,
+            AuditTableName,
+            AuditPayloadContainerName);
         _contextKey = AzurePersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -203,6 +238,19 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             // intact, and never redelivers — the persistence axis never asserts a
             // streaming property of it.
             siloBuilder.AddMemoryStreams("edict");
+
+            // Turn on audit capture over the Azure audit stores. The table and
+            // container are already provisioned by the fixture, so the factories do
+            // no first-resolve I/O.
+            if (ctx.EnableAudit)
+            {
+                siloBuilder.Services.AddSingleton<IEdictAuditStore>(serviceProvider =>
+                    AzureTableAuditStore.Create(ctx.TableServiceClient, serviceProvider.GetRequiredService<Serializer>(), ctx.AuditTableName));
+                siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(
+                    _ => AzureBlobAuditPayloadStore.Create(ctx.BlobServiceClient, ctx.AuditPayloadContainerName));
+                siloBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
+                siloBuilder.WithAudit();
+            }
         }
     }
 
@@ -214,6 +262,14 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Configure<ClientMessagingOptions>(options => options.ResponseTimeout = TimeSpan.FromMinutes(2));
             clientBuilder.Services.AddEdict();
+
+            var key = configuration[AzurePersistenceContextRegistry.ContextKeyProperty];
+            if (key is not null && AzurePersistenceContextRegistry.Get(key).EnableAudit)
+            {
+                // The client is the originating send, so it needs the resolver to
+                // stamp the principal before the command leaves for the silo.
+                clientBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
+            }
         }
     }
 }

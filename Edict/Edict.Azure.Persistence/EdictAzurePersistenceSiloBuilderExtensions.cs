@@ -1,7 +1,9 @@
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 
+using Edict.Azure.Persistence.Audit;
 using Edict.Azure.Persistence.TableStorage;
+using Edict.Contracts.Audit;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
@@ -13,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Orleans.Hosting;
+using Orleans.Serialization;
 
 namespace Edict.Azure.Persistence;
 
@@ -76,6 +79,21 @@ public static class EdictAzurePersistenceSiloBuilderExtensions
 
         silo.Services.AddSingleton<IEdictTableStoreFactory>(
             _ => new AzureTableWriteStoreFactory(tableClient));
+
+        // Provision the audit chain table and payload container on the host thread
+        // now, so the DI factories below do no I/O — a lazy factory that blocked on
+        // CreateIfNotExists would deadlock when the audit drain first resolves the
+        // store on the grain scheduler. The seams stay dormant until a consumer
+        // turns capture on with WithAudit(); registering them unconditionally keeps
+        // that switch a no-wiring flip, mirroring the Postgres bootstrap.
+        AzureTableAuditStore.ProvisionAsync(tableClient, options.AuditTableName).GetAwaiter().GetResult();
+        AzureBlobAuditPayloadStore.ProvisionAsync(blobClient, options.AuditPayloadContainerName).GetAwaiter().GetResult();
+
+        silo.Services.TryAddSingleton<IEdictAuditStore>(serviceProvider =>
+            AzureTableAuditStore.Create(tableClient, serviceProvider.GetRequiredService<Serializer>(), options.AuditTableName));
+
+        silo.Services.TryAddSingleton<IEdictAuditPayloadStore>(
+            _ => AzureBlobAuditPayloadStore.Create(blobClient, options.AuditPayloadContainerName));
 
         // Contribute Azure storage fault classification (Table writes) to the
         // dead-letter RCA dimension. TryAddEnumerable keeps the agreeing

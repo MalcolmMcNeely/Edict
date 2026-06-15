@@ -1,6 +1,7 @@
 using Edict.Contracts.Audit;
 using Edict.Core.Audit;
 using Edict.Postgres.Audit;
+using Edict.Tests.Conformance.Persistence;
 
 using Npgsql;
 
@@ -9,13 +10,15 @@ using Xunit;
 namespace Edict.Postgres.Tests;
 
 // Postgres persistence-axis fixture with auditing on, plus the store-direct read
-// and raw-mutation seams the audit conformance asserts against. Bespoke to this
-// project rather than a shared battery scenario: the audit store is Postgres-first
-// and the Azure provider lands in a later slice, so promoting it to the shared
-// persistence battery now would force an Azure binding that does not exist yet.
-public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase
+// and raw-mutation seams the audit conformance asserts against. Implements the
+// shared IAuditConformanceFixture so the promoted battery scenarios bind on Postgres;
+// the raw-mutation seam stays Postgres-bespoke for the WORM-trigger tests, which are
+// a tamper-prevention property the Azure-Table chain does not have.
+public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAuditConformanceFixture
 {
     protected override bool EnableAudit => true;
+
+    public EdictPrincipal AuditPrincipal => KnownAuditPrincipal;
 
     IEdictAuditStore Store => new PostgresAuditStore(DataSource, ClientSerializer, "edict_audit_record");
 

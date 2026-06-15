@@ -103,8 +103,10 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
     protected virtual bool EnableAudit => false;
 
     // The known principal the audit fixture's edge resolver yields, so a
-    // conformance scenario can assert attribution.
-    internal static EdictPrincipal AuditPrincipal => EdictPrincipal.Of("auditor-bob");
+    // conformance scenario can assert attribution. Static because the nested
+    // configurators (constructed by Orleans) reach it; the audit fixture surfaces it
+    // as the instance IAuditConformanceFixture.AuditPrincipal.
+    internal static EdictPrincipal KnownAuditPrincipal => EdictPrincipal.Of("auditor-bob");
 
     public override async Task InitializeAsync()
     {
@@ -253,7 +255,7 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             // IEdictAuditStore is the Postgres one registered by the extension.
             if (ctx.EnableAudit)
             {
-                siloBuilder.Services.AddEdictAudit(_ => AuditPrincipal);
+                siloBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
                 siloBuilder.WithAudit();
             }
         }
@@ -273,7 +275,7 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             {
                 // The client is the originating send, so it needs the resolver to
                 // stamp the principal before the command leaves for the silo.
-                clientBuilder.Services.AddEdictAudit(_ => AuditPrincipal);
+                clientBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
             }
         }
     }
