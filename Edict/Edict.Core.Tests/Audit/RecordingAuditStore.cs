@@ -30,5 +30,40 @@ public sealed class RecordingAuditStore : IEdictAuditStore
         return Task.FromResult(result);
     }
 
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<EdictAuditRecord> result = _records.Values
+            .Where(record => record.EntityType == entityType && record.EntityKey == entityKey)
+            .Where(record => record.OccurredAt >= from && record.OccurredAt < to)
+            .OrderBy(record => record.Sequence)
+            .ToList();
+        return Task.FromResult(result);
+    }
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<EdictAuditRecord> result = _records.Values
+            .Where(record => record.CorrelationId == correlationId)
+            .OrderBy(record => record.OccurredAt)
+            .ThenBy(record => record.EntityType, StringComparer.Ordinal)
+            .ThenBy(record => record.EntityKey, StringComparer.Ordinal)
+            .ThenBy(record => record.Sequence)
+            .ToList();
+        return Task.FromResult(result);
+    }
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<EdictAuditRecord> result = _records.Values
+            .Where(record => record.Principal == principal)
+            .Where(record => record.OccurredAt >= from && record.OccurredAt < to)
+            .OrderBy(record => record.OccurredAt)
+            .ThenBy(record => record.EntityType, StringComparer.Ordinal)
+            .ThenBy(record => record.EntityKey, StringComparer.Ordinal)
+            .ThenBy(record => record.Sequence)
+            .ToList();
+        return Task.FromResult(result);
+    }
+
     public int Count => _records.Count;
 }

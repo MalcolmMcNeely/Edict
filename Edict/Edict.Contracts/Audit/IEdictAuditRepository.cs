@@ -1,16 +1,40 @@
 namespace Edict.Contracts.Audit;
 
 /// <summary>
-/// The consumer-facing read surface over the audit log. This slice exposes one
-/// aggregate's history (<see cref="ByEntityAsync"/>), a first-class chain
-/// verification (<see cref="VerifyEntityChainAsync"/>), and retrieval of a
-/// captured body (<see cref="GetPayloadAsync"/>); the cross-cutting query paths
-/// (by correlation, by principal) follow as later slices.
+/// The consumer-facing read surface over the audit log. It reconstructs a whole
+/// decision chain across grains (<see cref="ByCorrelationAsync"/>), a principal's
+/// timeline (<see cref="ByPrincipalAsync"/>), and one aggregate's history
+/// (<see cref="ByEntityAsync(string, string, CancellationToken)"/> for the full
+/// chain, or the time-ranged overload for a window); it verifies an aggregate's
+/// chain is unaltered (<see cref="VerifyEntityChainAsync"/>) and retrieves a
+/// captured body (<see cref="GetPayloadAsync"/>).
 /// </summary>
 public interface IEdictAuditRepository
 {
     /// <summary>Every audit record for one aggregate, ordered by chain <see cref="EdictAuditRecord.Sequence"/>.</summary>
     Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One aggregate's records whose <see cref="EdictAuditRecord.OccurredAt"/> falls
+    /// in <c>[from, to)</c> (<paramref name="from"/> inclusive, <paramref name="to"/>
+    /// exclusive), ordered by chain <see cref="EdictAuditRecord.Sequence"/>.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every record a correlation touched, across every grain it reached,
+    /// reconstructed into one global order by <see cref="EdictAuditRecord.OccurredAt"/>
+    /// (intent-time) so an auditor follows the transaction end to end.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Everything a principal did over a time range: every record attributed to
+    /// <paramref name="principal"/> whose <see cref="EdictAuditRecord.OccurredAt"/>
+    /// falls in <c>[from, to)</c> (<paramref name="from"/> inclusive,
+    /// <paramref name="to"/> exclusive), ordered by intent-time.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Verifies one aggregate's chain is unaltered: every record's hash

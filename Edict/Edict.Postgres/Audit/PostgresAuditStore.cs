@@ -58,16 +58,65 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
         }
     }
 
-    public async Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken) =>
+        QueryAsync(
+            $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key ORDER BY sequence;",
+            parameters =>
+            {
+                parameters.AddWithValue("entity_type", entityType);
+                parameters.AddWithValue("entity_key", entityKey);
+            },
+            nameof(ByEntityAsync),
+            cancellationToken);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        QueryAsync(
+            $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key "
+            + "AND occurred_at >= @from AND occurred_at < @to ORDER BY sequence;",
+            parameters =>
+            {
+                parameters.AddWithValue("entity_type", entityType);
+                parameters.AddWithValue("entity_key", entityKey);
+                parameters.AddWithValue("from", from);
+                parameters.AddWithValue("to", to);
+            },
+            nameof(ByEntityAsync),
+            cancellationToken);
+
+    // The chain is per-aggregate, so a correlation that fanned across grains has no
+    // single sequence to follow; intent-time rebuilds the cross-grain order, with
+    // entity and sequence as a stable tie-break when two records share a timestamp.
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken) =>
+        QueryAsync(
+            $"SELECT record FROM {tableName} WHERE correlation_id = @correlation_id "
+            + "ORDER BY occurred_at, entity_type, entity_key, sequence;",
+            parameters => parameters.AddWithValue("correlation_id", correlationId),
+            nameof(ByCorrelationAsync),
+            cancellationToken);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        QueryAsync(
+            $"SELECT record FROM {tableName} WHERE principal = @principal "
+            + "AND occurred_at >= @from AND occurred_at < @to "
+            + "ORDER BY occurred_at, entity_type, entity_key, sequence;",
+            parameters =>
+            {
+                parameters.AddWithValue("principal", principal.Value);
+                parameters.AddWithValue("from", from);
+                parameters.AddWithValue("to", to);
+            },
+            nameof(ByPrincipalAsync),
+            cancellationToken);
+
+    async Task<IReadOnlyList<EdictAuditRecord>> QueryAsync(
+        string commandText, Action<NpgsqlParameterCollection> bindParameters, string operation, CancellationToken cancellationToken)
     {
         try
         {
             await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
             await using var command = connection.CreateCommand();
-            command.CommandText =
-                $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key ORDER BY sequence;";
-            command.Parameters.AddWithValue("entity_type", entityType);
-            command.Parameters.AddWithValue("entity_key", entityKey);
+            command.CommandText = commandText;
+            bindParameters(command.Parameters);
 
             var results = new List<EdictAuditRecord>();
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -79,7 +128,7 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
         }
         catch (NpgsqlException exception)
         {
-            throw EdictPostgresStorageException.From(exception, $"ByEntityAsync failed for audit table {tableName}");
+            throw EdictPostgresStorageException.From(exception, $"{operation} failed for audit table {tableName}");
         }
     }
 }

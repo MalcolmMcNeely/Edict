@@ -21,6 +21,8 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase
 
     IEdictAuditPayloadStore PayloadStore => new PostgresAuditPayloadStore(DataSource, "edict_audit_payload");
 
+    IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore);
+
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
         Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);
 
@@ -28,7 +30,16 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase
         PayloadStore.GetAsync(recordId, CancellationToken.None);
 
     public Task<EdictAuditChainVerification> VerifyChainAsync(string entityType, string entityKey) =>
-        new EdictDefaultAuditRepository(Store, PayloadStore).VerifyEntityChainAsync(entityType, entityKey);
+        Repository.VerifyEntityChainAsync(entityType, entityKey);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId) =>
+        Repository.ByCorrelationAsync(correlationId);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to) =>
+        Repository.ByPrincipalAsync(principal, from, to);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityInRangeAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to) =>
+        Repository.ByEntityAsync(entityType, entityKey, from, to);
 
     // Runs a raw mutation and returns the SQLSTATE Postgres rejected it with, or
     // null when it (wrongly) succeeded. The WORM trigger raises insufficient
