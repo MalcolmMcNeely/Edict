@@ -311,6 +311,7 @@ public class PublicSurfaceAllowListTests
     {
         "Edict.Core.Audit.AuditChain",
         "Edict.Core.Audit.AuditChainEntry",
+        "Edict.Core.Audit.EdictAuditChain",
         "Edict.Core.Audit.EdictAuditPayloadNotFoundException",
         "Edict.Core.Audit.EdictAuditServiceCollectionExtensions",
         "Edict.Core.Audit.EdictAuditSiloBuilderExtensions",
@@ -439,6 +440,7 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictPostgresAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Postgres.EdictPostgresAuditServiceCollectionExtensions",
         "Edict.Postgres.EdictPostgresPersistenceOptions",
         "Edict.Postgres.EdictPostgresSiloBuilderExtensions",
         "Edict.Postgres.EdictPostgresStorageException",

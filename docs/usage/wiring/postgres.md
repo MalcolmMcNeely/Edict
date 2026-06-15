@@ -62,6 +62,19 @@ builder.Services.AddSingleton(
 builder.Services.AddEdict();
 ```
 
+### Reading the audit log from a client
+
+The silo captures the audit log into the Postgres WORM store when it is wired with `AddEdictPostgresPersistence` plus `silo.WithAudit()`. A separate process that only reads it — an Orleans client, a web host, an audit console — registers the read side with `AddEdictPostgresAuditReader`. It points at the same database and audit table names the silo uses, registers the Postgres audit stores, and resolves an `IEdictAuditRepository` over them. It needs no grain storage, reminders, or capture path; an Orleans `Serializer` (already present on a client host) is the only other requirement.
+
+```csharp
+using Edict.Postgres;
+
+builder.Services.AddEdictPostgresAuditReader(o =>
+    o.ConnectionString = builder.Configuration.GetConnectionString("appdb")!);
+```
+
+The page or service then injects `IEdictAuditRepository` and queries by entity, correlation, or principal, verifies a stored chain with `VerifyEntityChainAsync`, and fetches a captured body with `GetPayloadAsync`. To verify a chain already held in memory — for example a deliberately altered copy, since the WORM store refuses an in-place edit — call the pure `EdictAuditChain.Verify(records)`; it reports the first record whose hash or linkage fails.
+
 ## Configuration
 
 `EdictPostgresPersistenceOptions` (the connection string, the grain-storage and table names, the schema-bootstrap toggle, and the connection-pool bounds), the connection-string format, and the pool-sizing math against Postgres `max_connections` are documented in [configuration/postgres.md](../../configuration/postgres.md).

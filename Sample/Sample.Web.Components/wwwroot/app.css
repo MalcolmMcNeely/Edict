@@ -498,3 +498,48 @@ main {
     padding-top: 1.5rem;
     border-top: 1px solid #e5e7eb;
 }
+
+.audit-actor,
+.audit-actor-input {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.audit-actor-input {
+    width: 12rem;
+}
+
+.audit-toggle {
+    display: block;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #374151;
+}
+
+.hub-orders tbody tr.audit-rejected {
+    background: #fef2f2;
+}
+
+.audit-reasons-row td {
+    background: #fff7f7;
+    font-size: 0.8rem;
+    color: #b91c1c;
+}
+
+.audit-reason {
+    margin-right: 1rem;
+}
+
+.audit-payload {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 0.5rem;
+    overflow-x: auto;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 8rem;
+}

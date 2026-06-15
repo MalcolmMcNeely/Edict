@@ -41,4 +41,22 @@ public static class EdictAuditServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(resolver);
         return services.AddEdictAudit(_ => resolver());
     }
+
+    /// <summary>
+    /// Registers the read-only <see cref="IEdictAuditRepository"/> over the
+    /// <see cref="IEdictAuditStore"/> and <see cref="IEdictAuditPayloadStore"/>
+    /// already in the container, for a process that is not a silo: an Orleans
+    /// client or web host that queries the audit log a silo captured. The
+    /// silo's <c>WithAudit()</c> registers the same repository; this is the
+    /// client-side counterpart, so the stores (e.g. via
+    /// <c>AddEdictPostgresAuditReader</c>) must be registered first.
+    /// </summary>
+    public static IServiceCollection AddEdictAuditReader(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IEdictAuditRepository>(serviceProvider =>
+            new EdictDefaultAuditRepository(
+                serviceProvider.GetRequiredService<IEdictAuditStore>(),
+                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>()));
+        return services;
+    }
 }

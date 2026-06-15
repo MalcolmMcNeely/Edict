@@ -1,6 +1,7 @@
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
+using Edict.Postgres;
 using Edict.Telemetry;
 
 using Orleans.Serialization;
@@ -38,6 +39,15 @@ builder.UseOrleansClient(client =>
 // open-generic plus the dead-letter forensic facade, so the read tier needs no
 // Postgres wiring of its own.
 builder.Services.AddEdict();
+
+// The silo captures the audit log into the Postgres WORM store; the web reads it
+// back straight from the same database, the way a regulator's audit console is a
+// read-only process over the store rather than a grain call. AddEdictPostgresAuditReader
+// registers IEdictAuditRepository over the appdb the AppHost injects.
+var auditConnectionString = builder.Configuration.GetConnectionString("appdb")
+    ?? throw new InvalidOperationException(
+        "Postgres connection string 'appdb' missing. Run via Sample.KafkaPostgres.AppHost.");
+builder.Services.AddEdictPostgresAuditReader(o => o.ConnectionString = auditConnectionString);
 
 // Hosts the in-memory notifications sink the silo POSTs to over HTTP and the
 // Orders view reads back in-process.

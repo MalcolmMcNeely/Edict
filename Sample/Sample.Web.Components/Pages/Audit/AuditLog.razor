@@ -1,0 +1,404 @@
+@page "/audit"
+@using System.Security.Cryptography
+@using Edict.Contracts.Audit
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Sending
+@using Edict.Core.Audit
+@using Sample.Contracts.Orders.Commands
+@using Sample.Domain.Orders.CommandHandlers
+@inject IEdictSender Sender
+@inject IEdictAuditRepository Audit
+@implements IDisposable
+
+<PageTitle>Edict — Audit Log</PageTitle>
+
+<ConceptHeader Title="Audit Log" Concept="Audit"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0064-alcoa-audit-log.md" />
+
+<div class="hub">
+    <section class="hub-controls">
+        <span class="playground-cart">Act as</span>
+        <select class="audit-actor" @bind="_principalChoice">
+            @foreach (var preset in Presets)
+            {
+                <option value="@preset.Value">@preset.Label</option>
+            }
+            <option value="@CustomChoice">Custom…</option>
+        </select>
+        @if (_principalChoice == CustomChoice)
+        {
+            <input class="audit-actor-input" placeholder="principal id" @bind="_customPrincipal" @bind:event="oninput" />
+        }
+        <span class="hub-controls-sep"></span>
+        <button @onclick="OnDriveAccepted" disabled="@(ActingError is not null)">Place &amp; submit (accepted)</button>
+        <button @onclick="OnDriveRejected" disabled="@(ActingError is not null)">Submit unplaced (rejected)</button>
+    </section>
+
+    @if (ActingError is not null)
+    {
+        <div class="hub-message">@ActingError The sample validates the actor before sending; Edict imposes no format of its own.</div>
+    }
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="hub-message">@_message</div>
+    }
+
+    @if (_entityKey is null)
+    {
+        <p class="hub-empty">No decision captured yet. Pick an actor and drive an order: an accepted order shows the cross-grain chain by correlation; an unplaced submit shows a rejection recorded with its reasons and who tried.</p>
+    }
+    else
+    {
+        <div class="hub-grid">
+            <div class="hub-left">
+                <h2>Decision chain <span class="hub-orders-meta">@ChainModeLabel</span></h2>
+                @if (_records.Count == 0)
+                {
+                    <p class="hub-empty-small">Waiting for the asynchronous audit drain to land in Postgres; the chain appears on the next poll.</p>
+                }
+                else
+                {
+                    <table class="hub-orders">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Grain</th>
+                                <th>Decision</th>
+                                <th>Outcome</th>
+                                <th>Actor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var record in _records)
+                            {
+                                <tr class="@RowClass(record)" @onclick="() => OnInspectPayload(record)">
+                                    <td class="spotlight-time">@FormatTime(record.OccurredAt)</td>
+                                    <td><code>@ShortName(record.EntityType)</code>/<code>@ShortKey(record.EntityKey)</code></td>
+                                    <td>@ShortName(record.MessageType) <span class="hub-orders-meta">@record.Kind</span></td>
+                                    <td>@OutcomeLabel(record)</td>
+                                    <td>@(record.Principal?.Value ?? "—")</td>
+                                </tr>
+                                @if (record.RejectionReasons.Count > 0)
+                                {
+                                    <tr class="audit-reasons-row">
+                                        <td></td>
+                                        <td colspan="4">
+                                            @foreach (var reason in record.RejectionReasons)
+                                            {
+                                                <span class="audit-reason"><code>@reason.Code</code> @reason.Message</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                    <p class="hub-empty-small">Click a row to fetch its captured body from the payload store.</p>
+                }
+            </div>
+
+            <div class="hub-right">
+                <h2>Payload <span class="hub-orders-meta">drill-down</span></h2>
+                <div class="spotlight">
+                    @if (_payloadError is not null)
+                    {
+                        <p class="orders-cancelled">@_payloadError</p>
+                    }
+                    else if (_payloadRecord is null)
+                    {
+                        <p class="hub-empty-small">No body loaded. Click a chain row to retrieve the exact serialized message bytes the record's hash was computed over.</p>
+                    }
+                    else
+                    {
+                        <div class="spotlight-order"><code>@ShortName(_payloadRecord.MessageType)</code> · @_payloadLength bytes</div>
+                        <div class="orders-outcome">
+                            Hash: @(_payloadHashMatches ? "✓ matches the sealed record" : "✗ does not match")
+                        </div>
+                        <pre class="audit-payload">@_payloadPreview</pre>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <ConceptHeader Section="true" Title="Chain verification" Concept="Tamper-evident"
+                       DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0064-alcoa-audit-log.md" />
+        <div class="spotlight">
+            <div class="orders-outcome">Order grain chain: <strong>@VerificationLabel(_verification)</strong></div>
+            <label class="audit-toggle">
+                <input type="checkbox" @bind="_showTamper" />
+                Show tamper detection on an in-memory copy
+            </label>
+            @if (_showTamper)
+            {
+                var preview = TamperPreview();
+                if (preview is not null)
+                {
+                    <div class="orders-outcome orders-cancelled">Tampered copy → @VerificationLabel(preview)</div>
+                    <p class="hub-empty-small">The Postgres store is write-once, so the real chain above stays intact: a direct UPDATE is refused by the database. This alters one record in a copy held in memory and re-verifies it with <code>EdictAuditChain.Verify</code> to show the broken-at-record report an evidence-only store would surface.</p>
+                }
+                else
+                {
+                    <p class="hub-empty-small">Waiting for the order grain's chain to drain before a copy can be tampered.</p>
+                }
+            }
+        </div>
+
+        <ConceptHeader Section="true" Title="Principal activity" Concept="Audit"
+                       DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0063-edict-principal-attributable-identity-on-the-wire.md" />
+        <div class="spotlight">
+            @if (_principalTimeline.Count == 0)
+            {
+                <p class="hub-empty-small">Nothing recorded for <code>@ActingPrincipalString</code> yet.</p>
+            }
+            else
+            {
+                <table class="spotlight-table">
+                    <tbody>
+                        @foreach (var record in _principalTimeline)
+                        {
+                            <tr>
+                                <td class="spotlight-time">@FormatTime(record.OccurredAt)</td>
+                                <td class="spotlight-state">@ShortName(record.MessageType)</td>
+                                <td class="spotlight-span"><code>@ShortName(record.EntityType)</code>/<code>@ShortKey(record.EntityKey)</code></td>
+                                <td>@OutcomeLabel(record)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    const string CustomChoice = "__custom__";
+
+    static readonly (string Value, string Label)[] Presets =
+    [
+        ("clerk-7", "clerk-7 (operator)"),
+        ("auditor-9", "auditor-9 (operator)"),
+        ("order-simulator", "order-simulator (system, consumer-minted)"),
+    ];
+
+    static string OrderEntityType => typeof(OrderCommandHandler).FullName!;
+
+    string _principalChoice = "clerk-7";
+    string _customPrincipal = "";
+
+    string? _entityKey;
+    Guid? _correlationId;
+    string _message = "";
+
+    IReadOnlyList<EdictAuditRecord> _records = [];
+    IReadOnlyList<EdictAuditRecord> _entityChain = [];
+    IReadOnlyList<EdictAuditRecord> _principalTimeline = [];
+    EdictAuditChainVerification? _verification;
+    bool _showTamper;
+
+    EdictAuditRecord? _payloadRecord;
+    int _payloadLength;
+    bool _payloadHashMatches;
+    string _payloadPreview = "";
+    string? _payloadError;
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    string ActingPrincipalString => _principalChoice == CustomChoice ? _customPrincipal.Trim() : _principalChoice;
+
+    // Consumer-side validation: the sample enforces a shape Edict deliberately
+    // does not, so the page can demonstrate good practice. Edict accepts any
+    // non-null string as a principal.
+    string? ActingError
+    {
+        get
+        {
+            var candidate = ActingPrincipalString;
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return "Actor cannot be empty.";
+            }
+            if (candidate.Length > 128)
+            {
+                return "Actor is too long (max 128 characters).";
+            }
+            if (candidate.Any(char.IsWhiteSpace))
+            {
+                return "Actor cannot contain whitespace.";
+            }
+            return null;
+        }
+    }
+
+    string ChainModeLabel => _correlationId is { } correlation && correlation != Guid.Empty
+        ? "by correlation · cross-grain · intent-time order"
+        : "by entity · single grain";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cancellationTokenSource.Token);
+        await Task.CompletedTask;
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task OnDriveAccepted()
+    {
+        if (ActingError is not null)
+        {
+            return;
+        }
+
+        var principal = EdictPrincipal.Of(ActingPrincipalString);
+        var orderId = Guid.NewGuid();
+
+        var place = await Sender.SendAsync(new PlaceOrderCommand(orderId, "AUDIT-DEMO"), principal);
+        if (place is not EdictCommandResult.Accepted)
+        {
+            _message = "Place was rejected; nothing to chain.";
+            return;
+        }
+
+        await Sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "WIDGET", 1), principal);
+        var submit = await Sender.SendAsync(new SubmitOrderCommand(orderId, 100m), principal);
+
+        _correlationId = submit is EdictCommandResult.Accepted accepted ? accepted.Cursor.CorrelationId : null;
+        _entityKey = orderId.ToString();
+        _message = $"Drove an accepted order as {principal.Value}: the submit correlation spans the order and payment grains.";
+        ResetPayload();
+        await RefreshAsync();
+    }
+
+    async Task OnDriveRejected()
+    {
+        if (ActingError is not null)
+        {
+            return;
+        }
+
+        var principal = EdictPrincipal.Of(ActingPrincipalString);
+        var orderId = Guid.NewGuid();
+
+        // Submitting an order that was never placed has no line items, so the
+        // handler rejects it; the rejected decision is still captured with the actor.
+        var result = await Sender.SendAsync(new SubmitOrderCommand(orderId, 50m), principal);
+
+        _correlationId = null;
+        _entityKey = orderId.ToString();
+        _message = result is EdictCommandResult.Rejected
+            ? $"Submit was rejected and recorded against {principal.Value} with its reasons."
+            : "Submit was unexpectedly accepted.";
+        ResetPayload();
+        await RefreshAsync();
+    }
+
+    async Task RefreshAsync()
+    {
+        if (_entityKey is not { } entityKey)
+        {
+            return;
+        }
+
+        try
+        {
+            _records = _correlationId is { } correlation && correlation != Guid.Empty
+                ? await Audit.ByCorrelationAsync(correlation)
+                : await Audit.ByEntityAsync(OrderEntityType, entityKey);
+            _entityChain = await Audit.ByEntityAsync(OrderEntityType, entityKey);
+            _verification = await Audit.VerifyEntityChainAsync(OrderEntityType, entityKey);
+
+            if (ActingError is null)
+            {
+                _principalTimeline = await Audit.ByPrincipalAsync(
+                    EdictPrincipal.Of(ActingPrincipalString), DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
+            }
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    async Task OnInspectPayload(EdictAuditRecord record)
+    {
+        try
+        {
+            var body = (await Audit.GetPayloadAsync(record.RecordId)).ToArray();
+            _payloadRecord = record;
+            _payloadLength = body.Length;
+            _payloadHashMatches = record.PayloadHash.AsSpan().SequenceEqual(SHA256.HashData(body));
+            _payloadPreview = Convert.ToBase64String(body);
+            _payloadError = null;
+        }
+        catch (Exception exception)
+        {
+            ResetPayload();
+            _payloadError = exception.Message;
+        }
+    }
+
+    // Verifies a copy of the order grain's chain with one record altered, so the
+    // broken-at-record report shows without the write-once store ever being touched.
+    EdictAuditChainVerification? TamperPreview()
+    {
+        if (_entityChain.Count == 0)
+        {
+            return null;
+        }
+
+        var copy = _entityChain.ToList();
+        var index = Math.Min(1, copy.Count - 1);
+        copy[index] = copy[index] with { MessageType = copy[index].MessageType + ".tampered" };
+        return EdictAuditChain.Verify(copy);
+    }
+
+    void ResetPayload()
+    {
+        _payloadRecord = null;
+        _payloadLength = 0;
+        _payloadHashMatches = false;
+        _payloadPreview = "";
+        _payloadError = null;
+    }
+
+    static string VerificationLabel(EdictAuditChainVerification verification) =>
+        verification.IsIntact ? "intact" : $"broken at record {verification.BrokenAtSequence}";
+
+    static string OutcomeLabel(EdictAuditRecord record) =>
+        record.Kind == EdictAuditKind.Command ? record.Outcome?.ToString() ?? "—" : "—";
+
+    static string RowClass(EdictAuditRecord record) =>
+        record.Outcome == EdictAuditOutcome.Rejected ? "audit-rejected" : "";
+
+    static string FormatTime(DateTimeOffset at) => at.ToLocalTime().ToString("HH:mm:ss.fff");
+
+    static string ShortName(string fullName)
+    {
+        var lastDot = fullName.LastIndexOf('.');
+        return lastDot >= 0 ? fullName[(lastDot + 1)..] : fullName;
+    }
+
+    static string ShortKey(string key) => key.Length > 8 ? key[..8] : key;
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+}

@@ -162,7 +162,7 @@ public static class EdictPostgresSiloBuilderExtensions
         return silo;
     }
 
-    static NpgsqlDataSource BuildDataSource(EdictPostgresPersistenceOptions options)
+    internal static NpgsqlDataSource BuildDataSource(EdictPostgresPersistenceOptions options)
     {
         // MaxPoolSize / MinPoolSize on the options surface win over any
         // Maximum Pool Size / Minimum Pool Size keywords in the supplied

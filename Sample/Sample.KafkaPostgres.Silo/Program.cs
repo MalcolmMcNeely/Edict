@@ -1,6 +1,8 @@
 using Confluent.Kafka;
 
+using Edict.Contracts.Audit;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.Serialization;
 using Edict.Kafka;
 using Edict.Postgres;
@@ -98,6 +100,14 @@ builder.Host.UseOrleans((context, silo) =>
         o.ClaimCheckTableName       = "edict_claim_check";
         o.BootstrapSchema           = true;
     });
+
+    // Turn on the audit log: WithAudit() captures each decision into the Postgres
+    // WORM store AddEdictPostgresPersistence registered. The resolver supplies the
+    // actor for any send that originates on the silo itself (background work has no
+    // authenticated user), so the silo mints its own system principal — Edict ships
+    // no sentinel. User-driven sends from the web carry their own actor explicitly.
+    silo.Services.AddEdictAudit(() => EdictPrincipal.Of("kafkapostgres-silo"));
+    silo.WithAudit();
 });
 
 // The Event Handler reaches out to the Web-hosted notifications sink over HTTP
