@@ -10,7 +10,10 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs to save minutes, but let every push to main run to
+  # completion: a burst of main pushes must not cancel each other's CI, or a
+  # regression can land behind a stale-green badge with no run that ever saw it.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # The fast/docker split lives in the reusable tests workflow so CI and Publish
