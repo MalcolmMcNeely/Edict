@@ -10,7 +10,7 @@
   TraceParent: 00-0123456789abcdef0123456789abcdef-fedcba9876543210-01,
   ExceptionType: System.InvalidOperationException,
   Reason: SMTP gateway 503,
-  PayloadJson: {"OrderId":"11111111-1111-1111-1111-111111111111","Sku":"WIDGET","EventId":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","OccurredAt":"2026-05-19T12:00:00+00:00","TraceId":null,"SpanId":null,"TraceState":null,"CorrelationId":"00000000-0000-0000-0000-000000000000"},
+  PayloadJson: {"OrderId":"11111111-1111-1111-1111-111111111111","Sku":"WIDGET","EventId":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","OccurredAt":"2026-05-19T12:00:00+00:00","TraceId":null,"SpanId":null,"TraceState":null,"CorrelationId":"00000000-0000-0000-0000-000000000000","Principal":null},
   SourceEventType: Edict.Core.Tests.OrderPlacedEvent,
   SourceEventId: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
 }

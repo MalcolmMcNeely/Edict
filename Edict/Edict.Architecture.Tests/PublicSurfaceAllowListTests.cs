@@ -259,6 +259,7 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Contracts.Audit.EdictPrincipal",
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
         "Edict.Contracts.Commands.EdictCommand",
         "Edict.Contracts.Commands.EdictCommandResult",
@@ -301,6 +302,9 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Core.Audit.EdictAuditServiceCollectionExtensions",
+        "Edict.Core.Audit.EdictAuditSiloBuilderExtensions",
+        "Edict.Core.Audit.EdictMissingPrincipalException",
         "Edict.Core.Commands.CommandRoute",
         "Edict.Core.Commands.EdictCommandHandler",
         "Edict.Core.Commands.EdictCommandHandler`1",

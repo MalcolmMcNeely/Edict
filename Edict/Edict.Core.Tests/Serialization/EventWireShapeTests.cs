@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Events;
 using Edict.Core.Tests;
 
@@ -22,6 +23,22 @@ public sealed class EventWireShapeTests
             TraceId = "0af7651916cd43dd8448eb211c80319c",
             SpanId = "b7ad6b7169203331",
             TraceState = null,
+        };
+
+        return VerifyWireShape(edictEvent);
+    }
+
+    [Fact]
+    public Task OrderPlacedEvent_WithPrincipal_ShouldHaveStableWireShape()
+    {
+        var edictEvent = new OrderPlacedEvent(FixedAggregateId, "ITEM-1")
+        {
+            EventId = FixedEventId,
+            OccurredAt = new DateTimeOffset(2026, 5, 18, 12, 0, 0, TimeSpan.Zero),
+            TraceId = "0af7651916cd43dd8448eb211c80319c",
+            SpanId = "b7ad6b7169203331",
+            TraceState = null,
+            Principal = EdictPrincipal.Of("auth0|abc-123"),
         };
 
         return VerifyWireShape(edictEvent);

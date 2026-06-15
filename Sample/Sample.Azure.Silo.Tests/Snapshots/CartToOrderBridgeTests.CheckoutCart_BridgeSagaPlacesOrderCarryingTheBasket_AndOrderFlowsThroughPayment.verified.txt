@@ -5,6 +5,7 @@
     Data: {
       CorrelationId: Guid_1,
       OrderId: Guid_2,
+      Principal: null,
       Skus: [
         SKU-A,
         SKU-B

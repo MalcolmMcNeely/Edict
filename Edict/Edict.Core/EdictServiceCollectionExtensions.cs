@@ -8,6 +8,7 @@ using Edict.Contracts.Events;
 using Edict.Contracts.Projections;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
+using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
@@ -99,9 +100,16 @@ public static class EdictServiceCollectionExtensions
         services.AddSingleton(typeof(IEdictProjectionReader<>), typeof(EdictProjectionReader<>));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));
+        // Audit is off unless WithAudit()/AddEdictAudit registered the marker; the
+        // stamper then reads the optional resolver. Built here so every EdictSender
+        // (client and silo) carries the same origin-stamping decision.
+        services.TryAddSingleton(serviceProvider => new EdictPrincipalStamper(
+            auditEnabled: serviceProvider.GetService<EdictAuditEnabledMarker>() is not null,
+            resolver: serviceProvider.GetService<IEdictPrincipalResolver>()));
         services.AddSingleton<IEdictSender>(serviceProvider => new EdictSender(
             serviceProvider.GetRequiredService<CommandRouteResolver>(),
-            serviceProvider.GetRequiredService<IGrainFactory>()));
+            serviceProvider.GetRequiredService<IGrainFactory>(),
+            serviceProvider.GetRequiredService<EdictPrincipalStamper>()));
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
         // TryAdd so an assertable variant (the Edict.Testing rig) wins via

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 using Edict.Contracts;
+using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
@@ -351,7 +352,7 @@ public abstract class EdictCommandHandler<TState>
     /// deactivation. A post-commit publish failure does not roll back and does
     /// not surface — the Reminder retries.
     /// </summary>
-    protected async Task CommitAndDrainRaisedEventsAsync(Guid correlationId)
+    protected async Task CommitAndDrainRaisedEventsAsync(Guid correlationId, EdictPrincipal? principal = null)
     {
         var events = _raisedEvents;
         _raisedEvents = null;
@@ -369,7 +370,7 @@ public abstract class EdictCommandHandler<TState>
             ? ActivityExtensions.BuildTraceParent(traceId, spanId)
             : null;
 
-        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState, correlationId);
+        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState, correlationId, principal);
     }
 
     /// <summary>Discards all buffered events. Called when the handler throws.</summary>
@@ -469,7 +470,7 @@ public abstract class EdictCommandHandler<TState>
             throw;
         }
 
-        await CommitAndDrainRaisedEventsAsync(command.CorrelationId);
+        await CommitAndDrainRaisedEventsAsync(command.CorrelationId, command.Principal);
 
         // A handler that called Schedule(...) staged an entry that the commit
         // above just made durable; arm its timer and Reminder now. Skipped

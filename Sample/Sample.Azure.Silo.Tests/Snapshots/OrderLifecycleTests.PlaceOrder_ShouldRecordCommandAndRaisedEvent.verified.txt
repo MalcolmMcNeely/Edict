@@ -6,7 +6,8 @@
       Data: {
         CorrelationId: Guid_Empty,
         CustomerReference: REF-001,
-        OrderId: Guid_1
+        OrderId: Guid_1,
+        Principal: null
       }
     },
     {
@@ -14,7 +15,8 @@
       Type: OrderPlacedEvent,
       Data: {
         CorrelationId: Guid_2,
-        OrderId: Guid_1
+        OrderId: Guid_1,
+        Principal: null
       }
     },
     {

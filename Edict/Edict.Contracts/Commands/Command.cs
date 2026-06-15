@@ -1,3 +1,5 @@
+using Edict.Contracts.Audit;
+
 using MessagePack;
 
 namespace Edict.Contracts.Commands;
@@ -25,4 +27,14 @@ public abstract record EdictCommand
     /// in the middle.
     /// </summary>
     public Guid CorrelationId { get; init; }
+
+    /// <summary>
+    /// The actor on whose authority this Command was issued. Framework-stamped,
+    /// never threaded by hand: resolved from the edge at the originating
+    /// <c>SendAsync</c> when auditing is on, or supplied explicitly through the
+    /// <c>SendAsync(command, principal)</c> escape hatch, then carried unchanged
+    /// across the whole Command to Event chain. Null until stamped, and null
+    /// stays null when auditing is off.
+    /// </summary>
+    public EdictPrincipal? Principal { get; init; }
 }

@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 
 using MessagePack;
@@ -94,6 +95,17 @@ public sealed class CommandWireShapeTests
             Ratio = 3.5,
             OccurredAt = new DateTimeOffset(2026, 5, 17, 9, 30, 0, TimeSpan.FromHours(1)),
             Note = "nullable-present",
+        };
+        return VerifyWireShape(command);
+    }
+
+    [Fact]
+    public Task PlaceOrderCommand_WithPrincipal_ShouldHaveStableWireShape()
+    {
+        var command = new PlaceOrderCommand(FixedAggregateId, "ITEM-1")
+        {
+            CommandId = FixedCommandId,
+            Principal = EdictPrincipal.Of("auth0|abc-123"),
         };
         return VerifyWireShape(command);
     }

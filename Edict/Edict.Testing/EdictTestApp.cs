@@ -7,6 +7,7 @@ using Edict.Contracts.Projections;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.DeadLetter;
@@ -381,7 +382,8 @@ public sealed class EdictTestApp : IAsyncDisposable
             new RecordingSender(
                 new EdictSender(
                     serviceProvider.GetRequiredService<CommandRouteResolver>(),
-                    serviceProvider.GetRequiredService<IGrainFactory>()),
+                    serviceProvider.GetRequiredService<IGrainFactory>(),
+                    serviceProvider.GetRequiredService<EdictPrincipalStamper>()),
                 ctx.Recorder,
                 serviceProvider.GetRequiredService<CommandRouteResolver>(),
                 ctx.RoutedGrains));

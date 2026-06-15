@@ -1,3 +1,5 @@
+using Edict.Contracts.Audit;
+
 using MessagePack;
 
 namespace Edict.Contracts.Events;
@@ -43,4 +45,12 @@ public abstract record EdictEvent
     /// when no trace is sampled.
     /// </summary>
     public Guid CorrelationId { get; init; }
+
+    /// <summary>
+    /// The actor on whose authority the causing Command was issued, inherited
+    /// unchanged from that Command as the event enters the outbox, so the actor
+    /// stays attributed across the whole conversation. Null when the causing
+    /// Command carried no principal (auditing off, or a framework-internal event).
+    /// </summary>
+    public EdictPrincipal? Principal { get; init; }
 }

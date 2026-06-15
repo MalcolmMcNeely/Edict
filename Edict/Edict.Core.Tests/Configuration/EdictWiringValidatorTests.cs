@@ -1,5 +1,7 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Core.Audit;
 using Edict.Core.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -84,6 +86,43 @@ public sealed class EdictWiringValidatorTests
         var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
 
         Assert.Contains("IEdictClaimCheckStore", failure.Message);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldThrow_WhenAuditEnabledButNoResolverRegistered()
+    {
+        using var host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                // Stands in for siloBuilder.WithAudit(): the on-switch with no resolver behind it.
+                services.AddSingleton<EdictAuditEnabledMarker>();
+                services.AddHostedService<EdictWiringValidator>();
+            })
+            .Build();
+
+        var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
+
+        Assert.Contains("AddEdictAudit", failure.Message);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldComplete_WhenAuditEnabledAndResolverRegistered()
+    {
+        using var host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddOptions<EdictOptions>();
+                services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
+                services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+                services.AddSingleton<IEdictClaimCheckStore, NullClaimCheckStore>();
+                services.AddSingleton<EdictAuditEnabledMarker>();
+                services.AddEdictAudit(() => EdictPrincipal.Of("alice"));
+                services.AddHostedService<EdictWiringValidator>();
+            })
+            .Build();
+
+        await host.StartAsync();
+        await host.StopAsync();
     }
 
     sealed class NullClaimCheckStore : IEdictClaimCheckStore

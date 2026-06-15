@@ -6,6 +6,7 @@
       CorrelationId: Guid_1,
       LineItemId: Guid_2,
       OrderId: Guid_3,
+      Principal: null,
       Quantity: 1,
       Sku: SKU-1
     }

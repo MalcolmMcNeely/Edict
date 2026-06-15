@@ -1,5 +1,6 @@
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Core.Audit;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -42,6 +43,15 @@ sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
                 + "Call silo.AddEdictAzureBlobClaimCheck(...) (for the Azure-blob store) "
                 + "or silo.AddEdictPostgresPersistence(...) (which registers the Postgres-backed store) "
                 + "so oversized events and pointer envelopes have somewhere to land.");
+        }
+
+        if (services.GetService<EdictAuditEnabledMarker>() is not null
+            && services.GetService<IEdictPrincipalResolver>() is null)
+        {
+            problems.Add(
+                "Auditing is on (WithAudit) but no principal resolver is registered. "
+                + "Call services.AddEdictAudit(...) so an originating send can resolve the actor; "
+                + "without it every audited send would fail closed at the edge.");
         }
 
         if (problems.Count > 0)

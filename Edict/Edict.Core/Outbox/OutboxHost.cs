@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 
+using Edict.Contracts.Audit;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Core.ClaimCheck;
@@ -264,6 +265,7 @@ sealed class OutboxHost<TPayload>
         string? traceParent,
         string? traceState,
         Guid correlationId,
+        EdictPrincipal? principal = null,
         CancellationToken cancellationToken = default)
     {
         if (events.Count == 0)
@@ -281,11 +283,12 @@ sealed class OutboxHost<TPayload>
         // serialises the payload — so the persisted bytes carry the stable
         // identity and a re-drain deserialises the same id. OccurredAt was
         // already stamped at Raise; this is the delivery identity, not the
-        // intent stamp. The correlation id is stamped here too: the event
-        // inherits it from the message that caused it, carried unchanged so the
-        // whole chain shares one chain-stable token.
+        // intent stamp. The correlation id and principal are stamped here too:
+        // the event inherits both from the message that caused it, carried
+        // unchanged so the whole chain shares one chain-stable token and stays
+        // attributed to the same actor.
         var results = await Task.WhenAll(events.Select(edictEvent =>
-            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId }, producerContext, cancellationToken)));
+            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal }, producerContext, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);
