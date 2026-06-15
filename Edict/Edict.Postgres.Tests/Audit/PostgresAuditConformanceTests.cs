@@ -18,26 +18,40 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
     static string EntityType => typeof(CounterAggregate).FullName!;
 
     [Fact]
-    public async Task AcceptAndReject_UnderAKnownPrincipal_YieldTwoImmutableChainedRecords()
+    public async Task AcceptRaiseAndReject_UnderAKnownPrincipal_YieldImmutableChainedCommandAndEventRecords()
     {
         // Arrange
         var counterId = Guid.NewGuid();
         var entityKey = counterId.ToString();
 
-        // Act
+        // Act — the accepted increment raises one event (one C1 command record plus
+        // one E1 event record); the rejection raises nothing (one C1 command record).
         var accepted = await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         var rejected = await fixture.Sender.SendAsync(new RejectCounterCommand(counterId));
 
-        // Assert — exactly one attributed record per decision, with reasons on the rejection.
-        Assert.IsType<EdictCommandResult.Accepted>(accepted);
+        // Assert — every record attributed to the known principal, on one chain.
+        var cursor = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor;
         Assert.IsType<EdictCommandResult.Rejected>(rejected);
 
-        var records = await WaitForRecordsAsync(entityKey, expectedCount: 2);
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
         Assert.All(records, record => Assert.Equal(PostgresPersistenceFixtureBase.AuditPrincipal, record.Principal));
-        Assert.Equal(EdictAuditOutcome.Accepted, records[0].Outcome);
-        Assert.Equal(EdictAuditOutcome.Rejected, records[1].Outcome);
-        Assert.Equal("counter_rejected", Assert.Single(records[1].RejectionReasons).Code);
-        Assert.Equal([0L, 1L], records.Select(record => record.Sequence));
+        Assert.Equal(
+            [EdictAuditKind.Command, EdictAuditKind.Event, EdictAuditKind.Command],
+            records.Select(record => record.Kind));
+        Assert.Equal([0L, 1L, 2L], records.Select(record => record.Sequence));
+
+        // The command decisions: accepted then rejected, with reasons on the rejection.
+        var commandRecords = records.Where(record => record.Kind == EdictAuditKind.Command).ToArray();
+        Assert.Equal(EdictAuditOutcome.Accepted, commandRecords[0].Outcome);
+        Assert.Equal(EdictAuditOutcome.Rejected, commandRecords[1].Outcome);
+        Assert.Equal("counter_rejected", Assert.Single(commandRecords[1].RejectionReasons).Code);
+
+        // The E1 event record: present, attributed, carrying the inherited
+        // correlation, with no command outcome.
+        var eventRecord = Assert.Single(records, record => record.Kind == EdictAuditKind.Event);
+        Assert.Equal(cursor.CorrelationId, eventRecord.CorrelationId);
+        Assert.Null(eventRecord.Outcome);
+        Assert.Equal(typeof(CounterIncrementedEvent).FullName, eventRecord.MessageType);
 
         var verification = await fixture.VerifyChainAsync(EntityType, entityKey);
         Assert.True(verification.IsIntact);
@@ -51,9 +65,10 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
         var entityKey = counterId.ToString();
         var probe = fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
+        // Increment (C1 + E1) then reject (C1) — three records before deactivation.
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         await fixture.Sender.SendAsync(new RejectCounterCommand(counterId));
-        await WaitForRecordsAsync(entityKey, expectedCount: 2);
+        await WaitForRecordsAsync(entityKey, expectedCount: 3);
 
         // Act — force the grain to deactivate so the next command reloads the
         // chain head from durable state rather than memory.
@@ -61,11 +76,12 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
         await probe.DeactivateAsync();
         await WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
 
+        // A second increment after reactivation adds another C1 + E1.
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 
-        // Assert — the third record continues the chain (seq 2) and verifies.
-        var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
-        Assert.Equal([0L, 1L, 2L], records.Select(record => record.Sequence));
+        // Assert — the post-reactivation records continue the chain (seq 3, 4) and verify.
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 5);
+        Assert.Equal([0L, 1L, 2L, 3L, 4L], records.Select(record => record.Sequence));
 
         var verification = await fixture.VerifyChainAsync(EntityType, entityKey);
         Assert.True(verification.IsIntact);
@@ -74,10 +90,10 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
     [Fact]
     public async Task WormTrigger_ShouldRefuseUpdateAndDelete()
     {
-        // Arrange
+        // Arrange — the increment captures a C1 command record plus an E1 event record.
         var counterId = Guid.NewGuid();
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
-        var records = await WaitForRecordsAsync(counterId.ToString(), expectedCount: 1);
+        var records = await WaitForRecordsAsync(counterId.ToString(), expectedCount: 2);
         var recordId = records[0].RecordId;
 
         // Act + Assert — the BEFORE UPDATE/DELETE trigger raises insufficient
@@ -90,9 +106,9 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
             $"DELETE FROM edict_audit_record WHERE record_id = '{recordId}';");
         Assert.Equal("42501", deleteState);
 
-        // The record is still present and the chain still verifies.
+        // Both records are still present and the chain still verifies.
         var afterAttempts = await fixture.ReadEntityAsync(EntityType, counterId.ToString());
-        Assert.Single(afterAttempts);
+        Assert.Equal(2, afterAttempts.Count);
     }
 
     async Task<IReadOnlyList<EdictAuditRecord>> WaitForRecordsAsync(string entityKey, int expectedCount)

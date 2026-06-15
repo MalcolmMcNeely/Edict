@@ -389,17 +389,30 @@ public abstract class EdictCommandHandler<TState>
         if (events is null || events.Count == 0)
         {
             await Host.WriteStateOnlyAsync();
-            return;
+        }
+        else
+        {
+            // Capture the live command trace so the publish span nests under it as
+            // parent-child even when a crash-recovery drain runs much later.
+            var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
+            var traceParent = traceId is not null && spanId is not null
+                ? ActivityExtensions.BuildTraceParent(traceId, spanId)
+                : null;
+
+            await Host.EnqueueRaisedEventsAndDrainAsync(
+                events, traceParent, traceState, correlationId, principal,
+                AuditEnabled ? StageEventAuditRecords : null);
         }
 
-        // Capture the live command trace so the publish span nests under it as
-        // parent-child even when a crash-recovery drain runs much later.
-        var (traceId, spanId, traceState) = ActivityExtensions.ReadRequestContext();
-        var traceParent = traceId is not null && spanId is not null
-            ? ActivityExtensions.BuildTraceParent(traceId, spanId)
-            : null;
-
-        await Host.EnqueueRaisedEventsAndDrainAsync(events, traceParent, traceState, correlationId, principal);
+        // Any audit record staged into the write above — the command's C1 record,
+        // plus an E1 record per raised event — drains off this turn. Kicking here
+        // (rather than only on the command path) covers a schedule or timer fire
+        // that raises an audited event too. A no-op when nothing was staged; the
+        // common non-audited silo skips it entirely.
+        if (AuditEnabled)
+        {
+            KickAuditDrain();
+        }
     }
 
     /// <summary>Discards all buffered events. Called when the handler throws.</summary>
@@ -537,11 +550,6 @@ public abstract class EdictCommandHandler<TState>
             await ScheduleHost.ReconcileAsync();
         }
 
-        if (AuditEnabled)
-        {
-            KickAuditDrain();
-        }
-
         // Echo the command's chain-stable correlation back as the read-your-writes
         // cursor. Stamped here, the single chokepoint every dispatch funnels
         // through, so a consumer handler keeps returning a bare Accepted and never
@@ -592,14 +600,7 @@ public abstract class EdictCommandHandler<TState>
             PayloadReference = recordId,
         };
 
-        var chain = base.State.Audit ?? new AuditChain();
-        var sealedRecord = AuditRecordBuilder.Seal(content, chain.Head, chain.NextSequence);
-        var entry = new AuditChainEntry
-        {
-            RecordId = sealedRecord.RecordId,
-            Record = Serializer.SerializeToArray(sealedRecord),
-        };
-        base.State.Audit = chain.Append(sealedRecord.RecordHash, entry);
+        AppendToChain(content);
 
         AuditMetrics.RecordsCaptured.Add(1,
             new KeyValuePair<string, object?>(
@@ -609,6 +610,59 @@ public abstract class EdictCommandHandler<TState>
                 outcome == EdictAuditOutcome.Accepted
                     ? SemanticConventions.Audit.Tags.OutcomeValues.Accepted
                     : SemanticConventions.Audit.Tags.OutcomeValues.Rejected));
+    }
+
+    // Stages one E1 audit record per raised event onto the chain, in capture
+    // order, after the command's own C1 record. Invoked from the outbox enqueue
+    // chokepoint with the events already carrying their minted EventId and the
+    // inherited correlation and principal, so each record attributes the event to
+    // the originating actor and seals against the running chain head before the
+    // commit that makes both the events and the records durable in one write. The
+    // RecordId is the EventId, so the record and the event it attests to share one
+    // identity and a re-drain dedups on it. OccurredAt is the event's intent-time
+    // stamped at Raise, not the enqueue moment.
+    void StageEventAuditRecords(IReadOnlyList<EdictEvent> events)
+    {
+        var entityType = GetType().FullName ?? GetType().Name;
+        var entityKey = this.GetPrimaryKey().ToString();
+
+        foreach (var raisedEvent in events)
+        {
+            var content = new EdictAuditRecord
+            {
+                RecordId = raisedEvent.EventId,
+                Kind = EdictAuditKind.Event,
+                Principal = raisedEvent.Principal,
+                CorrelationId = raisedEvent.CorrelationId,
+                EntityType = entityType,
+                EntityKey = entityKey,
+                MessageType = raisedEvent.GetType().FullName ?? raisedEvent.GetType().Name,
+                OccurredAt = raisedEvent.OccurredAt,
+                PayloadHash = SHA256.HashData(Serializer.SerializeToArray(raisedEvent)),
+                PayloadReference = raisedEvent.EventId,
+            };
+
+            AppendToChain(content);
+
+            AuditMetrics.RecordsCaptured.Add(1,
+                new KeyValuePair<string, object?>(
+                    SemanticConventions.Audit.Tags.Kind, SemanticConventions.Audit.Tags.KindValues.Event));
+        }
+    }
+
+    // Seals a content-filled record against the running chain head and stages it
+    // onto the pending tail in grain state. Shared by C1 and E1 capture so the
+    // chain advance and the serialized-entry shape stay identical for both.
+    void AppendToChain(EdictAuditRecord content)
+    {
+        var chain = base.State.Audit ?? new AuditChain();
+        var sealedRecord = AuditRecordBuilder.Seal(content, chain.Head, chain.NextSequence);
+        var entry = new AuditChainEntry
+        {
+            RecordId = sealedRecord.RecordId,
+            Record = Serializer.SerializeToArray(sealedRecord),
+        };
+        base.State.Audit = chain.Append(sealedRecord.RecordHash, entry);
     }
 
     // Drains the staged records off the command turn so the caller never waits on

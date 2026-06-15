@@ -1,8 +1,11 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.Audit;
 using Edict.Core.Tests.ClaimCheck;
 
 using Microsoft.Extensions.Configuration;
@@ -27,6 +30,14 @@ public sealed class ScheduleLifecycleCollection : ICollectionFixture<ScheduleLif
     public const string Name = "ScheduleLifecycle";
 }
 
+// Shared store instance the silo writes to and a test reads. Static because an
+// Orleans test silo configurator is constructed by the runtime and cannot capture
+// fixture instance state; tests scope reads by a unique probe key.
+static class ScheduleAuditStoreHolder
+{
+    public static readonly RecordingAuditStore Instance = new();
+}
+
 public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
 {
     static FakeTimeProvider _clock = null!;
@@ -34,6 +45,8 @@ public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
     public TestCluster Cluster { get; private set; } = null!;
 
     public IGrainFactory GrainFactory => Cluster.GrainFactory;
+
+    public RecordingAuditStore AuditStore => ScheduleAuditStoreHolder.Instance;
 
     public void AdvanceClock(TimeSpan by) => _clock.Advance(by);
 
@@ -68,6 +81,13 @@ public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSingleton<IEdictClaimCheckStore>(new InMemoryClaimCheckStore());
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
+
+            // Auditing on, so a schedule fire that raises an event captures an E1
+            // record attributed to the arming principal and drains it off the fire
+            // turn. Existing schedule tests ignore the audit slice.
+            siloBuilder.Services.AddEdictAudit(_ => null);
+            siloBuilder.Services.AddSingleton<IEdictAuditStore>(ScheduleAuditStoreHolder.Instance);
+            siloBuilder.WithAudit();
 
             // Swap the real publish executor for the capturing one (Replace, not
             // append — the host keys executors by Kind, so a duplicate would throw)

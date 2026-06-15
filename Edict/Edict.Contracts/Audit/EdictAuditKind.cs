@@ -3,8 +3,7 @@ namespace Edict.Contracts.Audit;
 /// <summary>
 /// Which kind of decision an <see cref="EdictAuditRecord"/> captures: a Command
 /// decision (the accept/reject outcome, recorded at C1) or an Event occurrence
-/// (recorded at E1). Event capture ships in a later slice; the kind is modelled
-/// now so the stored shape is stable.
+/// (recorded at E1, one record per raised event).
 /// </summary>
 public enum EdictAuditKind
 {

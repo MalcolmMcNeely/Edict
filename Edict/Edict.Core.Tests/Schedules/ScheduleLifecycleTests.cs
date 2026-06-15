@@ -1,4 +1,7 @@
+using System.Diagnostics;
+
 using Edict.Contracts.Audit;
+using Edict.Core.Audit;
 
 using Orleans;
 
@@ -144,6 +147,50 @@ public sealed class ScheduleLifecycleTests
             ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
             tick => tick.Key == probeId);
         Assert.Equal(EdictPrincipal.Of("scheduler-bob"), published.Principal);
+    }
+
+    [Fact]
+    public async Task Fire_RaisingEvent_ShouldCaptureAnE1RecordAttributedToTheArmingPrincipal()
+    {
+        var probeId = Guid.NewGuid();
+        var entityKey = probeId.ToString();
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
+
+        _fixture.AdvanceClock(Cadence);
+        await probe.FireDueSchedulesAsync();
+
+        // A schedule fire raises an event through the same E1 chokepoint a command
+        // does, so it is captured and drained off the fire turn even though no
+        // command ran it. The record is attributed to the durable arm-context
+        // principal, not an ambient one.
+        var records = await WaitForEntityRecordsAsync(entityKey, expectedCount: 1);
+        var eventRecord = Assert.Single(records, record => record.Kind == EdictAuditKind.Event);
+        Assert.Equal(EdictPrincipal.Of("scheduler-bob"), eventRecord.Principal);
+        Assert.Equal(typeof(ScheduleTickedEvent).FullName, eventRecord.MessageType);
+        Assert.Null(eventRecord.Outcome);
+
+        var verification = await new EdictDefaultAuditRepository(_fixture.AuditStore)
+            .VerifyEntityChainAsync(typeof(ScheduleProbe).FullName!, entityKey);
+        Assert.True(verification.IsIntact);
+    }
+
+    async Task<IReadOnlyList<EdictAuditRecord>> WaitForEntityRecordsAsync(string entityKey, int expectedCount)
+    {
+        var entityType = typeof(ScheduleProbe).FullName!;
+        var deadline = Stopwatch.GetTimestamp() + (Stopwatch.Frequency * 10);
+        while (Stopwatch.GetTimestamp() < deadline)
+        {
+            var records = await _fixture.AuditStore.ByEntityAsync(entityType, entityKey, CancellationToken.None);
+            if (records.Count(record => record.Kind == EdictAuditKind.Event) >= expectedCount)
+            {
+                return records;
+            }
+            await Task.Delay(25);
+        }
+
+        Assert.Fail($"Expected {expectedCount} event audit record(s) for {entityKey} but the drain did not produce them in time.");
+        return [];
     }
 
     [Fact]

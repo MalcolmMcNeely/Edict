@@ -33,13 +33,55 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         Assert.IsType<EdictCommandResult.Accepted>(accepted);
         Assert.IsType<EdictCommandResult.Rejected>(rejected);
 
-        var records = await WaitForRecordsAsync(entityKey, expectedCount: 2);
+        // The accepted increment captures one C1 command record plus one E1 event
+        // record (it raises one event); the validator rejection captures one C1
+        // command record and raises nothing — three records on one chain.
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
 
         Assert.All(records, record => Assert.Equal(AuditCaptureClusterFixture.CapturePrincipal, record.Principal));
-        Assert.Equal(EdictAuditOutcome.Accepted, records[0].Outcome);
-        Assert.Equal(EdictAuditOutcome.Rejected, records[1].Outcome);
-        Assert.Equal("always_rejected", Assert.Single(records[1].RejectionReasons).Code);
-        Assert.Equal([0L, 1L], records.Select(record => record.Sequence));
+        Assert.Equal([0L, 1L, 2L], records.Select(record => record.Sequence));
+
+        var commandRecords = records.Where(record => record.Kind == EdictAuditKind.Command).ToArray();
+        Assert.Equal(EdictAuditOutcome.Accepted, commandRecords[0].Outcome);
+        Assert.Equal(EdictAuditOutcome.Rejected, commandRecords[1].Outcome);
+        Assert.Equal("always_rejected", Assert.Single(commandRecords[1].RejectionReasons).Code);
+
+        var repository = new EdictDefaultAuditRepository(fixture.AuditStore);
+        var verification = await repository.VerifyEntityChainAsync(EntityType, entityKey);
+        Assert.True(verification.IsIntact);
+        Assert.Null(verification.BrokenAtSequence);
+    }
+
+    [Fact]
+    public async Task Capture_ShouldRecordOneEventRecordPerRaisedEvent_ChainedAfterTheCommand()
+    {
+        // Arrange
+        var counterId = Guid.NewGuid();
+        var entityKey = counterId.ToString();
+
+        // Act
+        var accepted = await fixture.Sender.SendAsync(new BatchIncrementCounterCommand(counterId, 2));
+
+        // Assert
+        var cursor = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor;
+
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
+
+        // One C1 command record, then one E1 event record per raised event, all on
+        // one unbroken chain attributed to the carried principal.
+        Assert.Equal(
+            [EdictAuditKind.Command, EdictAuditKind.Event, EdictAuditKind.Event],
+            records.Select(record => record.Kind));
+        Assert.Equal([0L, 1L, 2L], records.Select(record => record.Sequence));
+
+        var eventRecords = records.Where(record => record.Kind == EdictAuditKind.Event).ToArray();
+        Assert.All(eventRecords, record =>
+        {
+            Assert.Equal(AuditCaptureClusterFixture.CapturePrincipal, record.Principal);
+            Assert.Equal(cursor.CorrelationId, record.CorrelationId);
+            Assert.Null(record.Outcome);
+            Assert.Equal(typeof(CounterIncrementedEvent).FullName, record.MessageType);
+        });
 
         var repository = new EdictDefaultAuditRepository(fixture.AuditStore);
         var verification = await repository.VerifyEntityChainAsync(EntityType, entityKey);
@@ -82,16 +124,19 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         });
         listener.Start();
 
-        // Act
+        // Act — the accepted command raises one event, so it captures one C1
+        // command record plus one E1 event record; the validator rejection captures
+        // one C1 command record and raises nothing.
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         await fixture.Sender.SendAsync(new RejectByValidatorCommand(counterId));
-        await WaitForRecordsAsync(counterId.ToString(), expectedCount: 2);
+        await WaitForRecordsAsync(counterId.ToString(), expectedCount: 3);
 
         // Assert
         lock (captured)
         {
             Assert.Contains(("command", "accepted"), captured);
             Assert.Contains(("command", "rejected"), captured);
+            Assert.Contains(("event", ""), captured);
         }
     }
 

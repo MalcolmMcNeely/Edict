@@ -266,6 +266,7 @@ sealed class OutboxHost<TPayload>
         string? traceState,
         Guid correlationId,
         EdictPrincipal? principal = null,
+        Action<IReadOnlyList<EdictEvent>>? captureIdentified = null,
         CancellationToken cancellationToken = default)
     {
         if (events.Count == 0)
@@ -287,8 +288,20 @@ sealed class OutboxHost<TPayload>
         // the event inherits both from the message that caused it, carried
         // unchanged so the whole chain shares one chain-stable token and stays
         // attributed to the same actor.
-        var results = await Task.WhenAll(events.Select(edictEvent =>
-            policy.ApplyAsync(edictEvent with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal }, producerContext, cancellationToken)));
+        var identified = new EdictEvent[events.Count];
+        for (var i = 0; i < events.Count; i++)
+        {
+            identified[i] = events[i] with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal };
+        }
+
+        // E1 audit capture rides the same write that commits the enqueue: the
+        // identified events are handed back to the grain to stage one record each
+        // onto the audit chain before the state below is written, so the chain
+        // never diverges from the events it attests to.
+        captureIdentified?.Invoke(identified);
+
+        var results = await Task.WhenAll(identified.Select(edictEvent =>
+            policy.ApplyAsync(edictEvent, producerContext, cancellationToken)));
 
         var entries = new OutboxEntry[events.Count];
         var liveRefs = new Dictionary<Guid, EdictEvent>(events.Count);

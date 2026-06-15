@@ -7,7 +7,9 @@ namespace Edict.Contracts.Audit;
 /// <summary>
 /// An immutable, attributable statement that a decision happened. A Command
 /// decision is captured at C1 (<c>EdictCommandHandler.ValidateAndHandleAsync</c>),
-/// the only choke point that sees a rejection. The record holds the attribution
+/// the only choke point that sees a rejection; each raised Event is captured at E1
+/// (the outbox enqueue point where its <c>EventId</c> is minted), one record per
+/// event. The record holds the attribution
 /// (<see cref="Principal"/>), the causal spine (<see cref="CorrelationId"/>,
 /// <see cref="RecordId"/>), the message type identity, the outcome, and a payload
 /// <see cref="PayloadHash"/> plus a <see cref="PayloadReference"/> into a separate
