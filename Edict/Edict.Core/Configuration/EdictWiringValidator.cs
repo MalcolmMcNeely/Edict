@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Core.Audit;
@@ -52,6 +53,16 @@ sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
                 "Auditing is on (WithAudit) but no principal resolver is registered. "
                 + "Call services.AddEdictAudit(...) so an originating send can resolve the actor; "
                 + "without it every audited send would fail closed at the edge.");
+        }
+
+        if (services.GetService<EdictAuditSiloMarker>() is not null
+            && services.GetService<IEdictAuditStore>() is null)
+        {
+            problems.Add(
+                "Auditing is on (WithAudit) but no audit store is registered. "
+                + "Call silo.AddEdictPostgresPersistence(...) (which registers the Postgres-backed store) "
+                + "so captured records have a tamper-evident store to drain to; "
+                + "without it every captured decision would be staged but never durable.");
         }
 
         if (problems.Count > 0)

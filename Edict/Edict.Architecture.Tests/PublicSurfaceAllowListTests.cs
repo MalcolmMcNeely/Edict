@@ -82,6 +82,8 @@ public class PublicSurfaceAllowListTests
             ("Edict.Core.Correlation.CorrelationProgress", typeof(Edict.Core.Correlation.CorrelationProgress)),
             ("Edict.Core.Schedules.ScheduleEntry", typeof(Edict.Core.Schedules.ScheduleEntry)),
             ("Edict.Core.Schedules.ScheduleSlice", typeof(Edict.Core.Schedules.ScheduleSlice)),
+            ("Edict.Core.Audit.AuditChain", typeof(Edict.Core.Audit.AuditChain)),
+            ("Edict.Core.Audit.AuditChainEntry", typeof(Edict.Core.Audit.AuditChainEntry)),
             ("Edict.Core.TableStorage.IEdictTableStoreFactory", typeof(IEdictTableStoreFactory)),
             ("Edict.Contracts.TableStorage.IEdictTableWriteStore<T>", typeof(IEdictTableWriteStore<>)),
         };
@@ -259,7 +261,12 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Contracts.Audit.EdictAuditChainVerification",
+        "Edict.Contracts.Audit.EdictAuditKind",
+        "Edict.Contracts.Audit.EdictAuditOutcome",
+        "Edict.Contracts.Audit.EdictAuditRecord",
         "Edict.Contracts.Audit.EdictPrincipal",
+        "Edict.Contracts.Audit.IEdictAuditRepository",
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
         "Edict.Contracts.Commands.EdictCommand",
         "Edict.Contracts.Commands.EdictCommandResult",
@@ -302,6 +309,8 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Core.Audit.AuditChain",
+        "Edict.Core.Audit.AuditChainEntry",
         "Edict.Core.Audit.EdictAuditServiceCollectionExtensions",
         "Edict.Core.Audit.EdictAuditSiloBuilderExtensions",
         "Edict.Core.Audit.EdictMissingPrincipalException",
@@ -355,6 +364,10 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
         "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictListProjectionBuilder<TRow> — permanent resident.
+        "OrleansCodeGen.Edict.Core.Audit.Codec_AuditChain",
+        "OrleansCodeGen.Edict.Core.Audit.Codec_AuditChainEntry",
+        "OrleansCodeGen.Edict.Core.Audit.Copier_AuditChain",
+        "OrleansCodeGen.Edict.Core.Audit.Copier_AuditChainEntry",
         "OrleansCodeGen.Edict.Core.Commands.Codec_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
         "OrleansCodeGen.Edict.Core.Commands.Copier_Invokable_IEdictCommandHandler_GrainReference_E0958B40",
         "OrleansCodeGen.Edict.Core.Commands.Invokable_IEdictCommandHandler_GrainReference_E0958B40",

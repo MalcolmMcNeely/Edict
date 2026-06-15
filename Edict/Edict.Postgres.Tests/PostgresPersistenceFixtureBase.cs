@@ -1,9 +1,11 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
@@ -58,6 +60,13 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
+    // The fixture's own data source, so an audit conformance fixture can read the
+    // store and attempt a raw mutation against the same database from the test
+    // process. Internal — only the in-assembly audit fixture reaches it.
+    internal NpgsqlDataSource DataSource => _dataSource;
+
+    internal Serializer ClientSerializer => Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
+
     public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
         new PostgresTableWriteStore<T>(
             _dataSource,
@@ -89,6 +98,14 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
     // and runs on TimeProvider.System.
     protected virtual TimeProvider? ClockOverride => null;
 
+    // The audit fixture turns this on to wire WithAudit + an edge resolver on the
+    // silo and client; every other fixture leaves it off and never captures.
+    protected virtual bool EnableAudit => false;
+
+    // The known principal the audit fixture's edge resolver yields, so a
+    // conformance scenario can assert attribution.
+    internal static EdictPrincipal AuditPrincipal => EdictPrincipal.Of("auditor-bob");
+
     public override async Task InitializeAsync()
     {
         var adminConnectionString = await PostgresAssemblyHost.GetAdminConnectionStringAsync();
@@ -106,7 +123,8 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             ClaimCheckThresholdBytes,
             OutboxFault,
             StorageFault,
-            ClockOverride);
+            ClockOverride,
+            EnableAudit);
         _contextKey = PostgresPersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -230,6 +248,14 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             {
                 ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault);
             }
+
+            // Turn on audit capture after persistence binds, so the resolved
+            // IEdictAuditStore is the Postgres one registered by the extension.
+            if (ctx.EnableAudit)
+            {
+                siloBuilder.Services.AddEdictAudit(_ => AuditPrincipal);
+                siloBuilder.WithAudit();
+            }
         }
     }
 
@@ -241,6 +267,14 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Configure<ClientMessagingOptions>(options => options.ResponseTimeout = TimeSpan.FromMinutes(2));
             clientBuilder.Services.AddEdict();
+
+            var key = configuration[PostgresPersistenceContextRegistry.ContextKeyProperty];
+            if (key is not null && PostgresPersistenceContextRegistry.Get(key).EnableAudit)
+            {
+                // The client is the originating send, so it needs the resolver to
+                // stamp the principal before the command leaves for the silo.
+                clientBuilder.Services.AddEdictAudit(_ => AuditPrincipal);
+            }
         }
     }
 }

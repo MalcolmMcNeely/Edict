@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using Edict.Contracts;
 using Edict.Contracts.Audit;
@@ -8,6 +9,7 @@ using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
 using Edict.Contracts.Schedules;
+using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
@@ -55,15 +57,24 @@ public abstract class EdictCommandHandler<TState>
 {
     OutboxHost<TState>? _host;
     ScheduleHost<TState>? _scheduleHost;
+    AuditHost<TState>? _auditHost;
     Serializer? _serializer;
     EdictCommandHandlerScheduleOptions? _scheduleOptions;
     IDeadLetterPromoter? _deadLetterPromoter;
+    bool? _auditEnabled;
+    IGrainTimer? _auditDrainKick;
     internal List<EdictEvent>? _raisedEvents;
     internal TimeProvider? _timeProvider;
 
     OutboxHost<TState> Host => _host ??= BuildHost();
 
     ScheduleHost<TState> ScheduleHost => _scheduleHost ??= BuildScheduleHost();
+
+    AuditHost<TState> AuditHost => _auditHost ??= BuildAuditHost();
+
+    // Auditing is on for this silo when the marker is present (WithAudit + a
+    // resolver). Resolved once; the common non-audited silo pays one lookup.
+    bool AuditEnabled => _auditEnabled ??= ServiceProvider.GetService<EdictAuditEnabledMarker>() is not null;
 
     Serializer Serializer => _serializer ??= ServiceProvider.GetRequiredService<Serializer>();
 
@@ -88,6 +99,12 @@ public abstract class EdictCommandHandler<TState>
     /// </summary>
     internal OutboxSlice OutboxStateForProbe => base.State.Outbox;
 
+    /// <summary>
+    /// Test-only probe over the framework-owned audit chain. Internal so the
+    /// Edict probe grains can assert pending-record counts; not consumer surface.
+    /// </summary>
+    internal AuditChain? AuditStateForProbe => base.State.Audit;
+
     /// <inheritdoc />
     public abstract Task<EdictCommandResult> DispatchAsync(EdictCommand command);
 
@@ -103,6 +120,10 @@ public abstract class EdictCommandHandler<TState>
         if (base.State.Schedule.Active.Count > 0)
         {
             await ScheduleHost.OnActivateAsync();
+        }
+        if (AuditEnabled && base.State.Audit is { Pending.Count: > 0 })
+        {
+            await AuditHost.OnActivateAsync();
         }
     }
 
@@ -120,9 +141,12 @@ public abstract class EdictCommandHandler<TState>
 
     /// <inheritdoc />
     public Task ReceiveReminder(string reminderName, TickStatus status) =>
-        reminderName == ScheduleHost<TState>.ScheduleReminderName
-            ? ScheduleHost.ReceiveReminderAsync()
-            : Host.ReceiveReminderAsync();
+        reminderName switch
+        {
+            ScheduleHost<TState>.ScheduleReminderName => ScheduleHost.ReceiveReminderAsync(),
+            AuditHost<TState>.DrainReminderName => AuditHost.ReceiveReminderAsync(),
+            _ => Host.ReceiveReminderAsync(),
+        };
 
     /// <inheritdoc />
     public Task FireDueSchedulesAsync() => ScheduleHost.FireDueAsync();
@@ -456,12 +480,26 @@ public abstract class EdictCommandHandler<TState>
             var validation = await validator.ValidateAsync(context);
             if (!validation.IsValid)
             {
-                return new EdictCommandResult.Rejected(
+                var rejected = new EdictCommandResult.Rejected(
                     validation.Errors
                         .Select(static e => new EdictRejectionReason(
                             e.ErrorCode ?? "validation_error",
                             e.ErrorMessage))
                         .ToArray());
+
+                // A validator rejection never ran the handler, so it has no state
+                // mutation or event to commit and normally writes nothing. When
+                // auditing is on the rejection is still a decision the regulator
+                // asks about ("who tried, and why was it denied?"), so capture it
+                // and commit that one record before acknowledging the rejection.
+                if (AuditEnabled)
+                {
+                    StageAuditRecord(command, rejected);
+                    await Host.WriteStateOnlyAsync();
+                    KickAuditDrain();
+                }
+
+                return rejected;
             }
         }
 
@@ -480,6 +518,14 @@ public abstract class EdictCommandHandler<TState>
             throw;
         }
 
+        // Stage the decision before the commit so the audit record rides the same
+        // grain-state write as the action — present before the result is
+        // acknowledged. The drain to the store happens off this turn, below.
+        if (AuditEnabled)
+        {
+            StageAuditRecord(command, result);
+        }
+
         await CommitAndDrainRaisedEventsAsync(command.CorrelationId, command.Principal);
 
         // A handler that called Schedule(...) staged an entry that the commit
@@ -489,6 +535,11 @@ public abstract class EdictCommandHandler<TState>
         if (_scheduleHost is not null || base.State.Schedule.Active.Count > 0)
         {
             await ScheduleHost.ReconcileAsync();
+        }
+
+        if (AuditEnabled)
+        {
+            KickAuditDrain();
         }
 
         // Echo the command's chain-stable correlation back as the read-your-writes
@@ -506,6 +557,76 @@ public abstract class EdictCommandHandler<TState>
     /// The default returns <c>null</c> (no state injected).
     /// </summary>
     protected virtual object? GetValidationState() => null;
+
+    // Builds the C1 audit record for a command decision and stages it onto the
+    // chain in grain state. The hash folds in the running chain head, so the
+    // record both attributes the decision and seals it against tampering; the
+    // serialized record waits on the chain for the off-hot-path drain. The body
+    // is captured as a hash plus a reference id only — the body store is a later
+    // slice — so the chain itself stays personal-data-free.
+    void StageAuditRecord<TCommand>(TCommand command, EdictCommandResult result)
+        where TCommand : EdictCommand
+    {
+        var outcome = result is EdictCommandResult.Accepted
+            ? EdictAuditOutcome.Accepted
+            : EdictAuditOutcome.Rejected;
+        var reasons = result is EdictCommandResult.Rejected rejected
+            ? rejected.Reasons
+            : [];
+
+        var time = _timeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
+        var recordId = Guid.NewGuid();
+        var content = new EdictAuditRecord
+        {
+            RecordId = recordId,
+            Kind = EdictAuditKind.Command,
+            Outcome = outcome,
+            RejectionReasons = reasons,
+            Principal = command.Principal,
+            CorrelationId = command.CorrelationId,
+            EntityType = GetType().FullName ?? GetType().Name,
+            EntityKey = this.GetPrimaryKey().ToString(),
+            MessageType = command.GetType().FullName ?? command.GetType().Name,
+            OccurredAt = time.GetUtcNow(),
+            PayloadHash = SHA256.HashData(Serializer.SerializeToArray<EdictCommand>(command)),
+            PayloadReference = recordId,
+        };
+
+        var chain = base.State.Audit ?? new AuditChain();
+        var sealedRecord = AuditRecordBuilder.Seal(content, chain.Head, chain.NextSequence);
+        var entry = new AuditChainEntry
+        {
+            RecordId = sealedRecord.RecordId,
+            Record = Serializer.SerializeToArray(sealedRecord),
+        };
+        base.State.Audit = chain.Append(sealedRecord.RecordHash, entry);
+
+        AuditMetrics.RecordsCaptured.Add(1,
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Audit.Tags.Kind, SemanticConventions.Audit.Tags.KindValues.Command),
+            new KeyValuePair<string, object?>(
+                SemanticConventions.Audit.Tags.Outcome,
+                outcome == EdictAuditOutcome.Accepted
+                    ? SemanticConventions.Audit.Tags.OutcomeValues.Accepted
+                    : SemanticConventions.Audit.Tags.OutcomeValues.Rejected));
+    }
+
+    // Drains the staged records off the command turn so the caller never waits on
+    // the remote store write, while staying on the grain scheduler so it
+    // serialises with the next turn. One pending kick at a time; activation and
+    // the reminder backstop a kick that never fires.
+    void KickAuditDrain()
+    {
+        _auditDrainKick?.Dispose();
+        _auditDrainKick = this.RegisterGrainTimer(
+            async _ => await AuditHost.DrainAsync(),
+            new GrainTimerCreationOptions
+            {
+                DueTime = TimeSpan.Zero,
+                Period = Timeout.InfiniteTimeSpan,
+                KeepAlive = true,
+            });
+    }
 
     OutboxHost<TState> BuildHost() =>
         new(
@@ -537,6 +658,18 @@ public abstract class EdictCommandHandler<TState>
             ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             FireScheduleEntryAsync,
             FireScheduleTimeoutEntryAsync);
+
+    AuditHost<TState> BuildAuditHost() =>
+        new(
+            new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
+                get: () => base.State,
+                set: v => base.State = v,
+                writeState: WriteStateAsync),
+            new GrainReminderRegistrar(this),
+            ServiceProvider.GetRequiredService<IEdictAuditStore>(),
+            Serializer,
+            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value.OutboxDrainReminderPeriod,
+            GetType().FullName ?? GetType().Name);
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test

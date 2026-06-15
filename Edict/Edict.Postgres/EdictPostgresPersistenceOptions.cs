@@ -37,6 +37,14 @@ public sealed class EdictPostgresPersistenceOptions
     public string ClaimCheckTableName { get; set; } = "edict_claim_check";
 
     /// <summary>
+    /// Table backing the append-only ALCOA++ audit chain. WORM-enforced by a
+    /// BEFORE UPDATE/DELETE trigger in the bootstrap DDL, so it is tamper
+    /// prevention as well as evidence. Defaults to the DDL-created table; override
+    /// only when a deployment pipeline manages a differently-named audit table.
+    /// </summary>
+    public string AuditTableName { get; set; } = "edict_audit_record";
+
+    /// <summary>
     /// Run the embedded Orleans + Edict DDL scripts at silo wiring time. The
     /// scripts are idempotent (Edict tables use <c>CREATE TABLE IF NOT EXISTS</c>;
     /// Orleans tables are skipped if their canonical table already exists), so

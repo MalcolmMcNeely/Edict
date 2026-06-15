@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.DeadLetter;
@@ -5,6 +6,7 @@ using Edict.Contracts.TableStorage;
 using Edict.Core.Configuration;
 using Edict.Core.DeadLetter;
 using Edict.Core.TableStorage;
+using Edict.Postgres.Audit;
 using Edict.Postgres.Bootstrap;
 using Edict.Postgres.ClaimCheck;
 using Edict.Postgres.Persistence;
@@ -137,6 +139,13 @@ public static class EdictPostgresSiloBuilderExtensions
             new PostgresClaimCheckStore(
                 serviceProvider.GetRequiredService<NpgsqlDataSource>(),
                 claimCheckTable));
+
+        var auditTable = options.AuditTableName;
+        silo.Services.TryAddSingleton<IEdictAuditStore>(serviceProvider =>
+            new PostgresAuditStore(
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
+                serviceProvider.GetRequiredService<Serializer>(),
+                auditTable));
 
         // Contribute Postgres driver-fault classification to the dead-letter
         // RCA dimension. TryAddEnumerable keeps a second wiring (or a substrate

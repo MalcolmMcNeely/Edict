@@ -54,3 +54,51 @@ CREATE INDEX IF NOT EXISTS ix_deadletter_kind
 
 CREATE INDEX IF NOT EXISTS ix_deadletter_source_event_type
     ON deadletter (source_event_type);
+
+-- ALCOA++ audit log: the per-aggregate tamper-evident chain. Structured columns
+-- are queryable by entity/correlation/principal; the full record (including the
+-- chain hashes) round-trips through the contract serializer in `record`. The hash
+-- is computed over a frozen canonical form, not these columns, so a column read
+-- is for querying only. Append-only: a BEFORE UPDATE/DELETE trigger raises, so
+-- the table is tamper-*prevention* (not merely evidence) even for the table owner
+-- and a superuser, who bypass REVOKE.
+CREATE TABLE IF NOT EXISTS edict_audit_record
+(
+    record_id      UUID PRIMARY KEY,
+    entity_type    TEXT        NOT NULL,
+    entity_key     TEXT        NOT NULL,
+    sequence       BIGINT      NOT NULL,
+    correlation_id UUID        NOT NULL,
+    principal      TEXT,
+    kind           TEXT        NOT NULL,
+    outcome        TEXT,
+    occurred_at    TIMESTAMPTZ NOT NULL,
+    record         BYTEA       NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_edict_audit_entity
+    ON edict_audit_record (entity_type, entity_key, sequence);
+
+CREATE INDEX IF NOT EXISTS ix_edict_audit_correlation
+    ON edict_audit_record (correlation_id);
+
+CREATE INDEX IF NOT EXISTS ix_edict_audit_principal
+    ON edict_audit_record (principal);
+
+CREATE OR REPLACE FUNCTION edict_audit_record_block_mutation()
+    RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'edict_audit_record is append-only (WORM): % is not permitted', TG_OP
+        USING ERRCODE = 'insufficient_privilege';
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'edict_audit_record_worm') THEN
+        CREATE TRIGGER edict_audit_record_worm
+            BEFORE UPDATE OR DELETE ON edict_audit_record
+            FOR EACH ROW EXECUTE FUNCTION edict_audit_record_block_mutation();
+    END IF;
+END $$;

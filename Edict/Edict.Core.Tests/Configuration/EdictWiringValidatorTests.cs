@@ -106,6 +106,26 @@ public sealed class EdictWiringValidatorTests
     }
 
     [Fact]
+    public async Task StartAsync_ShouldThrow_WhenAuditCapturingButNoStoreRegistered()
+    {
+        using var host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                // Stands in for siloBuilder.WithAudit() on a silo: capture is on and a
+                // resolver is present, but no store was registered to drain records to.
+                services.AddSingleton<EdictAuditEnabledMarker>();
+                services.AddSingleton<EdictAuditSiloMarker>();
+                services.AddEdictAudit(() => EdictPrincipal.Of("alice"));
+                services.AddHostedService<EdictWiringValidator>();
+            })
+            .Build();
+
+        var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
+
+        Assert.Contains("audit store", failure.Message);
+    }
+
+    [Fact]
     public async Task StartAsync_ShouldComplete_WhenAuditEnabledAndResolverRegistered()
     {
         using var host = new HostBuilder()

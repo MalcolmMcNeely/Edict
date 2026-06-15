@@ -33,6 +33,14 @@ public sealed partial record BatchIncrementCounterCommand(Guid CounterId, int Ti
     public int Times { get; init; } = Times;
 }
 
+// A handler-path rejection, so an audit conformance scenario can capture an
+// Accepted and a Rejected decision on the same aggregate's chain.
+public sealed partial record RejectCounterCommand(Guid CounterId) : EdictCommand
+{
+    [EdictRouteKey]
+    public Guid CounterId { get; init; } = CounterId;
+}
+
 [EdictStream("ConformanceCounters")]
 public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCount) : EdictEvent
 {
@@ -85,6 +93,10 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
         }
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
+
+    Task<EdictCommandResult> HandleAsync(RejectCounterCommand command) =>
+        Task.FromResult<EdictCommandResult>(new EdictCommandResult.Rejected(
+            [new EdictRejectionReason("counter_rejected", "Rejected for the audit conformance test.")]));
 
     public Task<int> GetCountAsync() => Task.FromResult(State.Count);
 

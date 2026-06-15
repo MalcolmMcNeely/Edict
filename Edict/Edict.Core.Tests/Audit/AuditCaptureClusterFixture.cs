@@ -6,6 +6,8 @@ using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.Grains;
 
+using FluentValidation;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,21 +20,32 @@ using Xunit;
 namespace Edict.Core.Tests.Audit;
 
 [CollectionDefinition(Name)]
-public sealed class AuditOriginCollection : ICollectionFixture<AuditOriginClusterFixture>
+public sealed class AuditCaptureCollection : ICollectionFixture<AuditCaptureClusterFixture>
 {
-    public const string Name = "AuditOrigin";
+    public const string Name = "AuditCapture";
 }
 
-// In-memory cluster with auditing on: WithAudit() arms origin stamping and an
-// edge resolver yields AuditPrincipalSource.Current on both silo and client. The
-// real publish executor is swapped for a capturing one so a test reads the
-// principal stamped onto the raised event synchronously on the command turn.
-public sealed class AuditOriginClusterFixture : IAsyncLifetime
+// Shared store instance the silo writes to and the test reads. Static because an
+// Orleans test silo configurator is constructed by the runtime and cannot capture
+// fixture instance state; tests scope reads by a unique counter id rather than
+// relying on isolation.
+static class AuditCaptureStoreHolder
+{
+    public static readonly RecordingAuditStore Instance = new();
+}
+
+// In-memory cluster with auditing on and an in-memory audit store, so a test can
+// drive a command and read the captured, drained record the way a consumer would.
+public sealed class AuditCaptureClusterFixture : IAsyncLifetime
 {
     public TestCluster Cluster { get; private set; } = null!;
 
+    public RecordingAuditStore AuditStore => AuditCaptureStoreHolder.Instance;
+
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
+
+    public IGrainFactory GrainFactory => Cluster.GrainFactory;
 
     public async Task InitializeAsync()
     {
@@ -59,15 +72,10 @@ public sealed class AuditOriginClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
-            siloBuilder.Services.AddEdictAudit(_ => AuditPrincipalSource.Current);
-            siloBuilder.Services.AddSingleton<IEdictAuditStore>(new RecordingAuditStore());
+            siloBuilder.Services.AddEdictAudit(_ => CapturePrincipal);
+            siloBuilder.Services.AddSingleton<IEdictAuditStore>(AuditCaptureStoreHolder.Instance);
+            siloBuilder.Services.AddSingleton<IValidator<RejectByValidatorCommand>, RejectByValidatorCommandValidator>();
             siloBuilder.WithAudit();
-
-            var publishDescriptor = siloBuilder.Services.Single(descriptor =>
-                descriptor.ServiceType == typeof(IOutboxEffectExecutor)
-                && descriptor.ImplementationType == typeof(PublishEventExecutor));
-            siloBuilder.Services.Remove(publishDescriptor);
-            siloBuilder.Services.AddSingleton<IOutboxEffectExecutor, AuditCapturingExecutor>();
 
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");
@@ -82,7 +90,20 @@ public sealed class AuditOriginClusterFixture : IAsyncLifetime
         {
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
-            clientBuilder.Services.AddEdictAudit(() => AuditPrincipalSource.Current);
+            clientBuilder.Services.AddEdictAudit(() => CapturePrincipal);
         }
     }
+
+    // A constant edge principal, distinct from the AuditOrigin collection's shared
+    // mutable static so the two collections never race each other in parallel.
+    public static readonly EdictPrincipal CapturePrincipal = EdictPrincipal.Of("alice");
+}
+
+sealed class RejectByValidatorCommandValidator : AbstractValidator<RejectByValidatorCommand>
+{
+    public RejectByValidatorCommandValidator() =>
+        RuleFor(command => command.CounterId)
+            .Must(_ => false)
+            .WithErrorCode("always_rejected")
+            .WithMessage("Rejected for the audit-capture test.");
 }

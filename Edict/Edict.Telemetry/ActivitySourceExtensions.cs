@@ -192,6 +192,21 @@ public static class ActivitySourceExtensions
             ActivityKind.Internal,
             link);
 
+    /// <summary>
+    /// Starts <c>edict.audit.drain</c> as a new trace root. The drain runs off the
+    /// command's hot path (a one-shot kick, an activation drain, or a reminder
+    /// retry) and a single pass can cover records staged by several commands, so it
+    /// is its own bounded turn rather than a child of any one capturing command.
+    /// </summary>
+    public static Activity? StartEdictAuditDrain(
+        this ActivitySource source,
+        string grainTypeName)
+        => StartNewRoot(
+            source,
+            $"{SemanticConventions.Audit.Spans.Drain} {grainTypeName}",
+            ActivityKind.Internal,
+            link: null);
+
     public static Activity? StartEdictTableUpsert(
         this ActivitySource source,
         string tableName,

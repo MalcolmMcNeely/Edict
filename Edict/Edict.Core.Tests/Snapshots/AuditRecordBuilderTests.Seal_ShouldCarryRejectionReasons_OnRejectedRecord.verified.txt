@@ -1,0 +1,22 @@
+﻿{
+  RecordId: Guid_1,
+  Outcome: Rejected,
+  RejectionReasons: [
+    {
+      Code: insufficient_funds,
+      Message: Balance too low
+    }
+  ],
+  Principal: {
+    Value: alice
+  },
+  CorrelationId: Guid_2,
+  EntityType: Sample.Domain.OrderCommandHandler,
+  EntityKey: order-1,
+  MessageType: Sample.Contracts.PlaceOrderCommand,
+  OccurredAt: DateTimeOffset_1,
+  PreviousHash: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=,
+  RecordHash: VBUvJRxGX4r50X0EQlW4Kn5wNt9uskOhFY66SEso5Yc=,
+  PayloadHash: AQIDBA==,
+  PayloadReference: Guid_3
+}

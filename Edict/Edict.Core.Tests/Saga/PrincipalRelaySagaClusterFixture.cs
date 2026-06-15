@@ -4,6 +4,7 @@ using Edict.Core.Audit;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
+using Edict.Core.Tests.Audit;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,7 @@ public sealed class PrincipalRelaySagaClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.Services.AddEdictAudit(_ => (EdictPrincipal?)null);
+            siloBuilder.Services.AddSingleton<IEdictAuditStore>(new RecordingAuditStore());
             siloBuilder.WithAudit();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

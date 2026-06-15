@@ -34,6 +34,14 @@ public sealed partial record BatchIncrementCounterCommand(Guid CounterId, int Ti
     public int Times { get; init; } = Times;
 }
 
+// Always fails its validator, so a test can exercise the validator-rejection
+// audit-capture path (the one that otherwise writes nothing).
+public sealed partial record RejectByValidatorCommand(Guid CounterId) : EdictCommand
+{
+    [EdictRouteKey]
+    public Guid CounterId { get; init; } = CounterId;
+}
+
 [EdictStream("Counters")]
 public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCount) : EdictEvent
 {
@@ -53,6 +61,8 @@ public interface ICounterProbe : IGrainWithGuidKey
     Task ForceDrainViaReminderAsync();
     Task<int> GetPendingOutboxCountAsync();
     Task<bool> HasDrainReminderAsync();
+    Task ForceAuditDrainViaReminderAsync();
+    Task<int> GetPendingAuditCountAsync();
 }
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
@@ -77,6 +87,11 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 
+    // Never reached: the validator rejects first. Present so the generated
+    // dispatch spine has an arm to route RejectByValidatorCommand to.
+    Task<EdictCommandResult> HandleAsync(RejectByValidatorCommand command) =>
+        Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+
     public Task<int> GetCountAsync() => Task.FromResult(State.Count);
 
     public Task DeactivateAsync()
@@ -95,4 +110,10 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public async Task<bool> HasDrainReminderAsync() =>
         await this.GetReminder("edict-outbox-drain") is not null;
+
+    public Task ForceAuditDrainViaReminderAsync() =>
+        ReceiveReminder("edict-audit-drain", new TickStatus());
+
+    public Task<int> GetPendingAuditCountAsync() =>
+        Task.FromResult(AuditStateForProbe?.Pending.Count ?? 0);
 }

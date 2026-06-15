@@ -266,6 +266,55 @@ public static class SemanticConventions
         }
     }
 
+    public static class Audit
+    {
+        public static class Spans
+        {
+            /// <summary>The audit-drain turn: pending audit records being written to the WORM store.
+            /// Runs off the command's hot path (a one-shot grain timer, an activation drain, or a
+            /// reminder retry), so it is its own turn rather than a child of the capturing command.</summary>
+            public const string Drain = "edict.audit.drain";
+        }
+
+        public static class Tags
+        {
+            /// <summary>Closed allowlist tagging a captured record by kind: <see cref="KindValues.Command"/>
+            /// or <see cref="KindValues.Event"/>. Bounded at compile time so the metric dimension stays small.</summary>
+            public const string Kind = "edict.audit.kind";
+
+            /// <summary>The allowlist values for <see cref="Kind"/>.</summary>
+            public static class KindValues
+            {
+                public const string Command = "command";
+                public const string Event = "event";
+            }
+
+            /// <summary>Closed allowlist tagging a captured Command record by outcome:
+            /// <see cref="OutcomeValues.Accepted"/> or <see cref="OutcomeValues.Rejected"/>.</summary>
+            public const string Outcome = "edict.audit.outcome";
+
+            /// <summary>The allowlist values for <see cref="Outcome"/>.</summary>
+            public static class OutcomeValues
+            {
+                public const string Accepted = "accepted";
+                public const string Rejected = "rejected";
+            }
+        }
+
+        public static class Meters
+        {
+            /// <summary>Counter of audit records captured, partitioned by <see cref="Tags.Kind"/> and
+            /// <see cref="Tags.Outcome"/>. The compliance "we recorded this decision" signal. No
+            /// principal, correlation, or grain key — those are unbounded and live on spans only.</summary>
+            public const string RecordsCaptured = "edict.audit.records.captured";
+
+            /// <summary>Counter of audit-drain failures: a batch of captured records that could not be
+            /// durably written to the WORM store. A distinct compliance signal (a record exists but is
+            /// not yet durable), not an effect-delivery retry. Alert on a non-zero rate.</summary>
+            public const string DrainFailure = "edict.audit.drain.failure";
+        }
+    }
+
     public static class Idempotency
     {
         public static class Tags

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 
+using Edict.Core.Audit;
 using Edict.Core.Correlation;
 using Edict.Core.Idempotency;
 using Edict.Core.Sagas;
@@ -72,4 +73,14 @@ public sealed class GrainEnvelope<TPayload>
     /// </summary>
     [Id(5)]
     public CorrelationProgress? Correlation { get; set; }
+
+    /// <summary>
+    /// The per-aggregate audit chain slot. Null for every grain until its first
+    /// audited decision (auditing off, or a grain kind that does not capture) —
+    /// the cost is one empty reference. A captured record stages here in the same
+    /// write that commits the action, so the log can never miss an acknowledged
+    /// decision; the drain to the WORM store happens off the hot path afterwards.
+    /// </summary>
+    [Id(6)]
+    public AuditChain? Audit { get; set; }
 }

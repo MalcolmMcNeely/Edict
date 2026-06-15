@@ -1,0 +1,16 @@
+﻿{
+  RecordId: Guid_1,
+  Outcome: Accepted,
+  Principal: {
+    Value: alice
+  },
+  CorrelationId: Guid_2,
+  EntityType: Sample.Domain.OrderCommandHandler,
+  EntityKey: order-1,
+  MessageType: Sample.Contracts.PlaceOrderCommand,
+  OccurredAt: DateTimeOffset_1,
+  PreviousHash: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=,
+  RecordHash: HPPnWhQHGkT+pzDN3Wd6/bUwHmjocXSxXlD0r+f9NB0=,
+  PayloadHash: AQIDBA==,
+  PayloadReference: Guid_3
+}
