@@ -52,6 +52,10 @@ A projection has two species, and each has its own read probe. Reach for the one
 - **`EdictTestApp.AdvanceClock(TimeSpan)`** — advances the virtual `TimeProvider` (the engine's backoff/reminder gate) and drains. Backoff timing elapses with no wall-clock wait.
 - **`EdictTestApp.FireDueSchedulesAsync()`** — drives the next round of due schedule fires. Reads the soonest due instant across every grain a Command has been routed to, advances the virtual clock to it, fires every grain now due, and drains so the fired outcome (raised Events, dispatched Commands) lands on the `Timeline`. A no-op when no schedule is active.
 - **`EdictTestApp.FireScheduleTimeoutsAsync()`** — the symmetric seam for the timeout cap. Advances to the soonest cap instant, fires the timeout on every grain at or past its cap, and drains so the compensation (`OnScheduleTimeoutAsync`) or the dead-letter (when no hook is written) lands on the `Timeline`.
+- **`EdictTestAppBuilder.WithAudit()`** — turns auditing on, backed by in-memory audit stores so no container is needed. Sends are attributed to a default principal so simply turning it on never trips the origin fail-closed.
+- **`EdictTestApp.ActAs(EdictPrincipal)`** — attributes every subsequent audited send to that actor. Call it before `SendAsync`; absent any call, sends carry the default test principal.
+- **`EdictTestApp.Audit`** — the consumer read surface (`IEdictAuditRepository`) over the captured chain: `ByEntityAsync` / `ByCorrelationAsync` / `ByPrincipalAsync`, `VerifyEntityChainAsync`, and `GetPayloadAsync`. Available only after `WithAudit()`.
+- **`EdictTestApp.TamperWithAuditRecord(EdictAuditRecord)`** — rewrites a stored record in place (the one mutation a production WORM store refuses) so a test can prove `VerifyEntityChainAsync` catches an altered chain.
 
 ## Testing a schedule (interval-agnostic)
 
@@ -68,6 +72,38 @@ await Verify(app.Timeline);
 ```
 
 Assert the compensation and dead-letter branches the same way: drive the schedule with `FireScheduleTimeoutsAsync()` and `Verify` the `Timeline`, which shows the `OnScheduleTimeoutAsync` outcome (a compensating Command or raised Event) or the dead-letter row. Swap any collaborator a fire handler resolves (an `IWarehouseGateway`, a gateway client) through the same `Replace<TService>` seam used elsewhere; a schedule fire handler is ordinary handler code and composes with DI identically.
+
+## Testing audit capture
+
+Turn auditing on with `WithAudit()` and the harness captures decisions to in-memory stores: one C1 record per Command decision (including a validator `Rejected`) and one E1 record per raised Event, on a per-aggregate tamper-evident chain. `Drain()` settles the audit drain along with everything else, so there is nothing to poll: assert through `Audit` straight after.
+
+```csharp
+await using var app = await EdictTestApp.StartAsync(b => b
+    .WithConsumer(typeof(OrderCommandHandler).Assembly)
+    .WithAudit());
+
+app.ActAs(EdictPrincipal.Of("clerk-7"));
+await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
+await app.Drain();
+
+var records = await app.Audit.ByEntityAsync(typeof(OrderCommandHandler).FullName!, orderId.ToString());
+// records[0] is the C1 command decision, records[1] the E1 OrderPlaced event,
+// both attributed to clerk-7.
+```
+
+Assert the chain is unaltered, then prove the verifier bites by tampering:
+
+```csharp
+var verdict = await app.Audit.VerifyEntityChainAsync(entityType, entityKey);
+// verdict.IsIntact is true.
+
+var eventRecord = records.Single(record => record.Kind == EdictAuditKind.Event);
+app.TamperWithAuditRecord(eventRecord with { MessageType = "Tampered.Event" });
+var broken = await app.Audit.VerifyEntityChainAsync(entityType, entityKey);
+// broken.IsIntact is false; broken.BrokenAtSequence names the altered record.
+```
+
+Retrieve a captured body with `GetPayloadAsync(record.RecordId)`; its bytes hash to the record's `PayloadHash`. Assert audit through these external surfaces (the queryable record, the chain verdict, the retrieved payload), never a private field or a capture count.
 
 ## Chaos is on by default
 
@@ -87,6 +123,7 @@ Assert the compensation and dead-letter branches the same way: drive the schedul
 | Wire serialisation | **Real.** Events round-trip through the same MessagePack pipeline production uses. |
 | Trace / W3C continuity | **Real.** Spans open per publish and per invocation, with production's per-turn topology: an inline drain nests the publish under the staging command, a recovery drain (no live event reference) makes it its own root linking back. |
 | Claim check | **In-memory dictionary.** Same threshold, same envelope shape. |
+| Audit capture + chain | **Real, in-memory store.** Same C1/E1 capture, same per-aggregate hash chain and verification; the WORM store is an in-memory dictionary (off unless `WithAudit()`). |
 | `TimeProvider` | **Virtual.** `FakeTimeProvider` advanced via `AdvanceClock`. |
 
 ## See also

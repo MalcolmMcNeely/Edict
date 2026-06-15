@@ -1,5 +1,6 @@
 using System.Reflection;
 
+using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
@@ -51,8 +52,31 @@ public sealed class EdictTestApp : IAsyncDisposable
         _context = context;
     }
 
+    /// <summary>
+    /// The actor an audited send is attributed to when a test never calls
+    /// <see cref="ActAs"/>, so turning auditing on with a bare
+    /// <see cref="EdictTestAppBuilder.WithAudit"/> does not trip the origin
+    /// fail-closed.
+    /// </summary>
+    public static readonly EdictPrincipal DefaultPrincipal = EdictPrincipal.Of("edict-test-principal");
+
     /// <summary>The single Verify-shaped view of everything the workflow did.</summary>
     public Timeline Timeline => _context.Recorder.Snapshot();
+
+    /// <summary>
+    /// The consumer read surface over the in-memory audit log: query the captured
+    /// chain (<see cref="IEdictAuditRepository.ByEntityAsync(string, string, CancellationToken)"/>,
+    /// <c>ByCorrelationAsync</c>, <c>ByPrincipalAsync</c>), verify it is unaltered
+    /// (<see cref="IEdictAuditRepository.VerifyEntityChainAsync"/>), and retrieve a
+    /// captured body (<see cref="IEdictAuditRepository.GetPayloadAsync"/>). Available
+    /// only when the app was started with
+    /// <see cref="EdictTestAppBuilder.WithAudit"/>.
+    /// </summary>
+    public IEdictAuditRepository Audit =>
+        _context.AuditEnabled
+            ? new EdictDefaultAuditRepository(_context.AuditStore, _context.PayloadStore)
+            : throw new InvalidOperationException(
+                "Auditing is off. Call WithAudit() on the EdictTestApp builder to capture and assert audit records.");
 
     public static async Task<EdictTestApp> StartAsync(Action<EdictTestAppBuilder> configure)
     {
@@ -68,6 +92,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             ChaosOptions.Default,
             new InMemoryClaimCheckStore(),
             EdictTestAppBuilder.DefaultClaimCheckThresholdBytes,
+            builder.AuditEnabled,
             builder.Replacements);
 
         TestCluster cluster;
@@ -88,6 +113,47 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>Issues a Command through the real <see cref="IEdictSender"/>.</summary>
     public Task<EdictCommandResult> SendAsync(EdictCommand command) =>
         _cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>().SendAsync(command);
+
+    /// <summary>
+    /// Attributes every subsequent audited send to <paramref name="principal"/>, the
+    /// actor the audit edge resolver yields at the origin. Call it before
+    /// <see cref="SendAsync"/> to record who did what; absent any call, sends carry
+    /// <see cref="DefaultPrincipal"/>. Available only when the app was started with
+    /// <see cref="EdictTestAppBuilder.WithAudit"/>.
+    /// </summary>
+    public void ActAs(EdictPrincipal principal)
+    {
+        if (!_context.AuditEnabled)
+        {
+            throw new InvalidOperationException(
+                "Auditing is off. Call WithAudit() on the EdictTestApp builder before ActAs() can set the audited principal.");
+        }
+
+        _context.CurrentPrincipal = principal;
+    }
+
+    /// <summary>
+    /// Rewrites a stored audit record in place, the one mutation a production WORM
+    /// store refuses, so a test can prove
+    /// <see cref="IEdictAuditRepository.VerifyEntityChainAsync"/> catches an altered
+    /// chain. Pass a record read back from <see cref="Audit"/> with a field changed
+    /// (e.g. <c>record with { MessageType = "tampered" }</c>); the rewrite keeps the
+    /// same <see cref="EdictAuditRecord.RecordId"/> so it lands on the same row, and
+    /// the next verification reports it broken at its
+    /// <see cref="EdictAuditRecord.Sequence"/>. Available only when the app was
+    /// started with <see cref="EdictTestAppBuilder.WithAudit"/>.
+    /// </summary>
+    public void TamperWithAuditRecord(EdictAuditRecord rewritten)
+    {
+        ArgumentNullException.ThrowIfNull(rewritten);
+        if (!_context.AuditEnabled)
+        {
+            throw new InvalidOperationException(
+                "Auditing is off. Call WithAudit() on the EdictTestApp builder before a record exists to tamper with.");
+        }
+
+        _context.AuditStore.Overwrite(rewritten);
+    }
 
     /// <summary>
     /// Typed probe over <see cref="IEdictSaga.GetEdictProgressAsync"/>: returns
@@ -412,6 +478,19 @@ public sealed class EdictTestApp : IAsyncDisposable
             InvokeAddEdict(siloBuilder.Services);
             siloBuilder.Services.AddEdictOutbox();
 
+            // Turn auditing on with in-memory stores when the builder asked for it:
+            // the resolver yields the test principal (re-read per send so ActAs takes
+            // effect), WithAudit arms capture and the default repository, and the
+            // shared in-memory stores stand in for a substrate so the drain has
+            // somewhere to land and EdictTestApp.Audit reads the same instances back.
+            if (ctx.AuditEnabled)
+            {
+                siloBuilder.Services.AddEdictAudit(() => ctx.CurrentPrincipal);
+                siloBuilder.Services.AddSingleton<IEdictAuditStore>(ctx.AuditStore);
+                siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(ctx.PayloadStore);
+                siloBuilder.WithAudit();
+            }
+
             // Replace AddEdict()'s default IEdictMetricsCache with a
             // harness-shared instance so the probe methods on EdictTestApp
             // read the same cache the silo's OutboxHost + EdictSaga push to.
@@ -479,6 +558,15 @@ public sealed class EdictTestApp : IAsyncDisposable
             clientBuilder.AddActivityPropagation();
             ConfigureSerialization(ctx, clientBuilder.Services);
             InvokeAddEdict(clientBuilder.Services);
+
+            // The client is where a test's SendAsync originates, so it carries the
+            // same resolver as the silo: the origin stamper reads it to attribute the
+            // command before it leaves the client, the way an edge would in production.
+            if (ctx.AuditEnabled)
+            {
+                clientBuilder.Services.AddEdictAudit(() => ctx.CurrentPrincipal);
+            }
+
             DecorateSender(clientBuilder.Services, ctx);
 
             foreach (var apply in ctx.Replacements)

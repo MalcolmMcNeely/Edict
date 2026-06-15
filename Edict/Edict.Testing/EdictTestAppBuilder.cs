@@ -18,6 +18,7 @@ public sealed class EdictTestAppBuilder
     internal const int DefaultClaimCheckThresholdBytes = 30_720;
 
     Assembly? _consumerAssembly;
+    bool _auditEnabled;
     readonly List<Action<IServiceCollection>> _replacements = new();
 
     /// <summary>
@@ -47,9 +48,26 @@ public sealed class EdictTestAppBuilder
         return this;
     }
 
+    /// <summary>
+    /// Turns auditing on for the in-memory app, backed by in-memory audit stores so
+    /// no container is needed: a command captures its C1 decision and one E1 record
+    /// per raised event, drained deterministically on <see cref="EdictTestApp.Drain"/>
+    /// and read back through <see cref="EdictTestApp.Audit"/>. Sends are attributed to
+    /// a default test principal so simply turning auditing on does not trip the
+    /// origin fail-closed; call <see cref="EdictTestApp.ActAs"/> to attribute
+    /// subsequent sends to a specific actor.
+    /// </summary>
+    public EdictTestAppBuilder WithAudit()
+    {
+        _auditEnabled = true;
+        return this;
+    }
+
     internal Assembly ConsumerAssembly =>
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
+
+    internal bool AuditEnabled => _auditEnabled;
 
     internal IReadOnlyList<Action<IServiceCollection>> Replacements => _replacements;
 }

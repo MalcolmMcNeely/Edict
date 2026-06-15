@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 
+using Edict.Contracts.Audit;
 using Edict.Core.Metrics;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,7 @@ sealed class HarnessContext(
     ChaosOptions chaos,
     InMemoryClaimCheckStore claimCheckStore,
     int claimCheckThresholdBytes,
+    bool auditEnabled,
     IReadOnlyList<Action<IServiceCollection>> replacements)
 {
     public Assembly ConsumerAssembly => consumerAssembly;
@@ -34,7 +36,19 @@ sealed class HarnessContext(
     public ChaosOptions Chaos => chaos;
     public InMemoryClaimCheckStore ClaimCheckStore => claimCheckStore;
     public int ClaimCheckThresholdBytes => claimCheckThresholdBytes;
+    public bool AuditEnabled => auditEnabled;
     public IReadOnlyList<Action<IServiceCollection>> Replacements => replacements;
+
+    // The in-memory audit stores the silo drains to and EdictTestApp.Audit reads
+    // from — one shared instance each so the read surface sees exactly what the
+    // silo wrote. Only meaningful when AuditEnabled.
+    public InMemoryAuditStore AuditStore { get; } = new();
+    public InMemoryAuditPayloadStore PayloadStore { get; } = new();
+
+    // The actor the audit edge resolver yields for an originating send. Mutable so
+    // EdictTestApp.ActAs can re-attribute subsequent sends; the default keeps a bare
+    // WithAudit() from tripping the origin fail-closed.
+    public EdictPrincipal CurrentPrincipal { get; set; } = EdictTestApp.DefaultPrincipal;
 
     // Captured by the silo's executor-factory delegate so the test-process
     // Drain loop can reach into the silo-side held queue and flush it. Null
