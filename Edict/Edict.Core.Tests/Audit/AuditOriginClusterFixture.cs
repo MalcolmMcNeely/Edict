@@ -61,6 +61,7 @@ public sealed class AuditOriginClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.Services.AddEdictAudit(_ => AuditPrincipalSource.Current);
             siloBuilder.Services.AddSingleton<IEdictAuditStore>(new RecordingAuditStore());
+            siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(new RecordingAuditPayloadStore());
             siloBuilder.WithAudit();
 
             var publishDescriptor = siloBuilder.Services.Single(descriptor =>

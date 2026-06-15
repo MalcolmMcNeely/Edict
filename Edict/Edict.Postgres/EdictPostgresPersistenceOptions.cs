@@ -45,6 +45,15 @@ public sealed class EdictPostgresPersistenceOptions
     public string AuditTableName { get; set; } = "edict_audit_record";
 
     /// <summary>
+    /// Table backing the append-only store of captured audit message bodies, keyed
+    /// by audit record id and distinct from the claim-check table. WORM-enforced by
+    /// a BEFORE UPDATE/DELETE trigger in the bootstrap DDL. Defaults to the
+    /// DDL-created table; override only when a deployment pipeline manages a
+    /// differently-named payload table.
+    /// </summary>
+    public string AuditPayloadTableName { get; set; } = "edict_audit_payload";
+
+    /// <summary>
     /// Run the embedded Orleans + Edict DDL scripts at silo wiring time. The
     /// scripts are idempotent (Edict tables use <c>CREATE TABLE IF NOT EXISTS</c>;
     /// Orleans tables are skipped if their canonical table already exists), so

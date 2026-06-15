@@ -32,6 +32,8 @@ public sealed class AuditCaptureCollection : ICollectionFixture<AuditCaptureClus
 static class AuditCaptureStoreHolder
 {
     public static readonly RecordingAuditStore Instance = new();
+
+    public static readonly RecordingAuditPayloadStore PayloadInstance = new();
 }
 
 // In-memory cluster with auditing on and an in-memory audit store, so a test can
@@ -41,6 +43,8 @@ public sealed class AuditCaptureClusterFixture : IAsyncLifetime
     public TestCluster Cluster { get; private set; } = null!;
 
     public RecordingAuditStore AuditStore => AuditCaptureStoreHolder.Instance;
+
+    public RecordingAuditPayloadStore PayloadStore => AuditCaptureStoreHolder.PayloadInstance;
 
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
@@ -74,6 +78,7 @@ public sealed class AuditCaptureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.Services.AddEdictAudit(_ => CapturePrincipal);
             siloBuilder.Services.AddSingleton<IEdictAuditStore>(AuditCaptureStoreHolder.Instance);
+            siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(AuditCaptureStoreHolder.PayloadInstance);
             siloBuilder.Services.AddSingleton<IValidator<RejectByValidatorCommand>, RejectByValidatorCommandValidator>();
             siloBuilder.WithAudit();
 

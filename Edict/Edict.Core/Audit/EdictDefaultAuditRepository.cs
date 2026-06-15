@@ -2,11 +2,11 @@ using Edict.Contracts.Audit;
 
 namespace Edict.Core.Audit;
 
-// The default consumer read surface over whatever IEdictAuditStore the substrate
-// registered. ByEntity reads straight through; chain verification re-walks the
-// stored records with the pure HashChain so the tamper-evidence logic is the same
-// one the unit tests pin, independent of the backing store.
-sealed class EdictDefaultAuditRepository(IEdictAuditStore store) : IEdictAuditRepository
+// The default consumer read surface over whatever audit stores the substrate
+// registered. ByEntity and GetPayload read straight through; chain verification
+// re-walks the stored records with the pure HashChain so the tamper-evidence logic
+// is the same one the unit tests pin, independent of the backing store.
+sealed class EdictDefaultAuditRepository(IEdictAuditStore store, IEdictAuditPayloadStore payloadStore) : IEdictAuditRepository
 {
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(
         string entityType, string entityKey, CancellationToken cancellationToken = default) =>
@@ -18,4 +18,7 @@ sealed class EdictDefaultAuditRepository(IEdictAuditStore store) : IEdictAuditRe
         var records = await store.ByEntityAsync(entityType, entityKey, cancellationToken);
         return HashChain.Verify(records);
     }
+
+    public Task<ReadOnlyMemory<byte>> GetPayloadAsync(Guid recordId, CancellationToken cancellationToken = default) =>
+        payloadStore.GetAsync(recordId, cancellationToken);
 }

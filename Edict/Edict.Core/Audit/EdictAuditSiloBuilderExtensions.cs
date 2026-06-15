@@ -29,7 +29,9 @@ public static class EdictAuditSiloBuilderExtensions
         // fails through the wiring validator's clear message, not a raw container
         // validation error at build.
         silo.Services.TryAddSingleton<IEdictAuditRepository>(serviceProvider =>
-            new EdictDefaultAuditRepository(serviceProvider.GetRequiredService<IEdictAuditStore>()));
+            new EdictDefaultAuditRepository(
+                serviceProvider.GetRequiredService<IEdictAuditStore>(),
+                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>()));
         return silo;
     }
 }

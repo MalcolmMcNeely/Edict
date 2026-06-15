@@ -3,6 +3,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Core.Audit;
 using Edict.Core.Configuration;
+using Edict.Core.Tests.Audit;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -123,6 +124,27 @@ public sealed class EdictWiringValidatorTests
         var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
 
         Assert.Contains("audit store", failure.Message);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldThrow_WhenAuditCapturingButNoPayloadStoreRegistered()
+    {
+        using var host = new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                // Capture is on with a chain store, but no payload store to land the
+                // captured bodies in.
+                services.AddSingleton<EdictAuditEnabledMarker>();
+                services.AddSingleton<EdictAuditSiloMarker>();
+                services.AddEdictAudit(() => EdictPrincipal.Of("alice"));
+                services.AddSingleton<IEdictAuditStore>(new RecordingAuditStore());
+                services.AddHostedService<EdictWiringValidator>();
+            })
+            .Build();
+
+        var failure = await Assert.ThrowsAsync<EdictWiringException>(() => host.StartAsync());
+
+        Assert.Contains("audit payload store", failure.Message);
     }
 
     [Fact]

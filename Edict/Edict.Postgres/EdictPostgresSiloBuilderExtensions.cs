@@ -147,6 +147,12 @@ public static class EdictPostgresSiloBuilderExtensions
                 serviceProvider.GetRequiredService<Serializer>(),
                 auditTable));
 
+        var auditPayloadTable = options.AuditPayloadTableName;
+        silo.Services.TryAddSingleton<IEdictAuditPayloadStore>(serviceProvider =>
+            new PostgresAuditPayloadStore(
+                serviceProvider.GetRequiredService<NpgsqlDataSource>(),
+                auditPayloadTable));
+
         // Contribute Postgres driver-fault classification to the dead-letter
         // RCA dimension. TryAddEnumerable keeps a second wiring (or a substrate
         // combination that registers it twice) a no-op rather than a duplicate.

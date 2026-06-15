@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 using Edict.Contracts.Audit;
 using Edict.Core.Audit;
+using Edict.Core.Tests.Audit;
 
 using Orleans;
 
@@ -170,7 +171,7 @@ public sealed class ScheduleLifecycleTests
         Assert.Equal(typeof(ScheduleTickedEvent).FullName, eventRecord.MessageType);
         Assert.Null(eventRecord.Outcome);
 
-        var verification = await new EdictDefaultAuditRepository(_fixture.AuditStore)
+        var verification = await new EdictDefaultAuditRepository(_fixture.AuditStore, new RecordingAuditPayloadStore())
             .VerifyEntityChainAsync(typeof(ScheduleProbe).FullName!, entityKey);
         Assert.True(verification.IsIntact);
     }

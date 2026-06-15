@@ -63,6 +63,7 @@ public sealed class PrincipalRelaySagaClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.Services.AddEdictAudit(_ => (EdictPrincipal?)null);
             siloBuilder.Services.AddSingleton<IEdictAuditStore>(new RecordingAuditStore());
+            siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(new RecordingAuditPayloadStore());
             siloBuilder.WithAudit();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

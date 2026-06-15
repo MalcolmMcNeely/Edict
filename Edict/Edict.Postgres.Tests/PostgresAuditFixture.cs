@@ -19,11 +19,16 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase
 
     IEdictAuditStore Store => new PostgresAuditStore(DataSource, ClientSerializer, "edict_audit_record");
 
+    IEdictAuditPayloadStore PayloadStore => new PostgresAuditPayloadStore(DataSource, "edict_audit_payload");
+
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
         Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);
 
+    public Task<ReadOnlyMemory<byte>> GetPayloadAsync(Guid recordId) =>
+        PayloadStore.GetAsync(recordId, CancellationToken.None);
+
     public Task<EdictAuditChainVerification> VerifyChainAsync(string entityType, string entityKey) =>
-        new EdictDefaultAuditRepository(Store).VerifyEntityChainAsync(entityType, entityKey);
+        new EdictDefaultAuditRepository(Store, PayloadStore).VerifyEntityChainAsync(entityType, entityKey);
 
     // Runs a raw mutation and returns the SQLSTATE Postgres rejected it with, or
     // null when it (wrongly) succeeded. The WORM trigger raises insufficient

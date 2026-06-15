@@ -584,6 +584,7 @@ public abstract class EdictCommandHandler<TState>
 
         var time = _timeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
         var recordId = Guid.NewGuid();
+        var body = Serializer.SerializeToArray<EdictCommand>(command);
         var content = new EdictAuditRecord
         {
             RecordId = recordId,
@@ -596,11 +597,11 @@ public abstract class EdictCommandHandler<TState>
             EntityKey = this.GetPrimaryKey().ToString(),
             MessageType = command.GetType().FullName ?? command.GetType().Name,
             OccurredAt = time.GetUtcNow(),
-            PayloadHash = SHA256.HashData(Serializer.SerializeToArray<EdictCommand>(command)),
+            PayloadHash = SHA256.HashData(body),
             PayloadReference = recordId,
         };
 
-        AppendToChain(content);
+        AppendToChain(content, body);
 
         AuditMetrics.RecordsCaptured.Add(1,
             new KeyValuePair<string, object?>(
@@ -628,6 +629,7 @@ public abstract class EdictCommandHandler<TState>
 
         foreach (var raisedEvent in events)
         {
+            var body = Serializer.SerializeToArray(raisedEvent);
             var content = new EdictAuditRecord
             {
                 RecordId = raisedEvent.EventId,
@@ -638,11 +640,11 @@ public abstract class EdictCommandHandler<TState>
                 EntityKey = entityKey,
                 MessageType = raisedEvent.GetType().FullName ?? raisedEvent.GetType().Name,
                 OccurredAt = raisedEvent.OccurredAt,
-                PayloadHash = SHA256.HashData(Serializer.SerializeToArray(raisedEvent)),
+                PayloadHash = SHA256.HashData(body),
                 PayloadReference = raisedEvent.EventId,
             };
 
-            AppendToChain(content);
+            AppendToChain(content, body);
 
             AuditMetrics.RecordsCaptured.Add(1,
                 new KeyValuePair<string, object?>(
@@ -650,10 +652,12 @@ public abstract class EdictCommandHandler<TState>
         }
     }
 
-    // Seals a content-filled record against the running chain head and stages it
-    // onto the pending tail in grain state. Shared by C1 and E1 capture so the
-    // chain advance and the serialized-entry shape stay identical for both.
-    void AppendToChain(EdictAuditRecord content)
+    // Seals a content-filled record against the running chain head and stages it,
+    // with the captured body, onto the pending tail in grain state. Shared by C1
+    // and E1 capture so the chain advance and the serialized-entry shape stay
+    // identical for both. The body is the exact bytes content.PayloadHash was
+    // computed over, so a re-hash of the drained body recomputes the sealed hash.
+    void AppendToChain(EdictAuditRecord content, byte[] body)
     {
         var chain = base.State.Audit ?? new AuditChain();
         var sealedRecord = AuditRecordBuilder.Seal(content, chain.Head, chain.NextSequence);
@@ -661,6 +665,7 @@ public abstract class EdictCommandHandler<TState>
         {
             RecordId = sealedRecord.RecordId,
             Record = Serializer.SerializeToArray(sealedRecord),
+            Payload = body,
         };
         base.State.Audit = chain.Append(sealedRecord.RecordHash, entry);
     }
@@ -721,6 +726,7 @@ public abstract class EdictCommandHandler<TState>
                 writeState: WriteStateAsync),
             new GrainReminderRegistrar(this),
             ServiceProvider.GetRequiredService<IEdictAuditStore>(),
+            ServiceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
             Serializer,
             ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value.OutboxDrainReminderPeriod,
             GetType().FullName ?? GetType().Name);

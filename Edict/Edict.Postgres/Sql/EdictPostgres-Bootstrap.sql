@@ -102,3 +102,35 @@ BEGIN
             FOR EACH ROW EXECUTE FUNCTION edict_audit_record_block_mutation();
     END IF;
 END $$;
+
+-- ALCOA++ audit log: the captured message bodies, keyed by audit record id. The
+-- chain link (edict_audit_record) holds only a hash and this reference, never the
+-- body, so the tamper-evident chain stays personal-data-free and the body slice can
+-- be crypto-shredded later without breaking a hash. Distinct from edict_claim_check:
+-- that is event-only, EventId-keyed, and lifecycle-reaped; this holds every captured
+-- command and event body and is infinite-retention. Append-only by the same trigger
+-- discipline as the chain table: a BEFORE UPDATE/DELETE trigger raises, so the body
+-- is tamper-*prevention* even for the table owner and a superuser, who bypass REVOKE.
+CREATE TABLE IF NOT EXISTS edict_audit_payload
+(
+    record_id   UUID PRIMARY KEY,
+    payload     BYTEA       NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION edict_audit_payload_block_mutation()
+    RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'edict_audit_payload is append-only (WORM): % is not permitted', TG_OP
+        USING ERRCODE = 'insufficient_privilege';
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'edict_audit_payload_worm') THEN
+        CREATE TRIGGER edict_audit_payload_worm
+            BEFORE UPDATE OR DELETE ON edict_audit_payload
+            FOR EACH ROW EXECUTE FUNCTION edict_audit_payload_block_mutation();
+    END IF;
+END $$;

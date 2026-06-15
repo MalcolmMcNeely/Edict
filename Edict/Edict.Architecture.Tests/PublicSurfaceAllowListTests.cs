@@ -311,6 +311,7 @@ public class PublicSurfaceAllowListTests
     {
         "Edict.Core.Audit.AuditChain",
         "Edict.Core.Audit.AuditChainEntry",
+        "Edict.Core.Audit.EdictAuditPayloadNotFoundException",
         "Edict.Core.Audit.EdictAuditServiceCollectionExtensions",
         "Edict.Core.Audit.EdictAuditSiloBuilderExtensions",
         "Edict.Core.Audit.EdictMissingPrincipalException",

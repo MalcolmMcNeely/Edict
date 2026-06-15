@@ -87,6 +87,7 @@ public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
             // turn. Existing schedule tests ignore the audit slice.
             siloBuilder.Services.AddEdictAudit(_ => null);
             siloBuilder.Services.AddSingleton<IEdictAuditStore>(ScheduleAuditStoreHolder.Instance);
+            siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(new RecordingAuditPayloadStore());
             siloBuilder.WithAudit();
 
             // Swap the real publish executor for the capturing one (Replace, not

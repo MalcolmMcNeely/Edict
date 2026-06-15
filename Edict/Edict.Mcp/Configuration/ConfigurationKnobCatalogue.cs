@@ -69,6 +69,8 @@ static class ConfigurationKnobCatalogue
             new("Invariant", KnobRequirement.None),
             new("GrainStorageProviderName", KnobRequirement.None),
             new("ClaimCheckTableName", KnobRequirement.None),
+            new("AuditTableName", KnobRequirement.None),
+            new("AuditPayloadTableName", KnobRequirement.None),
             new("BootstrapSchema", KnobRequirement.None),
             new("MaxPoolSize", KnobRequirement.None),
             new("MinPoolSize", KnobRequirement.None),

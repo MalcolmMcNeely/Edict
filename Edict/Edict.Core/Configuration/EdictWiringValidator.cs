@@ -65,6 +65,16 @@ sealed class EdictWiringValidator(IServiceProvider services) : IHostedService
                 + "without it every captured decision would be staged but never durable.");
         }
 
+        if (services.GetService<EdictAuditSiloMarker>() is not null
+            && services.GetService<IEdictAuditPayloadStore>() is null)
+        {
+            problems.Add(
+                "Auditing is on (WithAudit) but no audit payload store is registered. "
+                + "Call silo.AddEdictPostgresPersistence(...) (which registers the Postgres-backed store) "
+                + "so a captured decision's body has somewhere to land and GetPayloadAsync can retrieve it; "
+                + "without it every captured body would be staged but never durable.");
+        }
+
         if (problems.Count > 0)
         {
             var aggregated = string.Join(Environment.NewLine, problems.Select(p => $"  - {p}"));

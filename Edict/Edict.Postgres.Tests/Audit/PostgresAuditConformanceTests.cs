@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
@@ -109,6 +110,59 @@ public sealed class PostgresAuditConformanceTests(PostgresAuditFixture fixture)
         // Both records are still present and the chain still verifies.
         var afterAttempts = await fixture.ReadEntityAsync(EntityType, counterId.ToString());
         Assert.Equal(2, afterAttempts.Count);
+    }
+
+    [Fact]
+    public async Task Payload_ShouldBeRetrievableWithAMatchingHash_AndSurviveReactivation()
+    {
+        // Arrange
+        var counterId = Guid.NewGuid();
+        var entityKey = counterId.ToString();
+        var probe = fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
+
+        // The increment captures a C1 command record plus an E1 event record, each
+        // with a body in the payload store.
+        await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 2);
+
+        // Act — force a reactivation so the payload is read from the durable store,
+        // not memory.
+        var activationBeforeDeactivation = await probe.GetActivationIdAsync();
+        await probe.DeactivateAsync();
+        await WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
+
+        // Assert — every record's body is retrievable and hashes to the record's
+        // sealed PayloadHash.
+        foreach (var record in records)
+        {
+            var body = await fixture.GetPayloadAsync(record.RecordId);
+            Assert.NotEmpty(body.ToArray());
+            Assert.Equal(record.PayloadHash, SHA256.HashData(body.Span));
+        }
+    }
+
+    [Fact]
+    public async Task PayloadWormTrigger_ShouldRefuseUpdateAndDelete()
+    {
+        // Arrange — the increment captures records, each with a stored body.
+        var counterId = Guid.NewGuid();
+        await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
+        var records = await WaitForRecordsAsync(counterId.ToString(), expectedCount: 2);
+        var recordId = records[0].RecordId;
+
+        // Act + Assert — the BEFORE UPDATE/DELETE trigger raises insufficient
+        // privilege (42501) even for the table owner.
+        var updateState = await fixture.TryRawSqlAsync(
+            $"UPDATE edict_audit_payload SET payload = '\\x00' WHERE record_id = '{recordId}';");
+        Assert.Equal("42501", updateState);
+
+        var deleteState = await fixture.TryRawSqlAsync(
+            $"DELETE FROM edict_audit_payload WHERE record_id = '{recordId}';");
+        Assert.Equal("42501", deleteState);
+
+        // The body is still retrievable and still hashes to its record.
+        var body = await fixture.GetPayloadAsync(recordId);
+        Assert.Equal(records[0].PayloadHash, SHA256.HashData(body.Span));
     }
 
     async Task<IReadOnlyList<EdictAuditRecord>> WaitForRecordsAsync(string entityKey, int expectedCount)

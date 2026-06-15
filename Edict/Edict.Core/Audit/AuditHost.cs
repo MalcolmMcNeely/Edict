@@ -24,6 +24,7 @@ sealed class AuditHost<TPayload>
     readonly IPersistentState<GrainEnvelope<TPayload>> _state;
     readonly IReminderRegistrar _reminders;
     readonly IEdictAuditStore _store;
+    readonly IEdictAuditPayloadStore _payloadStore;
     readonly Serializer _serializer;
     readonly TimeSpan _reminderPeriod;
     readonly string _grainTypeName;
@@ -34,6 +35,7 @@ sealed class AuditHost<TPayload>
         IPersistentState<GrainEnvelope<TPayload>> state,
         IReminderRegistrar reminders,
         IEdictAuditStore store,
+        IEdictAuditPayloadStore payloadStore,
         Serializer serializer,
         TimeSpan reminderPeriod,
         string grainTypeName)
@@ -41,6 +43,7 @@ sealed class AuditHost<TPayload>
         _state = state;
         _reminders = reminders;
         _store = store;
+        _payloadStore = payloadStore;
         _serializer = serializer;
         _reminderPeriod = reminderPeriod;
         _grainTypeName = grainTypeName;
@@ -82,13 +85,19 @@ sealed class AuditHost<TPayload>
 
         var pending = chain.Pending;
         var records = new EdictAuditRecord[pending.Count];
+        var payloads = new EdictAuditPayload[pending.Count];
         for (var i = 0; i < pending.Count; i++)
         {
             records[i] = _serializer.Deserialize<EdictAuditRecord>(pending[i].Record);
+            payloads[i] = new EdictAuditPayload(pending[i].RecordId, pending[i].Payload);
         }
 
         try
         {
+            // Bodies first: a queryable chain record must never be durable without a
+            // retrievable body behind its reference. Both stores dedup on record id,
+            // so a crash between the two writes re-drains as a no-op.
+            await _payloadStore.PutAsync(payloads, CancellationToken.None);
             await _store.AppendAsync(records, CancellationToken.None);
         }
         catch (Exception exception)
