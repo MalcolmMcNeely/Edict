@@ -94,7 +94,7 @@ Orleans' shipped `AdoNetGrainStorage` (used for `PubSubStore`) owns its own conn
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`, `Claim Check`.
-- Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [claim-check.md](../concepts/claim-check.md), [idempotency.md](../concepts/idempotency.md).
+- Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [claim-check.md](../concepts/claim-check.md), [idempotency.md](../concepts/idempotency.md), [audit-log.md](../concepts/audit-log.md).
 - Configuration — [postgres.md](../../configuration/postgres.md) — the options table, connection-string format, and pool-sizing math.
 - Wiring — [kafka.md](kafka.md), [azure-streaming.md](azure-streaming.md), [azure-persistence.md](azure-persistence.md).
 - ADRs — [0029 — Postgres persistence schema](../../adr/0029-postgres-persistence-schema.md), [0035 — Npgsql DataSource singleton](../../adr/0035-npgsql-datasource-singleton.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md).

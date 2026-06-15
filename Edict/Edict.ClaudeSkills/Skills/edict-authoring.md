@@ -333,6 +333,10 @@ The cursor names a framework-stamped correlation that propagates across the whol
 
 `CursorReached` is **any-applied**: it means at least the correlation's first effect on this projection is visible, not that every effect has landed. Where exact read-your-writes matters, prefer one Event per Command, so the correlation has a single effect on the projection and "first applied" equals "fully applied". On a bounded-wait timeout the read returns `CursorTimedOut` with the latest available row — that is lag, not a fault, so never wrap a read in a `try`/`catch` expecting a stale-read exception. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely; an omitted timeout is always bounded (it falls back to `EdictOptions.ProjectionReadTimeout`, never to infinite).
 
+## Attribution and the principal
+
+A feature authored under an audited silo (`silo.WithAudit()`) is attributed automatically: the **principal** is stamped at the originating `SendAsync` and the handler turn, its raised Events, and any Saga `Dispatch` it triggers all inherit it. You never thread an actor parameter through a handler or add a principal field to a Command — see the `edict-contracts` skill for why it is framework-managed, not authored. The one rule that reaches authoring is the context-free origin you write yourself: a background worker, an import, or an admin script that calls `SendAsync` has no ambient identity to resolve, so supply one explicitly with `SendAsync(command, EdictPrincipal.Of("system"))` or the send fails closed. Wiring the resolver is the `edict-silo-wiring` skill; the `EdictMissingPrincipalException` failure shape is the `edict-diagnostics` skill.
+
 ## When to look up a term
 
 When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.

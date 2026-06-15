@@ -39,4 +39,5 @@ Postgres 16's default `max_connections = 100` will not survive any non-trivial t
 - [index.md](index.md) — the installation surface and fail-fast validation behaviour.
 - [wiring/postgres.md](../usage/wiring/postgres.md) — the `Add*` call shape, client setup, and the grain-storage / data-source / `max_connections` / dead-letter gotchas.
 - [core.md](core.md) — the provider-agnostic `AddEdict()` knobs.
+- [concepts/audit-log.md](../usage/concepts/audit-log.md) — what the `Audit*` knobs back: capture, attribution, the per-aggregate chain, and retention.
 - ADRs — [0029 — Postgres persistence schema](../adr/0029-postgres-persistence-schema.md), [0035 — Npgsql DataSource singleton](../adr/0035-npgsql-datasource-singleton.md), [0023 — Config surface and installation](../adr/0023-config-surface-and-installation.md).

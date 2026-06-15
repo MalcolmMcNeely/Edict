@@ -83,6 +83,7 @@ When the conversation touches these topics, read the linked depth before answeri
 | Claim-check, oversized payloads | `docs/usage/concepts/claim-check.md` + ADR-0020 |
 | Saga, multi-step workflows | `docs/usage/concepts/sagas.md` + ADR-0016 |
 | Projections, read models (State + List species) | `docs/usage/concepts/projections.md` + ADR-0061, 0011, 0013 |
+| Audit log, principal, attribution, tamper-evidence | `docs/usage/concepts/audit-log.md` + ADR-0063, 0064 |
 | Source generation, codegen ordering | `csharp` skill body + ADR-0005, 0033 |
 | Substrate, harness, conformance | ADR-0054 (axis batteries, supersedes 0027), 0030 |
 | Configuration, options, tuning | `docs/configuration` + ADR-0023 |

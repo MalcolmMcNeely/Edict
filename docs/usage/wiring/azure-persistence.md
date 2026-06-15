@@ -72,6 +72,20 @@ The extension wires four Orleans pieces internally that the consumer does not co
 - `UseAzureTableReminderService` — the reminder-tick substrate the outbox drain rides on.
 - `IEdictTableStoreFactory` → `AzureTableWriteStoreFactory` — the per-table write seam projection builders use.
 
+## The audit log on Azure
+
+`AddEdictAzurePersistence` provisions the audit stores unconditionally — an Azure **Table** for the chain (`AuditTableName`) and an Immutable **Blob** container for the captured bodies (`AuditPayloadContainerName`) — but they stay dormant until `silo.WithAudit()` turns capture on. Arm it the same way as any substrate:
+
+```csharp
+silo.AddEdictAzurePersistence(o => { /* clients */ });
+silo.Services.AddEdictAudit(serviceProvider => /* resolve the origin principal */);
+silo.WithAudit();
+```
+
+`WithAudit()` registers `IEdictAuditRepository` over the Azure stores, so the read surface is available **in the silo's own services**. Unlike Postgres, the Azure persistence package ships **no standalone client-reader extension** (`AddEdictPostgresAuditReader` exists because Postgres owns a separate read-only `NpgsqlDataSource`; the Azure stores are SDK clients provisioned with the silo). A separate Azure reader process is a follow-on; for now query the audit log from the capturing silo or a co-hosted process.
+
+The honest consequence to carry to consumers: the Azure-Table chain is tamper-**evidence** (the per-aggregate hash chain, re-walked by `VerifyEntityChainAsync`) without infrastructure tamper-**prevention** until the deferred blob-sealing slice. Postgres has both; Azure has evidence only. See [concepts/audit-log.md](../concepts/audit-log.md#per-substrate-tamper-prevention-vs-evidence) for the full prevention-versus-evidence distinction.
+
 ## Gotchas
 
 ### Azurite is not bit-for-bit Azure Table Storage
@@ -84,7 +98,7 @@ Azurite's table emulator is close enough that the conformance battery runs again
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Outbox`, `Dead Letter`, `List Projection Builder`, `Projection Reader`.
-- Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [idempotency.md](../concepts/idempotency.md).
+- Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [idempotency.md](../concepts/idempotency.md), [audit-log.md](../concepts/audit-log.md).
 - Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).
 - ADRs — [0021 — Grain state on blob substrate](../../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0018 — Dead letter (forensic-only)](../../adr/0018-dead-letter-forensic-only.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md).

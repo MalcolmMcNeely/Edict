@@ -29,4 +29,5 @@ Note that Azurite accepts table names Azure rejects: Azure Table names must matc
 - [index.md](index.md) — the installation surface and fail-fast validation behaviour.
 - [wiring/azure-persistence.md](../usage/wiring/azure-persistence.md) — the `Add*` call shape, client setup, and the dead-letter / Azurite-fidelity gotchas.
 - [core.md](core.md) — the provider-agnostic `AddEdict()` knobs.
+- [concepts/audit-log.md](../usage/concepts/audit-log.md) — what the `Audit*` knobs back: capture, attribution, the per-aggregate chain, and the Azure tamper-evidence-without-prevention honesty.
 - ADRs — [0021 — Grain state on blob substrate](../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../adr/0023-config-surface-and-installation.md), [0042 — Azure package split](../adr/0042-azure-package-split.md).

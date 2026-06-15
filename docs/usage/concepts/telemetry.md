@@ -61,6 +61,7 @@ Span names:
 - `edict.saga.timeout` — a fired saga lifetime cap. A new trace root linking back to the context that armed the saga.
 - `edict.dead_letter.promote` — a dead-letter promotion. A new trace root linking back to the failing entry's originating context, so an operator can pivot from a dead-letter row straight to the trace that produced it.
 - `edict.table.upsert` — table-projection row write.
+- `edict.audit.drain` — the audit-drain turn writing captured records to the WORM store off the command's hot path. A new trace root (one-shot timer, activation drain, or reminder retry), not a child of the capturing command. This span is the *sampled overlay*; the durable record lives in the audit store, distinct from any trace (see [audit-log.md](audit-log.md)).
 
 Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 
@@ -72,6 +73,7 @@ Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 - `edict.dead_letter.failure_reason` — on dead-letter metrics. A closed allowlist: `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `SagaTimeout`, `SagaTerminal`, `Unhandled`.
 - `edict.saga.timeout.outcome` — on the saga timeout-fired counter. A closed allowlist: `compensated`, `deadlettered`.
 - `edict.idempotency.dedup.reason` — on the duplicate-suppression counter. A closed allowlist: `window` (the EventId was already in the committed dedup window) and `in_flight` (the EventId's slot was still reserved on the grain, retained as defense-in-depth since serial stream delivery makes a concurrent same-id redelivery structurally impossible).
+- `edict.audit.kind`, `edict.audit.outcome` — on the audit-records-captured counter. Closed allowlists: `command`/`event` and (on commands) `accepted`/`rejected`. Never the principal, correlation id, or grain key, which are unbounded.
 
 The full set lives in `Edict.Telemetry.SemanticConventions`.
 
@@ -88,6 +90,7 @@ Instrument names follow OpenTelemetry semantic-convention suffixes (`.count`, `.
 - `edict.dead_letter.promotion.count` / `edict.dead_letter.promotion.failure.count` — dead-letter rate and promotion failures.
 - `edict.idempotency.duplicate.count` — dedup-ring hit rate, tagged `edict.idempotency.dedup.reason` (`window` or `in_flight`). Every suppressing consumer path (projection, saga, event handler, pointer-envelope intake) records it through one shared guard.
 - `edict.claim_check.payload.size` — claim-check body size histogram.
+- `edict.audit.records.captured` — count of audit records captured, tagged `edict.audit.kind` and `edict.audit.outcome`; the "we recorded this decision" compliance signal. `edict.audit.drain.failure` — count of audit-drain batches that could not be durably written (a record exists but is not yet durable); a compliance signal, not an effect retry, so alert on any non-zero rate. The audit store is the durable legal record these count over; the metrics and the trace are the ephemeral overlay (see [audit-log.md](audit-log.md) and [observability.md](../../operations/observability.md#audit-metrics-and-the-drain-span)).
 
 Cardinality is bounded at compile time: no metric carries `aggregate_key` or `grain_key`. Per-grain forensic detail belongs on spans (the trace already carries `edict.command.route_key`), not on metrics. Tests that need per-aggregate specificity use a `MeterListener` (for the metric) plus an `ActivityListener` (for the span) — the dual-listener pattern.
 
@@ -98,5 +101,5 @@ Cardinality is bounded at compile time: no metric carries `aggregate_key` or `gr
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Telemeterized`, `EdictCommand`, `Event`.
-- Concepts — [commands.md](commands.md), [events.md](events.md), [dead-letter.md](dead-letter.md), [idempotency.md](idempotency.md), [claim-check.md](claim-check.md).
+- Concepts — [commands.md](commands.md), [events.md](events.md), [dead-letter.md](dead-letter.md), [idempotency.md](idempotency.md), [claim-check.md](claim-check.md), [audit-log.md](audit-log.md).
 - ADRs — [0060 — Trace causality at scale: one turn, links across turns](../../adr/0060-trace-causality-at-scale-one-turn-links.md) (supersedes 0003), [0037 — Telemeterized tag keys carry no message-type prefix](../../adr/0037-telemeterized-tag-keys-no-type-prefix.md), [0038 — Meters naming and cross-cutting attributes](../../adr/0038-meters-naming-and-cross-cutting-attributes.md), [0039 — Metrics cardinality policy](../../adr/0039-metrics-cardinality-policy.md), [0040 — Silo-local metrics cache for observable gauges](../../adr/0040-silo-local-metrics-cache-for-observable-gauges.md).

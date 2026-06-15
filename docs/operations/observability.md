@@ -30,6 +30,21 @@ Because a trace is one grain turn and turns are connected by `ActivityLink`s, ea
 
 The catch: head sampling alone can sample one turn *in* and its linked cause *out*, severing "follow the link to the cause." To keep a whole link-group together, run **tail sampling or a link-aware sampler** at the collector — a tail sampler sees all spans of a link-group before deciding, and a link-aware sampler propagates the decision across links. This is the deliberate trade of the per-turn model: bounded, tail-sampleable traces in exchange for a collector that understands links. Set head sampling for volume; set tail/link-aware sampling for causal completeness.
 
+## Audit metrics and the drain span
+
+When auditing is on, Edict captures every command decision and raised event to a durable WORM store (see [`audit-log.md`](../usage/concepts/audit-log.md)). The audit store is the **legal record**; these metrics are the operational pulse over it, and the trace is the sampled overlay. Alert on the counters, never on the presence of a span — a dropped trace says nothing about whether a record was written, but the counters and the store do.
+
+The capture and the drain are separate moments, and so are their signals:
+
+| Instrument | Type | What it tells you |
+|---|---|---|
+| `edict.audit.records.captured` | counter (tags: `edict.audit.kind` ∈ `command\|event`, `edict.audit.outcome` ∈ `accepted\|rejected` on commands) | The "we recorded this decision" signal, incremented as each C1 command record and E1 event record is staged. It is recorded inside the deciding command's `edict.command.handle` turn, so it carries an exemplar to the turn that made the decision. The `rejected` slice is the one a stream-based scheme never sees — a denied command raises no event yet is counted here. |
+| `edict.audit.drain.failure` | counter (tag: `edict.grain.type`) | A batch of captured records that could not be durably written to the WORM store. This is a **compliance signal — the record exists in grain state but is not yet durable — not an effect-delivery retry**, so it is distinct from `outbox.drain.*`. The records stay staged (never dropped) and a reminder retries; **alert on any non-zero rate**. Recorded inside the `edict.audit.drain` span, so its exemplar points at the failing drain turn. |
+
+The **`edict.audit.drain`** span is the drain turn itself: pending records being written to the store off the command's hot path, running as a one-shot grain timer, an activation drain, or a reminder retry. It is its own root (not a child of the capturing command) precisely because it runs after the turn that captured the record has committed and returned. On a store failure the span carries `ActivityStatusCode.Error`; pivot from a `drain.failure` exemplar to it to see which write failed.
+
+These two counters are the audit exception to the carve-out rule above: both are recorded inside a live span, so both carry exemplars.
+
 ## Substrate meters
 
 The substrate underneath Edict surfaces its own metrics on its own `Meter`. This is the map of those names; [`alerts.md`](alerts.md) treats the framework metric as the **symptom** and the substrate metric as the **suspect**. Wire each substrate `Meter` alongside `EdictDiagnostics.SourceName`:

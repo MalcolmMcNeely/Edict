@@ -61,5 +61,5 @@ None — dead-lettering is a runtime promotion driven by `MaxAttempts` exhaustio
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Dead Letter`, `Outbox`, `Claim Check`.
 - Configuration — [core.md](../../configuration/core.md) — the canonical reference for the `Outbox*` retry knobs (`OutboxMaxAttempts`, `OutboxBaseDelay`, `OutboxMaxDelay`, `OutboxJitterFraction`) that govern when an entry is promoted to dead-letter.
-- Concepts — [claim-check.md](claim-check.md), [event-handlers.md](event-handlers.md), [sagas.md](sagas.md), [projections.md](projections.md), [telemetry.md](telemetry.md).
+- Concepts — [claim-check.md](claim-check.md), [event-handlers.md](event-handlers.md), [sagas.md](sagas.md), [projections.md](projections.md), [telemetry.md](telemetry.md), [audit-log.md](audit-log.md).
 - ADR — [0018 — Dead letter (forensic-only, table-projection-backed)](../../adr/0018-dead-letter-forensic-only.md).
