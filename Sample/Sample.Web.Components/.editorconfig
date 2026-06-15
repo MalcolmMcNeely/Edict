@@ -1,0 +1,6 @@
+# This sample adopts Edict auditing, so it opts into EDICT023: a bare origin
+# send (IEdictSender.SendAsync(command)) with no principal is a build error.
+# The analyzer is off by default because it cannot see whether AddEdictAudit is
+# wired in another assembly; enabling it here is the sample's compliance opt-in.
+[*.cs]
+dotnet_diagnostic.EDICT023.severity = error

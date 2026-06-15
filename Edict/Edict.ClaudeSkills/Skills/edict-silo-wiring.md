@@ -56,6 +56,17 @@ silo.AddEdict(
 
 A consumer opts a single perpetual schedule out of the cap at its call site with `timeout: EdictSchedule.Unbounded`, which always beats this default. See the `edict-authoring` skill for the `Schedule(...)` call site.
 
+## Auditing: enable EDICT023 when you adopt it
+
+When you wire auditing (`AddEdictAudit(resolver)` on the silo and client), the runtime fails closed at the origin: an originating `SendAsync` with no resolved principal throws before anything is persisted. Pair that wiring with the opt-in **`EDICT023`** analyzer so the same gap is caught at compile time instead of at runtime. It is off by default — an analyzer cannot see that `AddEdictAudit` was wired in this (often separate) assembly — so enable it per project in `.editorconfig`:
+
+```ini
+[*.cs]
+dotnet_diagnostic.EDICT023.severity = error
+```
+
+Once enabled it flags every bare `IEdictSender.SendAsync(command)`. Supply a principal explicitly with the `SendAsync(command, principal)` overload for a context-free origin (worker, import, admin script), or silence a resolver-backed site you have confirmed is attributed at runtime with `[SuppressMessage("Edict", "EDICT023")]`. Enable it only in the projects that adopt auditing; leaving it off elsewhere is correct, not an omission.
+
 ## Telemetry wiring
 
 Edict exposes one `ActivitySource` and one `Meter`, both named `"Edict"` (`EdictDiagnostics.SourceName`). Register exactly those on your OpenTelemetry builder, on both the silo and any Web front end:

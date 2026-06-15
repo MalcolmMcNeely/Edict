@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Sending;
 
 using Sample.Contracts.Orders.Commands;
@@ -12,6 +13,11 @@ namespace Sample.Web.Components.Simulator;
 /// </summary>
 public sealed class FireOneOrderHelper : IDeterministicOrderPlacer
 {
+    // The sample has no auth, so the "Fire one" button stands in for an
+    // authenticated operator clicking it: a chosen demo principal at the mock
+    // edge, passed explicitly so EDICT023's origin-send gate stays satisfied.
+    static readonly EdictPrincipal DemoOperator = EdictPrincipal.Of("demo-operator");
+
     const decimal FixedAmount = 100m;
     static readonly (string Sku, int Quantity)[] FixedLines =
     [
@@ -32,15 +38,15 @@ public sealed class FireOneOrderHelper : IDeterministicOrderPlacer
     public async Task<Guid> FireOneAsync(CancellationToken cancellationToken = default)
     {
         var orderId = Guid.NewGuid();
-        await _sender.SendAsync(new PlaceOrderCommand(orderId, "FIRE-ONE"));
+        await _sender.SendAsync(new PlaceOrderCommand(orderId, "FIRE-ONE"), DemoOperator);
         _knownOrders.Register(orderId);
 
         foreach (var (sku, quantity) in FixedLines)
         {
-            await _sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, quantity));
+            await _sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, quantity), DemoOperator);
         }
 
-        await _sender.SendAsync(new SubmitOrderCommand(orderId, FixedAmount));
+        await _sender.SendAsync(new SubmitOrderCommand(orderId, FixedAmount), DemoOperator);
         return orderId;
     }
 }

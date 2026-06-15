@@ -73,6 +73,9 @@ A `[EdictSagaTimeout]` that sets both a duration and `Unbounded = true` is self-
 ### EDICT022 — `DeadSagaTimeoutHookAnalyzer` (Warning)
 Overriding `OnSagaTimeoutAsync` on a saga declared `[EdictSagaTimeout(Unbounded = true)]` is dead code: an unbounded saga never arms a cap, so the hook can never fire. Only the explicit-unbounded case is detectable — the analyzer cannot see the runtime silo-wide default.
 
+### EDICT023 — `OriginSendPrincipalAnalyzer` (Error, **opt-in** — off by default)
+A bare origin send, `IEdictSender.SendAsync(command)`, has no principal. When a consumer adopts auditing the runtime fails closed at the origin if no principal resolves, and this analyzer moves that feedback left into the IDE. It is the one analyzer that is **off by default**: an analyzer runs per-compilation and cannot see whether `AddEdictAudit` was wired in another assembly (the silo/client project, typically a different compilation from the edge where the sends live), so it cannot tell a correctly-resolver-backed bare send from an un-attributable one. A consumer who audits turns it on per project through the `.editorconfig` knob `dotnet_diagnostic.EDICT023.severity = error` (no MSBuild surface), which is itself a compliance statement — hence `DefaultSeverity` is `Error` once enabled. There is **no code fix**: the right principal is a domain decision, and a placeholder would invite rubber-stamping. The explicit `SendAsync(command, principal)` overload is already attributed and never flagged; framework-relayed sends (saga `Dispatch`, outbox `SendCommand`, schedule fire) are distinct methods a consumer never writes, and `Raise` is an in-turn inherit, so an analyzer scanning consumer source sees only origin sends by construction. A resolver-backed site the consumer has confirmed is attributed at runtime is silenced with `[SuppressMessage("Edict", "EDICT023")]`.
+
 ---
 
 ## Numbering

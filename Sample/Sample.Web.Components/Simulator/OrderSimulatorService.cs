@@ -1,3 +1,4 @@
+using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
 
@@ -21,6 +22,11 @@ public sealed class OrderSimulatorService : IHostedService, IDisposable
 {
     static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(500);
     static readonly string[] SampleSkus = ["SKU-1", "SKU-2", "SKU-3", "SKU-4", "SKU-5"];
+
+    // Autonomous background traffic with no user behind it: the consumer mints
+    // its own system principal (Edict ships no sentinel) and passes it explicitly
+    // so these origin sends are attributed without a request-scoped resolver.
+    static readonly EdictPrincipal SystemActor = EdictPrincipal.Of("order-simulator");
 
     readonly IEdictSender _sender;
     readonly KnownOrdersRegistry _knownOrders;
@@ -85,7 +91,7 @@ public sealed class OrderSimulatorService : IHostedService, IDisposable
         var lineCount = _random.Next(1, 6);
         var amount = 50m + _random.Next(0, 100);
 
-        var place = await _sender.SendAsync(new PlaceOrderCommand(orderId, "SIM-" + orderId.ToString("N")[..6]));
+        var place = await _sender.SendAsync(new PlaceOrderCommand(orderId, "SIM-" + orderId.ToString("N")[..6]), SystemActor);
         if (place is not EdictCommandResult.Accepted)
         {
             return;
@@ -96,10 +102,10 @@ public sealed class OrderSimulatorService : IHostedService, IDisposable
         for (var i = 0; i < lineCount; i++)
         {
             var sku = SampleSkus[_random.Next(SampleSkus.Length)];
-            await _sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, 1));
+            await _sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), sku, 1), SystemActor);
         }
 
-        await _sender.SendAsync(new SubmitOrderCommand(orderId, amount));
+        await _sender.SendAsync(new SubmitOrderCommand(orderId, amount), SystemActor);
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;

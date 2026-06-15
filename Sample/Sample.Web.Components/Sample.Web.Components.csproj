@@ -34,6 +34,11 @@
         <ProjectReference Include="../Sample.Contracts/Sample.Contracts.csproj" />
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <ProjectReference Include="../../Edict/Edict.Core/Edict.Core.csproj" />
+        <!-- The simulator's origin sends live here, so the analyzer must run here
+             to dogfood EDICT023; this project's .editorconfig opts it on. -->
+        <ProjectReference Include="../../Edict/Edict.Analyzers/Edict.Analyzers.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
     </ItemGroup>
 
 </Project>
