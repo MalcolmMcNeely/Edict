@@ -39,6 +39,8 @@ static class ConfigurationKnobCatalogue
         new("EdictAzurePersistenceOptions", "AddEdictAzurePersistence",
         [
             new("GrainStateContainerName", KnobRequirement.None),
+            new("AuditTableName", KnobRequirement.None),
+            new("AuditPayloadContainerName", KnobRequirement.None),
             new("TableServiceClient", KnobRequirement.None),
             new("BlobServiceClient", KnobRequirement.None),
         ]),
