@@ -94,7 +94,7 @@
                             }
                         </tbody>
                     </table>
-                    <p class="hub-empty-small">Click a row to fetch its captured body from the payload store.</p>
+                    <p class="hub-empty-small">Click a row to read its captured body back as the concrete message, with the sealed bytes and hash kept as the integrity anchor.</p>
                 }
             </div>
 
@@ -107,13 +107,31 @@
                     }
                     else if (_payloadRecord is null)
                     {
-                        <p class="hub-empty-small">No body loaded. Click a chain row to retrieve the exact serialized message bytes the record's hash was computed over.</p>
+                        <p class="hub-empty-small">No body loaded. Click a chain row to read its captured message back as the concrete command or event the handler decided on, alongside the sealed bytes its hash was computed over.</p>
                     }
                     else
                     {
-                        <div class="spotlight-order"><code>@ShortName(_payloadRecord.MessageType)</code> · @_payloadLength bytes</div>
+                        <div class="spotlight-order"><code>@ShortName(_payloadRecord.MessageType)</code> <span class="hub-orders-meta">@_payloadRecord.Kind</span></div>
+                        @if (_messageError is not null)
+                        {
+                            <p class="orders-cancelled">@_messageError</p>
+                        }
+                        else
+                        {
+                            <table class="spotlight-table">
+                                <tbody>
+                                    @foreach (var field in _payloadFields)
+                                    {
+                                        <tr>
+                                            <td class="spotlight-state">@field.Label</td>
+                                            <td><code>@field.Value</code></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
                         <div class="orders-outcome">
-                            Hash: @(_payloadHashMatches ? "✓ matches the sealed record" : "✗ does not match")
+                            Integrity: @_payloadLength bytes · hash @(_payloadHashMatches ? "✓ matches the sealed record" : "✗ does not match")
                         </div>
                         <pre class="audit-payload">@_payloadPreview</pre>
                     }
@@ -201,6 +219,8 @@
     bool _payloadHashMatches;
     string _payloadPreview = "";
     string? _payloadError;
+    IReadOnlyList<AuditMessageField> _payloadFields = [];
+    string? _messageError;
 
     PeriodicTimer? _timer;
     CancellationTokenSource? _cancellationTokenSource;
@@ -344,6 +364,19 @@
             _payloadHashMatches = record.PayloadHash.AsSpan().SequenceEqual(SHA256.HashData(body));
             _payloadPreview = Convert.ToBase64String(body);
             _payloadError = null;
+
+            try
+            {
+                _payloadFields = AuditMessageView.Describe(await Audit.GetMessageAsync(record));
+                _messageError = null;
+            }
+            catch (EdictAuditMessageDeserializationException exception)
+            {
+                // The body cannot be read back as its concrete type, but the bytes and
+                // hash below stay valid: prove still holds even when read cannot.
+                _payloadFields = [];
+                _messageError = $"Body could not be decoded to {ShortName(exception.MessageType)}: {exception.Message}";
+            }
         }
         catch (Exception exception)
         {
@@ -374,6 +407,8 @@
         _payloadHashMatches = false;
         _payloadPreview = "";
         _payloadError = null;
+        _payloadFields = [];
+        _messageError = null;
     }
 
     static string VerificationLabel(EdictAuditChainVerification verification) =>

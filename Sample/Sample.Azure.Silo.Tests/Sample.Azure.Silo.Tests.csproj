@@ -16,6 +16,9 @@
         <ProjectReference Include="../Sample.Domain/Sample.Domain.csproj" />
         <!-- The shipped in-memory Test Framework. -->
         <ProjectReference Include="../../Edict/Edict.Testing/Edict.Testing.csproj" />
+        <!-- The audit drill-down's render helper (AuditMessageView) lives in the
+             web component library; this test exercises it over a GetMessageAsync-decoded chain. -->
+        <ProjectReference Include="../Sample.Web.Components/Sample.Web.Components.csproj" />
         <!-- For OrleansReadyHealthCheck + OrleansReadyGate; the sample-side cross-cutting
              helpers live in ServiceDefaults so both silos and Web can wire them. -->
         <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />

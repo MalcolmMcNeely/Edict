@@ -1,0 +1,118 @@
+﻿[
+  {
+    Decision: PlaceOrderCommand,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Customer reference,
+        Value: AUDIT-DEMO
+      }
+    ]
+  },
+  {
+    Decision: OrderPlacedEvent,
+    Kind: Event,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      }
+    ]
+  },
+  {
+    Decision: AddLineItemCommand,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Line item,
+        Value: Guid_2
+      },
+      {
+        Label: SKU,
+        Value: WIDGET
+      },
+      {
+        Label: Quantity,
+        Value: 1
+      }
+    ]
+  },
+  {
+    Decision: LineItemAddedEvent,
+    Kind: Event,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Line item,
+        Value: Guid_2
+      },
+      {
+        Label: SKU,
+        Value: WIDGET
+      },
+      {
+        Label: Quantity,
+        Value: 1
+      }
+    ]
+  },
+  {
+    Decision: SubmitOrderCommand,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Amount,
+        Value: 100.00
+      }
+    ]
+  },
+  {
+    Decision: OrderSubmittedEvent,
+    Kind: Event,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Amount,
+        Value: 100.00
+      }
+    ]
+  },
+  {
+    Decision: ConfirmOrderCommand,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      }
+    ]
+  },
+  {
+    Decision: OrderConfirmedEvent,
+    Kind: Event,
+    Fields: [
+      {
+        Label: Order,
+        Value: Guid_1
+      },
+      {
+        Label: Line items,
+        Value: 1
+      }
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+﻿[
+  {
+    Label: Order,
+    Value: Guid_1
+  },
+  {
+    Label: Customer reference,
+    Value: AUDIT-DEMO
+  }
+]
