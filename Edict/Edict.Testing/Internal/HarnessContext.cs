@@ -64,7 +64,7 @@ sealed class HarnessContext(
     /// could hold a due schedule — the discovery surface for
     /// <c>FireDueSchedulesAsync</c> with no production-side registry.
     /// </summary>
-    public ConcurrentDictionary<(string GrainClassName, Guid Key), byte> RoutedGrains { get; } = new();
+    public ConcurrentDictionary<(string GrainClassName, string Key), byte> RoutedGrains { get; } = new();
 
     /// <summary>The silo's IEdictMetricsCache singleton, captured by the silo
     /// configurator so EdictTestApp's GetOutboxState / GetSagaState probes

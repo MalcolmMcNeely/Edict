@@ -21,7 +21,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
         edictEvent switch
         {
             EdictDeadLetterRaised raised => raised.EntryId.ToString("N"),
-            _ => this.GetPrimaryKey().ToString(),
+            _ => this.GetPrimaryKeyString(),
         };
 
     Task HandleAsync(EdictDeadLetterRaised raised)

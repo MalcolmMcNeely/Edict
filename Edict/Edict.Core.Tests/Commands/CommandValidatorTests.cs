@@ -61,7 +61,7 @@ public sealed class CommandValidatorTests
 
         // A validation rejection is a normal return, not a fault, on both the Web
         // command span and the silo command-handle span that now carry the route key.
-        var spans = stopped.Where(a => orderId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey))).ToList();
+        var spans = stopped.Where(a => orderId.ToString("N").Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey))).ToList();
         Assert.NotEmpty(spans);
         Assert.All(spans, span => Assert.Equal(ActivityStatusCode.Unset, span.Status));
     }

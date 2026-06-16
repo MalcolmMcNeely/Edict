@@ -37,7 +37,7 @@ sealed class InProcPublishExecutor(
     IEventStreamAccessors accessors,
     IEventTagWriters tagWriters,
     TimelineRecorder recorder,
-    ConcurrentDictionary<(string GrainClassName, Guid Key), byte> routedGrains) : IOutboxEffectExecutor
+    ConcurrentDictionary<(string GrainClassName, string Key), byte> routedGrains) : IOutboxEffectExecutor
 {
     public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
 
@@ -170,7 +170,7 @@ sealed class InProcPublishExecutor(
         return Task.FromResult(flushed.Count);
     }
 
-    void Dispatch(Type grainClass, Guid routeKey, EdictEvent edictEvent)
+    void Dispatch(Type grainClass, string routeKey, EdictEvent edictEvent)
     {
         // A saga starts a schedule from inside an event HandleAsync, so it joins
         // the schedule-fire roster the moment an event fans out to it — the
@@ -256,5 +256,5 @@ sealed class InProcPublishExecutor(
         return parts.Length == 4 ? (parts[1], parts[2]) : (null, null);
     }
 
-    readonly record struct SubscriberKey(Type GrainClass, Guid RouteKey);
+    readonly record struct SubscriberKey(Type GrainClass, string RouteKey);
 }

@@ -18,7 +18,7 @@ namespace Edict.Generated
                 var typed = (global::Sample.CancelOrder)command;
                 return es.SendFastPathAsync<global::Sample.CancelOrder>(
                     typed,
-                    typed.OrderId,
+                    typed.OrderId.ToString("N"),
                     "CancelOrder",
                     "Sample.OrderCommandHandler",
                     extraTags: null);
@@ -58,7 +58,7 @@ namespace Edict.Generated
                 var typed = (global::Sample.PlaceOrder)command;
                 return es.SendFastPathAsync<global::Sample.PlaceOrder>(
                     typed,
-                    typed.OrderId,
+                    typed.OrderId.ToString("N"),
                     "PlaceOrder",
                     "Sample.OrderCommandHandler",
                     extraTags: static (c, a) =>

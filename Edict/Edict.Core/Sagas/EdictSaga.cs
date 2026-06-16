@@ -88,7 +88,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     protected TProgress Progress => State.Payload;
 
     string SagaType => _cachedSagaType ??= GetType().FullName ?? GetType().Name;
-    string SagaKey => _cachedSagaKey ??= this.GetPrimaryKey().ToString();
+    string SagaKey => _cachedSagaKey ??= this.GetPrimaryKeyString();
     TimeProvider Clock => _cachedTimeProvider ??= ServiceProvider.GetRequiredService<TimeProvider>();
     EdictOptions Options => _cachedOptions ??= ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
     EdictSagaOptions SagaOptions =>

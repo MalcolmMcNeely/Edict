@@ -31,7 +31,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_RaisingNoEvent_ShouldPersistStateMutation_AcrossForcedDeactivation()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueNoEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -49,7 +49,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_Continue_ShouldReArmAndFireAgainOnTheNextCadence()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueNoEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -66,7 +66,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_Complete_ShouldStopTheSchedule()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.CompleteNoEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -83,7 +83,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_AfterManyElapsedPeriods_ShouldCoalesceIntoASingleFire()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueNoEvent);
 
         // Five cadences elapse while nothing fires; the catch-up must be one fire,
@@ -97,7 +97,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_RaisingEvent_ShouldStageAndDrainItThroughTheOutbox()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueRaiseEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -115,7 +115,7 @@ public sealed class ScheduleLifecycleTests
     public async Task Fire_RaisingEvent_ShouldStampAFreshCorrelation_AsANewCausalRoot()
     {
         var probeId = Guid.NewGuid();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueRaiseEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -135,7 +135,7 @@ public sealed class ScheduleLifecycleTests
     public async Task Fire_RaisingEvent_ShouldCarryTheArmingPrincipal()
     {
         var probeId = Guid.NewGuid();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
 
         _fixture.AdvanceClock(Cadence);
@@ -155,7 +155,7 @@ public sealed class ScheduleLifecycleTests
     public async Task Fire_RaisingEvent_ShouldCarryTheArmingTenant()
     {
         var probeId = Guid.NewGuid();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartWithTenantAsync(Cadence, EdictTenantId.Of("acme"));
 
         _fixture.AdvanceClock(Cadence);
@@ -175,8 +175,8 @@ public sealed class ScheduleLifecycleTests
     public async Task Fire_RaisingEvent_ShouldCaptureAnE1RecordAttributedToTheArmingPrincipal()
     {
         var probeId = Guid.NewGuid();
-        var entityKey = probeId.ToString();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var entityKey = probeId.ToString("N");
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
 
         _fixture.AdvanceClock(Cadence);
@@ -219,7 +219,7 @@ public sealed class ScheduleLifecycleTests
     public async Task Fire_AfterReactivation_ShouldStillCarryTheArmingPrincipal()
     {
         var probeId = Guid.NewGuid();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartWithPrincipalAsync(Cadence, EdictPrincipal.Of("scheduler-bob"));
 
         // Force a reactivation between arming and firing: the arm-context principal
@@ -240,7 +240,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Fire_ThatThrows_ShouldRollBackStateMutation_AndKeepTheScheduleArmed()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.Throw);
 
         _fixture.AdvanceClock(Cadence);
@@ -257,7 +257,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Timeout_WithCompensationHook_ShouldRunItAndStopTheSchedule()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         // Cap shorter than one cadence so a single timeout fire precedes any tick.
         await probe.StartWithTimeoutAsync(Cadence, TimeSpan.FromMinutes(1), ScheduleProbeTimeoutBehavior.Compensate);
 
@@ -274,7 +274,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Timeout_WithNoHook_ShouldDeadLetter_StopTheSchedule_AndNotThrow()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         await probe.StartWithTimeoutAsync(Cadence, TimeSpan.FromMinutes(1), ScheduleProbeTimeoutBehavior.DeadLetter);
 
         _fixture.AdvanceClock(TimeSpan.FromMinutes(1));
@@ -291,7 +291,7 @@ public sealed class ScheduleLifecycleTests
     [Fact]
     public async Task Timeout_Cap_ShouldBeArmedOnce_AndNotPushedByTicks()
     {
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid());
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(Guid.NewGuid().ToString("N"));
         // Cadence one minute, cap two minutes: a tick fires at +1m, then the cap
         // fires at +2m even though the tick advanced the schedule's next due.
         await probe.StartWithTimeoutAsync(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), ScheduleProbeTimeoutBehavior.Compensate);

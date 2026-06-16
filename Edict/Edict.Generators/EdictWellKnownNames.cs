@@ -122,6 +122,10 @@ internal static class EdictWellKnownNames
     public const string IEdictPersistedStateFqn =
         "global::Edict.Contracts.Persistence.IEdictPersistedState";
 
+    // ── Edict.Contracts.Tenancy ──────────────────────────────────────────────
+    public const string EdictTenantScopedAttributeFqn =
+        "global::Edict.Contracts.Tenancy.EdictTenantScopedAttribute";
+
     // ── Edict.Contracts.Sending ──────────────────────────────────────────────
     public const string IEdictSenderFqn =
         "global::Edict.Contracts.Sending.IEdictSender";

@@ -26,10 +26,12 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
     </ItemGroup>
 
-    <!-- Single-source the FQN constants; compile-linked into both Roslyn
-         assemblies (Edict.Analyzers and Edict.Generators). -->
+    <!-- Single-source the FQN constants and the route-key-type rule; compile-linked
+         into both Roslyn assemblies (Edict.Analyzers and Edict.Generators) so the
+         analyzer's acceptance check and the generator's emission cannot drift. -->
     <ItemGroup>
         <Compile Include="../Edict.Generators/EdictWellKnownNames.cs" />
+        <Compile Include="../Edict.Generators/RouteKeyStringification.cs" />
     </ItemGroup>
 
 </Project>

@@ -30,13 +30,13 @@ static class DeadLetterPromotion
         OutboxEntry entry,
         EdictCommand command,
         string targetGrainType,
-        Guid targetGrainKey,
+        string targetGrainKey,
         Exception exception,
         string sourceGrainKey,
         string sourceGrainType,
         DateTimeOffset deadLetteredAt)
     {
-        var effectTarget = $"{targetGrainType}/{targetGrainKey:D}";
+        var effectTarget = $"{targetGrainType}/{targetGrainKey}";
         var payloadJson = JsonSerializer.Serialize(command, command.GetType());
         var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
         return raised with { CorrelationId = command.CorrelationId };
@@ -72,7 +72,7 @@ static class DeadLetterPromotion
         DateTimeOffset deadLetteredAt)
     {
         var effectTarget = envelope.InnerEventStreamName is { } innerStream
-            ? $"{innerStream}/{envelope.InnerEventRouteKey:D}"
+            ? $"{innerStream}/{envelope.InnerEventRouteKey}"
             : nameof(EdictEventEnvelope);
         var raised = Compose(entry, effectTarget, payloadJson: null, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
         return raised with
@@ -103,7 +103,7 @@ static class DeadLetterPromotion
         DateTimeOffset deadLetteredAt)
     {
         var effectTarget = envelope.InnerEventStreamName is { } innerStream
-            ? $"{innerStream}/{envelope.InnerEventRouteKey:D}"
+            ? $"{innerStream}/{envelope.InnerEventRouteKey}"
             : nameof(EdictDeadLetterFailureKind.BlobMissing);
 
         return new EdictDeadLetterRaised
@@ -146,18 +146,36 @@ static class DeadLetterPromotion
         PayloadJson = payloadJson,
     };
 
-    public static bool TryResolveCommandRouteKey(EdictCommand command, out Guid routeKey)
+    public static bool TryResolveCommandRouteKey(EdictCommand command, out string routeKey)
     {
-        var routeKeyProp = Array.Find(
+        var routeKeyProperty = Array.Find(
             command.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance),
-            p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)));
-        if (routeKeyProp is null)
+            property => Attribute.IsDefined(property, typeof(EdictRouteKeyAttribute)));
+        if (routeKeyProperty is null)
         {
-            routeKey = Guid.Empty;
+            routeKey = string.Empty;
             return false;
         }
 
-        routeKey = (Guid)routeKeyProp.GetValue(command)!;
-        return true;
+        var value = routeKeyProperty.GetValue(command);
+        if (value is Guid guid)
+        {
+            routeKey = guid.ToString("N");
+            return true;
+        }
+
+        // A typed route key is a struct wrapping a single Guid; stringify the same
+        // bare form the generator emits so the forensic target reads identically.
+        var innerGuidProperty = value is null ? null : Array.Find(
+            value.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance),
+            property => property.PropertyType == typeof(Guid));
+        if (innerGuidProperty?.GetValue(value) is Guid innerGuid)
+        {
+            routeKey = innerGuid.ToString("N");
+            return true;
+        }
+
+        routeKey = string.Empty;
+        return false;
     }
 }

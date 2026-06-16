@@ -10,7 +10,7 @@ namespace Edict.Contracts.ClaimCheck;
 /// </summary>
 public sealed class EdictEnvelopeOverflowException : Exception
 {
-    public EdictEnvelopeOverflowException(Guid routeKey, string eventType, int measuredBytes)
+    public EdictEnvelopeOverflowException(string routeKey, string eventType, int measuredBytes)
         : base(BuildMessage(routeKey, eventType, measuredBytes))
     {
         RouteKey = routeKey;
@@ -18,8 +18,8 @@ public sealed class EdictEnvelopeOverflowException : Exception
         MeasuredBytes = measuredBytes;
     }
 
-    /// <summary>Route key of the aggregate whose Handle raised the oversized event.</summary>
-    public Guid RouteKey { get; }
+    /// <summary>Composed stream key of the aggregate whose Handle raised the oversized event.</summary>
+    public string RouteKey { get; }
 
     /// <summary>Full type name of the raised event that overflowed.</summary>
     public string EventType { get; }
@@ -27,7 +27,7 @@ public sealed class EdictEnvelopeOverflowException : Exception
     /// <summary>Post-wrap byte length the commit pipeline measured before throwing.</summary>
     public int MeasuredBytes { get; }
 
-    static string BuildMessage(Guid routeKey, string eventType, int measuredBytes) =>
+    static string BuildMessage(string routeKey, string eventType, int measuredBytes) =>
         $"Event '{eventType}' on route '{routeKey}' wrapped to {measuredBytes} bytes, exceeding the storage per-property cap. "
         + "Raise EdictAzureOptions.ClaimCheckThresholdBytes headroom or shrink the event.";
 }

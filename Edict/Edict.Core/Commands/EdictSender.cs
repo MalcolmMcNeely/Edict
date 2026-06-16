@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
 using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
@@ -117,7 +118,7 @@ public sealed class EdictSender : IEdictSender
     [EditorBrowsable(EditorBrowsableState.Never)]
     public async Task<EdictCommandResult> SendFastPathAsync<TCommand>(
         TCommand command,
-        Guid routeKey,
+        string routeKey,
         string commandSimpleName,
         string grainClassName,
         Action<TCommand, Activity>? extraTags)
@@ -128,13 +129,16 @@ public sealed class EdictSender : IEdictSender
         command = EnsureCorrelation(command);
         command = _principalStamper.StampAtOrigin(command);
         command = _tenantStamper.StampAtOrigin(command);
-        var grain = _grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
+        // Fold the tenant in after stamping so a tenant-scoped command reaches the
+        // wall its resolved tenant names, not the default key space.
+        var key = EdictKeyComposer.Compose(command.Tenant, routeKey);
+        var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, grainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");
 
         if (activity is not null)
         {
-            activity.SetEdictCommandTags(routeKey);
+            activity.SetEdictCommandTags(key);
             extraTags?.Invoke(command, activity);
             if (!ActivityExtensions.IsCrossTurnLink())
             {

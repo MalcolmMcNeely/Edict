@@ -2,6 +2,9 @@
 
     <ItemGroup>
         <PackageReference Include="TngTech.ArchUnitNET.xUnit" />
+        <!-- The tenant-scoped Compose-coverage guard runs the Edict generator over a
+             representative aggregate and inspects the emitted registrars. -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     </ItemGroup>
 
     <ItemGroup>

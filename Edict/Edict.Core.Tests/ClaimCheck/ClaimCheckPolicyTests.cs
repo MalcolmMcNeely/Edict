@@ -95,7 +95,7 @@ public sealed class ClaimCheckPolicyTests
         var exception = await Assert.ThrowsAsync<EdictEnvelopeOverflowException>(
             () => policy.ApplyAsync(edictEvent, default, CancellationToken.None));
 
-        Assert.Equal(routeKey, exception.RouteKey);
+        Assert.Equal(routeKey.ToString("N"), exception.RouteKey);
         Assert.Equal(typeof(OrderPlacedEvent).FullName, exception.EventType);
         Assert.True(exception.MeasuredBytes > 32_768);
     }
@@ -193,6 +193,6 @@ public sealed class ClaimCheckPolicyTests
 
     sealed class HugeStreamNameAccessors(string streamName, Guid routeKey) : IEventStreamAccessors
     {
-        public (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent) => (streamName, routeKey);
+        public (string StreamName, string RouteKey) Resolve(EdictEvent edictEvent) => (streamName, routeKey.ToString("N"));
     }
 }

@@ -387,7 +387,7 @@ sealed class OutboxHost<TPayload>
             // events headed for the same (streamName, routeKey) into a
             // single OnNextBatchAsync.
             var liveByEntry = new Dictionary<Guid, EdictEvent?>(ready.Length);
-            var keyByEntry = new Dictionary<Guid, (string, Guid)>(ready.Length);
+            var keyByEntry = new Dictionary<Guid, (string, string)>(ready.Length);
             for (var i = 0; i < ready.Length; i++)
             {
                 var entry = ready[i];
@@ -397,7 +397,7 @@ sealed class OutboxHost<TPayload>
                 var resolved = executor.TryResolveBatchKey(entry, live);
                 keyByEntry[entry.EntryId] = resolved is { } r
                     ? (r.StreamName, r.RouteKey)
-                    : (string.Empty, entry.EntryId);
+                    : (string.Empty, entry.EntryId.ToString("N"));
 
                 // Forward only the genuine in-memory reference — null on a recovery
                 // drain. The publish executor branches its span topology on this:

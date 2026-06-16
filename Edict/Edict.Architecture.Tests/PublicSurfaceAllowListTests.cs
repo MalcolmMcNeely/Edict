@@ -294,6 +294,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Projections.IEdictListProjectionReader`1",
         "Edict.Contracts.Projections.IEdictProjectionReader`1",
         "Edict.Contracts.Routing.EdictEventStreamAccessor",
+        "Edict.Contracts.Routing.EdictKeyComposer",
         "Edict.Contracts.Routing.EdictEventStreamsAttribute",
         "Edict.Contracts.Routing.EdictEventTagWritersAttribute",
         "Edict.Contracts.Routing.EdictProjectionReadRoutesAttribute",
@@ -307,6 +308,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Telemetry.EdictTelemeterizedAttribute",
         "Edict.Contracts.Tenancy.EdictInvalidTenantIdException",
         "Edict.Contracts.Tenancy.EdictTenantId",
+        "Edict.Contracts.Tenancy.EdictTenantScopedAttribute",
     };
 
     static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)

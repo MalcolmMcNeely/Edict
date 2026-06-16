@@ -184,7 +184,7 @@ sealed class DeadLetterPromoter(
         }
 
         logger.LogWarning(
-            "Dead-letter promoter could not resolve [EdictRouteKey] on command '{CommandType}' for source grain '{SourceGrainType}'. Emitting synthetic dead-letter row with RouteKey=Guid.Empty.",
+            "Dead-letter promoter could not resolve [EdictRouteKey] on command '{CommandType}' for source grain '{SourceGrainType}'. Emitting synthetic dead-letter row with an empty RouteKey.",
             command.GetType().FullName, sourceGrainType);
         PromotionFailureCount.Add(1,
             new KeyValuePair<string, object?>(
@@ -192,7 +192,7 @@ sealed class DeadLetterPromoter(
                 SemanticConventions.DeadLetter.Tags.PromotionFailureReasonValues.MissingRouteKey),
             new KeyValuePair<string, object?>(
                 SemanticConventions.Common.Tags.GrainType, sourceGrainType));
-        var raised = DeadLetterPromotion.Build(failed, command, targetGrainType, Guid.Empty, exception, sourceGrainKey, sourceGrainType, now);
+        var raised = DeadLetterPromotion.Build(failed, command, targetGrainType, string.Empty, exception, sourceGrainKey, sourceGrainType, now);
         return raised with { ExceptionType = nameof(EdictMissingRouteKeyException) };
     }
 

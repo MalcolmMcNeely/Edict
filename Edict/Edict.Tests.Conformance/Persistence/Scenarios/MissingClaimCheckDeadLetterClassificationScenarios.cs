@@ -46,7 +46,7 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         {
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = "ConformanceClaimCheckBlobMissing",
-            InnerEventRouteKey = grainId,
+            InnerEventRouteKey = grainId.ToString("N"),
         };
 
         var captures = new List<string?>();

@@ -31,7 +31,7 @@ public sealed class SagaLifecycleTests
     // saga's own grain key so one test never sees another's dead-letter.
     static IReadOnlyList<EdictDeadLetterRaised> DeadLettersFor(Guid workflowId) =>
         CapturingPublishEventExecutor.Captured
-            .Where(deadLetter => deadLetter.SourceGrainKey == workflowId.ToString())
+            .Where(deadLetter => deadLetter.SourceGrainKey == workflowId.ToString("N"))
             .ToList();
 
     [Fact]

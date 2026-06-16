@@ -30,11 +30,12 @@ internal static class CommandRouteRegistrarEmitter
                         .Append(interfaceFqn)
                         .Append("), \"")
                         .Append(grain.GrainTypeName)
-                        .Append("\", command => ((")
+                        .Append("\", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((")
                         .Append(command.Fqn)
                         .Append(")command).")
                         .Append(command.RouteKeyProperty)
-                        .Append(");\n");
+                        .Append(command.RouteKeyStringification)
+                        .Append("));\n");
                 }
                 else
                 {
@@ -55,7 +56,7 @@ internal static class CommandRouteRegistrarEmitter
                         .Append("                typeof(").Append(command.Fqn).Append("),\n")
                         .Append("                typeof(").Append(interfaceFqn).Append("),\n")
                         .Append("                \"").Append(grain.GrainTypeName).Append("\",\n")
-                        .Append("                command => ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(",\n")
+                        .Append("                command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(command.RouteKeyStringification).Append("),\n")
                         .Append("                (command, activity) =>\n")
                         .Append("                {\n")
                         .Append("                    var typedCommand = (").Append(command.Fqn).Append(")command;\n")

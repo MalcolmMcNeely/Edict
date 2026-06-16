@@ -12,8 +12,6 @@ namespace Edict.Analyzers.Routing;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 {
-    const string GuidFqn = "global::System.Guid";
-
     internal static readonly DiagnosticDescriptor MissingRouteKey = new DiagnosticDescriptor(
         id: "EDICT003",
         title: "Command must have exactly one [EdictRouteKey] property",
@@ -32,8 +30,8 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
 
     internal static readonly DiagnosticDescriptor RouteKeyMustBeGuid = new DiagnosticDescriptor(
         id: "EDICT003",
-        title: "[EdictRouteKey] property must be of type Guid",
-        messageFormat: "[EdictRouteKey] property '{0}' on '{1}' must be of type Guid",
+        title: "[EdictRouteKey] property must be a Guid or a struct wrapping a single Guid",
+        messageFormat: "[EdictRouteKey] property '{0}' on '{1}' must be a Guid or a struct wrapping a single Guid",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -77,7 +75,7 @@ public sealed class RouteKeyAnalyzer : DiagnosticAnalyzer
         }
 
         var single = routeKeyProperties[0];
-        if (single.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) != GuidFqn)
+        if (!RouteKeyStringification.IsRouteKeyType(single.Type))
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(RouteKeyMustBeGuid, single.Locations[0],

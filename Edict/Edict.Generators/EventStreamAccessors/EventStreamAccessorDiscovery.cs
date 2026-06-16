@@ -37,6 +37,7 @@ internal static class EventStreamAccessorDiscovery
         }
 
         string? routeKeyProperty = null;
+        ITypeSymbol? routeKeyType = null;
         var routeKeyCount = 0;
         for (INamedTypeSymbol? type = eventType; type is not null; type = type.BaseType)
         {
@@ -52,9 +53,10 @@ internal static class EventStreamAccessorDiscovery
                         == EdictWellKnownNames.EdictRouteKeyAttributeFqn))
                 {
                     routeKeyCount++;
-                    if (routeKeyProperty is null && property.Type.ToDisplayString(FullyQualified) == "global::System.Guid")
+                    if (routeKeyProperty is null && RouteKeyStringification.IsRouteKeyType(property.Type))
                     {
                         routeKeyProperty = property.Name;
+                        routeKeyType = property.Type;
                     }
                 }
             }
@@ -68,7 +70,8 @@ internal static class EventStreamAccessorDiscovery
         return new EventStreamAccessorModel(
             eventType.ToDisplayString(FullyQualified),
             streamName,
-            routeKeyProperty);
+            routeKeyProperty,
+            RouteKeyStringification.Suffix(routeKeyType!));
     }
 
     static readonly SymbolDisplayFormat FullyQualified =

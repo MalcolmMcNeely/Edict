@@ -116,7 +116,7 @@ internal static class SendInterceptorEmitter
         sb.Append("                return es.SendFastPathAsync<")
             .Append(command.Fqn).Append(">(\n");
         sb.Append("                    typed,\n");
-        sb.Append("                    typed.").Append(command.RouteKeyProperty).Append(",\n");
+        sb.Append("                    typed.").Append(command.RouteKeyProperty).Append(command.RouteKeyStringification).Append(",\n");
         sb.Append("                    \"").Append(command.SimpleName).Append("\",\n");
         sb.Append("                    \"").Append(bundle.GrainClassName).Append("\",\n");
 

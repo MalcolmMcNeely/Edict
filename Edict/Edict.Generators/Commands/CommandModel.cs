@@ -5,6 +5,7 @@ internal sealed record CommandModel(
     string SimpleName,
     string Namespace,
     string RouteKeyProperty,
+    string RouteKeyStringification,
     EquatableArray<TelemeterizedProperty> TelemeterizedProperties);
 
 internal sealed record CommandHandlerGrainModel(

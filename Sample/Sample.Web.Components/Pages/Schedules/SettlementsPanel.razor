@@ -1,5 +1,6 @@
 @using Orleans
 @using Edict.Contracts.Commands
+@using Edict.Contracts.Routing
 @using Edict.Contracts.Sending
 @using Edict.Core.Sagas
 @using Sample.Contracts.Settlement.Commands
@@ -80,7 +81,8 @@
         {
             // The Saga is the single source of truth: its durable Progress carries
             // the poll count and outcome, read through the same accessor the tests use.
-            var saga = ClusterClient.GetGrain<IEdictSaga>(_paymentId, typeof(GatewaySettlementSaga).FullName);
+            var sagaKey = EdictKeyComposer.Compose(null, _paymentId.ToString("N"));
+            var saga = ClusterClient.GetGrain<IEdictSaga>(sagaKey, typeof(GatewaySettlementSaga).FullName);
             _settlementProgress = (GatewaySettlementProgress)await saga.GetEdictProgressAsync();
         }
         catch

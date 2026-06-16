@@ -19,11 +19,12 @@ internal static class EventStreamRegistrarEmitter
                 .Append(edictEvent.Fqn)
                 .Append(")] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor(\"")
                 .Append(edictEvent.StreamName)
-                .Append("\", static edictEvent => ((")
+                .Append("\", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(edictEvent.Tenant, ((")
                 .Append(edictEvent.Fqn)
                 .Append(")edictEvent).")
                 .Append(edictEvent.RouteKeyProperty)
-                .Append(");\n");
+                .Append(edictEvent.RouteKeyStringification)
+                .Append("));\n");
         }
 
         return $$"""

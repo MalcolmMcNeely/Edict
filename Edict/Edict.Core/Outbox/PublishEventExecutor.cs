@@ -40,7 +40,7 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
         return null;
     }
 
-    public (string StreamName, Guid RouteKey)? TryResolveBatchKey(
+    public (string StreamName, string RouteKey)? TryResolveBatchKey(
         OutboxEntry entry, EdictEvent? liveWireEvent)
     {
         var edictEvent = liveWireEvent ?? serializer.Deserialize<EdictEvent>(entry.Payload);
@@ -134,7 +134,7 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
     // ridden. The envelope itself carries no [EdictStream] because the
     // stream choice is data, not metadata. The receiver-side unwrap picks
     // the envelope off this stream and rehydrates the inner event.
-    (string StreamName, Guid RouteKey) ResolveStreamAddress(EdictEvent edictEvent) =>
+    (string StreamName, string RouteKey) ResolveStreamAddress(EdictEvent edictEvent) =>
         edictEvent is EdictEventEnvelope envelope && envelope.InnerEventStreamName is { } streamName
             ? (streamName, envelope.InnerEventRouteKey)
             : accessors.Resolve(edictEvent);

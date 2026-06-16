@@ -41,7 +41,7 @@ public sealed class DeadLetterFailureClassifierTests
     [Fact]
     public void Classify_ShouldMapEdictEnvelopeOverflowException_ToSerialization()
     {
-        var exception = new EdictEnvelopeOverflowException(Guid.NewGuid(), "FooEvent", 99_000);
+        var exception = new EdictEnvelopeOverflowException(Guid.NewGuid().ToString("N"), "FooEvent", 99_000);
 
         var bucket = DeadLetterFailureClassifier.Classify(exception);
 

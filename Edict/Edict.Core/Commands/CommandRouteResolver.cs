@@ -13,10 +13,10 @@ namespace Edict.Core.Commands;
 internal sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRoute> routes)
 {
     /// <summary>
-    /// Resolves the owning aggregate grain interface and its Guid key for
+    /// Resolves the owning aggregate grain interface and its composed grain key for
     /// <paramref name="command"/>.
     /// </summary>
-    public (Type GrainInterfaceType, Guid Key) Resolve(EdictCommand command)
+    public (Type GrainInterfaceType, string Key) Resolve(EdictCommand command)
     {
         var (grainInterfaceType, _, key) = ResolveTarget(command);
         return (grainInterfaceType, key);
@@ -25,9 +25,9 @@ internal sealed class CommandRouteResolver(IReadOnlyDictionary<Type, CommandRout
     /// <summary>
     /// Resolves the full Orleans addressing target — interface token, grain
     /// class name (for disambiguation across the shared
-    /// <see cref="IEdictCommandHandler"/> interface) and Guid key.
+    /// <see cref="IEdictCommandHandler"/> interface) and composed grain key.
     /// </summary>
-    (Type GrainInterfaceType, string GrainClassName, Guid Key) ResolveTarget(EdictCommand command)
+    (Type GrainInterfaceType, string GrainClassName, string Key) ResolveTarget(EdictCommand command)
     {
         var route = GetRoute(command);
         return (route.GrainInterfaceType, route.GrainClassName, route.RouteKeySelector(command));

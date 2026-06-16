@@ -12,7 +12,7 @@ namespace Edict.Telemetry;
 public static class ActivityExtensions
 {
     /// <summary>Writes <c>edict.command.route_key</c> on the activity.</summary>
-    public static void SetEdictCommandTags(this Activity activity, Guid routeKey)
+    public static void SetEdictCommandTags(this Activity activity, string routeKey)
         => activity.SetTag(SemanticConventions.Commands.Tags.RouteKey, routeKey);
 
     /// <summary>

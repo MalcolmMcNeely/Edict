@@ -36,7 +36,7 @@ public class RouteDiscoveryTests
                 typeof(PlaceOrder),
                 typeof(IOrderHandler),
                 "RouteDiscoveryTests+OrderHandler",
-                c => ((PlaceOrder)c).OrderId);
+                c => EdictKeyComposer.Compose(c.Tenant, ((PlaceOrder)c).OrderId.ToString("N")));
     }
 
     public static class CancelOrderRegistrar
@@ -46,7 +46,7 @@ public class RouteDiscoveryTests
                 typeof(CancelOrder),
                 typeof(ICancelHandler),
                 "RouteDiscoveryTests+CancelHandler",
-                c => ((CancelOrder)c).OrderId);
+                c => EdictKeyComposer.Compose(c.Tenant, ((CancelOrder)c).OrderId.ToString("N")));
     }
 
     static Assembly BuildAssemblyWithRoutes(Type registrarType, string name)
@@ -87,7 +87,7 @@ public class RouteDiscoveryTests
                 typeof(PlaceOrder),
                 typeof(IOrderHandler),
                 "RouteDiscoveryTests+OtherHandler",
-                c => ((PlaceOrder)c).OrderId);
+                c => EdictKeyComposer.Compose(c.Tenant, ((PlaceOrder)c).OrderId.ToString("N")));
     }
 
     [Fact]

@@ -168,7 +168,7 @@ public sealed class SagaTimeoutPublisher : Grain, ISagaTimeoutPublisher
         {
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = streamNamespace,
-            InnerEventRouteKey = this.GetPrimaryKey(),
+            InnerEventRouteKey = this.GetPrimaryKey().ToString("N"),
         };
 
         await StreamFor(streamNamespace).OnNextAsync(envelope);

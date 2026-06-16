@@ -9,7 +9,7 @@ namespace Edict.Core.Schedules;
 /// authors or reads this; production firing flows through the grain timer and
 /// Reminder, not this interface.
 /// </summary>
-public interface IEdictScheduleFireable : IGrainWithGuidKey
+public interface IEdictScheduleFireable : IGrainWithStringKey
 {
     /// <summary>Fires every schedule due at the current framework clock.</summary>
     Task FireDueSchedulesAsync();

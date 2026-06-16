@@ -20,7 +20,7 @@ namespace Edict.Core.Idempotency;
 /// delivery seams honour one identical reentrancy contract.
 /// </para>
 /// </summary>
-public interface IEdictEventConsumer : IGrainWithGuidKey
+public interface IEdictEventConsumer : IGrainWithStringKey
 {
     Task OnEdictEventAsync(EdictEvent edictEvent);
 }

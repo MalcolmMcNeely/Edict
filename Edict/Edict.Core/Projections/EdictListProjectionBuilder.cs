@@ -56,7 +56,7 @@ public abstract class EdictListProjectionBuilder<TListProjection>(IEdictTableSto
     /// built-in dead-letter projection collapses every entry into one fixed
     /// partition for cheap fleet-wide reads).
     /// </summary>
-    protected virtual string DefaultPartitionKey => this.GetPrimaryKey().ToString();
+    protected virtual string DefaultPartitionKey => this.GetPrimaryKeyString();
 
     /// <summary>
     /// The row loaded (or freshly constructed) before each handler invocation.

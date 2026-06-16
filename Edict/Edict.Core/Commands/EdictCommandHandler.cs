@@ -322,7 +322,7 @@ public abstract class EdictCommandHandler<TState>
 
         var deadLetter = DeadLetterPromoter.PromoteScheduleTimeout(
             scheduleMessageType: message.GetType().FullName ?? message.GetType().Name,
-            sourceGrainKey: this.GetPrimaryKey().ToString(),
+            sourceGrainKey: this.GetPrimaryKeyString(),
             sourceGrainType: GetType().FullName ?? GetType().Name,
             traceParent: traceParent,
             traceState: traceState,
@@ -473,7 +473,7 @@ public abstract class EdictCommandHandler<TState>
 
         if (activity is not null)
         {
-            activity.SetEdictCommandTags(this.GetPrimaryKey());
+            activity.SetEdictCommandTags(this.GetPrimaryKeyString());
             if (ServiceProvider.GetService<CommandRouteResolver>() is { } resolver
                 && resolver.TryGetRoute(command, out var route))
             {
@@ -603,7 +603,7 @@ public abstract class EdictCommandHandler<TState>
             Principal = command.Principal,
             CorrelationId = command.CorrelationId,
             EntityType = GetType().FullName ?? GetType().Name,
-            EntityKey = this.GetPrimaryKey().ToString(),
+            EntityKey = this.GetPrimaryKeyString(),
             MessageType = command.GetType().FullName ?? command.GetType().Name,
             OccurredAt = time.GetUtcNow(),
             PayloadHash = SHA256.HashData(body),
@@ -633,7 +633,7 @@ public abstract class EdictCommandHandler<TState>
     void StageEventAuditRecords(IReadOnlyList<EdictEvent> events)
     {
         var entityType = GetType().FullName ?? GetType().Name;
-        var entityKey = this.GetPrimaryKey().ToString();
+        var entityKey = this.GetPrimaryKeyString();
 
         foreach (var raisedEvent in events)
         {
@@ -706,7 +706,7 @@ public abstract class EdictCommandHandler<TState>
             ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
-            grainKey: this.GetPrimaryKey().ToString(),
+            grainKey: this.GetPrimaryKeyString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
             claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),

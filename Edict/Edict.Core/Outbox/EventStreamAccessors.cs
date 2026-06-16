@@ -13,7 +13,7 @@ namespace Edict.Core.Outbox;
 internal sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventStreamAccessor> accessors)
     : IEventStreamAccessors
 {
-    public (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent)
+    public (string StreamName, string RouteKey) Resolve(EdictEvent edictEvent)
     {
         ArgumentNullException.ThrowIfNull(edictEvent);
 
@@ -24,7 +24,7 @@ internal sealed class EventStreamAccessors(IReadOnlyDictionary<Type, EdictEventS
                 EdictUnregisteredTypeException.Kind.Event,
                 typeName,
                 $"Event '{typeName}' has no registered EdictEventStreamAccessor. "
-                + "Ensure the concrete EdictEvent carries [EdictStream] and exactly one [EdictRouteKey] Guid property, "
+                + "Ensure the concrete EdictEvent carries [EdictStream] and exactly one [EdictRouteKey] property, "
                 + "and that its declaring assembly is scanned by AddEdict().");
         }
 

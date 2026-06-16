@@ -36,7 +36,7 @@ public sealed class ScheduleFireSpanTests
         ActivitySource.AddActivityListener(listener);
 
         var probeId = Guid.NewGuid();
-        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId.ToString("N"));
         await probe.StartAsync(Cadence, ScheduleProbeBehavior.ContinueNoEvent);
 
         _fixture.AdvanceClock(Cadence);
@@ -51,7 +51,7 @@ public sealed class ScheduleFireSpanTests
             // so the fire is scoped by the link back to this arm rather than by name.
             armSpan = stopped.Single(a =>
                 a.OperationName == $"{SemanticConventions.Commands.Spans.Handle} ScheduleProbeStartCommand"
-                && probeId.Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+                && probeId.ToString("N").Equals(a.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
             fireSpan = stopped.Single(a =>
                 a.OperationName == $"{SemanticConventions.Schedules.Spans.Fire} ScheduleTickMessage"
                 && a.Links.Any(link => link.Context.SpanId == armSpan.SpanId));

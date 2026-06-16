@@ -140,7 +140,7 @@ public sealed class SagaDeferredLifecycleTests
     // saga's own grain key so one test never sees another's dead-letter.
     static IReadOnlyList<EdictDeadLetterRaised> DeadLettersFor(Guid workflowId) =>
         CapturingPublishEventExecutor.Captured
-            .Where(deadLetter => deadLetter.SourceGrainKey == workflowId.ToString())
+            .Where(deadLetter => deadLetter.SourceGrainKey == workflowId.ToString("N"))
             .ToList();
 
     // Serialises the inner event into the shared claim-check store under its own
@@ -160,7 +160,7 @@ public sealed class SagaDeferredLifecycleTests
         {
             OccurredAt = SagaLifecycleClusterFixture.Time.GetUtcNow(),
             InnerEventStreamName = "SagaLifecycleWorkflow",
-            InnerEventRouteKey = Guid.Empty,
+            InnerEventRouteKey = Guid.Empty.ToString("N"),
         };
     }
 

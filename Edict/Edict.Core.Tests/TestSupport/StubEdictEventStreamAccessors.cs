@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
+using Edict.Contracts.Routing;
 using Edict.Core.Outbox;
 
 namespace Edict.Core.Tests.TestSupport;
@@ -11,7 +12,7 @@ namespace Edict.Core.Tests.TestSupport;
 // generator-emitted dictionary lookup via EventStreamAccessors.
 sealed class StubEdictEventStreamAccessors : IEventStreamAccessors
 {
-    public (string StreamName, Guid RouteKey) Resolve(EdictEvent edictEvent)
+    public (string StreamName, string RouteKey) Resolve(EdictEvent edictEvent)
     {
         var type = edictEvent.GetType();
         var streamAttr = (EdictStreamAttribute?)Attribute.GetCustomAttribute(type, typeof(EdictStreamAttribute))
@@ -20,6 +21,7 @@ sealed class StubEdictEventStreamAccessors : IEventStreamAccessors
             type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
             p => Attribute.IsDefined(p, typeof(EdictRouteKeyAttribute)))
             ?? throw new InvalidOperationException($"Event {type.Name} is missing a [EdictRouteKey] Guid property.");
-        return (streamAttr.Name, (Guid)routeKeyProp.GetValue(edictEvent)!);
+        var routeKey = ((Guid)routeKeyProp.GetValue(edictEvent)!).ToString("N");
+        return (streamAttr.Name, EdictKeyComposer.Compose(edictEvent.Tenant, routeKey));
     }
 }

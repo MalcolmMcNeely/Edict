@@ -9,7 +9,7 @@ namespace Edict.Core.Commands;
 /// typed <c>Handle(TCommand)</c> overloads. Type safety lives on those
 /// overloads, not here — no human authors or reads this interface.
 /// </summary>
-public interface IEdictCommandHandler : IGrainWithGuidKey
+public interface IEdictCommandHandler : IGrainWithStringKey
 {
     /// <summary>Routes a command to the matching <c>Handle</c> overload.</summary>
     Task<EdictCommandResult> DispatchAsync(EdictCommand command);

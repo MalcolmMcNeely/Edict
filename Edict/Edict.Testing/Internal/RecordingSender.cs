@@ -20,7 +20,7 @@ sealed class RecordingSender(
     IEdictSender inner,
     TimelineRecorder recorder,
     CommandRouteResolver resolver,
-    ConcurrentDictionary<(string GrainClassName, Guid Key), byte> routedGrains) : IEdictSender
+    ConcurrentDictionary<(string GrainClassName, string Key), byte> routedGrains) : IEdictSender
 {
     public Task<EdictCommandResult> SendAsync(EdictCommand command)
     {

@@ -21,12 +21,12 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelPlaceOrderCommand");
 
         var commandSpans = capture.Snapshot().Where(activity =>
             activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-            && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
+            && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)));
         Assert.Single(commandSpans);
     }
 
@@ -41,7 +41,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var span = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelFailOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelFailOrderCommand");
         Assert.Equal(ActivityStatusCode.Error, span.Status);
     }
@@ -57,7 +57,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var span = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelPlaceOrderCommand");
         Assert.Equal(sku, span.GetTagItem("edict.sku"));
     }
@@ -72,11 +72,11 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var commandSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelPlaceOrderCommand");
         var handleSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command handle span for TelPlaceOrderCommand");
 
         Assert.Equal(commandSpan.TraceId, handleSpan.TraceId);
@@ -93,9 +93,9 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var handleSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command handle span for TelPlaceOrderCommand");
-        Assert.Equal(orderId, handleSpan.GetTagItem(SemanticConventions.Commands.Tags.RouteKey));
+        Assert.Equal(orderId.ToString("N"), handleSpan.GetTagItem(SemanticConventions.Commands.Tags.RouteKey));
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var handleSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command handle span for TelPlaceOrderCommand");
         Assert.Equal(sku, handleSpan.GetTagItem("edict.sku"));
     }
@@ -125,7 +125,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var commandSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelPlaceOrderCommand");
         var publishSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent"
@@ -226,7 +226,7 @@ public sealed class CommandSpanTests(TelemetryClusterFixture fixture)
 
         var commandSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} TelPlaceOrderCommand"
-                && orderId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && orderId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for TelPlaceOrderCommand");
         var publishSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} TelOrderPlacedEvent",

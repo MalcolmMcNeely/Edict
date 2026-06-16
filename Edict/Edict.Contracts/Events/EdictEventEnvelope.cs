@@ -43,11 +43,11 @@ public sealed record EdictEventEnvelope : EdictEvent
     public string? InnerEventStreamName { get; init; }
 
     /// <summary>
-    /// The inner event's <c>[EdictRouteKey]</c> value, used together with
+    /// The inner event's composed stream key, used together with
     /// <see cref="InnerEventStreamName"/> to address the envelope onto the
     /// inner event's domain stream.
     /// </summary>
-    public Guid InnerEventRouteKey { get; init; }
+    public string InnerEventRouteKey { get; init; } = string.Empty;
 
     /// <summary>
     /// Construct an envelope on one of the two branches. The pointer branch

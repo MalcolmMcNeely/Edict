@@ -90,9 +90,9 @@ public sealed class OutboxBatchGroupingTests
         TraceState = $"{streamName}|{routeKey:D}",
     };
 
-    static (string StreamName, Guid RouteKey) KeyFor(OutboxEntry entry)
+    static (string StreamName, string RouteKey) KeyFor(OutboxEntry entry)
     {
         var parts = entry.TraceState!.Split('|');
-        return (parts[0], Guid.Parse(parts[1]));
+        return (parts[0], Guid.Parse(parts[1]).ToString("N"));
     }
 }

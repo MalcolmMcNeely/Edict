@@ -38,7 +38,7 @@ public abstract class LargePayloadPublishesViaBlobScenarios<TFixture>
         Assert.Null(envelope.InlinePayload);
         Assert.NotEqual(Guid.Empty, envelope.EventId);
         Assert.Equal("ConformanceClaimCheckCounters", envelope.InnerEventStreamName);
-        Assert.Equal(counterId, envelope.InnerEventRouteKey);
+        Assert.Equal(counterId.ToString("N"), envelope.InnerEventRouteKey);
 
         var blobExists = await _fixture.ClaimCheckBlobExistsAsync(envelope.EventId);
         Assert.True(blobExists,

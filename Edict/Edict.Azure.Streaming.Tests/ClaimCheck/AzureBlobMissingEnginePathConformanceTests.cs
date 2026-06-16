@@ -63,7 +63,7 @@ public sealed class AzureBlobMissingEnginePathConformanceTests : IAsyncLifetime
         {
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = "AzureBlobMissingConformance",
-            InnerEventRouteKey = Guid.NewGuid(),
+            InnerEventRouteKey = Guid.NewGuid().ToString("N"),
         };
         var entry = new OutboxEntry
         {

@@ -24,7 +24,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
 
         // Act
         var accepted = await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
@@ -58,7 +58,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
 
         // Act
         var accepted = await fixture.Sender.SendAsync(new BatchIncrementCounterCommand(counterId, 2));
@@ -130,7 +130,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         // one C1 command record and raises nothing.
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         await fixture.Sender.SendAsync(new RejectByValidatorCommand(counterId));
-        await WaitForRecordsAsync(counterId.ToString(), expectedCount: 3);
+        await WaitForRecordsAsync(counterId.ToString("N"), expectedCount: 3);
 
         // Assert
         lock (captured)
@@ -146,7 +146,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
 
         // Act
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
@@ -168,7 +168,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
 
         // Act — a batch increment raises two events, so two E1 records each with a body.
         await fixture.Sender.SendAsync(new BatchIncrementCounterCommand(counterId, 2));

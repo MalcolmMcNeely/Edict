@@ -452,7 +452,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
-            grainKey: this.GetPrimaryKey().ToString(),
+            grainKey: this.GetPrimaryKeyString(),
             grainTypeName: GetType().FullName ?? GetType().Name,
             deferredDispatch: DispatchDeferredAsync,
             consumerType: GetType(),

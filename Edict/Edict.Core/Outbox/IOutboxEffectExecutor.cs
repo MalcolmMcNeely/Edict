@@ -39,7 +39,7 @@ interface IOutboxEffectExecutor
     /// Default <c>null</c> opts the entry out of batching — the host treats it as
     /// a singleton group.
     /// </summary>
-    (string StreamName, Guid RouteKey)? TryResolveBatchKey(
+    (string StreamName, string RouteKey)? TryResolveBatchKey(
         OutboxEntry entry, EdictEvent? liveWireEvent) => null;
 
     /// <summary>

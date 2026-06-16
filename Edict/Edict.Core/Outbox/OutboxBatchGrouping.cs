@@ -14,16 +14,16 @@ static class OutboxBatchGrouping
     /// entries with equal <paramref name="keySelector"/> output into a group.
     /// Insertion order is preserved within each group and across groups.
     /// </summary>
-    public static IReadOnlyList<(string StreamName, Guid RouteKey, IReadOnlyList<OutboxEntry> Entries)> Group(
+    public static IReadOnlyList<(string StreamName, string RouteKey, IReadOnlyList<OutboxEntry> Entries)> Group(
         IReadOnlyList<OutboxEntry> entries,
-        Func<OutboxEntry, (string StreamName, Guid RouteKey)> keySelector)
+        Func<OutboxEntry, (string StreamName, string RouteKey)> keySelector)
     {
         if (entries.Count == 0)
         {
             return [];
         }
 
-        var groups = new List<(string, Guid, IReadOnlyList<OutboxEntry>)>();
+        var groups = new List<(string, string, IReadOnlyList<OutboxEntry>)>();
         var currentKey = keySelector(entries[0]);
         var currentEntries = new List<OutboxEntry> { entries[0] };
 

@@ -38,12 +38,12 @@ public class EventStreamAccessorsTests
         var orderId = Guid.NewGuid();
         var accessors = AccessorsFor(
             (typeof(OrderPlacedEvent),
-                new EdictEventStreamAccessor("Orders", static edictEvent => ((OrderPlacedEvent)edictEvent).OrderId)));
+                new EdictEventStreamAccessor("Orders", static edictEvent => EdictKeyComposer.Compose(edictEvent.Tenant, ((OrderPlacedEvent)edictEvent).OrderId.ToString("N")))));
 
         var (streamName, routeKey) = accessors.Resolve(new OrderPlacedEvent(orderId));
 
         Assert.Equal("Orders", streamName);
-        Assert.Equal(orderId, routeKey);
+        Assert.Equal(orderId.ToString("N"), routeKey);
     }
 
     [Fact]
@@ -52,14 +52,14 @@ public class EventStreamAccessorsTests
         var paymentId = Guid.NewGuid();
         var accessors = AccessorsFor(
             (typeof(OrderPlacedEvent),
-                new EdictEventStreamAccessor("Orders", static edictEvent => ((OrderPlacedEvent)edictEvent).OrderId)),
+                new EdictEventStreamAccessor("Orders", static edictEvent => EdictKeyComposer.Compose(edictEvent.Tenant, ((OrderPlacedEvent)edictEvent).OrderId.ToString("N")))),
             (typeof(PaymentAuthorizedEvent),
-                new EdictEventStreamAccessor("Payments", static edictEvent => ((PaymentAuthorizedEvent)edictEvent).PaymentId)));
+                new EdictEventStreamAccessor("Payments", static edictEvent => EdictKeyComposer.Compose(edictEvent.Tenant, ((PaymentAuthorizedEvent)edictEvent).PaymentId.ToString("N")))));
 
         var (streamName, routeKey) = accessors.Resolve(new PaymentAuthorizedEvent(paymentId));
 
         Assert.Equal("Payments", streamName);
-        Assert.Equal(paymentId, routeKey);
+        Assert.Equal(paymentId.ToString("N"), routeKey);
     }
 
     [Fact]

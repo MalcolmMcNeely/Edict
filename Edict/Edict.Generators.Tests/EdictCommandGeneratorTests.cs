@@ -100,6 +100,40 @@ public class EdictCommandGeneratorTests
         }
         """;
 
+    const string TenantScopedTypedKeyConsumer = """
+        using System;
+        using System.Threading.Tasks;
+
+        using Edict.Contracts.Commands;
+        using Edict.Contracts.Tenancy;
+        using Edict.Core.Commands;
+
+        namespace Sample;
+
+        [EdictTenantScoped]
+        public readonly record struct EmployeeId(Guid Value);
+
+        public sealed partial record AddEmployee(EmployeeId EmployeeId, string Department) : EdictCommand
+        {
+            [EdictRouteKey]
+            public EmployeeId EmployeeId { get; init; } = EmployeeId;
+        }
+
+        public partial class EmployeeCommandHandler : EdictCommandHandler
+        {
+            Task<EdictCommandResult> HandleAsync(AddEmployee command) =>
+                Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
+        }
+        """;
+
+    [Fact]
+    public Task EdictCommandGenerator_ShouldExtractTypedRouteKeyThroughCompose_WhenRouteKeyTypeIsTenantScoped()
+    {
+        var generated = GeneratorTestHarness.Run(TenantScopedTypedKeyConsumer);
+
+        return Verify(generated);
+    }
+
     [Fact]
     public Task EdictCommandGenerator_ShouldEmitSpine_WhenHandlerDerivesFromGenericStatefulBase()
     {

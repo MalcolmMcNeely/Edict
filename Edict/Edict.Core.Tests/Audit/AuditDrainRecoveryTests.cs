@@ -22,7 +22,7 @@ public sealed class AuditDrainRecoveryTests(AuditDrainRecoveryClusterFixture fix
         // Arrange — fault the next payload write so the post-commit drain leaves the
         // record staged with nothing in either store.
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
         fixture.PayloadStore.ThrowOnNextPut = true;
 
         // Act — staging commits the record; the post-commit drain then faults.

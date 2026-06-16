@@ -18,7 +18,7 @@ namespace Edict.Generated
                 var typed = (global::Sample.PlaceOrder)command;
                 return es.SendFastPathAsync<global::Sample.PlaceOrder>(
                     typed,
-                    typed.OrderId,
+                    typed.OrderId.ToString("N"),
                     "PlaceOrder",
                     "Sample.OrderCommandHandler",
                     extraTags: null);

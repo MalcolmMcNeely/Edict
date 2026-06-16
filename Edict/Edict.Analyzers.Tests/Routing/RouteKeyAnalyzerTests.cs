@@ -150,4 +150,46 @@ public class RouteKeyAnalyzerTests
         // Line 8 (0-indexed): "public string OrderId { get; init; } = OrderId;"
         Assert.Equal(8, d.Location.GetLineSpan().StartLinePosition.Line);
     }
+
+    [Fact]
+    public void EDICT003_ShouldNotRaise_WhenCommandRouteKeyIsTypedSingleGuidStruct()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public readonly record struct EmployeeId(Guid Value);
+            public sealed partial record AddEmployeeCommand(EmployeeId EmployeeId) : EdictCommand
+            {
+                [EdictRouteKey]
+                public EmployeeId EmployeeId { get; init; } = EmployeeId;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new RouteKeyAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void EDICT003_ShouldRaiseOnProperty_WhenRouteKeyStructWrapsNoGuid()
+    {
+        const string source = """
+            using System;
+            using Edict.Contracts.Commands;
+            namespace Sample;
+            public readonly record struct DepartmentCode(string Value);
+            public sealed partial record AddEmployeeCommand(DepartmentCode Department) : EdictCommand
+            {
+                [EdictRouteKey]
+                public DepartmentCode Department { get; init; } = Department;
+            }
+            """;
+
+        var diagnostics = AnalyzerTestHarness.Run(source, new RouteKeyAnalyzer());
+
+        var d = Assert.Single(diagnostics);
+        Assert.Equal("EDICT003", d.Id);
+        Assert.Contains("Department", d.GetMessage());
+    }
 }

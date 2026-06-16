@@ -13,8 +13,8 @@ namespace Edict.Generated
             global::System.Collections.Generic.Dictionary<
                 global::System.Type, global::Edict.Core.Commands.CommandRoute> routes)
         {
-            routes[typeof(global::Sample.CancelOrder)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.CancelOrder), typeof(global::Sample.IOrderCommandHandler), "Sample.OrderCommandHandler", command => ((global::Sample.CancelOrder)command).OrderId);
-            routes[typeof(global::Sample.PlaceOrder)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.PlaceOrder), typeof(global::Sample.IOrderCommandHandler), "Sample.OrderCommandHandler", command => ((global::Sample.PlaceOrder)command).OrderId);
+            routes[typeof(global::Sample.CancelOrder)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.CancelOrder), typeof(global::Sample.IOrderCommandHandler), "Sample.OrderCommandHandler", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((global::Sample.CancelOrder)command).OrderId.ToString("N")));
+            routes[typeof(global::Sample.PlaceOrder)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.PlaceOrder), typeof(global::Sample.IOrderCommandHandler), "Sample.OrderCommandHandler", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((global::Sample.PlaceOrder)command).OrderId.ToString("N")));
         }
     }
 }

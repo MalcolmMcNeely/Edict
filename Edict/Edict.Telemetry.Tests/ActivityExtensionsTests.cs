@@ -45,7 +45,7 @@ public sealed class ActivityExtensionsTests : IDisposable
     [Fact]
     public void SetEdictCommandTags_ShouldSetEdictCommandRouteKeyTag()
     {
-        var routeKey = Guid.NewGuid();
+        var routeKey = Guid.NewGuid().ToString("N");
 
         using (var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test"))
         {

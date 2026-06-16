@@ -1,4 +1,5 @@
 using Edict.Contracts.Commands;
+using Edict.Contracts.Routing;
 using Edict.Core.Commands;
 
 namespace Edict.Core.Tests.Sending;
@@ -25,12 +26,12 @@ public class CommandRouteResolverTests
         var orderId = Guid.NewGuid();
         var resolver = ResolverFor(
             new CommandRoute(typeof(PlaceOrder), typeof(IOrderCommandHandler), "OrderCommandHandler",
-                command => ((PlaceOrder)command).OrderId));
+                command => EdictKeyComposer.Compose(command.Tenant, ((PlaceOrder)command).OrderId.ToString("N"))));
 
         var (grainInterfaceType, key) = resolver.Resolve(new PlaceOrder(orderId));
 
         Assert.Equal(typeof(IOrderCommandHandler), grainInterfaceType);
-        Assert.Equal(orderId, key);
+        Assert.Equal(orderId.ToString("N"), key);
     }
 
     [Fact]
@@ -38,11 +39,11 @@ public class CommandRouteResolverTests
     {
         var resolver = ResolverFor(
             new CommandRoute(typeof(PlaceOrder), typeof(IOrderCommandHandler), "OrderCommandHandler",
-                command => ((PlaceOrder)command).OrderId));
+                command => EdictKeyComposer.Compose(command.Tenant, ((PlaceOrder)command).OrderId.ToString("N"))));
 
         var (_, key) = resolver.Resolve(new PlaceOrder(Guid.Empty));
 
-        Assert.Equal(Guid.Empty, key);
+        Assert.Equal(Guid.Empty.ToString("N"), key);
     }
 
     [Fact]

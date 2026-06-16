@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.Projections;
+using Edict.Contracts.Routing;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,7 +44,10 @@ public sealed class EdictProjectionReader<TProjection> : IEdictProjectionReader<
     {
         cancellationToken.ThrowIfCancellationRequested();
         var grainClassName = _resolver.Resolve(typeof(TProjection));
-        var grain = _grainFactory.GetGrain<IEdictProjectionBuilder>(key, grainClassName);
+        // The projection grain rides the same composed key its events route on, so
+        // a read addresses it through the one chokepoint rather than the bare Guid.
+        var composedKey = EdictKeyComposer.Compose(null, key.ToString("N"));
+        var grain = _grainFactory.GetGrain<IEdictProjectionBuilder>(composedKey, grainClassName);
         var result = await grain.EdictReadAsync(after?.CorrelationId, timeout).ConfigureAwait(false);
         return new EdictProjectionRead<TProjection>((TProjection?)result.Payload, result.Status);
     }

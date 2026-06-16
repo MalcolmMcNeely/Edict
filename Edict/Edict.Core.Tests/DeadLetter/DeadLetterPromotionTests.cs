@@ -73,7 +73,7 @@ public sealed class DeadLetterPromotionTests
         var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1") { CorrelationId = correlationId };
 
         var raised = DeadLetterPromotion.Build(
-            entry, command, "Sample.PaymentCommandHandler", FixedOrderId,
+            entry, command, "Sample.PaymentCommandHandler", FixedOrderId.ToString("N"),
             new InvalidOperationException("rejected"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
@@ -93,12 +93,12 @@ public sealed class DeadLetterPromotionTests
         var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1");
 
         var raised = DeadLetterPromotion.Build(
-            entry, command, "Sample.PaymentCommandHandler", FixedOrderId,
+            entry, command, "Sample.PaymentCommandHandler", FixedOrderId.ToString("N"),
             new InvalidOperationException("rejected"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
         Assert.Equal(
-            $"Sample.PaymentCommandHandler/{FixedOrderId:D}",
+            $"Sample.PaymentCommandHandler/{FixedOrderId:N}",
             raised.EffectTarget);
         // A SendCommand effect has no source Event, so SourceEventId stays null.
         Assert.Null(raised.SourceEventId);
@@ -232,7 +232,7 @@ public sealed class DeadLetterPromotionTests
             eventId: FixedSourceEventId)
         {
             InnerEventStreamName = "Orders",
-            InnerEventRouteKey = FixedOrderId,
+            InnerEventRouteKey = FixedOrderId.ToString("N"),
         };
 
         var raised = DeadLetterPromotion.BuildForEnvelopeFailure(
@@ -257,7 +257,7 @@ public sealed class DeadLetterPromotionTests
             eventId: FixedSourceEventId)
         {
             InnerEventStreamName = "Orders",
-            InnerEventRouteKey = FixedOrderId,
+            InnerEventRouteKey = FixedOrderId.ToString("N"),
         };
 
         var raised = DeadLetterPromotion.BuildForBlobMissing(

@@ -154,6 +154,7 @@ internal static class CommandDiscovery
     static CommandModel? MapCommand(INamedTypeSymbol command)
     {
         string? routeKeyProperty = null;
+        ITypeSymbol? routeKeyType = null;
         var telemeterizedProperties = new List<TelemeterizedProperty>();
 
         for (INamedTypeSymbol? type = command; type is not null; type = type.BaseType)
@@ -171,6 +172,7 @@ internal static class CommandDiscovery
                     attributes.Any(a => a.AttributeClass?.ToDisplayString(FullyQualified) == EdictWellKnownNames.EdictRouteKeyAttributeFqn))
                 {
                     routeKeyProperty = property.Name;
+                    routeKeyType = property.Type;
                 }
 
                 if (IsPrimitiveType(property.Type) &&
@@ -195,6 +197,7 @@ internal static class CommandDiscovery
             command.Name,
             commandNamespace,
             routeKeyProperty,
+            RouteKeyStringification.Suffix(routeKeyType!),
             new EquatableArray<TelemeterizedProperty>(telemeterizedProperties));
     }
 

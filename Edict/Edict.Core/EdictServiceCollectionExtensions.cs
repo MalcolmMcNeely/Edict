@@ -91,7 +91,8 @@ public static class EdictServiceCollectionExtensions
         // owns this event and its stream + route key are statically known.
         accessors[typeof(EdictDeadLetterRaised)] = new EdictEventStreamAccessor(
             "edict-dead-letter",
-            static edictEvent => ((EdictDeadLetterRaised)edictEvent).SingletonKey);
+            static edictEvent => EdictKeyComposer.Compose(
+                edictEvent.Tenant, ((EdictDeadLetterRaised)edictEvent).SingletonKey.ToString("N")));
 
         services.AddValidatorsFromAssemblies(materialised);
 

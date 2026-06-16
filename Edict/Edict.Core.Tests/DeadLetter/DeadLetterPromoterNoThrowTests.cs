@@ -132,7 +132,7 @@ public sealed class DeadLetterPromoterNoThrowTests
         Assert.Equal(OutboxEffectKind.PublishEvent, promoted.Kind);
         var raised = Assert.IsType<EdictDeadLetterRaised>(Serializer.Deserialize<EdictEvent>(promoted.Payload));
         Assert.Equal(nameof(EdictMissingRouteKeyException), raised.ExceptionType);
-        Assert.Equal($"Sample.NoRouteHandler/{Guid.Empty:D}", raised.EffectTarget);
+        Assert.Equal("Sample.NoRouteHandler/", raised.EffectTarget);
 
         var measurement = Assert.Single(captures);
         Assert.Equal(1L, measurement.Value);
@@ -331,7 +331,7 @@ public sealed class DeadLetterPromoterNoThrowTests
     static CommandRoute WithRouteFor<TCommand>(string grainClassName)
         where TCommand : EdictCommand =>
         new(typeof(TCommand), typeof(IFakeGrainInterface), grainClassName,
-            _ => Guid.Empty);
+            _ => string.Empty);
 
     interface IFakeGrainInterface;
 

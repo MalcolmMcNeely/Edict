@@ -5,6 +5,7 @@ using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Projections;
+using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -178,7 +179,8 @@ public sealed class EdictTestApp : IAsyncDisposable
         where TSaga : EdictSaga<TProgress>
         where TProgress : Edict.Contracts.Persistence.IEdictPersistedState, new()
     {
-        var grain = _cluster.GrainFactory.GetGrain<IEdictSaga>(key, typeof(TSaga).FullName);
+        var composedKey = EdictKeyComposer.Compose(null, key.ToString("N"));
+        var grain = _cluster.GrainFactory.GetGrain<IEdictSaga>(composedKey, typeof(TSaga).FullName);
         return (TProgress)await grain.GetEdictProgressAsync();
     }
 

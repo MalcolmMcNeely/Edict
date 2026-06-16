@@ -65,6 +65,6 @@ public sealed class EdictListProjectionReader<TListProjection> : IEdictListProje
     IEdictProjectionBuilder ResolveGrain(string partitionKey)
     {
         var grainClassName = _resolver.Resolve(typeof(TListProjection));
-        return _grainFactory.GetGrain<IEdictProjectionBuilder>(Guid.Parse(partitionKey), grainClassName);
+        return _grainFactory.GetGrain<IEdictProjectionBuilder>(partitionKey, grainClassName);
     }
 }

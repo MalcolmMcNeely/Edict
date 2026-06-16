@@ -22,7 +22,10 @@ namespace Edict.Core.Commands;
 /// The aggregate grain class name, used to disambiguate the many grain classes
 /// that share the <see cref="IEdictCommandHandler"/> interface.
 /// </param>
-/// <param name="RouteKeySelector">Reads the command's <c>[EdictRouteKey]</c> Guid.</param>
+/// <param name="RouteKeySelector">
+/// Reads the command's composed grain key: its <c>[EdictRouteKey]</c> route key
+/// stringified and folded through <c>EdictKeyComposer</c>.
+/// </param>
 /// <param name="TagWriter">
 /// Generator-emitted delegate that writes <c>[EdictTelemeterized]</c> property values
 /// as OTEL tags on the active span. <see langword="null"/> when the command has
@@ -32,5 +35,5 @@ public sealed record CommandRoute(
     Type CommandType,
     Type GrainInterfaceType,
     string GrainClassName,
-    Func<EdictCommand, Guid> RouteKeySelector,
+    Func<EdictCommand, string> RouteKeySelector,
     Action<EdictCommand, Activity?>? TagWriter = null);
