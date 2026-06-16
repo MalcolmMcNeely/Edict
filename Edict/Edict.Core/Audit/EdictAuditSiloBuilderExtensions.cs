@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Orleans.Hosting;
+using Orleans.Serialization;
 
 namespace Edict.Core.Audit;
 
@@ -31,7 +32,8 @@ public static class EdictAuditSiloBuilderExtensions
         silo.Services.TryAddSingleton<IEdictAuditRepository>(serviceProvider =>
             new EdictDefaultAuditRepository(
                 serviceProvider.GetRequiredService<IEdictAuditStore>(),
-                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>()));
+                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
+                serviceProvider.GetRequiredService<Serializer>()));
         return silo;
     }
 }

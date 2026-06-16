@@ -24,7 +24,7 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAudi
 
     IEdictAuditPayloadStore PayloadStore => new PostgresAuditPayloadStore(DataSource, "edict_audit_payload");
 
-    IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore);
+    IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore, ClientSerializer);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
         Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);

@@ -3,6 +3,8 @@ using Edict.Contracts.Audit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using Orleans.Serialization;
+
 namespace Edict.Core.Audit;
 
 /// <summary>
@@ -49,14 +51,17 @@ public static class EdictAuditServiceCollectionExtensions
     /// client or web host that queries the audit log a silo captured. The
     /// silo's <c>WithAudit()</c> registers the same repository; this is the
     /// client-side counterpart, so the stores (e.g. via
-    /// <c>AddEdictPostgresAuditReader</c>) must be registered first.
+    /// <c>AddEdictPostgresAuditReader</c>) must be registered first, and an Orleans
+    /// <c>Serializer</c> must be in the container to type a captured body back
+    /// (an Orleans client host already registers one).
     /// </summary>
     public static IServiceCollection AddEdictAuditReader(this IServiceCollection services)
     {
         services.TryAddSingleton<IEdictAuditRepository>(serviceProvider =>
             new EdictDefaultAuditRepository(
                 serviceProvider.GetRequiredService<IEdictAuditStore>(),
-                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>()));
+                serviceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
+                serviceProvider.GetRequiredService<Serializer>()));
         return services;
     }
 }

@@ -47,7 +47,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         Assert.Equal(EdictAuditOutcome.Rejected, commandRecords[1].Outcome);
         Assert.Equal("always_rejected", Assert.Single(commandRecords[1].RejectionReasons).Code);
 
-        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore);
+        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore, fixture.Serializer);
         var verification = await repository.VerifyEntityChainAsync(EntityType, entityKey);
         Assert.True(verification.IsIntact);
         Assert.Null(verification.BrokenAtSequence);
@@ -84,7 +84,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
             Assert.Equal(typeof(CounterIncrementedEvent).FullName, record.MessageType);
         });
 
-        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore);
+        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore, fixture.Serializer);
         var verification = await repository.VerifyEntityChainAsync(EntityType, entityKey);
         Assert.True(verification.IsIntact);
         Assert.Null(verification.BrokenAtSequence);
@@ -155,7 +155,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         // Assert — the C1 command record's body is retrievable, and its bytes hash
         // to exactly the PayloadHash sealed into the chain.
         var commandRecord = Assert.Single(records, record => record.Kind == EdictAuditKind.Command);
-        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore);
+        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore, fixture.Serializer);
 
         var body = await repository.GetPayloadAsync(commandRecord.RecordId);
 
@@ -175,7 +175,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
 
         // Assert — every E1 event body is retrievable and hashes to its record.
-        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore);
+        var repository = new EdictDefaultAuditRepository(fixture.AuditStore, fixture.PayloadStore, fixture.Serializer);
         var eventRecords = records.Where(record => record.Kind == EdictAuditKind.Event).ToArray();
         Assert.Equal(2, eventRecords.Length);
         foreach (var eventRecord in eventRecords)

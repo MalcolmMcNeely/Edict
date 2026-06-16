@@ -68,13 +68,17 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// chain (<see cref="IEdictAuditRepository.ByEntityAsync(string, string, CancellationToken)"/>,
     /// <c>ByCorrelationAsync</c>, <c>ByPrincipalAsync</c>), verify it is unaltered
     /// (<see cref="IEdictAuditRepository.VerifyEntityChainAsync"/>), and retrieve a
-    /// captured body (<see cref="IEdictAuditRepository.GetPayloadAsync"/>). Available
-    /// only when the app was started with
+    /// captured body as bytes (<see cref="IEdictAuditRepository.GetPayloadAsync"/>)
+    /// or as the typed message (<see cref="IEdictAuditRepository.GetMessageAsync"/>).
+    /// Available only when the app was started with
     /// <see cref="EdictTestAppBuilder.WithAudit"/>.
     /// </summary>
     public IEdictAuditRepository Audit =>
         _context.AuditEnabled
-            ? new EdictDefaultAuditRepository(_context.AuditStore, _context.PayloadStore)
+            ? new EdictDefaultAuditRepository(
+                _context.AuditStore,
+                _context.PayloadStore,
+                _cluster.Client.ServiceProvider.GetRequiredService<Serializer>())
             : throw new InvalidOperationException(
                 "Auditing is off. Call WithAudit() on the EdictTestApp builder to capture and assert audit records.");
 

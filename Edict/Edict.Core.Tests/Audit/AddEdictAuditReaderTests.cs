@@ -1,7 +1,10 @@
 using Edict.Contracts.Audit;
 using Edict.Core.Audit;
+using Edict.Core.Serialization;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using Orleans.Serialization;
 
 using Xunit;
 
@@ -23,6 +26,7 @@ public sealed class AddEdictAuditReaderTests
             CancellationToken.None);
 
         var services = new ServiceCollection();
+        services.AddSerializer(builder => builder.AddEdictContractSerializer());
         services.AddSingleton<IEdictAuditStore>(store);
         services.AddSingleton<IEdictAuditPayloadStore>(new RecordingAuditPayloadStore());
 

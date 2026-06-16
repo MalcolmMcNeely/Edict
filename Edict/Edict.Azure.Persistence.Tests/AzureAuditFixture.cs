@@ -26,7 +26,7 @@ public sealed class AzureAuditFixture : AzurePersistenceFixtureBase, IAuditConfo
 
     IEdictAuditPayloadStore PayloadStore => AzureBlobAuditPayloadStore.Create(BlobServiceClient, AuditPayloadContainerName);
 
-    IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore);
+    IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore, ClientSerializer);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
         Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);

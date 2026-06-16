@@ -49,6 +49,9 @@ public sealed class AuditCaptureClusterFixture : IAsyncLifetime
     public IEdictSender Sender =>
         Cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>();
 
+    public Serializer Serializer =>
+        Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
+
     public IGrainFactory GrainFactory => Cluster.GrainFactory;
 
     public async Task InitializeAsync()

@@ -48,6 +48,8 @@ public sealed class ScheduleLifecycleClusterFixture : IAsyncLifetime
 
     public RecordingAuditStore AuditStore => ScheduleAuditStoreHolder.Instance;
 
+    public Serializer Serializer => Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
+
     public void AdvanceClock(TimeSpan by) => _clock.Advance(by);
 
     public async Task InitializeAsync()

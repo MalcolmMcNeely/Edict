@@ -7,7 +7,8 @@ namespace Edict.Contracts.Audit;
 /// (<see cref="ByEntityAsync(string, string, CancellationToken)"/> for the full
 /// chain, or the time-ranged overload for a window); it verifies an aggregate's
 /// chain is unaltered (<see cref="VerifyEntityChainAsync"/>) and retrieves a
-/// captured body (<see cref="GetPayloadAsync"/>).
+/// captured body either as raw bytes (<see cref="GetPayloadAsync"/>) or as the
+/// concrete message the consumer authored (<see cref="GetMessageAsync"/>).
 /// </summary>
 public interface IEdictAuditRepository
 {
@@ -51,4 +52,19 @@ public interface IEdictAuditRepository
     /// separately-addressable payload store.
     /// </summary>
     Task<ReadOnlyMemory<byte>> GetPayloadAsync(Guid recordId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The captured body behind <paramref name="record"/> deserialized back to the
+    /// concrete <c>EdictCommand</c> or <c>EdictEvent</c> the consumer authored,
+    /// boxed because a correlation drill-down walks records of types the caller
+    /// does not know in advance: pattern-match the returned object against the
+    /// types you own. Takes the already-fetched record (its
+    /// <see cref="EdictAuditRecord.Kind"/> selects the base, its
+    /// <see cref="EdictAuditRecord.PayloadReference"/> locates the body) to save a
+    /// re-read. Throws when the captured type cannot be resolved or the body cannot
+    /// be deserialized in this process (a renamed, removed, or breaking-changed
+    /// type, or its assembly not loaded); the bytes and hash stay available through
+    /// <see cref="GetPayloadAsync"/> as the integrity anchor.
+    /// </summary>
+    Task<object> GetMessageAsync(EdictAuditRecord record, CancellationToken cancellationToken = default);
 }

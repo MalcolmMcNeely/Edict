@@ -171,7 +171,7 @@ public sealed class ScheduleLifecycleTests
         Assert.Equal(typeof(ScheduleTickedEvent).FullName, eventRecord.MessageType);
         Assert.Null(eventRecord.Outcome);
 
-        var verification = await new EdictDefaultAuditRepository(_fixture.AuditStore, new RecordingAuditPayloadStore())
+        var verification = await new EdictDefaultAuditRepository(_fixture.AuditStore, new RecordingAuditPayloadStore(), _fixture.Serializer)
             .VerifyEntityChainAsync(typeof(ScheduleProbe).FullName!, entityKey);
         Assert.True(verification.IsIntact);
     }
