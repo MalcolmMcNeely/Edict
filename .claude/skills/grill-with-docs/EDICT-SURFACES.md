@@ -61,13 +61,7 @@ If the change introduces a new trigger clause, tool name, or glossary anchor tha
 
 If a new assertion is needed (new tool ↔ skill body pairing, new glossary term ↔ skill reference), capture it as a deliverable. Drift caught at design time costs less than drift caught at test time.
 
-### 7. Sample app — `Sample/*`
-
-Does the change need a demo handler/saga/projection to exist in the Sample app, or extend one that already exists?
-
-The Sample app is the sales-demo framing for strangers cloning the repo — the bar is "does a visitor see the new concept *used*?" If yes, that's a deliverable; capture which Sample project (`Sample.Web`, `Sample.Silo`, contract assemblies) needs the change.
-
-### 8. Wire shape — `Edict.Contracts` and persisted state
+### 7. Wire shape — `Edict.Contracts` and persisted state
 
 Does the change touch a wire-format type — anything MessagePack-serialised on a stream hop, persisted as grain state, or carried on `EdictCommandResult`?
 
@@ -75,7 +69,7 @@ Edict is pre-release with no released consumers, so the answer is usually "no co
 
 Decide breaking-ness here too, because it is a consumer-surface judgment the committing agent is badly placed to make from a green diff. A change is **breaking** when it removes, renames, or alters the signature of a public `Edict*` member — concretely, when the public-surface allow-list in `Edict.Architecture.Tests` would change by anything other than a pure addition. This is wider than wire shape: a public-API rename with no wire change (e.g. renaming a projection taxonomy) is breaking. Adding-only is not. When the change is breaking, capture that as a design requirement so it travels with the PRD and the issue (a `Breaking:` line), and the implementation commit marks it `feat!:`/`fix!:` with a `BREAKING CHANGE:` footer. The bump itself stays a manual release-time choice (ADR-0059) — the marker only routes the change into the release-notes Breaking section, it does not derive the version.
 
-### 9. Consumer test seams — `Edict.Testing`
+### 8. Consumer test seams — `Edict.Testing`
 
 `Edict.Testing` is a consumer-facing production surface — it ships as a package and consumers reference it to test their apps (`EdictTestApp`, the `FakeTimeProvider` virtual clock, `AdvanceClock`, `Replace<TService>`, probes, `Drain()`). It is **not** internal framework test infra (internal tests must never depend on it). This axis is distinct from axis 3's `edict-testing` skill, which documents *how* to use the seams, and from axis 5's `docs/usage/testing/*`, which is prose: here the question is whether a new seam must be **built**.
 
@@ -83,7 +77,7 @@ Does the change introduce a primitive a consumer needs to drive or observe deter
 
 If yes, name the seam (e.g. a `Fire*Async()` that advances the injected clock to the next due instant and drains) and the implementation requirement it implies: the production timer or reminder must arm against the injected `TimeProvider`, or the harness cannot drive it. Wall-clock delay is never the test mechanism — that constraint is a standing one, so the seam is the deliverable.
 
-### 10. Conformance batteries — `Edict.Tests.Conformance` (ADR-0054)
+### 9. Conformance batteries — `Edict.Tests.Conformance` (ADR-0054)
 
 Conformance is Edict's entire confidence story against real third-party tech, so a change with backend-dependent correctness that skips it ships unproven. It runs as two axis batteries (streaming + persistence, supersedes 0027): the streaming battery binds stream-sensitive scenarios against real Azure Queue + Kafka over dumb persistence; the persistence battery binds durability scenarios against real Azure Table + Postgres over dumb MemoryStreams. Each axis provider's `.Tests` project binds the shared scenarios, and the binding-completeness guard (`Edict.Architecture.Tests`, #296) fails if a scenario is added to the abstract battery but left unbound on an axis.
 
@@ -91,7 +85,7 @@ Does the change add behaviour whose correctness depends on a real backend — du
 
 If yes, capture which axis it belongs to (streaming or persistence — pick the axis whose real provider exercises the risk), the scenario shape, and the providers it binds across. Adding the abstract scenario *obliges* binding it on every provider on that axis or the build goes red — that obligation is the design requirement, captured now rather than discovered from the guard later. Note explicitly when a behaviour does **not** warrant a scenario (pure in-grain logic with no backend dependency), so the skip is a recorded decision.
 
-### 11. Telemetry — `Edict.Telemetry` spans + `Meter` instruments (ADRs 0037-0040)
+### 10. Telemetry — `Edict.Telemetry` spans + `Meter` instruments (ADRs 0037-0040)
 
 Spans are *the* observability mechanism — CLAUDE.md forbids log-narrating the command/event flow — so a behavioural change that opens no span and bumps no counter is invisible in production. Every span name, tag key, and meter name lives in one place, `SemanticConventions`, against the single `"Edict"` `ActivitySource`; a new step that emits telemetry ad hoc, off that registry, is the failure mode.
 
@@ -101,6 +95,12 @@ Does the change add a step a consumer needs to *see* happen (a new outbox effect
 - **Metric side:** a new instrument lands under the Meter naming rules (ADR 0038), and every tag must clear the cardinality policy (ADR 0039) — an unbounded dimension (raw `EventId`, route key, exception message, or anything not a compile-closed allowlist like `FailureReasonValues`) is the design-time catch, not a production cardinality blowup. An observable gauge needs the silo-local metrics cache seam (ADR 0040) so a scrape costs zero grain calls; that cache feed is an implementation requirement, capture it.
 
 Capture the span/tag/meter name and its tags here. Note explicitly when a change is span-only, metric-only, or neither (pure plumbing a consumer never observes), so the skip is a recorded decision. The prose homes (`docs/usage/concepts/telemetry.md`, `docs/operations/observability.md`) are axis 5's job — anchor, don't duplicate.
+
+### 11. Sample app — `Sample/*`
+
+Does the change need a demo handler/saga/projection to exist in the Sample app, or extend one that already exists?
+
+The Sample app is the sales-demo framing for strangers cloning the repo — the bar is "does a visitor see the new concept *used*?" If yes, that's a deliverable; capture which Sample project (`Sample.Web`, `Sample.Silo`, contract assemblies) needs the change.
 
 ## Rules
 
