@@ -405,12 +405,16 @@ public abstract class EdictCommandHandler<TState>
         }
 
         // Any audit record staged into the write above — the command's C1 record,
-        // plus an E1 record per raised event — drains off this turn. Kicking here
-        // (rather than only on the command path) covers a schedule or timer fire
-        // that raises an audited event too. A no-op when nothing was staged; the
-        // common non-audited silo skips it entirely.
-        if (AuditEnabled)
+        // plus an E1 record per raised event — drains off this turn. Arm the durable
+        // reminder at stage time, right after that write, so the record has a puller
+        // even if the grain deactivates before the kicked timer runs; the timer is the
+        // fast path and a successful drain unregisters the reminder. Both steps cover
+        // a schedule or timer fire that raises an audited event too, and the common
+        // non-audited silo skips them entirely. Guarded on pending so a fire that
+        // raises nothing audited never arms a reminder over no work.
+        if (AuditEnabled && base.State.Audit is { Pending.Count: > 0 })
         {
+            await AuditHost.ArmDrainReminderAsync();
             KickAuditDrain();
         }
     }
@@ -509,6 +513,7 @@ public abstract class EdictCommandHandler<TState>
                 {
                     StageAuditRecord(command, rejected);
                     await Host.WriteStateOnlyAsync();
+                    await AuditHost.ArmDrainReminderAsync();
                     KickAuditDrain();
                 }
 

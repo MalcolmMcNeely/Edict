@@ -118,6 +118,16 @@ sealed class AuditHost<TPayload>
         await UnregisterDrainReminderAsync();
     }
 
+    /// <summary>
+    /// Arms the durable drain reminder, register-or-update so it is safe to call on
+    /// every stage. The Command Handler calls this right after the grain-state write
+    /// that makes a staged audit record durable, so undrained audit work always has a
+    /// durable puller even when the grain deactivates before the post-commit timer
+    /// runs. A successful <see cref="DrainAsync"/> unregisters it, matching the outbox
+    /// host invariant: a reminder exists whenever undrained work exists.
+    /// </summary>
+    public Task ArmDrainReminderAsync() => RegisterDrainReminderAsync();
+
     async Task RegisterDrainReminderAsync()
     {
         await _reminders.RegisterOrUpdateReminderAsync(DrainReminderName, _reminderPeriod, _reminderPeriod);

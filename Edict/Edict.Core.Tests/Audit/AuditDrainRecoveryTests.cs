@@ -34,7 +34,10 @@ public sealed class AuditDrainRecoveryTests(AuditDrainRecoveryClusterFixture fix
         await WaitUntilAsync(() => !fixture.PayloadStore.ThrowOnNextPut);
         var probe = fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         Assert.Equal(2, await probe.GetPendingAuditCountAsync());
-        Assert.Equal(0, fixture.AuditStore.Count);
+        // Scoped to this entity rather than the store's global count: the static store
+        // is shared across this collection's tests, so only this grain's records are a
+        // sound oracle for "nothing reached the store yet".
+        Assert.Empty(await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, CancellationToken.None));
 
         // Deactivate before any drain reaches the store, then reactivate by touching
         // the grain — on-activation recovery is the only path that can drain it now.
@@ -44,6 +47,32 @@ public sealed class AuditDrainRecoveryTests(AuditDrainRecoveryClusterFixture fix
         // Assert — both records reached the WORM store through recovery.
         var records = await WaitForRecordsAsync(entityKey, expectedCount: 2);
         Assert.All(records, record => Assert.Equal(counterId, Guid.Parse(record.EntityKey)));
+    }
+
+    [Fact]
+    public async Task StagedRecord_WhileUndrained_HasDurableReminderClearedOnceReminderDrains()
+    {
+        // Arrange — fault the next payload write so the post-commit drain fails and
+        // leaves the staged records undrained.
+        var counterId = Guid.NewGuid();
+        fixture.PayloadStore.ThrowOnNextPut = true;
+
+        // Act — staging commits the records; the post-commit drain then faults.
+        await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
+        await WaitUntilAsync(() => !fixture.PayloadStore.ThrowOnNextPut);
+
+        var probe = fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
+
+        // Undrained audit work exists, so the durable reminder must exist to pull it —
+        // the outbox-host invariant carried onto the audit drain.
+        Assert.Equal(2, await probe.GetPendingAuditCountAsync());
+        Assert.True(await probe.HasAuditDrainReminderAsync());
+
+        // The reminder alone (the fault is now cleared) drains every record and then
+        // unregisters itself: no reminder once no undrained work remains.
+        await probe.ForceAuditDrainViaReminderAsync();
+        Assert.Equal(0, await probe.GetPendingAuditCountAsync());
+        Assert.False(await probe.HasAuditDrainReminderAsync());
     }
 
     async Task<IReadOnlyList<EdictAuditRecord>> WaitForRecordsAsync(string entityKey, int expectedCount)

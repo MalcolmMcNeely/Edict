@@ -27,6 +27,58 @@ public sealed class AuditHostTests
     static readonly TimeSpan ReminderPeriod = TimeSpan.FromMinutes(1);
 
     [Fact]
+    public async Task ArmDrainReminderAsync_ArmsTheDurableReminder()
+    {
+        // Arrange
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var host = BuildHost(state, log, new FaultInjectingAuditStore(), new FaultInjectingAuditPayloadStore());
+
+        // Act
+        await host.ArmDrainReminderAsync();
+
+        // Assert
+        Assert.Contains(("reminders", nameof(IReminderRegistrar.RegisterOrUpdateReminderAsync)), log.Entries);
+    }
+
+    [Fact]
+    public async Task ArmDrainReminderAsync_IsSafeToCallRepeatedly()
+    {
+        // Arrange
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var host = BuildHost(state, log, new FaultInjectingAuditStore(), new FaultInjectingAuditPayloadStore());
+
+        // Act — register-or-update tolerates repeated arming across stages.
+        await host.ArmDrainReminderAsync();
+        await host.ArmDrainReminderAsync();
+
+        // Assert
+        var registrations = log.Entries.Count(entry =>
+            entry == ("reminders", nameof(IReminderRegistrar.RegisterOrUpdateReminderAsync)));
+        Assert.Equal(2, registrations);
+    }
+
+    [Fact]
+    public async Task ArmDrainReminderAsync_ThenSuccessfulDrain_UnregistersReminder()
+    {
+        // Arrange — a record is staged and the reminder armed at stage time, as the
+        // Command Handler does right after the durable grain-state write.
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        StageRecords(state, count: 1);
+        var host = BuildHost(state, log, new FaultInjectingAuditStore(), new FaultInjectingAuditPayloadStore());
+
+        // Act
+        await host.ArmDrainReminderAsync();
+        await host.DrainAsync();
+
+        // Assert — the fast-path drain clears both the staged work and its reminder.
+        Assert.Empty(state.State.Audit!.Pending);
+        Assert.Contains(("reminders", nameof(IReminderRegistrar.UnregisterReminderAsync)), log.Entries);
+    }
+
+    [Fact]
     public async Task DrainAsync_WhenWormWriteFails_LeavesEveryStagedRecordStaged()
     {
         // Arrange

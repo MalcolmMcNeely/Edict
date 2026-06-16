@@ -63,6 +63,7 @@ public interface ICounterProbe : IGrainWithGuidKey
     Task<bool> HasDrainReminderAsync();
     Task ForceAuditDrainViaReminderAsync();
     Task<int> GetPendingAuditCountAsync();
+    Task<bool> HasAuditDrainReminderAsync();
 }
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
@@ -116,4 +117,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public Task<int> GetPendingAuditCountAsync() =>
         Task.FromResult(AuditStateForProbe?.Pending.Count ?? 0);
+
+    public async Task<bool> HasAuditDrainReminderAsync() =>
+        await this.GetReminder("edict-audit-drain") is not null;
 }
