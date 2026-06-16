@@ -109,6 +109,8 @@ protected override Task OnSagaTimeoutAsync()
 
 The override may mutate `Progress` and `Dispatch` at most one compensating Command; both commit atomically with the `TimedOut` terminal write. **The default (no override) dead-letters** the fired cap with `EdictSagaTimeoutException`, so a finite-capped saga that times out without a compensation path surfaces loudly on the dead-letter projection rather than silently stranding the workflow.
 
+**If your override throws, the framework contains it: the saga still terminalises and the failure is dead-lettered, not retried and not silently swallowed.** The cap handler rolls back any `Progress` mutation the throwing hook made and discards any compensating Command it dispatched, moves the saga to `TimedOut`, and dead-letters with `EdictSagaCompensationException` (classified `ConsumerBug`, carrying your thrown exception's type and message) so a faulting compensation reads apart from the by-design no-override timeout. The throw is not retried: a deterministic consumer throw would otherwise re-fire the cap on every reminder tick and strand the workflow. Treat one of these dead letters as a bug in your compensation code to fix, not a transient to wait out.
+
 ## Analyzer rules
 
 - **EDICT011** — `TProgress` (and every persisted state type) must carry `[GenerateSerializer]`, `[Alias("literal")]`, and `[Id(n)]` on every declared public property. The `[Alias]` argument must be a string literal — `nameof(T)` is rejected because it defeats the rename-survival guarantee.
