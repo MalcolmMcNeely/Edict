@@ -427,6 +427,7 @@ public class PublicSurfaceAllowListTests
 
     static readonly HashSet<string> EdictAzurePersistenceAllowList = new(StringComparer.Ordinal)
     {
+        "Edict.Azure.Persistence.EdictAzurePersistenceAuditServiceCollectionExtensions",
         "Edict.Azure.Persistence.EdictAzurePersistenceOptions",
         "Edict.Azure.Persistence.EdictAzurePersistenceSiloBuilderExtensions",
         "Edict.Azure.Persistence.TableStorage.AzureTableWriteStore`1",

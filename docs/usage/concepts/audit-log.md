@@ -78,7 +78,7 @@ A library that never touches the consumer's runtime data is neither controller n
 - **`IEdictSender.SendAsync(command)`** / **`SendAsync(command, principal)`** — origin send; the second overload supplies a principal explicitly for a context-free origin (worker, import, admin script, test).
 - **`AddEdictAudit(resolver)`** (`IServiceCollection`) — registers the origin principal resolver and turns on origin stamping for that provider (silo or client).
 - **`WithAudit()`** (`ISiloBuilder`) — arms capture on the silo and registers `IEdictAuditRepository` over the substrate stores.
-- **`AddEdictAuditReader()`** (`IServiceCollection`) — registers `IEdictAuditRepository` over already-registered stores, for a non-silo reader process; on Postgres, `AddEdictPostgresAuditReader(...)` registers the stores it reads over.
+- **`AddEdictAuditReader()`** (`IServiceCollection`) — registers `IEdictAuditRepository` over already-registered stores, for a non-silo reader process; `AddEdictPostgresAuditReader(...)` and `AddEdictAzureAuditReader(...)` register the substrate stores it reads over and then delegate to it.
 - **`IEdictAuditRepository`** (`Edict.Contracts.Audit`) — the read surface above.
 - **`EdictAuditRecord`**, **`EdictAuditKind`**, **`EdictAuditOutcome`**, **`EdictAuditChainVerification`** (`Edict.Contracts.Audit`) — the record and its discriminators.
 - **`EdictAuditChain.Verify(records)`** (`Edict.Core.Audit`) — pure in-memory chain verification.

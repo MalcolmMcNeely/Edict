@@ -82,7 +82,19 @@ silo.Services.AddEdictAudit(serviceProvider => /* resolve the origin principal *
 silo.WithAudit();
 ```
 
-`WithAudit()` registers `IEdictAuditRepository` over the Azure stores, so the read surface is available **in the silo's own services**. Unlike Postgres, the Azure persistence package ships **no standalone client-reader extension** (`AddEdictPostgresAuditReader` exists because Postgres owns a separate read-only `NpgsqlDataSource`; the Azure stores are SDK clients provisioned with the silo). A separate Azure reader process is a follow-on; for now query the audit log from the capturing silo or a co-hosted process.
+`WithAudit()` registers `IEdictAuditRepository` over the Azure stores, so the read surface is available **in the silo's own services**. A separate process that only reads the audit log — an Orleans client, a web host — registers the stores against the same Table and Blob account with `AddEdictAzureAuditReader`, the Azure counterpart to `AddEdictPostgresAuditReader`:
+
+```csharp
+builder.Services.AddEdictAzureAuditReader(o =>
+{
+    o.TableServiceClient = new TableServiceClient(tableConnectionString);
+    o.BlobServiceClient  = new BlobServiceClient(blobConnectionString);
+    // AuditTableName and AuditPayloadContainerName must match the capturing silo;
+    // both default to the same names the silo uses.
+});
+```
+
+It wraps the already-provisioned Table and container (no grain storage, reminders, or capture path) and delegates to the provider-agnostic `AddEdictAuditReader`, so the `IEdictAuditRepository` surface it exposes is identical to Postgres and the audit page reads the same across substrates. An Orleans `Serializer` must be in the container to type a captured body back; an Orleans client host already registers one.
 
 The honest consequence to carry to consumers: the Azure-Table chain is tamper-**evidence** (the per-aggregate hash chain, re-walked by `VerifyEntityChainAsync`) without infrastructure tamper-**prevention** until the deferred blob-sealing slice. Postgres has both; Azure has evidence only. See [concepts/audit-log.md](../concepts/audit-log.md#per-substrate-tamper-prevention-vs-evidence) for the full prevention-versus-evidence distinction.
 

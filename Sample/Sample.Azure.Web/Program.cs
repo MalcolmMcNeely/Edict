@@ -1,3 +1,7 @@
+using Azure.Data.Tables;
+using Azure.Storage.Blobs;
+
+using Edict.Azure.Persistence;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
@@ -38,6 +42,22 @@ builder.UseOrleansClient(client =>
 // open-generic plus the dead-letter forensic facade, so the read tier needs no
 // table-storage wiring of its own.
 builder.Services.AddEdict();
+
+// The silo captures the audit log into the Azure Table chain + Blob payload stores;
+// the web reads it back straight from the same storage account, the way a regulator's
+// audit console is a read-only process over the store rather than a grain call.
+// AddEdictAzureAuditReader registers IEdictAuditRepository over the table and container
+// the silo wrote, addressed by the same default names. The AppHost injects the
+// connection strings.
+var auditTableConnectionString = builder.Configuration.GetConnectionString("tables")
+                                 ?? "UseDevelopmentStorage=true";
+var auditBlobConnectionString = builder.Configuration.GetConnectionString("blobs")
+                                ?? "UseDevelopmentStorage=true";
+builder.Services.AddEdictAzureAuditReader(o =>
+{
+    o.TableServiceClient = new TableServiceClient(auditTableConnectionString);
+    o.BlobServiceClient  = new BlobServiceClient(auditBlobConnectionString);
+});
 
 // Hosts the in-memory notifications sink the silo POSTs to over HTTP and the
 // Orders view reads back in-process.

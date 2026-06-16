@@ -5,7 +5,9 @@ using Azure.Storage.Queues;
 using Edict.Azure.Persistence;
 using Edict.Azure.Streaming;
 using Edict.Azure.Streaming.ClaimCheck;
+using Edict.Contracts.Audit;
 using Edict.Core;
+using Edict.Core.Audit;
 using Edict.Core.Serialization;
 using Edict.Telemetry;
 
@@ -99,6 +101,15 @@ builder.Host.UseOrleans((context, silo) =>
         o.TableServiceClient      = new TableServiceClient(tableConnectionString);
         o.BlobServiceClient       = new BlobServiceClient(blobConnectionString);
     });
+
+    // Turn on the audit log: WithAudit() captures each decision into the Azure Table
+    // chain + Blob payload stores AddEdictAzurePersistence registered. The resolver
+    // supplies the actor for any send that originates on the silo itself (background
+    // work has no authenticated user), so the silo mints its own system principal —
+    // Edict ships no sentinel. User-driven sends from the web carry their own actor
+    // explicitly.
+    silo.Services.AddEdictAudit(() => EdictPrincipal.Of("azure-silo"));
+    silo.WithAudit();
 });
 
 // The Event Handler reaches out to the Web-hosted notifications sink over HTTP
