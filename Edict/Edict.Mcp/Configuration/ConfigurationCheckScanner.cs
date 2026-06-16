@@ -11,6 +11,8 @@ sealed class ConfigurationCheckScanner
     const string SiloBuilderFullName = "Orleans.Hosting.ISiloBuilder";
     const string ProgramFileName = "Program.cs";
     const string AddEdictPrefix = "AddEdict";
+    const string AuditOnSwitchName = "WithAudit";
+    const string AuditResolverExtension = "AddEdictAudit";
 
     readonly SiloWiringScanner siloWiringScanner = new();
 
@@ -89,7 +91,8 @@ sealed class ConfigurationCheckScanner
             }
         }
 
-        findings.AddRange(BuildCrossExtensionFindings(wiredExtensions, wiredExtensionLocations));
+        var auditResolverRegistered = ProgramRegistersAuditResolver(root, semanticModel);
+        findings.AddRange(BuildCrossExtensionFindings(wiredExtensions, wiredExtensionLocations, auditResolverRegistered));
 
         var programLocation = new SourceLocationInfo(
             FilePath: RelativisePath(programTree.FilePath, solutionDirectory),
@@ -193,8 +196,20 @@ sealed class ConfigurationCheckScanner
 
     static IEnumerable<ConfigurationFinding> BuildCrossExtensionFindings(
         IReadOnlySet<string> wiredExtensions,
-        IReadOnlyDictionary<string, SourceLocationInfo?> wiredExtensionLocations)
+        IReadOnlyDictionary<string, SourceLocationInfo?> wiredExtensionLocations,
+        bool auditResolverRegistered)
     {
+        if (wiredExtensions.Contains(AuditOnSwitchName) && !auditResolverRegistered)
+        {
+            yield return new ConfigurationFinding(
+                ConfigurationFindingSeverity.Error,
+                ConfigurationFindingCategory.CrossExtension,
+                OptionsType: null,
+                Knob: null,
+                Message: $"{AuditOnSwitchName} turns audit capture on but no principal resolver is registered: every origin send fails closed at the edge. Call services.AddEdictAudit(...) to resolve the real actor for a user-initiated send; an actor-less origin instead mints one explicitly such as EdictPrincipal.Of(\"system\") at the send.",
+                wiredExtensionLocations.GetValueOrDefault(AuditOnSwitchName));
+        }
+
         var wiredStreamProvider = ConfigurationKnobCatalogue.StreamProviderExtensions.FirstOrDefault(wiredExtensions.Contains);
         var hasPersistenceProvider = ConfigurationKnobCatalogue.PersistenceProviderExtensions.Any(wiredExtensions.Contains);
         if (wiredStreamProvider is not null && !hasPersistenceProvider)
@@ -219,6 +234,22 @@ sealed class ConfigurationCheckScanner
                 Message: $"{ConfigurationKnobCatalogue.AzureBlobClaimCheckExtension} is wired alongside Postgres persistence, which already provides a claim-check store: the Azure Blob claim-check store is redundant. Remove it unless you intend the claim check to live in Azure Blob storage.",
                 wiredExtensionLocations.GetValueOrDefault(ConfigurationKnobCatalogue.AzureBlobClaimCheckExtension));
         }
+    }
+
+    static bool ProgramRegistersAuditResolver(SyntaxNode root, SemanticModel semanticModel)
+    {
+        // The resolver lands via services.AddEdictAudit(...) on the service collection, not on
+        // the silo builder, so the silo-extension scan never sees it; key on the extension name.
+        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (semanticModel.GetSymbolInfo(invocation).Symbol is IMethodSymbol symbol
+                && symbol.IsExtensionMethod
+                && symbol.Name == AuditResolverExtension)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     static bool IsAddEdictOnSiloBuilder(IMethodSymbol method)

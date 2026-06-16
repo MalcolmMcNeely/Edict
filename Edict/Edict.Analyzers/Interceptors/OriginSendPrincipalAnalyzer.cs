@@ -28,7 +28,7 @@ public sealed class OriginSendPrincipalAnalyzer : DiagnosticAnalyzer
     internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
         id: DiagnosticId,
         title: "Origin send has no principal",
-        messageFormat: "'IEdictSender.SendAsync(command)' is an origin send with no principal — supply one with the 'SendAsync(command, principal)' overload, or suppress this site if a registered resolver attributes it at runtime",
+        messageFormat: "'IEdictSender.SendAsync(command)' is an origin send with no principal — for a user-initiated send resolve the real actor and pass it to the 'SendAsync(command, principal)' overload; for an actor-less origin (a worker, import, or scheduled job) mint one such as EdictPrincipal.Of(\"system\"); or suppress this site if a registered resolver already attributes it at runtime",
         category: "Edict",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: false);

@@ -33,6 +33,15 @@ public class OriginSendPrincipalAnalyzerTests
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal("EDICT023", diagnostic.Id);
+
+        // The message must encode the user-versus-origin decision, not just "no principal":
+        // resolve the real actor for a user send, mint one (such as system) for an actor-less
+        // origin, or suppress where a registered resolver already attributes the site.
+        var message = diagnostic.GetMessage();
+        Assert.Contains("user-initiated", message, StringComparison.Ordinal);
+        Assert.Contains("actor-less", message, StringComparison.Ordinal);
+        Assert.Contains("system", message, StringComparison.Ordinal);
+        Assert.Contains("resolver", message, StringComparison.Ordinal);
     }
 
     [Fact]

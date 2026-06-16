@@ -43,7 +43,11 @@ _Avoid_: authoring it by hand (the framework stamps it; a caller may supply one 
 
 **Principal** (`EdictPrincipal`):
 The actor on whose authority a Command was issued or an Event raised: a human user, a service identity, or a consumer-minted system identity for non-user work. An opaque consumer-supplied string, resolved at the edge from the authenticated claim, stamped on the message at origin and carried unchanged through the consequential Command/Event/schedule chain. A durable field on `EdictCommand` and `EdictEvent` (mirroring the Correlation Id), with `RequestContext` only as the per-turn relay.
-_Avoid_: trusting a principal read from a Command body (confused-deputy); conflating it with the **data subject** (the person the data is *about* — a distinct, deferred concept); Edict-side validation of its format (the consumer's domain); a framework-supplied "system" sentinel (the consumer mints their own for non-user origins).
+_Avoid_: trusting a principal read from a Command body (confused-deputy); stamping a constant or `system` principal on a user-initiated send (misattribution — it records a real person's decision under a fabricated actor; a `system` principal is correct only for an actor-less origin); conflating it with the **Data Subject** (the person the data is *about*); Edict-side validation of its format (the consumer's domain); a framework-supplied "system" sentinel (the consumer mints their own for actor-less origins).
+
+**Data Subject**:
+The person an audited record is *about*, in the GDPR sense, as distinct from the **Principal**, who is the actor that acted: an admin (the principal) editing a customer's address makes the customer the data subject, so the two routinely differ. Edict does not model the data subject today: the audit log captures the principal, and subject-keyed concerns such as erasure are deferred.
+_Avoid_: reading the principal field as the data subject (it names who acted, not who the data is about); assuming Edict can answer a subject-keyed query today (it captures the principal only).
 
 **Origin send**:
 A Command send a consumer writes at the edge of a causal chain — `IEdictSender.SendAsync(command)` — where the **Principal** is stamped for the first time (from the edge resolver, or explicitly via the `SendAsync(command, principal)` overload). The fail-closed gate and the opt-in `EDICT023` analyzer apply here and only here.

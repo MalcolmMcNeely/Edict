@@ -23,6 +23,35 @@ public class DocsLookupTests
     }
 
     [Fact]
+    public void FromEmbeddedResources_LookupGlossaryTerm_ResolvesDataSubjectDistinctFromPrincipal()
+    {
+        // Arrange
+        var docs = EmbeddedDocs.CreateDocsLookup(typeof(EdictMcpServer).Assembly);
+
+        // Act
+        var body = docs.LookupGlossaryTerm("Data Subject");
+
+        // Assert
+        Assert.NotNull(body);
+        Assert.Contains("Principal", body);
+        Assert.Contains("_Avoid_:", body);
+    }
+
+    [Fact]
+    public void FromEmbeddedResources_LookupGlossaryTerm_PrincipalCarriesMisattributionAvoidNote()
+    {
+        // Arrange
+        var docs = EmbeddedDocs.CreateDocsLookup(typeof(EdictMcpServer).Assembly);
+
+        // Act
+        var body = docs.LookupGlossaryTerm("Principal");
+
+        // Assert
+        Assert.NotNull(body);
+        Assert.Contains("user-initiated", body);
+    }
+
+    [Fact]
     public void FromEmbeddedResources_LookupAdr_ResolvesRealAdr0001ByNumber()
     {
         // Arrange

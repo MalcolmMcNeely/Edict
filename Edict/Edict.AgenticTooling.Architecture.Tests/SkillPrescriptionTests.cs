@@ -28,6 +28,19 @@ public class SkillPrescriptionTests
     }
 
     [Fact]
+    public void EdictAuthoringSkill_PinsBothHalvesOfThePrincipalAttributionContrast()
+    {
+        var body = LoadSkillBody("edict-authoring");
+
+        Assert.True(
+            AreCoLocated(body, "actor-less", "system"),
+            "edict-authoring must scope a constant `system` principal to an actor-less origin so the correct-attribution half of the contrast survives.");
+        Assert.True(
+            AreCoLocated(body, "user-initiated", "severe"),
+            "edict-authoring must warn that a constant/system principal on a user-initiated send is the severe failure so the misattribution half of the contrast survives.");
+    }
+
+    [Fact]
     public void EdictAuthoringSkill_DescribesHowToAuthorACommandValidator()
     {
         var body = LoadSkillBody("edict-authoring");
@@ -119,6 +132,14 @@ public class SkillPrescriptionTests
             syntaxTrees,
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+    }
+
+    static bool AreCoLocated(string body, string first, string second)
+    {
+        var pattern =
+            $@"(?:{Regex.Escape(first)}[\s\S]{{0,{CoLocationWindow}}}{Regex.Escape(second)})"
+            + $@"|(?:{Regex.Escape(second)}[\s\S]{{0,{CoLocationWindow}}}{Regex.Escape(first)})";
+        return Regex.IsMatch(body, pattern, RegexOptions.IgnoreCase);
     }
 
     static bool IsCoLocatedWithBefore(string body, string toolName)

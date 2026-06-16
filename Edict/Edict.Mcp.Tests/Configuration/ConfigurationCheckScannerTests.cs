@@ -380,6 +380,71 @@ public class ConfigurationCheckScannerTests
     }
 
     [Fact]
+    public void Scan_AuditOnWithNoPrincipalResolver_EmitsCrossExtensionFinding()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder
+                            .AddEdict()
+                            .WithAudit();
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var finding = Assert.Single(report.Findings);
+        Assert.Equal(ConfigurationFindingSeverity.Error, finding.Severity);
+        Assert.Equal(ConfigurationFindingCategory.CrossExtension, finding.Category);
+    }
+
+    [Fact]
+    public void Scan_AuditOnWithPrincipalResolverRegistered_EmitsNoAuditFinding()
+    {
+        // Arrange
+        const string programSource = """
+            using Edict.Hosting;
+            using Orleans.Hosting;
+
+            namespace ConsumerHost
+            {
+                public static class Program
+                {
+                    public static void Configure(ISiloBuilder siloBuilder)
+                    {
+                        siloBuilder.Services.AddEdictAudit(() => null);
+                        siloBuilder
+                            .AddEdict()
+                            .WithAudit();
+                    }
+                }
+            }
+            """;
+        var compilation = CreateCompilationWithProgramCs(programSource);
+        var scanner = new ConfigurationCheckScanner();
+
+        // Act
+        var report = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        Assert.Empty(report.Findings);
+    }
+
+    [Fact]
     public void Scan_NoProgramCsAnywhereInSolution_ReturnsEmptyReport()
     {
         // Arrange
@@ -420,7 +485,15 @@ public class ConfigurationCheckScannerTests
     const string EdictWiringStubsSource = """
         namespace Orleans.Hosting
         {
-            public interface ISiloBuilder { }
+            public interface ISiloBuilder
+            {
+                Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; }
+            }
+        }
+
+        namespace Microsoft.Extensions.DependencyInjection
+        {
+            public interface IServiceCollection { }
         }
 
         namespace ConsumerHost
@@ -487,6 +560,17 @@ public class ConfigurationCheckScannerTests
             public static class EdictAzureStreamingSiloBuilderExtensions
             {
                 public static ISiloBuilder AddEdictAzureStreams(this ISiloBuilder siloBuilder, Action<EdictAzureStreamsOptions> configure) => siloBuilder;
+            }
+
+            public static class EdictAuditSiloBuilderExtensions
+            {
+                public static ISiloBuilder WithAudit(this ISiloBuilder siloBuilder) => siloBuilder;
+            }
+
+            public static class EdictAuditServiceCollectionExtensions
+            {
+                public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddEdictAudit(
+                    this Microsoft.Extensions.DependencyInjection.IServiceCollection services, Func<object?> resolver) => services;
             }
         }
         """;
