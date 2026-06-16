@@ -1,6 +1,6 @@
 # Edict.Core
 
-[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Core is its persistence-agnostic engine — the command-handler, saga, event-handler, projection-builder, and idempotency base types, plus the outbox engine.
+[Edict](https://github.com/MalcolmMcNeely/Edict) is a CQRS and event-driven framework for .NET on Microsoft Orleans. Edict.Core is its persistence-agnostic engine — the command-handler, saga, event-handler, projection-builder, and idempotency base types, plus the outbox engine and audit capture.
 
 The Edict source generators and analyzers ride inside this package under `analyzers/dotnet/cs/`, so one reference wires up the full consumer surface.
 
