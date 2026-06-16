@@ -305,6 +305,8 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Sending.IEdictSender",
         "Edict.Contracts.TableStorage.IEdictTableWriteStore`1",
         "Edict.Contracts.Telemetry.EdictTelemeterizedAttribute",
+        "Edict.Contracts.Tenancy.EdictInvalidTenantIdException",
+        "Edict.Contracts.Tenancy.EdictTenantId",
     };
 
     static readonly HashSet<string> EdictCoreAllowList = new(StringComparer.Ordinal)
@@ -368,6 +370,8 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
         "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictListProjectionBuilder<TRow> — permanent resident.
+        "Edict.Core.Tenancy.EdictMissingTenantException",
+        "Edict.Core.Tenancy.EdictTenantServiceCollectionExtensions",
         "OrleansCodeGen.Edict.Core.Audit.Codec_AuditChain",
         "OrleansCodeGen.Edict.Core.Audit.Codec_AuditChainEntry",
         "OrleansCodeGen.Edict.Core.Audit.Copier_AuditChain",
@@ -464,8 +468,10 @@ public class PublicSurfaceAllowListTests
         "Edict.Telemetry.ActivitySourceExtensions",
         "Edict.Telemetry.EdictDiagnostics",
         "Edict.Telemetry.IEventTagWriters",
+        "Edict.Telemetry.OriginIdentity",
         "Edict.Telemetry.PrincipalRelay",
         "Edict.Telemetry.SemanticConventions",
+        "Edict.Telemetry.TenantRelay",
     };
 
     static string BuildDriftMessage(IReadOnlyList<string> unexpected, IReadOnlyList<string> missing)

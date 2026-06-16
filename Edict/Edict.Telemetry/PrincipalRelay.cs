@@ -24,12 +24,11 @@ namespace Edict.Telemetry;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class PrincipalRelay
 {
-    /// <summary>
-    /// Seeds the current turn's principal from the durable source. A <see langword="null"/>
-    /// principal clears the slot so a turn that inherited nothing does not leak a
-    /// stale actor onto a later send.
-    /// </summary>
-    public static void Seed(EdictPrincipal? principal)
+    // Seeds the current turn's principal from the durable source. A null principal
+    // clears the slot so a turn that inherited nothing does not leak a stale actor
+    // onto a later send. Internal: callers seed through OriginIdentity.Seed, which
+    // seeds the principal and the tenant together so neither can drift.
+    internal static void Seed(EdictPrincipal? principal)
     {
         if (principal is { } actor)
         {

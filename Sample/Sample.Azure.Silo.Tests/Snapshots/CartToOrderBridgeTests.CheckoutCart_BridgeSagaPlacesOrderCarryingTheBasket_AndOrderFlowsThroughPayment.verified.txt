@@ -9,7 +9,8 @@
       Skus: [
         SKU-A,
         SKU-B
-      ]
+      ],
+      Tenant: null
     }
   },
   OrderStatus: {

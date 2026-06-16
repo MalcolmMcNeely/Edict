@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
 using Edict.Core.Tests.Audit;
 
@@ -148,6 +149,26 @@ public sealed class ScheduleLifecycleTests
             ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
             tick => tick.Key == probeId);
         Assert.Equal(EdictPrincipal.Of("scheduler-bob"), published.Principal);
+    }
+
+    [Fact]
+    public async Task Fire_RaisingEvent_ShouldCarryTheArmingTenant()
+    {
+        var probeId = Guid.NewGuid();
+        var probe = _fixture.GrainFactory.GetGrain<IScheduleProbe>(probeId);
+        await probe.StartWithTenantAsync(Cadence, EdictTenantId.Of("acme"));
+
+        _fixture.AdvanceClock(Cadence);
+        await probe.FireDueSchedulesAsync();
+
+        // A fire has no inbound message, so the only source of the tenant is the
+        // tenant persisted in the schedule's arm-context: the recurring job stays
+        // inside the wall it was armed under. Filter by this probe's key — the
+        // capturing executor's queue is shared across the (serial) schedule tests.
+        var published = Assert.Single(
+            ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
+            tick => tick.Key == probeId);
+        Assert.Equal(EdictTenantId.Of("acme"), published.Tenant);
     }
 
     [Fact]

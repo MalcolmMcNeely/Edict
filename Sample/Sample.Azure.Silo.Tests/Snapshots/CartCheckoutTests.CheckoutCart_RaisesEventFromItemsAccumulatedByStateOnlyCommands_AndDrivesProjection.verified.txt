@@ -7,7 +7,8 @@
         CartId: Guid_1,
         CorrelationId: Guid_Empty,
         Principal: null,
-        Sku: SKU-A
+        Sku: SKU-A,
+        Tenant: null
       }
     },
     {
@@ -17,7 +18,8 @@
         CartId: Guid_1,
         CorrelationId: Guid_Empty,
         Principal: null,
-        Sku: SKU-B
+        Sku: SKU-B,
+        Tenant: null
       }
     },
     {
@@ -26,7 +28,8 @@
       Data: {
         CartId: Guid_1,
         CorrelationId: Guid_Empty,
-        Principal: null
+        Principal: null,
+        Tenant: null
       }
     },
     {
@@ -40,7 +43,8 @@
         Skus: [
           SKU-A,
           SKU-B
-        ]
+        ],
+        Tenant: null
       }
     }
   ],

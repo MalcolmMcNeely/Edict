@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 
 using Edict.Contracts;
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
@@ -192,7 +193,8 @@ public abstract class EdictCommandHandler<TState>
             ResolveScheduleCap(timeout),
             armingSpan?.BuildTraceParent(),
             armingSpan?.TraceStateString,
-            PrincipalRelay.Current());
+            PrincipalRelay.Current(),
+            TenantRelay.Current());
     }
 
     // Resolves the effective timeout duration for a schedule: an explicit timeout:
@@ -255,7 +257,7 @@ public abstract class EdictCommandHandler<TState>
         var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
         using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
         fireSpan?.CaptureToRequestContext();
-        PrincipalRelay.Seed(entry.ArmPrincipal);
+        OriginIdentity.Seed(entry.ArmPrincipal, entry.ArmTenant);
 
         EdictScheduleResult result;
         try
@@ -276,9 +278,10 @@ public abstract class EdictCommandHandler<TState>
             : base.State.Schedule.Continue(entry.ScheduleId, now);
 
         // A fire is a fresh causal root (new correlation) but stays attributed to the
-        // arming principal carried durably in the entry, so a recurring job's events
-        // are still ascribed to whoever armed it across reactivation.
-        await CommitAndDrainRaisedEventsAsync(Guid.NewGuid(), entry.ArmPrincipal);
+        // arming principal and tenant carried durably in the entry, so a recurring
+        // job's events are still ascribed to whoever armed it, inside that tenant
+        // wall, across reactivation.
+        await CommitAndDrainRaisedEventsAsync(Guid.NewGuid(), entry.ArmPrincipal, entry.ArmTenant);
     }
 
     // The dispatch delegate ScheduleHost calls per timed-out entry. A timeout is
@@ -381,7 +384,7 @@ public abstract class EdictCommandHandler<TState>
     /// deactivation. A post-commit publish failure does not roll back and does
     /// not surface — the Reminder retries.
     /// </summary>
-    protected async Task CommitAndDrainRaisedEventsAsync(Guid correlationId, EdictPrincipal? principal = null)
+    protected async Task CommitAndDrainRaisedEventsAsync(Guid correlationId, EdictPrincipal? principal = null, EdictTenantId? tenant = null)
     {
         var events = _raisedEvents;
         _raisedEvents = null;
@@ -400,7 +403,7 @@ public abstract class EdictCommandHandler<TState>
                 : null;
 
             await Host.EnqueueRaisedEventsAndDrainAsync(
-                events, traceParent, traceState, correlationId, principal,
+                events, traceParent, traceState, correlationId, principal, tenant,
                 AuditEnabled ? StageEventAuditRecords : null);
         }
 
@@ -478,10 +481,11 @@ public abstract class EdictCommandHandler<TState>
             }
         }
 
-        // Seed the turn's principal off the inbound command so a schedule the handler
-        // arms inherits the originating actor through the relay, the same slot that
-        // already persists this command's trace context for the fire to link back to.
-        PrincipalRelay.Seed(command.Principal);
+        // Seed the turn's principal and tenant off the inbound command so a schedule
+        // the handler arms inherits the originating actor and tenant wall through the
+        // relay, the same slot that already persists this command's trace context for
+        // the fire to link back to.
+        OriginIdentity.Seed(command.Principal, command.Tenant);
 
         var validator = ServiceProvider.GetService<IValidator<TCommand>>();
 
@@ -544,7 +548,7 @@ public abstract class EdictCommandHandler<TState>
             StageAuditRecord(command, result);
         }
 
-        await CommitAndDrainRaisedEventsAsync(command.CorrelationId, command.Principal);
+        await CommitAndDrainRaisedEventsAsync(command.CorrelationId, command.Principal, command.Tenant);
 
         // A handler that called Schedule(...) staged an entry that the commit
         // above just made durable; arm its timer and Reminder now. Skipped

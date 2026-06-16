@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -37,4 +38,15 @@ public abstract record EdictCommand
     /// stays null when auditing is off.
     /// </summary>
     public EdictPrincipal? Principal { get; init; }
+
+    /// <summary>
+    /// The tenant whose data this Command belongs to: the company wall, not the
+    /// acting <see cref="Principal"/>. Framework-stamped, never threaded by hand:
+    /// resolved from the edge at the originating <c>SendAsync</c> when tenancy is
+    /// on, or supplied explicitly through the <c>SendAsync(command, tenant)</c>
+    /// establishing-crossing overload, then carried unchanged across the whole
+    /// Command to Event chain. Null until stamped, and null stays null for a
+    /// single-tenant app that registered no tenant resolver.
+    /// </summary>
+    public EdictTenantId? Tenant { get; init; }
 }

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 namespace Edict.Core.Schedules;
 
@@ -71,4 +72,14 @@ public sealed record ScheduleEntry
     /// </summary>
     [Id(7)]
     public EdictPrincipal? ArmPrincipal { get; init; }
+
+    /// <summary>
+    /// The tenant that armed this schedule, captured at <c>Schedule()</c> off the
+    /// turn relay and persisted so a fire — its own grain turn, decoupled in time and
+    /// possibly across a deactivation where ambient context cannot survive — stays
+    /// inside the same tenant wall rather than leaking into the default key space.
+    /// <c>null</c> when arming ran with no tenant in scope.
+    /// </summary>
+    [Id(8)]
+    public EdictTenantId? ArmTenant { get; init; }
 }

@@ -1,5 +1,6 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Tenancy;
 
 namespace Edict.Contracts.Sending;
 
@@ -25,4 +26,14 @@ public interface IEdictSender
     /// Edict ships no system sentinel.
     /// </summary>
     Task<EdictCommandResult> SendAsync(EdictCommand command, EdictPrincipal principal);
+
+    /// <summary>
+    /// The explicit establishing-crossing overload, and the escape hatch for a
+    /// context-free origin: stamps <paramref name="tenant"/> onto
+    /// <paramref name="command"/> directly, so a public-to-tenant send establishes
+    /// the wall without tripping the tenancy fail-closed gate. The consumer maps
+    /// their own tenant (e.g. <c>EdictTenantId.Of(companyId)</c>) from a trusted
+    /// source, never from the request body.
+    /// </summary>
+    Task<EdictCommandResult> SendAsync(EdictCommand command, EdictTenantId tenant);
 }

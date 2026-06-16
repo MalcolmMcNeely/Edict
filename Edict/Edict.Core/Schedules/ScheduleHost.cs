@@ -1,5 +1,6 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.Configuration;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Outbox;
 
 using Orleans.Runtime;
@@ -68,7 +69,8 @@ sealed class ScheduleHost<TPayload>
         TimeSpan? cap,
         string? armTraceParent = null,
         string? armTraceState = null,
-        EdictPrincipal? armPrincipal = null)
+        EdictPrincipal? armPrincipal = null,
+        EdictTenantId? armTenant = null)
     {
         var now = _timeProvider.GetUtcNow();
         State.Schedule = State.Schedule.Add(new ScheduleEntry
@@ -81,6 +83,7 @@ sealed class ScheduleHost<TPayload>
             ArmTraceParent = armTraceParent,
             ArmTraceState = armTraceState,
             ArmPrincipal = armPrincipal,
+            ArmTenant = armTenant,
         });
     }
 

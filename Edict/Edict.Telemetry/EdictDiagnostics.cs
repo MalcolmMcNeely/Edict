@@ -28,4 +28,5 @@ public static class EdictDiagnostics
     internal const string RecordedKey = SemanticConventions.RequestContext.Recorded;
     internal const string CrossTurnLinkKey = SemanticConventions.RequestContext.CrossTurnLink;
     internal const string PrincipalKey = SemanticConventions.RequestContext.Principal;
+    internal const string TenantKey = SemanticConventions.RequestContext.Tenant;
 }

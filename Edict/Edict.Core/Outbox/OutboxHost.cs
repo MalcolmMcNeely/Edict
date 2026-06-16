@@ -4,6 +4,7 @@ using System.Diagnostics.Metrics;
 using Edict.Contracts.Audit;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Events;
+using Edict.Contracts.Tenancy;
 using Edict.Core.ClaimCheck;
 using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
@@ -266,6 +267,7 @@ sealed class OutboxHost<TPayload>
         string? traceState,
         Guid correlationId,
         EdictPrincipal? principal = null,
+        EdictTenantId? tenant = null,
         Action<IReadOnlyList<EdictEvent>>? captureIdentified = null,
         CancellationToken cancellationToken = default)
     {
@@ -284,14 +286,14 @@ sealed class OutboxHost<TPayload>
         // serialises the payload — so the persisted bytes carry the stable
         // identity and a re-drain deserialises the same id. OccurredAt was
         // already stamped at Raise; this is the delivery identity, not the
-        // intent stamp. The correlation id and principal are stamped here too:
-        // the event inherits both from the message that caused it, carried
-        // unchanged so the whole chain shares one chain-stable token and stays
-        // attributed to the same actor.
+        // intent stamp. The correlation id, principal, and tenant are stamped here
+        // too: the event inherits all from the message that caused it, carried
+        // unchanged so the whole chain shares one chain-stable token, stays
+        // attributed to the same actor, and stays inside the same tenant wall.
         var identified = new EdictEvent[events.Count];
         for (var i = 0; i < events.Count; i++)
         {
-            identified[i] = events[i] with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal };
+            identified[i] = events[i] with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal, Tenant = tenant };
         }
 
         // E1 audit capture rides the same write that commits the enqueue: the

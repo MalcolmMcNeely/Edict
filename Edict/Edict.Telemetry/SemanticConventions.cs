@@ -380,5 +380,10 @@ public static class SemanticConventions
         /// grain entry so an internal send issued later in the turn (a saga <c>Dispatch</c>,
         /// a schedule arm) inherits the actor without the durable field being threaded by hand.</summary>
         public const string Principal = "edict.principal";
+
+        /// <summary>The per-turn relay slot for the inbound message's tenant, seeded at a grain
+        /// entry alongside the principal so an internal send issued later in the turn stays inside
+        /// the same tenant wall without the durable field being threaded by hand.</summary>
+        public const string Tenant = "edict.tenant";
     }
 }

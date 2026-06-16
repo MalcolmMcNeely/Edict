@@ -7,7 +7,8 @@
         CorrelationId: Guid_Empty,
         CustomerReference: REF-001,
         OrderId: Guid_1,
-        Principal: null
+        Principal: null,
+        Tenant: null
       }
     },
     {
@@ -16,7 +17,8 @@
       Data: {
         CorrelationId: Guid_2,
         OrderId: Guid_1,
-        Principal: null
+        Principal: null,
+        Tenant: null
       }
     },
     {

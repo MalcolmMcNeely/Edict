@@ -49,6 +49,30 @@ _Avoid_: trusting a principal read from a Command body (confused-deputy); stampi
 The person an audited record is *about*, in the GDPR sense, as distinct from the **Principal**, who is the actor that acted: an admin (the principal) editing a customer's address makes the customer the data subject, so the two routinely differ. Edict does not model the data subject today: the audit log captures the principal, and subject-keyed concerns such as erasure are deferred.
 _Avoid_: reading the principal field as the data subject (it names who acted, not who the data is about); assuming Edict can answer a subject-keyed query today (it captures the principal only).
 
+**Tenant**:
+The isolation unit whose data is walled off from every other tenant's: a company, a person, a realm, whatever the consumer draws the boundary around. The third identity axis beside the **Principal** (who acted) and the **Data Subject** (who the data is about): a B2B2C employee authenticates as themselves but their data belongs to their employer, so tenant and principal routinely differ. An opaque isolation key Edict never interprets.
+_Avoid_: "customer" (a tenant is whatever unit the wall encloses, and "customer" both narrows it and collides with the domain's own customers); conflating it with the **Principal** (the actor) or the **Data Subject** (the person the data is about); reading the tenant off a request body (confused-deputy — resolve it from a trusted signed source).
+
+**Tenant Id** (`EdictTenantId`):
+The opaque string value that names a **Tenant**, minted via `EdictTenantId.Of(...)` and carried as a durable field on `EdictCommand` and `EdictEvent` beside the **Principal**. Unlike the principal, its character set is a security boundary, not a convenience: a tenant id is folded into the routed grain and stream key, so `Of` admits only the safe-everywhere set `[A-Za-z0-9._-]` and rejects the key delimiter, path separators, storage-reserved characters, whitespace, control characters, and non-ASCII.
+_Avoid_: a `Guid`-typed tenant id (it excludes non-Guid identity-provider claims and buys nothing once the value is a string-key participant); constructing one without `Of` (the charset check is the delimiter-injection control); echoing a rejected value into a key or log.
+
+**Tenant-Scoped Aggregate**:
+An aggregate whose route-key type carries `[EdictTenantScoped]`, so its grain and stream keys compose as `{tenant}|{guid}` and it lives behind the **Company Wall**. The marker sits on the route-key type, not per message, because an aggregate is a cluster of messages sharing one route key.
+_Avoid_: marking individual messages instead of the route-key type (per-message scoping drifts into a leak); expecting a tenant-scoped aggregate to read another tenant's partition (the composed key cannot express it).
+
+**Public Aggregate**:
+An aggregate with no `[EdictTenantScoped]` marker, keyed as `{guid}`, shared across all tenants and inside no tenant's wall. The default, and a deliberate shared surface (a product catalogue, a system registry).
+_Avoid_: reading a public aggregate as a security hole (it is shared by design); routing tenant-scoped data through one.
+
+**Company Wall**:
+The cross-tenant isolation boundary Edict enforces structurally: tenant A can never reach tenant B's data. Distinct from within-tenant authorization (manager versus clerk inside one business), which stays the consumer's job: Edict's wall is the company, not the user.
+_Avoid_: expecting Edict to enforce within-tenant authz (it walls companies, not roles); assuming the wall holds when tenant resolution is wrong (a buggy principal-to-tenant map or a body-sourced tenant is garbage-in-breach-out, which Edict cannot detect).
+
+**Establishing Crossing**:
+The one sanctioned public-to-tenant transition, written explicitly as `SendAsync(command, EdictTenantId.Of(...))`, where a public-aggregate context mints a tenant id from a trusted source and establishes the wall for the consequential chain.
+_Avoid_: establishing a crossing from a tenant carried in the request body (confused-deputy — mint it from a trusted signed source); expecting the relay to cross walls implicitly (it never changes the tenant; a tenant-to-public or tenant-A-to-tenant-B crossing is privileged and fail-closed by default).
+
 **Origin send**:
 A Command send a consumer writes at the edge of a causal chain — `IEdictSender.SendAsync(command)` — where the **Principal** is stamped for the first time (from the edge resolver, or explicitly via the `SendAsync(command, principal)` overload). The fail-closed gate and the opt-in `EDICT023` analyzer apply here and only here.
 _Avoid_: treating a **Relayed send** as an origin (it inherits, never re-resolves); calling a raised Event an origin (Events inherit in-turn and are never origin-sent).

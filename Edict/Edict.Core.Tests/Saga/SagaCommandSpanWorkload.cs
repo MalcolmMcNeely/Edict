@@ -2,6 +2,7 @@ using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Commands;
 using Edict.Core.Sagas;
 
@@ -51,6 +52,9 @@ public sealed class SpanTrackerState : IEdictPersistedState
 
     [Id(2)]
     public EdictPrincipal? LastPrincipal { get; set; }
+
+    [Id(3)]
+    public EdictTenantId? LastTenant { get; set; }
 }
 
 // Hand-written probe (Orleans codegen sees this, unlike the Edict-generated
@@ -60,6 +64,7 @@ public interface ISpanTrackerProbe : IGrainWithGuidKey
     Task<int> GetReceivedAsync();
     Task<Guid> GetLastCorrelationIdAsync();
     Task<EdictPrincipal?> GetLastPrincipalAsync();
+    Task<EdictTenantId?> GetLastTenantAsync();
 }
 
 public partial class SpanWorkflowSaga : EdictSaga<SpanWorkflowProgress>
@@ -79,6 +84,7 @@ public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTracker
         State.Received++;
         State.LastCorrelationId = command.CorrelationId;
         State.LastPrincipal = command.Principal;
+        State.LastTenant = command.Tenant;
         Raise(new SpanTrackerRaisedEvent(command.WorkflowId));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
@@ -88,6 +94,8 @@ public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTracker
     public Task<Guid> GetLastCorrelationIdAsync() => Task.FromResult(State.LastCorrelationId);
 
     public Task<EdictPrincipal?> GetLastPrincipalAsync() => Task.FromResult(State.LastPrincipal);
+
+    public Task<EdictTenantId?> GetLastTenantAsync() => Task.FromResult(State.LastTenant);
 }
 
 // Pushes an event directly onto the saga's stream so the test can inject a

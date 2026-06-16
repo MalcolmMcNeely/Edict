@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Commands;
 
 namespace Edict.Testing.Internal;
@@ -41,4 +42,7 @@ sealed class RecordingSender(
 
     public Task<EdictCommandResult> SendAsync(EdictCommand command, EdictPrincipal principal) =>
         SendAsync(command with { Principal = principal });
+
+    public Task<EdictCommandResult> SendAsync(EdictCommand command, EdictTenantId tenant) =>
+        SendAsync(command with { Tenant = tenant });
 }

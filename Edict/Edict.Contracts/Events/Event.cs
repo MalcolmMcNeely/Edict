@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -53,4 +54,12 @@ public abstract record EdictEvent
     /// Command carried no principal (auditing off, or a framework-internal event).
     /// </summary>
     public EdictPrincipal? Principal { get; init; }
+
+    /// <summary>
+    /// The tenant whose data this Event belongs to, inherited unchanged from the
+    /// causing Command as the event enters the outbox, so the isolation key stays
+    /// attached across the whole conversation. Null when the causing Command
+    /// carried no tenant (single-tenant app, or a framework-internal event).
+    /// </summary>
+    public EdictTenantId? Tenant { get; init; }
 }

@@ -3,7 +3,9 @@ using System.Diagnostics;
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Sending;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
+using Edict.Core.Tenancy;
 using Edict.Telemetry;
 
 namespace Edict.Core.Commands;
@@ -25,12 +27,18 @@ public sealed class EdictSender : IEdictSender
     readonly CommandRouteResolver _resolver;
     readonly IGrainFactory _grainFactory;
     readonly EdictPrincipalStamper _principalStamper;
+    readonly EdictTenantStamper _tenantStamper;
 
-    internal EdictSender(CommandRouteResolver resolver, IGrainFactory grainFactory, EdictPrincipalStamper principalStamper)
+    internal EdictSender(
+        CommandRouteResolver resolver,
+        IGrainFactory grainFactory,
+        EdictPrincipalStamper principalStamper,
+        EdictTenantStamper tenantStamper)
     {
         _resolver = resolver;
         _grainFactory = grainFactory;
         _principalStamper = principalStamper;
+        _tenantStamper = tenantStamper;
     }
 
     /// <inheritdoc />
@@ -40,6 +48,7 @@ public sealed class EdictSender : IEdictSender
 
         command = EnsureCorrelation(command);
         command = _principalStamper.StampAtOrigin(command);
+        command = _tenantStamper.StampAtOrigin(command);
         var route = _resolver.GetRoute(command);
         var key = route.RouteKeySelector(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
@@ -81,6 +90,17 @@ public sealed class EdictSender : IEdictSender
         return SendAsync(command with { Principal = principal });
     }
 
+    /// <inheritdoc />
+    public Task<EdictCommandResult> SendAsync(EdictCommand command, EdictTenantId tenant)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        // Stamp before the resolver runs: StampAtOrigin honours an already-present
+        // tenant, so the explicit value wins and the fail-closed gate is never
+        // reached for an establishing crossing or context-free origin.
+        return SendAsync(command with { Tenant = tenant });
+    }
+
     /// <summary>
     /// Generator-only fast path called by the per-type Send interceptor stubs.
     /// Skips the <see cref="CommandRouteResolver"/> dictionary lookup and the
@@ -107,6 +127,7 @@ public sealed class EdictSender : IEdictSender
 
         command = EnsureCorrelation(command);
         command = _principalStamper.StampAtOrigin(command);
+        command = _tenantStamper.StampAtOrigin(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(routeKey, grainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");

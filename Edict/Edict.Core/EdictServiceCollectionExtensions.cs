@@ -15,6 +15,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Core.Projections;
+using Edict.Core.Tenancy;
 using Edict.Telemetry;
 
 using FluentValidation;
@@ -106,10 +107,18 @@ public static class EdictServiceCollectionExtensions
         services.TryAddSingleton(serviceProvider => new EdictPrincipalStamper(
             auditEnabled: serviceProvider.GetService<EdictAuditEnabledMarker>() is not null,
             resolver: serviceProvider.GetService<IEdictPrincipalResolver>()));
+        // Tenancy is off unless AddEdictTenant registered the marker; the stamper
+        // then reads the optional resolver. Built here so every EdictSender (client
+        // and silo) carries the same origin-tenant-stamping decision, the sibling of
+        // the principal stamper above.
+        services.TryAddSingleton(serviceProvider => new EdictTenantStamper(
+            tenantEnabled: serviceProvider.GetService<EdictTenantEnabledMarker>() is not null,
+            resolver: serviceProvider.GetService<IEdictTenantResolver>()));
         services.AddSingleton<IEdictSender>(serviceProvider => new EdictSender(
             serviceProvider.GetRequiredService<CommandRouteResolver>(),
             serviceProvider.GetRequiredService<IGrainFactory>(),
-            serviceProvider.GetRequiredService<EdictPrincipalStamper>()));
+            serviceProvider.GetRequiredService<EdictPrincipalStamper>(),
+            serviceProvider.GetRequiredService<EdictTenantStamper>()));
         services.AddSingleton(EdictDiagnostics.ActivitySource);
 
         // TryAdd so an assertable variant (the Edict.Testing rig) wins via

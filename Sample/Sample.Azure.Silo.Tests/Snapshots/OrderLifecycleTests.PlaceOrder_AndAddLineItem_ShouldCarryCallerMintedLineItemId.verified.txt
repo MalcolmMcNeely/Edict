@@ -8,7 +8,8 @@
       OrderId: Guid_3,
       Principal: null,
       Quantity: 1,
-      Sku: SKU-1
+      Sku: SKU-1,
+      Tenant: null
     }
   }
 ]

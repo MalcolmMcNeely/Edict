@@ -1,5 +1,6 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -106,6 +107,18 @@ public sealed class CommandWireShapeTests
         {
             CommandId = FixedCommandId,
             Principal = EdictPrincipal.Of("auth0|abc-123"),
+        };
+        return VerifyWireShape(command);
+    }
+
+    [Fact]
+    public Task PlaceOrderCommand_WithTenant_ShouldHaveStableWireShape()
+    {
+        var command = new PlaceOrderCommand(FixedAggregateId, "ITEM-1")
+        {
+            CommandId = FixedCommandId,
+            Principal = EdictPrincipal.Of("auth0|abc-123"),
+            Tenant = EdictTenantId.Of("acme-corp"),
         };
         return VerifyWireShape(command);
     }

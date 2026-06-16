@@ -20,6 +20,7 @@ using Edict.Core.Sagas;
 using Edict.Core.Schedules;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Core.Tenancy;
 using Edict.Testing.Internal;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -453,7 +454,8 @@ public sealed class EdictTestApp : IAsyncDisposable
                 new EdictSender(
                     serviceProvider.GetRequiredService<CommandRouteResolver>(),
                     serviceProvider.GetRequiredService<IGrainFactory>(),
-                    serviceProvider.GetRequiredService<EdictPrincipalStamper>()),
+                    serviceProvider.GetRequiredService<EdictPrincipalStamper>(),
+                    serviceProvider.GetRequiredService<EdictTenantStamper>()),
                 ctx.Recorder,
                 serviceProvider.GetRequiredService<CommandRouteResolver>(),
                 ctx.RoutedGrains));
