@@ -53,6 +53,10 @@ Edict contracts are MessagePack-serialised on the wire. Do **not** decorate a Co
 
 If you find yourself reaching for `[Union]` to model "command-or-this-other-command", that is two Commands, not one polymorphic Command. Split them.
 
+## If auditing is on, audited message types are append-only
+
+When the silo is audited (`silo.WithAudit()`), a captured Command or Event body is read back by deserializing it into the type you authored (`IEdictAuditRepository.GetMessageAsync`). The audit log is infinite-retention, so that makes every audited message type part of the permanent record's *readable* schema: deleting, renaming, or breaking-changing the type — or its generated `[Alias]` — silently severs the typed read of every record already captured under it. The stored bytes and their hash survive (`GetPayloadAsync` still returns them, and that is the integrity anchor), but the typed read throws `EdictAuditMessageDeserializationException`. So once a type has been audited, treat it as append-only: add fields, never remove or rename one. No analyzer enforces this — it cannot see your retention policy — it is a discipline auditing buys into.
+
 A consumer never types `EdictEventEnvelope` — the receiver pipeline unwraps the wire envelope before dispatch. Do not derive consumer Events from `EdictEventEnvelope`, and do not name it on a `HandleAsync` signature. The `HandleAsync` overload that receives the contract takes **no** `public` modifier: the generator discovers it by name and the generated dispatch calls it from the same partial, so the keyword is redundant (the house rule omits it).
 
 ## When to look up the why
