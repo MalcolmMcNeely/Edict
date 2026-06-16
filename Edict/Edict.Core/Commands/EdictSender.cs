@@ -43,13 +43,34 @@ public sealed class EdictSender : IEdictSender
     }
 
     /// <inheritdoc />
-    public async Task<EdictCommandResult> SendAsync(EdictCommand command)
+    public Task<EdictCommandResult> SendAsync(EdictCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        return SendCoreAsync(command, authorizedCrossing: false);
+    }
 
+    async Task<EdictCommandResult> SendCoreAsync(EdictCommand command, bool authorizedCrossing)
+    {
         command = EnsureCorrelation(command);
         command = _principalStamper.StampAtOrigin(command);
         command = _tenantStamper.StampAtOrigin(command);
+
+        if (authorizedCrossing)
+        {
+            // An explicit establishing or operator crossing: leave the relay as the
+            // caller's ambient tenant so the isolation filter sees the crossing, and
+            // mark it authorized so the filter honours and records it instead of denying.
+            TenantCrossing.Authorize();
+        }
+        else
+        {
+            // Seed the relay so a legitimate origin send carries its tenant (and
+            // principal, together, never one alone) to the target grain, where the
+            // isolation filter compares it to the grain's composed key. Same-tenant by
+            // construction, so the filter stays silent.
+            OriginIdentity.Seed(command.Principal, command.Tenant);
+        }
+
         var route = _resolver.GetRoute(command);
         var key = route.RouteKeySelector(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
@@ -96,10 +117,11 @@ public sealed class EdictSender : IEdictSender
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        // Stamp before the resolver runs: StampAtOrigin honours an already-present
-        // tenant, so the explicit value wins and the fail-closed gate is never
-        // reached for an establishing crossing or context-free origin.
-        return SendAsync(command with { Tenant = tenant });
+        // The explicit overload names the wall and is the one sanctioned crossing — a
+        // public-to-tenant establishing send, or an operator re-keying mid-chain. The
+        // already-present tenant wins (StampAtOrigin honours it) and the crossing is
+        // marked authorized so the isolation filter records rather than denies it.
+        return SendCoreAsync(command with { Tenant = tenant }, authorizedCrossing: true);
     }
 
     /// <summary>
@@ -119,6 +141,7 @@ public sealed class EdictSender : IEdictSender
     public async Task<EdictCommandResult> SendFastPathAsync<TCommand>(
         TCommand command,
         string routeKey,
+        bool tenantScoped,
         string commandSimpleName,
         string grainClassName,
         Action<TCommand, Activity>? extraTags)
@@ -129,9 +152,13 @@ public sealed class EdictSender : IEdictSender
         command = EnsureCorrelation(command);
         command = _principalStamper.StampAtOrigin(command);
         command = _tenantStamper.StampAtOrigin(command);
-        // Fold the tenant in after stamping so a tenant-scoped command reaches the
-        // wall its resolved tenant names, not the default key space.
-        var key = EdictKeyComposer.Compose(command.Tenant, routeKey);
+        // Seed the relay so the isolation filter on the target grain compares against
+        // this send's tenant (and principal, together) rather than an empty slot.
+        OriginIdentity.Seed(command.Principal, command.Tenant);
+        // Fold the tenant in after stamping, but only for a tenant-scoped aggregate:
+        // the decision is static per route-key type, so a public command composes the
+        // bare key even when a relayed tenant rides it.
+        var key = EdictKeyComposer.Compose(tenantScoped ? command.Tenant : null, routeKey);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, grainClassName);
 
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommand($"{SemanticConventions.Commands.Spans.Command} {commandSimpleName}");

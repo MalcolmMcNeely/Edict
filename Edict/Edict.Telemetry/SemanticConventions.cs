@@ -364,6 +364,28 @@ public static class SemanticConventions
         public const string GrainStateKey = "edict.grain.state";
     }
 
+    /// <summary>Span events and tags for the tenant isolation boundary.</summary>
+    public static class Tenant
+    {
+        public static class Events
+        {
+            /// <summary>Span event recorded when an explicitly-authorized crossing passes the isolation filter.</summary>
+            public const string CrossTenantAuthorized = "edict.tenant.cross_authorized";
+
+            /// <summary>Span event recorded the instant the isolation filter denies an unauthorized cross-tenant call.</summary>
+            public const string CrossTenantDenied = "edict.tenant.cross_denied";
+        }
+
+        public static class Tags
+        {
+            /// <summary>The tenant parsed off the grain's own key — the wall the call tried to enter.</summary>
+            public const string KeyTenant = "edict.tenant.key";
+
+            /// <summary>The ambient tenant of the calling turn — the wall the call came from.</summary>
+            public const string RelayTenant = "edict.tenant.relay";
+        }
+    }
+
     internal static class RequestContext
     {
         public const string TraceId = "edict.cmd-trace-id";
@@ -385,5 +407,9 @@ public static class SemanticConventions
         /// entry alongside the principal so an internal send issued later in the turn stays inside
         /// the same tenant wall without the durable field being threaded by hand.</summary>
         public const string Tenant = "edict.tenant";
+
+        /// <summary>Set by the explicit establishing-crossing overload and the operator console to mark
+        /// a deliberate, recorded cross-tenant call so the isolation filter honours it instead of denying.</summary>
+        public const string CrossTenantAuthorized = "edict.tenant-crossing-authorized";
     }
 }

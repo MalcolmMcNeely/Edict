@@ -73,6 +73,18 @@ _Avoid_: expecting Edict to enforce within-tenant authz (it walls companies, not
 The one sanctioned public-to-tenant transition, written explicitly as `SendAsync(command, EdictTenantId.Of(...))`, where a public-aggregate context mints a tenant id from a trusted source and establishes the wall for the consequential chain.
 _Avoid_: establishing a crossing from a tenant carried in the request body (confused-deputy — mint it from a trusted signed source); expecting the relay to cross walls implicitly (it never changes the tenant; a tenant-to-public or tenant-A-to-tenant-B crossing is privileged and fail-closed by default).
 
+**Routed Key**:
+The string a grain or stream is addressed by once the **Tenant** is folded in: a bare `{guid}` for a **Public Aggregate**, `{tenant}|{guid}` for a **Tenant-Scoped Aggregate**. `EdictKeyComposer.Compose` is the one chokepoint that builds it and `Parse` is the inverse that recovers the tenant and route Guid (or throws rather than mis-parse), so "which tenant owns this row" is answerable from the key alone and the **Isolation Call Filter** can compare it against the ambient tenant.
+_Avoid_: composing or parsing a key by hand (the generator and the readers route through the chokepoint); reading the fold as dynamic (it is static per route-key type — a public aggregate composes bare even when a relayed tenant rides the message).
+
+**Isolation Call Filter**:
+The runtime backstop for the **Company Wall**: an incoming grain-call filter on command grains that parses the tenant from the grain's own **Routed Key** and compares it to the calling turn's ambient tenant, throwing `EdictCrossTenantAccessException` on a mismatch. Silent on the common path (the key was composed from the ambient tenant, so they agree by construction); it fires only on a keying bug or an illegitimate reach into another wall. A deliberate crossing passes by being marked authorized (`TenantCrossing`), which the filter honours and records as a span event.
+_Avoid_: treating it as the primary control (composition is — the filter catches the residue); expecting it on projection grains (those ride streams and are isolated structurally by their key).
+
+**Ambient-Scoped Read**:
+A read of a **Tenant-Scoped Aggregate**'s List projection through `IEdictTenantScopedListProjectionReader`, which takes no partition key: the framework composes the caller's ambient tenant (from the same edge resolver a send uses) into the partition, so a consumer queries only its own rows and cannot express another tenant's partition. The headline "list my employees"; the same query under another tenant is empty by construction. A read with no ambient tenant fails closed.
+_Avoid_: passing a raw partition key to reach a tenant partition (the reader exposes none); expecting within-tenant authorization from it (it walls the company; which row a user may see stays the consumer's job).
+
 **Origin send**:
 A Command send a consumer writes at the edge of a causal chain — `IEdictSender.SendAsync(command)` — where the **Principal** is stamped for the first time (from the edge resolver, or explicitly via the `SendAsync(command, principal)` overload). The fail-closed gate and the opt-in `EDICT023` analyzer apply here and only here.
 _Avoid_: treating a **Relayed send** as an origin (it inherits, never re-resolves); calling a raised Event an origin (Events inherit in-turn and are never origin-sent).

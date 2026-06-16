@@ -293,8 +293,11 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Projections.EdictReadStatus",
         "Edict.Contracts.Projections.IEdictListProjectionReader`1",
         "Edict.Contracts.Projections.IEdictProjectionReader`1",
+        "Edict.Contracts.Projections.IEdictTenantScopedListProjectionReader`1",
         "Edict.Contracts.Routing.EdictEventStreamAccessor",
         "Edict.Contracts.Routing.EdictKeyComposer",
+        "Edict.Contracts.Routing.EdictMalformedRoutedKeyException",
+        "Edict.Contracts.Routing.EdictRoutedKey",
         "Edict.Contracts.Routing.EdictEventStreamsAttribute",
         "Edict.Contracts.Routing.EdictEventTagWritersAttribute",
         "Edict.Contracts.Routing.EdictProjectionReadRoutesAttribute",
@@ -358,6 +361,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Projections.EdictProjectionBuilder`1", // In-grain State species (bare name, generic over the projection payload).
         "Edict.Core.Projections.EdictProjectionBuilderBase`1", // Abstract root both species derive from.
         "Edict.Core.Projections.EdictProjectionReader`1", // [EditorBrowsable(Never)] facade; public for open-generic DI registration.
+        "Edict.Core.Projections.EdictTenantScopedListProjectionReader`1", // [EditorBrowsable(Never)] facade; public for open-generic DI registration.
         "Edict.Core.Projections.EdictUnreadableProjectionException",
         "Edict.Core.Projections.EdictUnsupportedProjectionReadException",
         "Edict.Core.Projections.IEdictProjectionBuilder",
@@ -372,6 +376,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Schedules.ScheduleSlice", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Serialization.EdictSerialization",
         "Edict.Core.TableStorage.IEdictTableStoreFactory", // ADR 0045: ctor param of consumer-typed EdictListProjectionBuilder<TRow> — permanent resident.
+        "Edict.Core.Tenancy.EdictCrossTenantAccessException",
         "Edict.Core.Tenancy.EdictMissingTenantException",
         "Edict.Core.Tenancy.EdictTenantServiceCollectionExtensions",
         "OrleansCodeGen.Edict.Core.Audit.Codec_AuditChain",
@@ -473,6 +478,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Telemetry.OriginIdentity",
         "Edict.Telemetry.PrincipalRelay",
         "Edict.Telemetry.SemanticConventions",
+        "Edict.Telemetry.TenantCrossing",
         "Edict.Telemetry.TenantRelay",
     };
 

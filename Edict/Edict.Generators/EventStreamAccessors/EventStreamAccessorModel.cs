@@ -1,3 +1,3 @@
 namespace Edict.Generators.EventStreamAccessors;
 
-internal sealed record EventStreamAccessorModel(string Fqn, string StreamName, string RouteKeyProperty, string RouteKeyStringification);
+internal sealed record EventStreamAccessorModel(string Fqn, string StreamName, string RouteKeyProperty, string RouteKeyStringification, bool IsTenantScoped);

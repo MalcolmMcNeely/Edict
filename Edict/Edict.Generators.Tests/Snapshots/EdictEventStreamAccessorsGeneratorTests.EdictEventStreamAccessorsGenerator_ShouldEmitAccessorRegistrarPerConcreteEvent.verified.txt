@@ -13,9 +13,9 @@ namespace Edict.Generated
             global::System.Collections.Generic.Dictionary<
                 global::System.Type, global::Edict.Contracts.Routing.EdictEventStreamAccessor> accessors)
         {
-            accessors[typeof(global::Sample.OrderCancelledEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Orders", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(edictEvent.Tenant, ((global::Sample.OrderCancelledEvent)edictEvent).OrderId.ToString("N")));
-            accessors[typeof(global::Sample.OrderPlacedEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Orders", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(edictEvent.Tenant, ((global::Sample.OrderPlacedEvent)edictEvent).OrderId.ToString("N")));
-            accessors[typeof(global::Sample.PaymentAuthorizedEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Payments", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(edictEvent.Tenant, ((global::Sample.PaymentAuthorizedEvent)edictEvent).PaymentId.ToString("N")));
+            accessors[typeof(global::Sample.OrderCancelledEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Orders", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(null, ((global::Sample.OrderCancelledEvent)edictEvent).OrderId.ToString("N")));
+            accessors[typeof(global::Sample.OrderPlacedEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Orders", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(null, ((global::Sample.OrderPlacedEvent)edictEvent).OrderId.ToString("N")));
+            accessors[typeof(global::Sample.PaymentAuthorizedEvent)] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor("Payments", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(null, ((global::Sample.PaymentAuthorizedEvent)edictEvent).PaymentId.ToString("N")));
         }
     }
 }

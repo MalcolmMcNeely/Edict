@@ -6,6 +6,7 @@ internal sealed record CommandModel(
     string Namespace,
     string RouteKeyProperty,
     string RouteKeyStringification,
+    bool IsTenantScoped,
     EquatableArray<TelemeterizedProperty> TelemeterizedProperties);
 
 internal sealed record CommandHandlerGrainModel(

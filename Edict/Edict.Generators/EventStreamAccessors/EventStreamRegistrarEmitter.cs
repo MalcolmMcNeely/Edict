@@ -15,11 +15,17 @@ internal static class EventStreamRegistrarEmitter
         var entries = new StringBuilder();
         foreach (var edictEvent in ordered)
         {
+            // Static fold mirrors the command side: a tenant-scoped event rides a
+            // "{tenant}|{guid}" stream key, a public event the bare guid.
+            var tenantArgument = edictEvent.IsTenantScoped ? "edictEvent.Tenant" : "null";
+
             entries.Append("            accessors[typeof(")
                 .Append(edictEvent.Fqn)
                 .Append(")] = new global::Edict.Contracts.Routing.EdictEventStreamAccessor(\"")
                 .Append(edictEvent.StreamName)
-                .Append("\", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(edictEvent.Tenant, ((")
+                .Append("\", static edictEvent => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(")
+                .Append(tenantArgument)
+                .Append(", ((")
                 .Append(edictEvent.Fqn)
                 .Append(")edictEvent).")
                 .Append(edictEvent.RouteKeyProperty)

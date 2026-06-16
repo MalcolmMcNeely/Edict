@@ -32,6 +32,16 @@ internal static class RouteKeyStringification
     public static bool IsRouteKeyType(ITypeSymbol type) =>
         IsGuid(type) || SingleWrappedGuidProperty(type) is not null;
 
+    // Whether the route-key type carries [EdictTenantScoped]. The fold decision is
+    // static per aggregate, not per message: a tenant-scoped key composes
+    // "{tenant}|{guid}" and a public one composes the bare guid even when a relayed
+    // tenant happens to ride the message, so the emit site reads the marker here once
+    // rather than branch on the runtime Tenant field.
+    public static bool IsTenantScoped(ITypeSymbol routeKeyType) =>
+        routeKeyType.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                == EdictWellKnownNames.EdictTenantScopedAttributeFqn);
+
     static bool IsGuid(ITypeSymbol type) =>
         type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == GuidFqn;
 

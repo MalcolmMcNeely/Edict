@@ -89,16 +89,21 @@ public static class EdictServiceCollectionExtensions
         // generator does not run, so the per-assembly registrar mechanism
         // cannot contribute its accessor. Hand-register it: the framework
         // owns this event and its stream + route key are statically known.
+        // The dead-letter projection is a global singleton: operator-scoped and
+        // tenant-tagged on the row, not tenant-keyed. It composes bare so every
+        // tenant's failures collapse into the one partition a fleet-wide read scans,
+        // rather than folding the tenant into the singleton key and splitting it.
         accessors[typeof(EdictDeadLetterRaised)] = new EdictEventStreamAccessor(
             "edict-dead-letter",
             static edictEvent => EdictKeyComposer.Compose(
-                edictEvent.Tenant, ((EdictDeadLetterRaised)edictEvent).SingletonKey.ToString("N")));
+                null, ((EdictDeadLetterRaised)edictEvent).SingletonKey.ToString("N")));
 
         services.AddValidatorsFromAssemblies(materialised);
 
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton(new ProjectionReadRouteResolver(projectionReadRoutes));
         services.AddSingleton(typeof(IEdictListProjectionReader<>), typeof(EdictListProjectionReader<>));
+        services.AddSingleton(typeof(IEdictTenantScopedListProjectionReader<>), typeof(EdictTenantScopedListProjectionReader<>));
         services.AddSingleton(typeof(IEdictProjectionReader<>), typeof(EdictProjectionReader<>));
         services.AddSingleton<IEventStreamAccessors>(new EventStreamAccessors(accessors));
         services.AddSingleton<IEventTagWriters>(new EventTagWriters(tagWriters));

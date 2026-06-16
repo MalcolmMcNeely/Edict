@@ -20,6 +20,12 @@ internal static class CommandRouteRegistrarEmitter
 
             foreach (var command in grain.Commands)
             {
+                // Static fold: a tenant-scoped aggregate composes "{tenant}|{guid}",
+                // a public one composes the bare guid even if a relayed tenant rides
+                // the message, so the wall is a property of the route-key type, never
+                // of whichever tenant a hop happened to carry.
+                var tenantArgument = command.IsTenantScoped ? "command.Tenant" : "null";
+
                 if (command.TelemeterizedProperties.IsEmpty)
                 {
                     entries.Append("            routes[typeof(")
@@ -30,7 +36,9 @@ internal static class CommandRouteRegistrarEmitter
                         .Append(interfaceFqn)
                         .Append("), \"")
                         .Append(grain.GrainTypeName)
-                        .Append("\", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((")
+                        .Append("\", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(")
+                        .Append(tenantArgument)
+                        .Append(", ((")
                         .Append(command.Fqn)
                         .Append(")command).")
                         .Append(command.RouteKeyProperty)
@@ -56,7 +64,7 @@ internal static class CommandRouteRegistrarEmitter
                         .Append("                typeof(").Append(command.Fqn).Append("),\n")
                         .Append("                typeof(").Append(interfaceFqn).Append("),\n")
                         .Append("                \"").Append(grain.GrainTypeName).Append("\",\n")
-                        .Append("                command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(command.RouteKeyStringification).Append("),\n")
+                        .Append("                command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(").Append(tenantArgument).Append(", ((").Append(command.Fqn).Append(")command).").Append(command.RouteKeyProperty).Append(command.RouteKeyStringification).Append("),\n")
                         .Append("                (command, activity) =>\n")
                         .Append("                {\n")
                         .Append("                    var typedCommand = (").Append(command.Fqn).Append(")command;\n")

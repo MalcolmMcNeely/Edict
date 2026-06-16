@@ -198,6 +198,7 @@ internal static class CommandDiscovery
             commandNamespace,
             routeKeyProperty,
             RouteKeyStringification.Suffix(routeKeyType!),
+            RouteKeyStringification.IsTenantScoped(routeKeyType!),
             new EquatableArray<TelemeterizedProperty>(telemeterizedProperties));
     }
 

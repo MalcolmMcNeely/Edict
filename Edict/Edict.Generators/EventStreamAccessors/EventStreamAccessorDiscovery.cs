@@ -71,7 +71,8 @@ internal static class EventStreamAccessorDiscovery
             eventType.ToDisplayString(FullyQualified),
             streamName,
             routeKeyProperty,
-            RouteKeyStringification.Suffix(routeKeyType!));
+            RouteKeyStringification.Suffix(routeKeyType!),
+            RouteKeyStringification.IsTenantScoped(routeKeyType!));
     }
 
     static readonly SymbolDisplayFormat FullyQualified =

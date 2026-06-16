@@ -18,4 +18,19 @@ public sealed class EdictMissingTenantException : Exception
             + "context-free origin, or fix the resolver.")
     {
     }
+
+    EdictMissingTenantException(string message) : base(message)
+    {
+    }
+
+    /// <summary>
+    /// A tenant-scoped projection read with no ambient tenant. Reading without a tenant
+    /// would scope the query to a default partition, so the read is refused at the edge
+    /// rather than answered under the wrong wall.
+    /// </summary>
+    public static EdictMissingTenantException ForProjectionRead(Type projectionType) =>
+        new($"Tenancy is on but no tenant resolved for a read of '{projectionType.Name}'. "
+            + "The edge resolver registered via AddEdictTenant returned null at the read edge, so the read "
+            + "would scope to a default partition rather than the caller's own. Fix the resolver, or read a "
+            + "non-tenant projection through IEdictListProjectionReader instead.");
 }

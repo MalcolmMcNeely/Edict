@@ -3,6 +3,8 @@ using Edict.Contracts.Tenancy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using Orleans;
+
 namespace Edict.Core.Tenancy;
 
 /// <summary>
@@ -30,6 +32,13 @@ public static class EdictTenantServiceCollectionExtensions
         services.TryAddSingleton<EdictTenantEnabledMarker>();
         services.TryAddSingleton<IEdictTenantResolver>(serviceProvider =>
             new DelegateTenantResolver(serviceProvider, resolver));
+
+        // The runtime isolation backstop, present only when tenancy is on. A
+        // single-tenant app registers no resolver and pays no per-call filter; the
+        // filter is silent for public aggregates even when present. A client build has
+        // no incoming grain calls, so the registration is inert there.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IIncomingGrainCallFilter, EdictTenantIsolationCallFilter>());
         return services;
     }
 
