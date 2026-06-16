@@ -2,17 +2,11 @@
 
 [![CI](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MalcolmMcNeely/Edict/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/MalcolmMcNeely/Edict/branch/main/graph/badge.svg)](https://app.codecov.io/gh/MalcolmMcNeely/Edict) [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict handles the wire format, the idempotency, the trace continuity, the outbox, the retries, and the dead-letter forensics. The framework's job is to absorb the things every team rewrites by hand, so feature devs can focus on feature code.
+Edict is a CQRS and event-driven framework for .NET on Microsoft Orleans. You write the handler; Edict absorbs the wiring every team otherwise rewrites by hand, so feature devs can focus on feature code.
 
 <img src="docs/assets/traffic-demo.gif" alt="Edict Sample.Web dashboard processing live order traffic" width="640">
 
-New here? Start with [`docs/usage/getting-started.md`](docs/usage/getting-started.md).
-
-Using Claude Code? See [`docs/usage/agentic/setup.md`](docs/usage/agentic/setup.md).
-
-Using Cursor or another MCP-capable editor? See [`docs/usage/agentic/troubleshooting.md`](docs/usage/agentic/troubleshooting.md). Only the MCP server auto-wires; the skill bundle ships as plain markdown any agent can read.
-
-Curious how this was built? See [How this was built](#how-this-was-built) below.
+New here? Start with [getting started](docs/usage/getting-started.md). Using an AI editor? MCP and skill-bundle setup is in [`docs/usage/agentic/`](docs/usage/agentic/) (only the MCP server auto-wires; the skills are plain markdown any agent can read). Curious how this was built? See [How this was built](#how-this-was-built) below.
 
 ```csharp
 public partial class OrderCommandHandler : EdictCommandHandler<OrderState>
@@ -87,18 +81,16 @@ Orleans dissolves the infrastructure tax. It does not dissolve the application-l
 
 ## Why Edict?
 
-A webhook fires twice. A handler crashes after writing state but before publishing the event. A trace from `SendAsync` ends at the first queue hop. A poison message blocks the aggregate. Conventional .NET answers each one with a different library and a fresh row in a fresh table.
+A webhook fires twice. A handler crashes after writing state but before publishing the event. A trace from `SendAsync` dies at the first queue hop. A poison message wedges the aggregate. Conventional .NET answers each with a different library and a fresh row in a fresh table.
 
-Edict's answer is one rule: every consumer inherits a base class that wraps your `HandleAsync` in an envelope carrying a dedup key, the trace context, and the outbox commit.
+Edict answers all four from one place: every consumer inherits a base class that wraps `HandleAsync` in an envelope carrying a dedup key, the trace context, and the outbox commit. Each failure above already has its home there:
 
-From that one wrapping:
+- **The double webhook** is deduplicated by `EventId` before `HandleAsync` runs. Idempotency is the default, not an opt-in.
+- **The half-finished crash** can't happen: aggregate state and raised events commit in one grain write, with no two-phase commit to stall halfway.
+- **The broken trace** stays whole. The envelope carries trace context across every async stream hop, so `SendAsync` to the terminal handler is one OpenTelemetry trace.
+- **The poison message** lands in a queryable dead-letter projection. The aggregate keeps accepting commands; the failure has a forensic home instead of a wedged grain.
 
-- **Idempotency is automatic.** The base class deduplicates by `EventId` before invoking `HandleAsync`. Nothing to opt into.
-- **State and events commit together.** A single grain write covers aggregate state and outbox entries; no two-phase commit.
-- **One trace per business flow.** The envelope carries trace context across every async stream hop, so `SendAsync` through to the terminal handler is one OpenTelemetry trace.
-- **Poison messages land in a queryable dead-letter projection.** The aggregate keeps accepting commands; the failure has a forensic home.
-
-The consumer-facing surface is seven concepts: **Command Handler**, **Command Validator**, **Event Handler**, **Saga**, **Projection Builder**, **Sender**, **Stream**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
+The consumer-facing surface is seven concepts: **[Command Handler](docs/usage/concepts/commands.md)**, **[Command Validator](docs/usage/concepts/validators.md)**, **[Event Handler](docs/usage/concepts/event-handlers.md)**, **[Saga](docs/usage/concepts/sagas.md)**, **[Projection Builder](docs/usage/concepts/projections.md)**, **[Sender](docs/usage/concepts/commands.md)**, **[Stream](docs/usage/concepts/events.md)**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
 
 Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 
@@ -138,21 +130,21 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 ## Highlights
 
-- **Agentic-friendly.** The MCP server and Claude Code skill bundle let consumers use Claude productively against Edict without first writing skills or rules to teach the agent how the framework works.
+- **Agentic-friendly.** An MCP server and Claude Code skill bundle let consumers use Claude against Edict without first teaching the agent how it works.
 - **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
 - **Atomic state + events.** One grain write covers both.
-- **Read-your-writes.** A command returns a cursor; a query waits briefly with `after:` until the projection has applied that write before answering, so a user reliably sees their own change.
-- **Projection species.** Two projection builders over one root: in-grain state for small, hot, per-id read models, and an external list for large or unbounded ones. The consumer picks per read model.
+- **Read-your-writes.** A command returns a cursor; a query with `after:` waits until that write is visible, so a user reliably sees their own change.
+- **Projection species.** Two builders over one root: in-grain state for small, hot, per-id read models; an external list for large or unbounded ones.
 - **Effectively-once.** Per-consumer dedup in the base class.
 - **Retries that don't block.** Failing outbox entries back off independently.
 - **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
-- **One trace per business flow.** Trace context propagated across every async stream hop.
-- **Operational metrics.** Outbox depth + oldest-entry age, dead-letter rate by failure kind, handler p99 by command/event type, stream lag, saga progress age, claim-check size distribution, drain-cycle stability — all on a single `Meter` named `"Edict"`. Vendor-neutral PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
+- **One trace per business flow.** Trace context follows every async stream hop.
+- **Operational metrics.** Outbox depth and age, dead-letter rate, handler p99, stream lag, saga age, and claim-check size on one `Meter` named `"Edict"`, with PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
 - **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
-- **Regulator-grade audit log.** Opt in at wiring and every command decision (accept *and* reject) and every raised event is captured under an authenticated principal to a tamper-evident, WORM store, committed atomically with the action and queryable by correlation, principal, or entity. A per-aggregate hash chain proves the record was not altered (Postgres also refuses the mutation at the table); the body is minimised to a hashed reference so the chain holds no personal data. ALCOA++ as the reference bar, infinite retention by default.
-- **Saga timeouts.** Every saga carries an absolute lifetime cap: a shipped 7-day default, overridable per saga with `[EdictSagaTimeout]` or opted out entirely. A compensation hook runs on expiry and dead-letters by default, so a stalled workflow is bounded and visible, not immortal.
-- **In-grain durable scheduling.** A command handler or saga schedules recurring work from inside `HandleAsync` with one line; the schedule persists a message (never a delegate), survives deactivation, and catches up on reactivation. A finite timeout cap dead-letters a stuck schedule by default, or runs a compensation hook.
+- **Regulator-grade audit log.** Opt in, and every command decision (accept *and* reject) and raised event is captured under an authenticated principal to a tamper-evident WORM store, committed atomically with the action and proven unaltered by a per-aggregate hash chain.
+- **Saga timeouts.** Every saga has an absolute lifetime cap (7-day default, overridable or opt-out); on expiry it runs a compensation hook and dead-letters, so a stalled workflow stays bounded, not immortal.
+- **In-grain durable scheduling.** A handler or saga schedules recurring work from inside `HandleAsync` in one line; the schedule persists a message (never a delegate), survives deactivation, and catches up on reactivation.
 - **Configurable.** Every knob is an options property with a default and startup validation.
 - **In-memory tests.** SendAsync → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
