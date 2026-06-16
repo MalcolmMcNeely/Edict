@@ -575,8 +575,8 @@ public abstract class EdictCommandHandler<TState>
     // chain in grain state. The hash folds in the running chain head, so the
     // record both attributes the decision and seals it against tampering; the
     // serialized record waits on the chain for the off-hot-path drain. The body
-    // is captured as a hash plus a reference id only — the body store is a later
-    // slice — so the chain itself stays personal-data-free.
+    // is captured as a hash plus a reference id only, so the chain itself stays
+    // personal-data-free.
     void StageAuditRecord<TCommand>(TCommand command, EdictCommandResult result)
         where TCommand : EdictCommand
     {

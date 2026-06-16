@@ -64,6 +64,6 @@ public sealed record EdictAuditRecord
     /// <summary>Hash of the captured message body, so content tampering is detectable without storing the body in the chain.</summary>
     public byte[] PayloadHash { get; init; } = [];
 
-    /// <summary>Reference id into the separate payload store that holds the body; the body store itself ships in a later slice.</summary>
+    /// <summary>Reference id into the separate payload store that holds the body.</summary>
     public Guid PayloadReference { get; init; }
 }
