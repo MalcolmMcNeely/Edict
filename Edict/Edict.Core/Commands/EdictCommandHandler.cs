@@ -603,7 +603,6 @@ public abstract class EdictCommandHandler<TState>
             MessageType = command.GetType().FullName ?? command.GetType().Name,
             OccurredAt = time.GetUtcNow(),
             PayloadHash = SHA256.HashData(body),
-            PayloadReference = recordId,
         };
 
         AppendToChain(content, body);
@@ -646,7 +645,6 @@ public abstract class EdictCommandHandler<TState>
                 MessageType = raisedEvent.GetType().FullName ?? raisedEvent.GetType().Name,
                 OccurredAt = raisedEvent.OccurredAt,
                 PayloadHash = SHA256.HashData(body),
-                PayloadReference = raisedEvent.EventId,
             };
 
             AppendToChain(content, body);

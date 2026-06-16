@@ -45,7 +45,7 @@ public interface IEdictAuditRepository
     Task<EdictAuditChainVerification> VerifyEntityChainAsync(string entityType, string entityKey, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The captured body behind a record's <see cref="EdictAuditRecord.PayloadReference"/>:
+    /// The captured body behind a record, keyed by its <see cref="EdictAuditRecord.RecordId"/>:
     /// the serialized message bytes the record's <see cref="EdictAuditRecord.PayloadHash"/>
     /// was computed over, so an auditor sees <em>what</em> was decided, not merely
     /// that a decision happened. Retrieved by record id from the separate,
@@ -60,7 +60,7 @@ public interface IEdictAuditRepository
     /// does not know in advance: pattern-match the returned object against the
     /// types you own. Takes the already-fetched record (its
     /// <see cref="EdictAuditRecord.Kind"/> selects the base, its
-    /// <see cref="EdictAuditRecord.PayloadReference"/> locates the body) to save a
+    /// <see cref="EdictAuditRecord.RecordId"/> locates the body) to save a
     /// re-read. Throws when the captured type cannot be resolved or the body cannot
     /// be deserialized in this process (a renamed, removed, or breaking-changed
     /// type, or its assembly not loaded); the bytes and hash stay available through

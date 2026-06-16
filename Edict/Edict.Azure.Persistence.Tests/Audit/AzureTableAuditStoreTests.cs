@@ -63,7 +63,6 @@ public sealed class AzureTableAuditStoreTests
             PreviousHash = [1, 2, 3],
             RecordHash = [4, 5, 6],
             PayloadHash = [7, 8, 9],
-            PayloadReference = Guid.NewGuid(),
         };
 
     [Fact]

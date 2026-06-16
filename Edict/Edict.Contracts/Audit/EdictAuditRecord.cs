@@ -11,9 +11,10 @@ namespace Edict.Contracts.Audit;
 /// (the outbox enqueue point where its <c>EventId</c> is minted), one record per
 /// event. The record holds the attribution
 /// (<see cref="Principal"/>), the causal spine (<see cref="CorrelationId"/>,
-/// <see cref="RecordId"/>), the message type identity, the outcome, and a payload
-/// <see cref="PayloadHash"/> plus a <see cref="PayloadReference"/> into a separate
-/// payload store — never the body inline. It is made tamper-evident by the
+/// <see cref="RecordId"/>), the message type identity, the outcome, and a
+/// <see cref="PayloadHash"/> of the body — never the body inline; the body is
+/// fetched from a separate payload store by <see cref="RecordId"/>. It is made
+/// tamper-evident by the
 /// per-aggregate hash chain: <see cref="PreviousHash"/> links it to the prior
 /// record on the same aggregate and <see cref="RecordHash"/> seals this one.
 /// Read back through <see cref="IEdictAuditRepository"/>; never an event-sourcing
@@ -63,7 +64,4 @@ public sealed record EdictAuditRecord
 
     /// <summary>Hash of the captured message body, so content tampering is detectable without storing the body in the chain.</summary>
     public byte[] PayloadHash { get; init; } = [];
-
-    /// <summary>Reference id into the separate payload store that holds the body.</summary>
-    public Guid PayloadReference { get; init; }
 }

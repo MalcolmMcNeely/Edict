@@ -10,7 +10,6 @@
   MessageType: Sample.Contracts.PlaceOrderCommand,
   OccurredAt: DateTimeOffset_1,
   PreviousHash: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=,
-  RecordHash: HPPnWhQHGkT+pzDN3Wd6/bUwHmjocXSxXlD0r+f9NB0=,
-  PayloadHash: AQIDBA==,
-  PayloadReference: Guid_3
+  RecordHash: mO19VPKLQZlrJo4oPZg/1eda11otuYEESDKl7pCJ3qg=,
+  PayloadHash: AQIDBA==
 }

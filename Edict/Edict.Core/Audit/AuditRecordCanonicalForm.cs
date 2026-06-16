@@ -38,7 +38,6 @@ static class AuditRecordCanonicalForm
         WriteInt64(buffer, record.OccurredAt.UtcTicks);
         WriteInt64(buffer, record.Sequence);
         WriteBytes(buffer, record.PayloadHash);
-        WriteGuid(buffer, record.PayloadReference);
 
         return buffer.WrittenSpan.ToArray();
     }

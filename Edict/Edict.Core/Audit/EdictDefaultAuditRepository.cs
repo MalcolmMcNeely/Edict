@@ -41,7 +41,7 @@ sealed class EdictDefaultAuditRepository(IEdictAuditStore store, IEdictAuditPayl
 
     public async Task<object> GetMessageAsync(EdictAuditRecord record, CancellationToken cancellationToken = default)
     {
-        var body = await payloadStore.GetAsync(record.PayloadReference, cancellationToken);
+        var body = await payloadStore.GetAsync(record.RecordId, cancellationToken);
         return AuditMessageDeserializer.Deserialize(serializer, body.ToArray(), record);
     }
 }

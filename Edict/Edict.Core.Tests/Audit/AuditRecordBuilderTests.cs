@@ -22,7 +22,6 @@ public sealed class AuditRecordBuilderTests
         MessageType = "Sample.Contracts.PlaceOrderCommand",
         OccurredAt = OccurredAt,
         PayloadHash = [1, 2, 3, 4],
-        PayloadReference = new Guid("33333333-3333-3333-3333-333333333333"),
     };
 
     [Fact]

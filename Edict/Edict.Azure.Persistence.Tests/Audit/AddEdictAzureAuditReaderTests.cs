@@ -76,7 +76,6 @@ public sealed class AddEdictAzureAuditReaderTests
             PreviousHash = [],
             RecordHash = [4, 5, 6],
             PayloadHash = [7, 8, 9],
-            PayloadReference = Guid.NewGuid(),
         };
         var body = Encoding.UTF8.GetBytes("captured-body");
         await chainStore.AppendAsync([record], CancellationToken.None);
