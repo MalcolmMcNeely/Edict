@@ -329,6 +329,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.DeadLetter.EdictClaimCheckFetchException",
         "Edict.Core.DeadLetter.EdictDeadLetterTable",
         "Edict.Core.DeadLetter.EdictInternalInvariantException",
+        "Edict.Core.DeadLetter.EdictSagaCompensationException",
         "Edict.Core.DeadLetter.EdictSagaCoordinationException",
         "Edict.Core.DeadLetter.EdictSagaTerminalException",
         "Edict.Core.DeadLetter.EdictSagaTimeoutException",

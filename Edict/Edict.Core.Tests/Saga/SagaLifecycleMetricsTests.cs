@@ -81,6 +81,25 @@ public sealed class SagaLifecycleMetricsTests
             capture.Tag(SemanticConventions.Sagas.Tags.Outcome));
     }
 
+    [Fact]
+    public async Task FiredCap_WithThrowingOverride_EmitsTimeoutFired_TaggedCompensationFailed()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetThrowingTimeoutSaga(workflowId);
+        var captures = new CaptureSink();
+        using var listener = StartListener(SemanticConventions.Sagas.Meters.TimeoutFired, captures);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
+        await saga.FireCapAsync();
+
+        var capture = await captures.SingleForAsync(typeof(ThrowingTimeoutSaga));
+        Assert.Equal(1L, capture.Value);
+        Assert.Equal(
+            SemanticConventions.Sagas.Tags.OutcomeValues.CompensationFailed,
+            capture.Tag(SemanticConventions.Sagas.Tags.Outcome));
+    }
+
     static MeterListener StartListener(string instrumentName, CaptureSink captures)
     {
         var listener = new MeterListener
@@ -121,6 +140,10 @@ public sealed class SagaLifecycleMetricsTests
     ISagaLifecycleProbe GetCompensatingSaga(Guid workflowId) =>
         _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
             workflowId, grainClassNamePrefix: typeof(CompensatingSaga).FullName);
+
+    ISagaLifecycleProbe GetThrowingTimeoutSaga(Guid workflowId) =>
+        _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
+            workflowId, grainClassNamePrefix: typeof(ThrowingTimeoutSaga).FullName);
 
     sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags)
     {

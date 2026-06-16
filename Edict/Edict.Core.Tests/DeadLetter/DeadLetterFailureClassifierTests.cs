@@ -170,6 +170,17 @@ public sealed class DeadLetterFailureClassifierTests
     }
 
     [Fact]
+    public void Classify_ShouldMapEdictSagaCompensationException_ToConsumerBug()
+    {
+        var exception = new EdictSagaCompensationException(
+            "WorkflowSaga OnSagaTimeoutAsync override threw", new InvalidOperationException("boom"));
+
+        var bucket = DeadLetterFailureClassifier.Classify(exception);
+
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug, bucket);
+    }
+
+    [Fact]
     public void Classify_ShouldMapEdictInternalInvariantException_ToInternalBug()
     {
         var exception = new EdictInternalInvariantException("framework-internal invariant violated");

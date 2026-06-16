@@ -454,27 +454,50 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         using var timeoutSpan = EdictDiagnostics.ActivitySource.StartEdictSagaTimeout(GetType().Name, link);
 
         var buffer = _dispatch.Begin();
-        await OnSagaTimeoutAsync();
-        var command = buffer.Take();
 
-        // The override dispatched a compensating Command; otherwise the default
-        // hook requested a dead-letter; otherwise (an override that only mutated
-        // Progress) the terminal write rides alone.
-        var stagedEffect =
-            command is not null ? BuildSendCommandEntry(command)
-            : buffer.DeadLetterRequested ? BuildSagaDeadLetterEntry(new EdictSagaTimeoutException(
-                $"Saga '{SagaType}' hit its absolute lifetime cap with no OnSagaTimeoutAsync override; the timeout was dead-lettered."))
-            : null;
+        OutboxEntry? stagedEffect;
+        string outcome;
+        try
+        {
+            await OnSagaTimeoutAsync();
+            var command = buffer.Take();
+
+            // The override dispatched a compensating Command; otherwise the default
+            // hook requested a dead-letter; otherwise (an override that only mutated
+            // Progress) the terminal write rides alone.
+            stagedEffect =
+                command is not null ? BuildSendCommandEntry(command)
+                : buffer.DeadLetterRequested ? BuildSagaDeadLetterEntry(new EdictSagaTimeoutException(
+                    $"Saga '{SagaType}' hit its absolute lifetime cap with no OnSagaTimeoutAsync override; the timeout was dead-lettered."))
+                : null;
+
+            outcome = command is not null
+                ? SemanticConventions.Sagas.Tags.OutcomeValues.Compensated
+                : SemanticConventions.Sagas.Tags.OutcomeValues.Deadlettered;
+        }
+        catch (Exception compensationFault)
+        {
+            // A consumer's OnSagaTimeoutAsync override threw. Discard its half-applied
+            // Progress mutation by reloading the durable snapshot (the dispatch buffer
+            // self-heals on the next InvocationScope.Begin), then terminalise and
+            // dead-letter as a ConsumerBug so a faulting compensation reads apart from
+            // the by-design no-override SagaTimeout. Containing the throw here is what
+            // stops the cap reminder re-throwing it on every tick and stranding the
+            // workflow Live forever.
+            await ReadStateAsync();
+            stagedEffect = BuildSagaDeadLetterEntry(new EdictSagaCompensationException(
+                $"Saga '{SagaType}' OnSagaTimeoutAsync override threw {compensationFault.GetType().FullName}: {compensationFault.Message}",
+                compensationFault));
+            outcome = SemanticConventions.Sagas.Tags.OutcomeValues.CompensationFailed;
+        }
 
         var timedOut = (lifecycle ?? new SagaLifecycle()) with { State = SagaLifecycleState.TimedOut };
 
         await CommitLifecycleOnlyAsync(timedOut, stagedEffect);
 
         // The fired cap is now durable: count it with the outcome the hook chose —
-        // compensated when it dispatched a Command, deadlettered otherwise.
-        var outcome = command is not null
-            ? SemanticConventions.Sagas.Tags.OutcomeValues.Compensated
-            : SemanticConventions.Sagas.Tags.OutcomeValues.Deadlettered;
+        // compensated when it dispatched a Command, deadlettered when it requested
+        // one, or compensation_failed when the override threw and was contained.
         SagaLifecycleMetrics.EmitTimeoutFired(SagaType, outcome);
 
         await CapReminders.UnregisterReminderAsync(CapReminderName);
@@ -774,9 +797,12 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             // distinct row in the singleton projection's dedup ring.
             EventId = Guid.NewGuid(),
             EntryId = Guid.NewGuid(),
-            Kind = cause is EdictSagaTimeoutException
-                ? SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout
-                : SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal,
+            Kind = cause switch
+            {
+                EdictSagaTimeoutException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout,
+                EdictSagaCompensationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
+                _ => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal,
+            },
             AttemptCount = 0,
             DeadLetteredAt = Clock.GetUtcNow(),
             SourceGrainKey = SagaKey,

@@ -1,6 +1,7 @@
 using Edict.Contracts.DeadLetter;
 using Edict.Core.DeadLetter;
 using Edict.Core.Sagas;
+using Edict.Telemetry;
 
 namespace Edict.Core.Tests.Saga;
 
@@ -124,6 +125,45 @@ public sealed class SagaLifecycleTests
 
         // An override compensates; it does not also dead-letter.
         Assert.Empty(DeadLettersFor(workflowId));
+    }
+
+    [Fact]
+    public async Task FiredCap_WithThrowingOverride_ContainsThrow_DeadLettersAsConsumerBug_AndFiresOnce()
+    {
+        var workflowId = Guid.NewGuid();
+        var saga = GetThrowingTimeoutSaga(workflowId);
+
+        await saga.DeliverAsync(Trigger(workflowId));
+        SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
+
+        // The throwing override must not escape the cap handler: this returning at
+        // all (rather than rethrowing the consumer's InvalidOperationException) is
+        // the regression assertion.
+        await saga.FireCapAsync();
+
+        // Terminalised despite the throw, and the half-applied Progress mutation the
+        // hook made before throwing was rolled back to the durable trigger value.
+        Assert.Equal(SagaLifecycleState.TimedOut, await saga.GetLifecycleStateAsync());
+        Assert.Equal(1, await saga.GetHandledAsync());
+
+        // The compensating Command the hook dispatched before throwing never reaches
+        // the outbox: a contained throw discards the whole turn's buffered effect.
+        Assert.Empty(CompensationsFor(workflowId));
+
+        // The dead-letter distinguishes "your compensation threw" (ConsumerBug,
+        // EdictSagaCompensationException) from the by-design no-override SagaTimeout,
+        // and preserves the real thrown exception's type and message in Reason.
+        var deadLetter = Assert.Single(DeadLettersFor(workflowId));
+        Assert.Equal(typeof(EdictSagaCompensationException).FullName, deadLetter.ExceptionType);
+        Assert.Equal(SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug, deadLetter.Kind);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, deadLetter.Reason);
+        Assert.Contains(ThrowingTimeoutSaga.ThrownMessage, deadLetter.Reason);
+
+        // The cap fires exactly once: the reminder is unregistered, and a second
+        // tick against the now-TimedOut saga is a clean no-op with no second
+        // dead-letter and no escaping throw.
+        await saga.FireCapAsync();
+        Assert.Single(DeadLettersFor(workflowId));
     }
 
     [Fact]
@@ -252,4 +292,8 @@ public sealed class SagaLifecycleTests
     ISagaLifecycleProbe GetCompensatingSaga(Guid workflowId) =>
         _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
             workflowId, grainClassNamePrefix: typeof(CompensatingSaga).FullName);
+
+    ISagaLifecycleProbe GetThrowingTimeoutSaga(Guid workflowId) =>
+        _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
+            workflowId, grainClassNamePrefix: typeof(ThrowingTimeoutSaga).FullName);
 }

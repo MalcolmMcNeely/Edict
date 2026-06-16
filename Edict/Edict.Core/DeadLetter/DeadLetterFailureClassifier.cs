@@ -65,6 +65,7 @@ static class DeadLetterFailureClassifier
             EdictUnregisteredTypeException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Wiring,
             EdictClaimCheckFetchException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.Substrate,
             EdictSagaCoordinationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
+            EdictSagaCompensationException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.ConsumerBug,
             EdictSagaTimeoutException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTimeout,
             EdictSagaTerminalException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.SagaTerminal,
             EdictInternalInvariantException => SemanticConventions.DeadLetter.Tags.FailureReasonValues.InternalBug,

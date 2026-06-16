@@ -147,6 +147,43 @@ public partial class CompensatingSaga : EdictSaga<LifecycleProgress>, ISagaLifec
     }
 }
 
+// Explicit short finite cap whose OnSagaTimeoutAsync override mutates Progress and
+// then throws: the fired cap must contain the throw, roll back the half-applied
+// mutation, terminalise the saga, and dead-letter as a ConsumerBug rather than let
+// the throw escape and poison-loop the cap reminder.
+[EdictSagaTimeout("00:01:00")]
+public partial class ThrowingTimeoutSaga : EdictSaga<LifecycleProgress>, ISagaLifecycleProbe
+{
+    public const string ThrownMessage = "compensation logic faulted";
+
+    Task HandleAsync(LifecycleTriggerEvent edictEvent)
+    {
+        Progress.Handled++;
+        return Task.CompletedTask;
+    }
+
+    protected override Task OnSagaTimeoutAsync()
+    {
+        // Mutate Progress and dispatch a compensating Command before throwing, so
+        // the test proves both are discarded: the mutation rolls back to the durable
+        // snapshot and the buffered Command never reaches the outbox.
+        Progress.Handled = -1;
+        Dispatch(new SagaTrackerCommand(this.GetPrimaryKey()));
+        throw new InvalidOperationException(ThrownMessage);
+    }
+
+    public Task DeliverAsync(EdictEvent edictEvent) => OnEdictEventAsync(edictEvent);
+    public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
+    public Task<SagaLifecycleState?> GetLifecycleStateAsync() => Task.FromResult(State.Saga?.State);
+    public Task<DateTimeOffset?> GetDeadlineAsync() => Task.FromResult(State.Saga?.DeadlineAt);
+    public Task FireCapAsync() => ReceiveCapReminderAsync();
+    public Task RequestDeactivationAsync()
+    {
+        DeactivateOnIdle();
+        return Task.CompletedTask;
+    }
+}
+
 // Replaces the real PublishEventExecutor in the lifecycle cluster so the
 // EdictDeadLetterRaised the saga stages is captured directly — a deterministic,
 // table-free observation of the dead-letter the lifecycle paths emit.

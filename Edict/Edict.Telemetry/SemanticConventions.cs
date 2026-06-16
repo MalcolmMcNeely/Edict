@@ -158,6 +158,8 @@ public static class SemanticConventions
             /// <summary>How a fired absolute-lifetime cap resolved:
             /// <see cref="OutcomeValues.Compensated"/> when the
             /// <c>OnSagaTimeoutAsync</c> override dispatched a compensating Command,
+            /// <see cref="OutcomeValues.CompensationFailed"/> when that override threw
+            /// and the cap handler contained it and dead-lettered, and
             /// <see cref="OutcomeValues.Deadlettered"/> otherwise.</summary>
             public const string Outcome = "edict.saga.timeout.outcome";
 
@@ -166,6 +168,7 @@ public static class SemanticConventions
             {
                 public const string Compensated = "compensated";
                 public const string Deadlettered = "deadlettered";
+                public const string CompensationFailed = "compensation_failed";
             }
         }
 
