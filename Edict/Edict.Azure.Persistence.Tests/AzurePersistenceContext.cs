@@ -38,7 +38,8 @@ sealed record AzurePersistenceContext(
     TimeProvider? ClockOverride,
     bool EnableAudit,
     string AuditTableName,
-    string AuditPayloadContainerName);
+    string AuditPayloadContainerName,
+    bool EnableTenancy);
 
 static class AzurePersistenceContextRegistry
 {

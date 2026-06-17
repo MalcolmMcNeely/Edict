@@ -15,7 +15,7 @@ namespace Edict.Postgres.Tests.Tenancy;
 /// one tenant lists its own employees while another's identical query is empty by
 /// construction — on a real persistence backend.
 /// </summary>
-public sealed class PostgresTenancyFixture : PostgresPersistenceFixtureBase
+public sealed class PostgresTenancyFixture : PostgresPersistenceFixtureBase, IEdictTenancyConformanceFixture
 {
     protected override bool EnableTenancy => true;
 

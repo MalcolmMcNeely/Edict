@@ -10,6 +10,7 @@ using Edict.Core.TableStorage;
 using MessagePack;
 
 using Orleans;
+using Orleans.Runtime;
 
 namespace Edict.Tests.Conformance.Tenancy;
 
@@ -48,7 +49,17 @@ public sealed class EmployeeDirectoryRow : IEdictPersistedState
     public string Department { get; set; } = string.Empty;
 }
 
-public partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>
+// Hand-written probe (Orleans codegen can't see the Edict-generated grain
+// interface) so a dead-letter scenario can drive the outbox drain reminder
+// deterministically. String-keyed because a tenant-scoped grain is addressed by
+// its composed {tenant}|{guid} key, not a bare Guid.
+public interface IEmployeeOutboxProbe : IGrainWithStringKey
+{
+    Task ForceDrainViaReminderAsync();
+    Task<int> GetPendingOutboxCountAsync();
+}
+
+public partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>, IEmployeeOutboxProbe
 {
     Task<EdictCommandResult> HandleAsync(AddEmployeeCommand command)
     {
@@ -56,6 +67,12 @@ public partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>
         Raise(new EmployeeAddedEvent(command.EmployeeId, command.Department));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
+
+    public Task ForceDrainViaReminderAsync() =>
+        ReceiveReminder("edict-outbox-drain", new TickStatus());
+
+    public Task<int> GetPendingOutboxCountAsync() =>
+        Task.FromResult(OutboxStateForProbe.Pending.Count);
 }
 
 // The tenant-as-partition List projection: each Employee event activates a grain keyed
@@ -64,10 +81,12 @@ public partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>
 // side of the grain's own composed key, the inverse of the fold that placed it there.
 public sealed partial class EmployeeDirectoryProjectionBuilder : EdictListProjectionBuilder<EmployeeDirectoryRow>
 {
+    public const string Table = "employeedirectory";
+
     public EmployeeDirectoryProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
-    protected override string TableName => "employeedirectory";
+    protected override string TableName => Table;
 
     protected override string DefaultPartitionKey =>
         EdictKeyComposer.Parse(this.GetPrimaryKeyString()).Tenant!.Value.Value;

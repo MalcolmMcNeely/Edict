@@ -98,6 +98,18 @@ It wraps the already-provisioned Table and container (no grain storage, reminder
 
 The honest consequence to carry to consumers: the Azure-Table chain is tamper-**evidence** (the per-aggregate hash chain, re-walked by `VerifyEntityChainAsync`) without infrastructure tamper-**prevention** until the deferred blob-sealing slice. Postgres has both; Azure has evidence only. See [concepts/audit-log.md](../concepts/audit-log.md#per-substrate-tamper-prevention-vs-evidence) for the full prevention-versus-evidence distinction.
 
+## Tenant isolation on Azure
+
+When tenancy is on (`AddEdictTenant`), a tenant-scoped aggregate's grain key, stream key, and projection partition all fold the tenant through one composition chokepoint, so a tenant's state lands in its own key space and a read scoped to another tenant finds nothing by construction. On Azure that fold is backed by three controls and no fourth:
+
+- **Keying.** The composed `{tenant}|{guid}` key is what physically separates one tenant's rows from another's in the same Azure Table and Blob containers. Two tenants at the same route key address two distinct grains and two distinct rows.
+- **The isolation call filter.** A direct command call whose target key names a different tenant than the calling turn is denied, the runtime backstop for a stolen route key.
+- **Conformance.** The persistence-axis isolation scenarios run on real Azure Table and Blob: a tenant writes and lists its own employees while another tenant's identical query is empty, the same route key under two tenants persists isolated rows in each tenant's partition, and a poisoned tenant-scoped command's dead-letter row is tagged with the tenant recovered from its source key.
+
+**The asymmetry to carry to operators: Azure Table has no Row-Level Security equivalent.** On Postgres, per-transaction `SET LOCAL` row-level security is a defence-in-depth backstop *underneath* the keying, so a keying bug is caught a second time at the database. Azure Table offers no such row-scoped enforcement, so on Azure the keying, the call filter, and the conformance battery are the *sole* controls. There is no second line below them.
+
+**Per-tenant storage accounts are a non-goal for v1.** Edict does not provision or route to a storage account per tenant on Azure; every tenant shares the one Table and Blob account, isolated by key. This is an accepted limitation, not an oversight: hard physical isolation per tenant is a deployment-topology decision an operator with a regulatory bar can layer on (a silo and storage account per tenant), and v1 does not build it in.
+
 ## Gotchas
 
 ### Azurite is not bit-for-bit Azure Table Storage
@@ -113,4 +125,4 @@ Azurite's table emulator is close enough that the conformance battery runs again
 - Concepts — [dead-letter.md](../concepts/dead-letter.md), [projections.md](../concepts/projections.md), [idempotency.md](../concepts/idempotency.md), [audit-log.md](../concepts/audit-log.md).
 - Configuration — [azure-persistence.md](../../configuration/azure-persistence.md) — the options table and connection-string rules.
 - Wiring — [azure-streaming.md](azure-streaming.md), [postgres.md](postgres.md).
-- ADRs — [0021 — Grain state on blob substrate](../../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0018 — Dead letter (forensic-only)](../../adr/0018-dead-letter-forensic-only.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md).
+- ADRs — [0021 — Grain state on blob substrate](../../adr/0021-grain-state-on-blob-substrate.md), [0023 — Config surface and installation](../../adr/0023-config-surface-and-installation.md), [0018 — Dead letter (forensic-only)](../../adr/0018-dead-letter-forensic-only.md), [0042 — Azure package split](../../adr/0042-azure-package-split.md), [0067 — Tenant isolation enforcement](../../adr/0067-tenant-isolation-enforcement.md).

@@ -4,21 +4,32 @@ using Edict.Tests.Conformance.Tenancy;
 
 using Xunit;
 
-namespace Edict.Postgres.Tests.Tenancy;
+namespace Edict.Tests.Conformance.Persistence;
 
-// The headline, on a real persistence backend: one tenant writes employees and lists
-// its own; another tenant runs the identical query and gets nothing. The denial is
-// structural — tenant B's read composes its own partition and there is simply nothing
-// there — not a permission check applied after the fact.
-[Collection(PostgresTenancyCollection.Name)]
-public sealed class TenantHeadlineReadTests(PostgresTenancyFixture fixture)
+/// <summary>
+/// The headline, on a real persistence backend: one tenant writes employees and
+/// lists its own through the ambient-scoped reader, while another tenant runs the
+/// identical query and gets nothing. The denial is structural — tenant B's read
+/// composes its own partition and there is simply nothing there — not a permission
+/// check applied after the fact. The reader takes no partition key, so a consumer
+/// cannot even express another tenant's partition.
+/// </summary>
+public abstract class TenantScopedListReadScenarios<TFixture>
+    where TFixture : PersistenceConformanceFixture, IEdictTenancyConformanceFixture
 {
+    readonly TFixture _fixture;
+
+    protected TenantScopedListReadScenarios(TFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public async Task TenantListsOwnEmployees_WhileAnotherTenantsIdenticalQueryIsEmpty()
     {
         var acme = EdictTenantId.Of("acme");
         var globex = EdictTenantId.Of("globex");
-        var reader = fixture.EmployeeDirectoryReader;
+        var reader = _fixture.EmployeeDirectoryReader;
 
         // Arrange + Act: act as Acme and add three employees. The bare send is the
         // ambient-resolver path EDICT024 names as its sanctioned suppression: the
@@ -27,7 +38,7 @@ public sealed class TenantHeadlineReadTests(PostgresTenancyFixture fixture)
         for (var index = 0; index < 3; index++)
         {
 #pragma warning disable EDICT024
-            await fixture.Sender.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), "Engineering"));
+            await _fixture.Sender.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), "Engineering"));
 #pragma warning restore EDICT024
         }
 

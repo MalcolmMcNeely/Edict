@@ -18,7 +18,9 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
+using Edict.Core.Tenancy;
 using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.Tenancy;
 using Edict.Tests.Conformance.Outbox;
 using Edict.Tests.Conformance.Persistence;
 
@@ -102,6 +104,11 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
     // and never captures.
     protected virtual bool EnableAudit => false;
 
+    // The tenancy fixture turns this on to wire AddEdictTenant on the silo and client,
+    // arming origin stamping, the ambient-scoped reader, and the isolation call filter;
+    // every other fixture leaves it off and pays no tenant tax.
+    protected virtual bool EnableTenancy => false;
+
     // The known principal the audit fixture's origin resolver yields, so a conformance
     // scenario can assert attribution. Static because the nested configurators
     // (constructed by Orleans) reach it; the audit fixture surfaces it as the instance
@@ -147,7 +154,8 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             ClockOverride,
             EnableAudit,
             AuditTableName,
-            AuditPayloadContainerName);
+            AuditPayloadContainerName,
+            EnableTenancy);
         _contextKey = AzurePersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -251,6 +259,13 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
                 siloBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
                 siloBuilder.WithAudit();
             }
+
+            // Arm tenancy on the silo so a relayed send inside a tenant turn stamps the
+            // inherited tenant and the isolation call filter guards command grains.
+            if (ctx.EnableTenancy)
+            {
+                siloBuilder.Services.AddEdictTenant(_ => ConformanceTenantSource.Current);
+            }
         }
     }
 
@@ -264,11 +279,19 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             clientBuilder.Services.AddEdict();
 
             var key = configuration[AzurePersistenceContextRegistry.ContextKeyProperty];
-            if (key is not null && AzurePersistenceContextRegistry.Get(key).EnableAudit)
+            var context = key is not null ? AzurePersistenceContextRegistry.Get(key) : null;
+            if (context?.EnableAudit == true)
             {
                 // The client is the originating send, so it needs the resolver to
                 // stamp the principal before the command leaves for the silo.
                 clientBuilder.Services.AddEdictAudit(_ => KnownAuditPrincipal);
+            }
+
+            if (context?.EnableTenancy == true)
+            {
+                // The client is the originating send and the read edge, so it resolves
+                // the ambient tenant for both the send stamp and the scoped read.
+                clientBuilder.Services.AddEdictTenant(_ => ConformanceTenantSource.Current);
             }
         }
     }
