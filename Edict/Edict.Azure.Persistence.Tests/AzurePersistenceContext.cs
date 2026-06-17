@@ -39,7 +39,8 @@ sealed record AzurePersistenceContext(
     bool EnableAudit,
     string AuditTableName,
     string AuditPayloadContainerName,
-    bool EnableTenancy);
+    bool EnableTenancy,
+    bool WireDeadLetterDegradeArms);
 
 static class AzurePersistenceContextRegistry
 {

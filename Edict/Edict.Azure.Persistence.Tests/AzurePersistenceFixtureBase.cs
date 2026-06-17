@@ -90,6 +90,11 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     protected virtual bool ReplacePublishExecutorWithControllable => false;
 
+    // The degrade-arm fixture turns this on to swap in the failing executors and
+    // superset route resolver that let a real drain reach each
+    // DeadLetterPromoter.Promote() degrade arm; every other fixture leaves it off.
+    protected virtual bool WireDeadLetterDegradeArms => false;
+
     protected virtual bool DecorateGrainStorage => false;
 
     protected virtual int? ClaimCheckThresholdBytes => null;
@@ -150,7 +155,8 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             EnableAudit,
             AuditTableName,
             AuditPayloadContainerName,
-            EnableTenancy);
+            EnableTenancy,
+            WireDeadLetterDegradeArms);
         _contextKey = AzurePersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -221,6 +227,11 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             if (ctx.ReplacePublishExecutorWithControllable)
             {
                 ControllableOutboxExecutor.Replace(siloBuilder.Services, ctx.OutboxFault);
+            }
+
+            if (ctx.WireDeadLetterDegradeArms)
+            {
+                DeadLetterDegradeWiring.Wire(siloBuilder.Services);
             }
 
             siloBuilder.UseInMemoryReminderService();

@@ -31,7 +31,8 @@ sealed record PostgresPersistenceContext(
     StorageFaultState StorageFault,
     TimeProvider Clock,
     bool EnableAudit,
-    bool EnableTenancy);
+    bool EnableTenancy,
+    bool WireDeadLetterDegradeArms);
 
 static class PostgresPersistenceContextRegistry
 {

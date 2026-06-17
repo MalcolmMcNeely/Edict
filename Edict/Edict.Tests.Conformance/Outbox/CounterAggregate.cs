@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Contracts.Persistence;
@@ -5,8 +7,11 @@ using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Orleans;
 using Orleans.Runtime;
+using Orleans.Serialization;
 using Orleans.Streams;
 
 namespace Edict.Tests.Conformance.Outbox;
@@ -61,6 +66,13 @@ public interface ICounterProbe : IGrainWithGuidKey
     Task ForceDrainViaReminderAsync();
     Task<int> GetPendingOutboxCountAsync();
     Task<bool> HasDrainReminderAsync();
+
+    // Stage a poisoned outbox entry that drives one of the DeadLetterPromoter
+    // degrade-arm causes, so a real drain (via ForceDrainViaReminderAsync) reaches
+    // the arm. Each stages and commits the entry; the scenario drives the drain.
+    Task StageUnserialisableForensicBodyEntryAsync();
+    Task StageUnsupportedKindEntryAsync();
+    Task StageMissingRouteKeySendCommandEntryAsync();
 }
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
@@ -114,6 +126,55 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public async Task<bool> HasDrainReminderAsync() =>
         await this.GetReminder("edict-outbox-drain") is not null;
+
+    public Task StageUnserialisableForensicBodyEntryAsync()
+    {
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var payload = serializer.SerializeToArray<EdictEvent>(
+            new UnserialisableForensicBodyEvent { RouteKey = this.GetPrimaryKey() });
+        return StageAndCommitAsync(OutboxEffectKind.PublishEvent, payload);
+    }
+
+    public Task StageMissingRouteKeySendCommandEntryAsync()
+    {
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var payload = serializer.SerializeToArray<EdictCommand>(
+            new MissingRouteKeyCommand { Id = this.GetPrimaryKey() });
+        return StageAndCommitAsync(OutboxEffectKind.SendCommand, payload);
+    }
+
+    public Task StageUnsupportedKindEntryAsync() =>
+        StageAndCommitAsync(UnsupportedKindFailingExecutor.Kind, []);
+
+    // Enqueues a hand-built entry directly onto the framework-owned outbox slot —
+    // since no consumer path produces an unsupported-kind or route-key-less entry —
+    // and commits it. The base Grain envelope is reached by reflection: the engine
+    // shadows the inherited State with its own payload-typed State, and C#'s
+    // protected-access rule blocks reading the base property through a base-typed
+    // cast, so the test harness reads it reflectively rather than the framework
+    // growing a staging seam for it. The next reminder drain runs the entry through
+    // the real engine, exhausts its attempts against the failing executor wired for
+    // its kind, and promotes it.
+    async Task StageAndCommitAsync(OutboxEffectKind kind, byte[] payload)
+    {
+        var now = ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
+        var entry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = kind,
+            Payload = payload,
+            NextAttemptUtc = now,
+            EnqueuedAt = now,
+        };
+
+        var envelope = (GrainEnvelope<CounterState>)EnvelopeStateProperty.GetValue(this)!;
+        envelope.Outbox = envelope.Outbox.Enqueue(entry);
+        await WriteStateAsync();
+    }
+
+    static readonly PropertyInfo EnvelopeStateProperty =
+        typeof(Grain<GrainEnvelope<CounterState>>).GetProperty(
+            "State", BindingFlags.Instance | BindingFlags.NonPublic)!;
 }
 
 public interface ICounterEventCaptureGrain : IGrainWithGuidKey

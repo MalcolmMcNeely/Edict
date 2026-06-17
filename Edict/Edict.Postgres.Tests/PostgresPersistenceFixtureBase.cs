@@ -91,6 +91,11 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     protected virtual bool ReplacePublishExecutorWithControllable => false;
 
+    // The degrade-arm fixture turns this on to swap in the failing executors and
+    // superset route resolver that let a real drain reach each
+    // DeadLetterPromoter.Promote() degrade arm; every other fixture leaves it off.
+    protected virtual bool WireDeadLetterDegradeArms => false;
+
     protected virtual bool DecorateGrainStorage => false;
 
     protected virtual int? ClaimCheckThresholdBytes => null;
@@ -129,7 +134,8 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             StorageFault,
             UsesVirtualClock ? VirtualClock : TimeProvider.System,
             EnableAudit,
-            EnableTenancy);
+            EnableTenancy,
+            WireDeadLetterDegradeArms);
         _contextKey = PostgresPersistenceContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -218,6 +224,11 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             if (ctx.ReplacePublishExecutorWithControllable)
             {
                 ControllableOutboxExecutor.Replace(siloBuilder.Services, ctx.OutboxFault);
+            }
+
+            if (ctx.WireDeadLetterDegradeArms)
+            {
+                DeadLetterDegradeWiring.Wire(siloBuilder.Services);
             }
 
             // The dumb deliver-once reference stream: MemoryStreams delivers each
