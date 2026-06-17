@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
+using Edict.Contracts.Tenancy;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.TestSupport;
@@ -256,10 +257,10 @@ public sealed class ClaimCheckUnwrapTests
         public List<GetCall> Gets { get; } = [];
         public Dictionary<Guid, byte[]> Blobs { get; } = [];
 
-        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             throw new NotSupportedException("receiver-side tests never put");
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
+        public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken)
         {
             Gets.Add(new GetCall(eventId));
             if (!Blobs.TryGetValue(eventId, out var bytes))

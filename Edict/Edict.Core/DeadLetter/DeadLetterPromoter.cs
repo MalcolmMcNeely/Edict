@@ -134,6 +134,7 @@ sealed class DeadLetterPromoter(
             Reason =
                 $"Schedule message '{scheduleMessageType}' hit its timeout cap with no OnScheduleTimeoutAsync hook; "
                 + "the timeout was dead-lettered.",
+            Tenant = DeadLetterPromotion.ResolveTenant(sourceGrainKey),
         };
 
         PromotionCount.Add(1,
@@ -220,6 +221,7 @@ sealed class DeadLetterPromoter(
             TraceParent = failed.TraceParent,
             ExceptionType = nameof(EdictUnsupportedEffectKindException),
             Reason = $"Unsupported OutboxEffectKind ordinal {(int)failed.Kind}.",
+            Tenant = DeadLetterPromotion.ResolveTenant(sourceGrainKey),
         };
     }
 
@@ -249,6 +251,7 @@ sealed class DeadLetterPromoter(
             ExceptionType = nameof(EdictPromotionSerializationException),
             Reason = promotionException.Message,
             PayloadJson = null,
+            Tenant = DeadLetterPromotion.ResolveTenant(sourceGrainKey),
         };
     }
 

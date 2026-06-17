@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 
 using Edict.Contracts.ClaimCheck;
+using Edict.Contracts.Routing;
+using Edict.Contracts.Tenancy;
 using Edict.Core.DeadLetter;
 
 namespace Edict.Tests.Conformance.Streaming.References;
@@ -18,19 +20,21 @@ namespace Edict.Tests.Conformance.Streaming.References;
 /// </summary>
 public sealed class ReferenceClaimCheckStore : IEdictClaimCheckStore
 {
-    readonly ConcurrentDictionary<Guid, byte[]> _blobs = new();
+    readonly ConcurrentDictionary<string, byte[]> _blobs = new(StringComparer.Ordinal);
 
-    public bool Exists(Guid eventId) => _blobs.ContainsKey(eventId);
+    // The streaming scenarios spill public events, so the existence probe addresses
+    // the bare (null-tenant) key the same fold produced at put time.
+    public bool Exists(Guid eventId) => _blobs.ContainsKey(KeyFor(tenant: null, eventId));
 
-    public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+    public Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
-        _blobs[eventId] = payload.ToArray();
+        _blobs[KeyFor(tenant, eventId)] = payload.ToArray();
         return Task.CompletedTask;
     }
 
-    public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
+    public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken)
     {
-        if (!_blobs.TryGetValue(eventId, out var bytes))
+        if (!_blobs.TryGetValue(KeyFor(tenant, eventId), out var bytes))
         {
             throw new EdictClaimCheckFetchException(
                 eventId,
@@ -39,4 +43,7 @@ public sealed class ReferenceClaimCheckStore : IEdictClaimCheckStore
 
         return Task.FromResult<ReadOnlyMemory<byte>>(bytes);
     }
+
+    static string KeyFor(EdictTenantId? tenant, Guid eventId) =>
+        EdictKeyComposer.Compose(tenant, eventId.ToString("N"));
 }

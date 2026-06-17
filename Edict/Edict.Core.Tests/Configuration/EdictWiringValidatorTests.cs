@@ -1,6 +1,7 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
 using Edict.Core.Configuration;
 using Edict.Core.Tests.Audit;
@@ -169,10 +170,10 @@ public sealed class EdictWiringValidatorTests
 
     sealed class NullClaimCheckStore : IEdictClaimCheckStore
     {
-        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             Task.CompletedTask;
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken) =>
             Task.FromResult<ReadOnlyMemory<byte>>(ReadOnlyMemory<byte>.Empty);
     }
 }

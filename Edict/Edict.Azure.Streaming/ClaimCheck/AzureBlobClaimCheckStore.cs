@@ -2,6 +2,8 @@ using Azure;
 using Azure.Storage.Blobs;
 
 using Edict.Contracts.ClaimCheck;
+using Edict.Contracts.Routing;
+using Edict.Contracts.Tenancy;
 using Edict.Core.DeadLetter;
 
 namespace Edict.Azure.Streaming.ClaimCheck;
@@ -27,15 +29,15 @@ sealed class AzureBlobClaimCheckStore : IEdictClaimCheckStore
         return new AzureBlobClaimCheckStore(container);
     }
 
-    public async Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+    public async Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
-        var blob = _container.GetBlobClient(eventId.ToString("N"));
+        var blob = _container.GetBlobClient(EdictKeyComposer.Compose(tenant, eventId.ToString("N")));
         await blob.UploadAsync(BinaryData.FromBytes(payload), overwrite: false, cancellationToken: cancellationToken);
     }
 
-    public async Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken)
+    public async Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken)
     {
-        var blob = _container.GetBlobClient(eventId.ToString("N"));
+        var blob = _container.GetBlobClient(EdictKeyComposer.Compose(tenant, eventId.ToString("N")));
         try
         {
             var response = await blob.DownloadContentAsync(cancellationToken);

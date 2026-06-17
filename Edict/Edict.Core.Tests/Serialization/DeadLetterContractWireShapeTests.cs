@@ -1,4 +1,5 @@
 using Edict.Contracts.DeadLetter;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -30,6 +31,7 @@ public sealed class DeadLetterContractWireShapeTests
             PayloadJson = "{\"OrderId\":\"22222222-2222-2222-2222-222222222222\",\"Sku\":\"ITEM-1\"}",
             SourceEventType = "Sample.Orders.Events.OrderPlacedEvent",
             SourceEventId = new Guid("66666666-6666-6666-6666-666666666666"),
+            Tenant = EdictTenantId.Of("acme"),
         };
 
         var bytes = MessagePackSerializer.Serialize(entry);

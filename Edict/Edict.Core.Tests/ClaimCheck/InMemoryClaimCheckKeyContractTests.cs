@@ -22,8 +22,8 @@ public sealed class InMemoryClaimCheckKeyContractTests
         byte[] payload = [0x10, 0x20, 0x30, 0x40, 0x50];
 
         // Act
-        await store.PutAsync(eventId, payload, CancellationToken.None);
-        var fetched = await store.GetAsync(eventId, CancellationToken.None);
+        await store.PutAsync(tenant: null, eventId, payload, CancellationToken.None);
+        var fetched = await store.GetAsync(tenant: null, eventId, CancellationToken.None);
 
         // Assert
         Assert.Equal(payload, fetched.ToArray());
@@ -38,7 +38,7 @@ public sealed class InMemoryClaimCheckKeyContractTests
 
         // Act
         var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
-            () => store.GetAsync(unknownEventId, CancellationToken.None));
+            () => store.GetAsync(tenant: null, unknownEventId, CancellationToken.None));
 
         // Assert
         Assert.Equal(unknownEventId, exception.EventId);

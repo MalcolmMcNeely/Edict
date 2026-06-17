@@ -162,13 +162,14 @@ public sealed class SagaTimeoutPublisher : Grain, ISagaTimeoutPublisher
             ? innerEvent with { EventId = Guid.NewGuid() }
             : innerEvent;
         await store.PutAsync(
-            stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None);
+            stamped.Tenant, stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None);
 
         var envelope = new EdictEventEnvelope(null, stamped.EventId)
         {
             OccurredAt = DateTimeOffset.UtcNow,
             InnerEventStreamName = streamNamespace,
             InnerEventRouteKey = this.GetPrimaryKey().ToString("N"),
+            Tenant = stamped.Tenant,
         };
 
         await StreamFor(streamNamespace).OnNextAsync(envelope);

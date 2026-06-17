@@ -50,7 +50,7 @@ internal sealed class ClaimCheckUnwrap
             SemanticConventions.ClaimCheck.Spans.Get, ActivityKind.Client, parentContext);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, eventId.ToString());
 
-        var bytes = await _store!.GetAsync(eventId, cancellationToken);
+        var bytes = await _store!.GetAsync(envelope.Tenant, eventId, cancellationToken);
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, bytes.Length);
 
         var inner = _serializer.Deserialize<EdictEvent>(bytes.ToArray());

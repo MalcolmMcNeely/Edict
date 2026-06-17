@@ -34,8 +34,8 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
         var eventId = Guid.NewGuid();
         byte[] payload = [0x10, 0x20, 0x30, 0x40, 0x50];
 
-        await store.PutAsync(eventId, payload, CancellationToken.None);
-        var fetched = await store.GetAsync(eventId, CancellationToken.None);
+        await store.PutAsync(tenant: null, eventId, payload, CancellationToken.None);
+        var fetched = await store.GetAsync(tenant: null, eventId, CancellationToken.None);
 
         Assert.Equal(payload, fetched.ToArray());
     }
@@ -51,7 +51,7 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
         var eventId = Guid.NewGuid();
 
         var exception = await Assert.ThrowsAsync<EdictClaimCheckFetchException>(
-            () => store.GetAsync(eventId, CancellationToken.None));
+            () => store.GetAsync(tenant: null, eventId, CancellationToken.None));
         Assert.Equal(eventId, exception.EventId);
     }
 
@@ -63,10 +63,10 @@ public sealed class AzureBlobClaimCheckStoreTests : IAsyncLifetime
         // fault rather than silently overwriting the parked body.
         var store = await AzureBlobClaimCheckStore.CreateAsync(_blobServiceClient, _containerName);
         var eventId = Guid.NewGuid();
-        await store.PutAsync(eventId, new byte[] { 1 }, CancellationToken.None);
+        await store.PutAsync(tenant: null, eventId, new byte[] { 1 }, CancellationToken.None);
 
         await Assert.ThrowsAnyAsync<Exception>(
-            () => store.PutAsync(eventId, new byte[] { 2 }, CancellationToken.None));
+            () => store.PutAsync(tenant: null, eventId, new byte[] { 2 }, CancellationToken.None));
     }
 
     [Fact]

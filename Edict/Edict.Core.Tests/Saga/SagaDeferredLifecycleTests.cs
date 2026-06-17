@@ -153,7 +153,7 @@ public sealed class SagaDeferredLifecycleTests
         var serializer = _fixture.Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
         var stamped = inner.EventId == Guid.Empty ? inner with { EventId = Guid.NewGuid() } : inner;
         SagaLifecycleClusterFixture.ClaimCheckStore
-            .PutAsync(stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None)
+            .PutAsync(stamped.Tenant, stamped.EventId, serializer.SerializeToArray<EdictEvent>(stamped), CancellationToken.None)
             .GetAwaiter().GetResult();
 
         return new EdictEventEnvelope(null, stamped.EventId)
@@ -161,6 +161,7 @@ public sealed class SagaDeferredLifecycleTests
             OccurredAt = SagaLifecycleClusterFixture.Time.GetUtcNow(),
             InnerEventStreamName = "SagaLifecycleWorkflow",
             InnerEventRouteKey = Guid.Empty.ToString("N"),
+            Tenant = stamped.Tenant,
         };
     }
 

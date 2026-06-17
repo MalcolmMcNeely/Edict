@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
+using Edict.Contracts.Tenancy;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Outbox;
 using Edict.Core.Serialization;
@@ -175,19 +176,19 @@ public sealed class ClaimCheckPolicyTests
         return services.BuildServiceProvider().GetRequiredService<Serializer>();
     }
 
-    sealed record PutCall(Guid EventId, ReadOnlyMemory<byte> Payload);
+    sealed record PutCall(EdictTenantId? Tenant, Guid EventId, ReadOnlyMemory<byte> Payload);
 
     sealed class RecordingStore : IEdictClaimCheckStore
     {
         public List<PutCall> Puts { get; } = [];
 
-        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
+        public Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
         {
-            Puts.Add(new PutCall(eventId, payload));
+            Puts.Add(new PutCall(tenant, eventId, payload));
             return Task.CompletedTask;
         }
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken) =>
             throw new NotSupportedException("publisher-side tests never fetch");
     }
 

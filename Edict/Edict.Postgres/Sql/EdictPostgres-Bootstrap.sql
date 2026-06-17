@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS edict_grain_state
 
 CREATE TABLE IF NOT EXISTS edict_claim_check
 (
-    id          UUID PRIMARY KEY,
+    id          TEXT PRIMARY KEY,
     payload     BYTEA       NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL
 );

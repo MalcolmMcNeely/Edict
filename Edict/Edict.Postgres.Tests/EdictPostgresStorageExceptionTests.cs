@@ -117,7 +117,7 @@ public sealed class EdictPostgresStorageExceptionTests
         var store = new PostgresClaimCheckStore(UnreachableDataSource(), "edict_claim_check");
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
-            () => store.PutAsync(Guid.NewGuid(), new byte[] { 0x01 }, CancellationToken.None));
+            () => store.PutAsync(tenant: null, Guid.NewGuid(), new byte[] { 0x01 }, CancellationToken.None));
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public sealed class EdictPostgresStorageExceptionTests
         var store = new PostgresClaimCheckStore(UnreachableDataSource(), "edict_claim_check");
 
         await Assert.ThrowsAsync<EdictPostgresStorageException>(
-            () => store.GetAsync(Guid.NewGuid(), CancellationToken.None));
+            () => store.GetAsync(tenant: null, Guid.NewGuid(), CancellationToken.None));
     }
 
     [Fact]

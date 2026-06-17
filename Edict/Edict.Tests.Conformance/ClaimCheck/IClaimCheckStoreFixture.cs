@@ -1,3 +1,5 @@
+using Edict.Contracts.Tenancy;
+
 namespace Edict.Tests.Conformance.ClaimCheck;
 
 /// <summary>
@@ -6,11 +8,13 @@ namespace Edict.Tests.Conformance.ClaimCheck;
 /// only the two operations the scenarios exercise so a binding does not have to
 /// stand up a full TestCluster. The forwarding signatures use public types only
 /// (the store seam itself is framework-internal), letting the same scenarios run
-/// against every substrate — real or in-process — without widening that seam.
+/// against every substrate — real or in-process — without widening that seam. The
+/// tenant rides every call so the battery can prove the real store folds the wall
+/// into its backing key (a tenant-scoped body unreachable from another wall).
 /// </summary>
 public interface IClaimCheckStoreFixture
 {
-    Task PutClaimCheckAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
+    Task PutClaimCheckAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken);
 
-    Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(Guid eventId, CancellationToken cancellationToken);
+    Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken);
 }

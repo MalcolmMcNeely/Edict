@@ -1,5 +1,7 @@
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Contracts.Routing;
+using Edict.Contracts.Tenancy;
 using Edict.Core.DeadLetter;
 using Edict.Core.Outbox;
 using Edict.Core.Tests.TestSupport;
@@ -189,6 +191,55 @@ public sealed class DeadLetterPromotionTests
 
         Assert.Equal("System.InvalidOperationException", raised.ExceptionType);
         Assert.Equal("downstream unavailable", raised.Reason);
+    }
+
+    [Fact]
+    public void Build_ShouldTagTenant_WhenSourceGrainKeyIsTenantFolded()
+    {
+        var entry = PublishEventEntry();
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+        var tenantFoldedKey = EdictKeyComposer.Compose(EdictTenantId.Of("acme"), FixedOrderId.ToString("N"));
+
+        var raised = DeadLetterPromotion.Build(
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
+            tenantFoldedKey, SourceGrainType, FixedDeadLetteredAt);
+
+        // The wall the failing aggregate sits behind, so an operator can filter
+        // failures by tenant without parsing the grain key.
+        Assert.Equal(EdictTenantId.Of("acme"), raised.Tenant);
+    }
+
+    [Fact]
+    public void Build_ShouldLeaveTenantNull_WhenSourceGrainKeyIsBare()
+    {
+        var entry = PublishEventEntry();
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1");
+
+        var raised = DeadLetterPromotion.Build(
+            entry, edictEvent, Accessors, new InvalidOperationException("nope"),
+            SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
+
+        // A public (un-scoped) aggregate has no wall, even if a tenant rode the
+        // message — the tag follows the static key, not the relayed hop.
+        Assert.Null(raised.Tenant);
+    }
+
+    [Fact]
+    public void BuildForBlobMissing_ShouldTagTenant_WhenSourceGrainKeyIsTenantFolded()
+    {
+        var entry = PublishEventEntry();
+        var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: FixedSourceEventId)
+        {
+            InnerEventStreamName = "Orders",
+            InnerEventRouteKey = FixedOrderId.ToString("N"),
+        };
+        var tenantFoldedKey = EdictKeyComposer.Compose(EdictTenantId.Of("globex"), FixedOrderId.ToString("N"));
+
+        var raised = DeadLetterPromotion.BuildForBlobMissing(
+            entry, envelope, new KeyNotFoundException("blob not found"),
+            tenantFoldedKey, SourceGrainType, FixedDeadLetteredAt);
+
+        Assert.Equal(EdictTenantId.Of("globex"), raised.Tenant);
     }
 
     [Fact]

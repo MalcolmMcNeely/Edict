@@ -4,6 +4,8 @@ using System.Text.Json;
 using Edict.Contracts.Commands;
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.Events;
+using Edict.Contracts.Routing;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Outbox;
 
 namespace Edict.Core.DeadLetter;
@@ -121,6 +123,7 @@ static class DeadLetterPromotion
             PayloadJson = null,
             FailureKind = EdictDeadLetterFailureKind.BlobMissing,
             SourceEventId = envelope.EventId,
+            Tenant = ResolveTenant(sourceGrainKey),
         };
     }
 
@@ -144,7 +147,25 @@ static class DeadLetterPromotion
         ExceptionType = exception.GetType().FullName,
         Reason = exception.Message,
         PayloadJson = payloadJson,
+        Tenant = ResolveTenant(sourceGrainKey),
     };
+
+    // The source aggregate's wall, parsed from its own composed grain key: a
+    // tenant-scoped key folds "{tenant}|{guid}", a public one is the bare guid.
+    // Promote() runs outside the engine's per-group catch, so this must never
+    // throw — an unparseable key (a non-Edict source, or a future key shape)
+    // degrades to no tag rather than poison-looping the dead-letter reminder.
+    internal static EdictTenantId? ResolveTenant(string sourceGrainKey)
+    {
+        try
+        {
+            return EdictKeyComposer.Parse(sourceGrainKey).Tenant;
+        }
+        catch (EdictMalformedRoutedKeyException)
+        {
+            return null;
+        }
+    }
 
     public static bool TryResolveCommandRouteKey(EdictCommand command, out string routeKey)
     {

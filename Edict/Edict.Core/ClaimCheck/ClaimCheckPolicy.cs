@@ -70,6 +70,9 @@ internal sealed class ClaimCheckPolicy
         {
             InnerEventStreamName = innerStreamName,
             InnerEventRouteKey = innerRouteKey,
+            // The wall travels on the wire so the receiver fetches the parked body
+            // from the same tenant-folded location the producer spilled it to.
+            Tenant = edictEvent.Tenant,
         };
         var envelopeBytes = _serializer.SerializeToArray<EdictEvent>(envelope);
         if (envelopeBytes.Length > MaxEnvelopeBytes)
@@ -103,7 +106,7 @@ internal sealed class ClaimCheckPolicy
         span?.SetTag(SemanticConventions.Events.Tags.SizeBytes, innerBytes.Length);
         span?.SetTag(SemanticConventions.ClaimCheck.Tags.Key, edictEvent.EventId.ToString());
 
-        await _store!.PutAsync(edictEvent.EventId, innerBytes, cancellationToken);
+        await _store!.PutAsync(edictEvent.Tenant, edictEvent.EventId, innerBytes, cancellationToken);
 
         // Recorded here, inside the PUT span, so the spilled-payload exemplar points
         // at the blob-write trace rather than landing without one once the span has

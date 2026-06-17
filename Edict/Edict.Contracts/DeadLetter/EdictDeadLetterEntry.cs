@@ -1,4 +1,5 @@
 using Edict.Contracts.Persistence;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -88,4 +89,13 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     /// when the failing effect carried no payload to recover one from.
     /// </summary>
     public Guid CorrelationId { get; init; }
+
+    /// <summary>
+    /// The tenant wall of the source aggregate whose Outbox produced the failed
+    /// effect, recovered from <see cref="SourceGrainKey"/>. Lets an operator filter
+    /// failures by tenant. Null for a public (un-scoped) aggregate even when a
+    /// tenant rode the message — the tag follows the static key, not the relayed
+    /// hop. Dead-letter stays operator-scoped: there is no tenant-facing read.
+    /// </summary>
+    public EdictTenantId? Tenant { get; init; }
 }

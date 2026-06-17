@@ -1,3 +1,4 @@
+using Edict.Contracts.Tenancy;
 using Edict.Tests.Conformance.ClaimCheck;
 
 using Xunit;
@@ -16,11 +17,11 @@ public sealed class AzurePersistenceClaimCheckFixture : AzurePersistenceFixtureB
 {
     protected override int? ClaimCheckThresholdBytes => 1;
 
-    public Task PutClaimCheckAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
-        ClaimCheckStore.PutAsync(eventId, payload, cancellationToken);
+    public Task PutClaimCheckAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        ClaimCheckStore.PutAsync(tenant, eventId, payload, cancellationToken);
 
-    public Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(Guid eventId, CancellationToken cancellationToken) =>
-        ClaimCheckStore.GetAsync(eventId, cancellationToken);
+    public Task<ReadOnlyMemory<byte>> GetClaimCheckAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken) =>
+        ClaimCheckStore.GetAsync(tenant, eventId, cancellationToken);
 }
 
 [CollectionDefinition(Name)]

@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Events;
+using Edict.Contracts.Tenancy;
 using Edict.Core.ClaimCheck;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.TestSupport;
@@ -114,10 +115,10 @@ public sealed class ClaimCheckPayloadSizeExemplarTests
 
     sealed class InMemoryStore : IEdictClaimCheckStore
     {
-        public Task PutAsync(Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
+        public Task PutAsync(EdictTenantId? tenant, Guid eventId, ReadOnlyMemory<byte> payload, CancellationToken cancellationToken) =>
             Task.CompletedTask;
 
-        public Task<ReadOnlyMemory<byte>> GetAsync(Guid eventId, CancellationToken cancellationToken) =>
+        public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 }
