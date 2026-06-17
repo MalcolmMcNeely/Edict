@@ -26,8 +26,8 @@ public abstract class TableProjectionConsumerRowKeyScenarios<TFixture>
 
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-C"));
 
-        await TableProjectionWaiters.WaitForRowAsync(repository, orderId.ToString(), "summary");
-        var row = await repository.GetAsync(orderId.ToString(), "summary");
+        await TableProjectionWaiters.WaitForRowAsync(repository, orderId.ToString("N"), "summary");
+        var row = await repository.GetAsync(orderId.ToString("N"), "summary");
 
         await Verify(new { OrderCount = row!.OrderCount });
     }

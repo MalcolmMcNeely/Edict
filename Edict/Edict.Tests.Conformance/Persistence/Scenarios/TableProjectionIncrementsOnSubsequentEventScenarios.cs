@@ -29,10 +29,10 @@ public abstract class TableProjectionIncrementsOnSubsequentEventScenarios<TFixtu
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-B"));
 
         await TableProjectionWaiters.WaitForRowAsync(
-            repository, orderId.ToString(), orderId.ToString(),
+            repository, orderId.ToString("N"), orderId.ToString(),
             row => row.OrderCount >= 2);
 
-        var row = await repository.GetAsync(orderId.ToString(), orderId.ToString());
+        var row = await repository.GetAsync(orderId.ToString("N"), orderId.ToString());
 
         await Verify(new { OrderCount = row!.OrderCount });
     }

@@ -28,8 +28,8 @@ public abstract class TableProjectionWritesRowScenarios<TFixture>
 
         await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-E2E"));
 
-        await TableProjectionWaiters.WaitForRowAsync(repository, orderId.ToString(), orderId.ToString());
-        var row = await repository.GetAsync(orderId.ToString(), orderId.ToString());
+        await TableProjectionWaiters.WaitForRowAsync(repository, orderId.ToString("N"), orderId.ToString());
+        var row = await repository.GetAsync(orderId.ToString("N"), orderId.ToString());
 
         await Verify(new { OrderCount = row!.OrderCount })
             .UseParameters(orderId);

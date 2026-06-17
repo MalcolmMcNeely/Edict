@@ -34,7 +34,11 @@ public abstract class TableProjectionReceivesClaimCheckScenarios<TFixture>
 
         await _fixture.Sender.SendAsync(new IncrementClaimCheckCounterCommand(counterId, payload));
 
-        var row = await WaitForRowAsync(repository, counterId.ToString());
+        // The projection grain's PartitionKey is its own composed key (the route
+        // Guid in "N" form); its consumer-chosen RowKey is the counter Guid in "D"
+        // form. They are distinct coordinates, so the read addresses each in the
+        // form the builder wrote it.
+        var row = await WaitForRowAsync(repository, counterId.ToString("N"), counterId.ToString());
 
         Assert.NotNull(row);
         Assert.Equal(1, row.Count);
@@ -42,18 +46,18 @@ public abstract class TableProjectionReceivesClaimCheckScenarios<TFixture>
     }
 
     static async Task<ClaimCheckProjectionRow?> WaitForRowAsync(
-        IEdictTableWriteStore<ClaimCheckProjectionRow> repository, string key, int timeoutSeconds = 30)
+        IEdictTableWriteStore<ClaimCheckProjectionRow> repository, string partitionKey, string rowKey, int timeoutSeconds = 30)
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var row = await repository.GetAsync(key, key);
+            var row = await repository.GetAsync(partitionKey, rowKey);
             if (row is not null)
             {
                 return row;
             }
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
-        return await repository.GetAsync(key, key);
+        return await repository.GetAsync(partitionKey, rowKey);
     }
 }

@@ -39,7 +39,7 @@ public abstract class TableProjectionSingletonScenarios<TFixture>
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
-        var singletonPk = GlobalOrderProjectionBuilder.SingletonKey.ToString();
+        var singletonPk = GlobalOrderProjectionBuilder.SingletonKey.ToString("N");
         var repository = _fixture.GetTableStore<OrderTableRow>("globalorderprojection");
 
         await TableProjectionWaiters.WaitForPartitionCountAsync(repository, singletonPk, 2);
