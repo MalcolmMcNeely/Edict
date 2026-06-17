@@ -25,7 +25,7 @@ public sealed class UpsertRowGapClosureAzureTests(AzurePersistenceRecoveryFixtur
         await publisher.PublishAsync("AzureRecoverableOrders", edictEvent);
 
         await WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);
-        var rowDuringCrashWindow = await repository.GetAsync(orderId.ToString(), orderId.ToString());
+        var rowDuringCrashWindow = await repository.GetAsync(orderId.ToString("N"), orderId.ToString());
 
         AzureControllableUpsertRowExecutor.ShouldFail = false;
         await Task.Delay(TimeSpan.FromMilliseconds(500));
@@ -37,7 +37,7 @@ public sealed class UpsertRowGapClosureAzureTests(AzurePersistenceRecoveryFixtur
         await publisher.PublishAsync("AzureRecoverableOrders", edictEvent);
         await Task.Delay(TimeSpan.FromSeconds(3));
 
-        var finalRow = await repository.GetAsync(orderId.ToString(), orderId.ToString());
+        var finalRow = await repository.GetAsync(orderId.ToString("N"), orderId.ToString());
 
         await Verify(new
         {
