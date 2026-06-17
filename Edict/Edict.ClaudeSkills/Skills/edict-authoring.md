@@ -344,6 +344,31 @@ The principal must name whoever actually authorized the action, and which origin
 
 Either way the origin must carry a principal or the send fails closed. Wiring the resolver is the `edict-silo-wiring` skill; the `EdictMissingPrincipalException` failure shape is the `edict-diagnostics` skill. One authoring rule follows from an audited silo: because a captured body is read back by deserializing into its originating type, the audited Command and Event types you author are append-only — see the schema-stability obligation in the `edict-contracts` skill before deleting or renaming one.
 
+## Authoring against the tenant wall
+
+When an aggregate's route-key type is `[EdictTenantScoped]` (the `edict-contracts` skill), the tenant is framework-stamped at the origin and folded into every grain, stream, and projection key, so an in-aggregate handler, saga, or projection builder authors *exactly as it would for a public aggregate*: you never read or compare the tenant inside a handler, because the routing already guarantees the turn is running under the right wall. Two authoring moves are tenant-specific.
+
+**The establishing crossing.** The one place a tenant is named explicitly is the public-to-tenant onboarding: a "register your company" flow has no ambient tenant yet (the company does not exist until this send), so it mints one with the establishing-crossing overload:
+
+```csharp
+// "Register Acme" — the single public-to-tenant crossing, named explicitly and auditable.
+await sender.SendAsync(
+    new RegisterCompanyCommand(EmployeeId.New(), "Acme"),
+    EdictTenantId.Of(companyId));
+```
+
+`EdictTenantId.Of(...)` validates the value against the safe-everywhere character set and the consumer maps it from a trusted source (a verified company id), never from the request body. Every *subsequent* tenant-scoped send is a bare `SendAsync(command)` whose tenant the edge resolver supplies; the explicit overload is only for the crossing and for context-free origins (a worker, an import). A bare tenant-scoped send with no resolved tenant fails closed (`EdictMissingTenantException`), and `EDICT024` catches it at compile time.
+
+**The ambient-scoped read.** A tenant-scoped List projection is read through `IEdictTenantScopedListProjectionReader<TRow>`, the read-side sibling of the sender. Unlike `IEdictProjectionReader<TRow>` it takes **no** partition key: the framework composes the caller's ambient tenant into the partition, so "list my employees" is `QueryMyPartitionAsync()` with nothing to pass, and the same call under a different tenant returns empty *by construction*, not by a permission check:
+
+```csharp
+// Lists only the caller's own tenant's rows; another tenant's identical call is empty.
+EdictProjectionPartitionRead<EmployeeDirectoryRow> mine =
+    await directoryReader.QueryMyPartitionAsync();
+```
+
+Read-your-writes (`after:` a cursor) and `EdictReadStatus` behave exactly as on the public reader. What the wall does *not* give you: within-tenant authorization (which user inside the company may see which row) stays your job. The wall guarantees Company A can only ever address Company A's data; who inside Company A may see it is the consumer's authorization layer.
+
 ## When to look up a term
 
 When the consumer asks "what is a Saga?" / "what is a Projection Builder?" / "what does Command Validator mean here?", or when picking between two role names whose distinction is fuzzy, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Saga`, `saga`, and `EdictSaga` all resolve. Use this before guessing a definition from the role name.

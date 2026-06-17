@@ -7,6 +7,9 @@
     <ItemGroup>
         <ProjectReference Include="..\Edict.Mcp\Edict.Mcp.csproj" />
         <ProjectReference Include="..\Edict.ClaudeSkills\Edict.ClaudeSkills.csproj" />
+        <!-- Referenced so the interlock test can reflect over its DiagnosticAnalyzer
+             descriptors and confirm every EDICT id a skill cites is real. -->
+        <ProjectReference Include="..\Edict.Analyzers\Edict.Analyzers.csproj" ReferenceOutputAssembly="true" />
     </ItemGroup>
 
 </Project>

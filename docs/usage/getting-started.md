@@ -190,7 +190,7 @@ To run locally, start Azurite (the [Azurite docs](https://learn.microsoft.com/az
 
 ## Next steps
 
-- **Concepts** — [Commands](concepts/commands.md), [Validators](concepts/validators.md), [Events](concepts/events.md), [Event Handlers](concepts/event-handlers.md), [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projections](concepts/projections.md), [Idempotency](concepts/idempotency.md), [Claim Check](concepts/claim-check.md), [Dead Letter](concepts/dead-letter.md), [Telemetry](concepts/telemetry.md).
+- **Concepts** — [Commands](concepts/commands.md), [Validators](concepts/validators.md), [Events](concepts/events.md), [Event Handlers](concepts/event-handlers.md), [Sagas](concepts/sagas.md), [Schedules](concepts/schedules.md), [Projections](concepts/projections.md), [Idempotency](concepts/idempotency.md), [Claim Check](concepts/claim-check.md), [Dead Letter](concepts/dead-letter.md), [Audit log](concepts/audit-log.md), [Multi-tenancy](concepts/multi-tenancy.md), [Telemetry](concepts/telemetry.md).
 - **Wiring** — [Azure Streaming](wiring/azure-streaming.md), [Azure Persistence](wiring/azure-persistence.md), [Kafka](wiring/kafka.md), [Postgres](wiring/postgres.md).
 - **Sample app** — [The Sample app](sample.md) is a believable commerce system that drives every feature; the [testing map](testing/sample-map.md) ties each use case to its consumer test.
 - **Testing** — [Setup](testing/setup.md), [Probes](testing/probes.md), [Chaos](testing/chaos.md), [Seams](testing/seams.md).

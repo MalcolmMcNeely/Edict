@@ -65,6 +65,86 @@ public class HandlerScannerTests
     }
 
     [Fact]
+    public void Scan_TenantScopedRouteKeyType_FlagsBoundContractAsTenantScoped()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
+            using Edict.Contracts.Tenancy;
+            using Edict.Core.Commands;
+
+            namespace Acme.Employees
+            {
+                public sealed record EmployeeState : IEdictPersistedState;
+
+                [EdictTenantScoped]
+                public readonly record struct EmployeeId(System.Guid Value);
+
+                public sealed record AddEmployeeCommand : EdictCommand
+                {
+                    [EdictRouteKey]
+                    public EmployeeId EmployeeId { get; init; }
+                }
+
+                public sealed partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>
+                {
+                    System.Threading.Tasks.Task HandleAsync(AddEmployeeCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        var bound = Assert.Single(entry.BoundContracts);
+        Assert.Equal("Acme.Employees.AddEmployeeCommand", bound.FullTypeName);
+        Assert.Equal("EmployeeId", bound.RouteKeyPropertyName);
+        Assert.True(bound.TenantScoped);
+    }
+
+    [Fact]
+    public void Scan_PublicRouteKeyType_LeavesBoundContractNotTenantScoped()
+    {
+        // Arrange
+        const string consumerSource = """
+            using Edict.Contracts.Commands;
+            using Edict.Contracts.Persistence;
+            using Edict.Core.Commands;
+
+            namespace Acme.Orders
+            {
+                public sealed record OrderState : IEdictPersistedState;
+
+                public sealed record PlaceOrderCommand : EdictCommand
+                {
+                    [EdictRouteKey]
+                    public System.Guid OrderId { get; init; }
+                }
+
+                public sealed partial class OrderCommandHandler : EdictCommandHandler<OrderState>
+                {
+                    System.Threading.Tasks.Task HandleAsync(PlaceOrderCommand command) => System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+        var compilation = CreateCompilation("ConsumerLibrary", EdictBasesSource, consumerSource);
+        var scanner = new HandlerScanner();
+
+        // Act
+        var inventory = scanner.Scan([compilation], solutionDirectory: null);
+
+        // Assert
+        var entry = Assert.Single(inventory.Handlers);
+        var bound = Assert.Single(entry.BoundContracts);
+        Assert.False(bound.TenantScoped);
+    }
+
+    [Fact]
     public void Scan_TransitiveInheritanceThroughGenericIntermediateBase_StillResolvesConcreteHandlerToCorrectRole()
     {
         // Arrange
@@ -639,6 +719,12 @@ public class HandlerScannerTests
                 public string Name { get; }
             }
             public abstract record EdictEvent;
+        }
+
+        namespace Edict.Contracts.Tenancy
+        {
+            [AttributeUsage(AttributeTargets.Struct)]
+            public sealed class EdictTenantScopedAttribute : Attribute { }
         }
 
         namespace Edict.Core.Commands

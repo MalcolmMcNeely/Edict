@@ -3,6 +3,7 @@
     {
       "commandType": "FixtureLibrary.WithSubmitOrder.Orders.CancelOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
       ]
@@ -10,6 +11,7 @@
     {
       "commandType": "FixtureLibrary.WithSubmitOrder.Orders.PlaceOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
       ]
@@ -17,6 +19,7 @@
     {
       "commandType": "FixtureLibrary.WithSubmitOrder.Orders.SubmitOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "FixtureLibrary.WithSubmitOrder.Orders.OrderCommandHandler"
       ]
@@ -26,6 +29,7 @@
     {
       "eventType": "Edict.Contracts.DeadLetter.EdictDeadLetterRaised",
       "routeKeyProperty": "SingletonKey",
+      "tenantScoped": false,
       "subscribers": [
         "Edict.Core.DeadLetter.EdictDeadLetterProjectionBuilder"
       ]

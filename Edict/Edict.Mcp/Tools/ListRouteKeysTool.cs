@@ -52,7 +52,7 @@ sealed class ListRouteKeysTool
                 {
                     if (!commandBindings.TryGetValue(contract.FullTypeName, out var builder))
                     {
-                        builder = new CommandBindingBuilder(contract.FullTypeName, contract.RouteKeyPropertyName);
+                        builder = new CommandBindingBuilder(contract.FullTypeName, contract.RouteKeyPropertyName, contract.TenantScoped);
                         commandBindings[contract.FullTypeName] = builder;
                     }
                     builder.Handlers.Add(handler.DeclaringTypeName);
@@ -61,7 +61,7 @@ sealed class ListRouteKeysTool
                 {
                     if (!eventBindings.TryGetValue(contract.FullTypeName, out var builder))
                     {
-                        builder = new EventBindingBuilder(contract.FullTypeName, contract.RouteKeyPropertyName);
+                        builder = new EventBindingBuilder(contract.FullTypeName, contract.RouteKeyPropertyName, contract.TenantScoped);
                         eventBindings[contract.FullTypeName] = builder;
                     }
                     builder.Subscribers.Add(handler.DeclaringTypeName);
@@ -73,6 +73,7 @@ sealed class ListRouteKeysTool
             .Select(builder => new CommandRouteEntry(
                 CommandType: builder.CommandType,
                 RouteKeyProperty: builder.RouteKeyProperty,
+                TenantScoped: builder.TenantScoped,
                 Handlers: builder.Handlers.OrderBy(name => name, StringComparer.Ordinal).ToArray()))
             .ToArray();
 
@@ -80,6 +81,7 @@ sealed class ListRouteKeysTool
             .Select(builder => new EventRouteEntry(
                 EventType: builder.EventType,
                 RouteKeyProperty: builder.RouteKeyProperty,
+                TenantScoped: builder.TenantScoped,
                 Subscribers: builder.Subscribers.OrderBy(name => name, StringComparer.Ordinal).ToArray()))
             .ToArray();
 
@@ -93,25 +95,29 @@ sealed class ListRouteKeysTool
 
     sealed class CommandBindingBuilder
     {
-        public CommandBindingBuilder(string commandType, string? routeKeyProperty)
+        public CommandBindingBuilder(string commandType, string? routeKeyProperty, bool tenantScoped)
         {
             CommandType = commandType;
             RouteKeyProperty = routeKeyProperty;
+            TenantScoped = tenantScoped;
         }
         public string CommandType { get; }
         public string? RouteKeyProperty { get; }
+        public bool TenantScoped { get; }
         public HashSet<string> Handlers { get; } = new(StringComparer.Ordinal);
     }
 
     sealed class EventBindingBuilder
     {
-        public EventBindingBuilder(string eventType, string? routeKeyProperty)
+        public EventBindingBuilder(string eventType, string? routeKeyProperty, bool tenantScoped)
         {
             EventType = eventType;
             RouteKeyProperty = routeKeyProperty;
+            TenantScoped = tenantScoped;
         }
         public string EventType { get; }
         public string? RouteKeyProperty { get; }
+        public bool TenantScoped { get; }
         public HashSet<string> Subscribers { get; } = new(StringComparer.Ordinal);
     }
 
@@ -121,7 +127,7 @@ sealed class ListRouteKeysTool
         IReadOnlyList<CommandCollision> Collisions,
         string DriftStatus);
 
-    sealed record CommandRouteEntry(string CommandType, string? RouteKeyProperty, IReadOnlyList<string> Handlers);
-    sealed record EventRouteEntry(string EventType, string? RouteKeyProperty, IReadOnlyList<string> Subscribers);
+    sealed record CommandRouteEntry(string CommandType, string? RouteKeyProperty, bool TenantScoped, IReadOnlyList<string> Handlers);
+    sealed record EventRouteEntry(string EventType, string? RouteKeyProperty, bool TenantScoped, IReadOnlyList<string> Subscribers);
     sealed record CommandCollision(string CommandType, IReadOnlyList<string> Handlers);
 }

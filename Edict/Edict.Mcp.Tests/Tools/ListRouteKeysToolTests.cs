@@ -50,6 +50,24 @@ public class ListRouteKeysToolTests
                 ],
                 DeclaringAssembly: "Acme.Reporting",
                 SourceLocation: null),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Employees.EmployeeCommandHandler",
+                Role: HandlerRole.CommandHandler,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Employees.AddEmployeeCommand", "EmployeeId", TenantScoped: true),
+                ],
+                DeclaringAssembly: "Acme.Employees",
+                SourceLocation: null),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Employees.EmployeeDirectoryProjection",
+                Role: HandlerRole.ListProjectionBuilder,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Employees.EmployeeAdded", "EmployeeId", TenantScoped: true),
+                ],
+                DeclaringAssembly: "Acme.Employees",
+                SourceLocation: null),
         ]);
         var tool = new ListRouteKeysTool(_ => Task.FromResult(inventory), StubVersionReportProvider.Clean());
 

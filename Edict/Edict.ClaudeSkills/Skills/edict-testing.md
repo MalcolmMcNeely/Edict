@@ -56,6 +56,11 @@ A projection has two species, and each has its own read probe. Reach for the one
 - **`EdictTestApp.ActAs(EdictPrincipal)`** — attributes every subsequent audited send to that actor. Call it before `SendAsync`; absent any call, sends carry the default test principal.
 - **`EdictTestApp.Audit`** — the consumer read surface (`IEdictAuditRepository`) over the captured chain: `ByEntityAsync` / `ByCorrelationAsync` / `ByPrincipalAsync`, `VerifyEntityChainAsync`, and `GetPayloadAsync`. Available only after `WithAudit()`.
 - **`EdictTestApp.TamperWithAuditRecord(EdictAuditRecord)`** — rewrites a stored record in place (the one mutation a production WORM store refuses) so a test can prove `VerifyEntityChainAsync` catches an altered chain.
+- **`EdictTestAppBuilder.WithTenancy()`** — turns multi-tenancy on, wiring the test's ambient tenant resolver (`AddEdictTenant`) and the isolation backstop on both silo and client. Required before any of the tenant seams below; absent it they throw "Tenancy is off".
+- **`EdictTestApp.RunAsTenant(EdictTenantId)`** — sets the ambient tenant for every subsequent send and read, the deterministic "act as Acme" seam. Re-read per send and per read, so a single test can switch walls by calling it again.
+- **`EdictTestApp.SendAsync(EdictCommand, EdictTenantId)`** — the establishing-crossing overload: stamps the tenant onto the command directly, for the public-to-tenant onboarding send a fresh tenant has no ambient context for yet.
+- **`EdictTestApp.QueryMyTenantPartitionAsync<TListProjection>()`** — reads the ambient tenant's own partition of a tenant-scoped List projection (the `IEdictTenantScopedListProjectionReader` surface). Drains first; a different `RunAsTenant` makes the identical call return empty.
+- **`EdictTestApp.TenantAudit`** — the `IEdictTenantScopedAuditRepository` scoped to the ambient tenant, so a test asserts a business sees only its own trail.
 
 ## Testing a schedule (interval-agnostic)
 
@@ -104,6 +109,33 @@ var broken = await app.Audit.VerifyEntityChainAsync(entityType, entityKey);
 ```
 
 Retrieve a captured body with `GetPayloadAsync(record.RecordId)`; its bytes hash to the record's `PayloadHash`. Assert audit through these external surfaces (the queryable record, the chain verdict, the retrieved payload), never a private field or a capture count.
+
+## Testing the tenant wall
+
+Turn tenancy on with `WithTenancy()`, then drive "act as a company" with `RunAsTenant`. The wall is **structural**, so the proof is a deterministic seam, not a wall-clock wait: switching the ambient tenant swaps the visible rows, and a cross-tenant read is empty by construction.
+
+```csharp
+await using var app = await EdictTestApp.StartAsync(b => b
+    .WithConsumer(typeof(EmployeeCommandHandler).Assembly)
+    .WithTenancy());
+
+// Acme onboards (the one explicit establishing crossing) and adds an employee.
+await app.SendAsync(new RegisterCompanyCommand(acmeAdminId, "Acme"), EdictTenantId.Of("acme"));
+app.RunAsTenant(EdictTenantId.Of("acme"));
+await app.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), "Ada"));
+await app.Drain();
+
+// Acme sees its own employee.
+var acmeRows = await app.QueryMyTenantPartitionAsync<EmployeeDirectoryRow>();
+Assert.Single(acmeRows);
+
+// Globex, switched in on the same app, sees an empty list — not a permission error, structurally empty.
+app.RunAsTenant(EdictTenantId.Of("globex"));
+var globexRows = await app.QueryMyTenantPartitionAsync<EmployeeDirectoryRow>();
+Assert.Empty(globexRows);
+```
+
+The same shape proves the audit wall: after `RunAsTenant`, `TenantAudit.ByEntityAsync(...)` returns only the ambient tenant's records. A test asserts the wall through these observable surfaces (the swapped partition, the empty cross-tenant read, the scoped audit trail), never by inspecting a composed key. Prior art for a full Sample-level integration assertion is `Sample.Azure.Silo.Tests`.
 
 ## Chaos is on by default
 

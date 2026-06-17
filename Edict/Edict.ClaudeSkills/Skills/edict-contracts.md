@@ -43,6 +43,26 @@ Both `EdictCommand` and `EdictEvent` carry a `CorrelationId` the framework stamp
 
 When auditing is enabled, `EdictCommand` and `EdictEvent` also carry a **principal** — the actor on whose authority the message was issued. Like the correlation id it is a framework-managed durable field, **not** a contract property you declare: it is stamped once at the originating `SendAsync` from an edge resolver and inherited by every message that send sets in motion (a handler's raised Events, a saga's dispatched Commands). Do not add a principal, actor, or user field of your own to a Command or Event. The wiring that supplies it is the `edict-silo-wiring` skill; the compile-time aid (`EDICT023`) and the fail-closed `EdictMissingPrincipalException` are the `edict-diagnostics` skill. The principal is the *actor*, never the *data subject* (the person the data is about) — conflating the two is the classic modelling error, so keep `EdictPrincipal` strictly the actor.
 
+## Tenant-scoping is on the route-key type, not the message
+
+To wall an aggregate behind a tenant (a B2B company, a realm, whatever boundary the consumer draws), mark its **route-key type** with `[EdictTenantScoped]` (`Edict.Contracts.Tenancy`). The marker takes a `struct`, so a tenant-scoped aggregate keys on a small wrapper struct rather than a bare `Guid`:
+
+```csharp
+using Edict.Contracts.Commands;
+using Edict.Contracts.Tenancy;
+
+[EdictTenantScoped]
+public readonly record struct EmployeeId(Guid Value);
+
+public sealed partial record AddEmployeeCommand(
+    [property: EdictRouteKey] EmployeeId EmployeeId,
+    string FullName) : EdictCommand;
+```
+
+Every Command and Event keyed by that type now lives behind the **company wall**: its grain and stream keys compose as `{tenant}|{guid}` instead of the bare `{guid}` of a public aggregate. The marker sits on the route-key type, not on each message, because an aggregate is a cluster of messages sharing one route key. Declaring tenancy once on the type makes a leak-by-drift across that cluster unrepresentable, where a per-message attribute could be applied to four of five messages and leak on the fifth. A **public aggregate** (orders, say) keeps an unmarked route-key type and is never walled, so public and tenant-scoped aggregates coexist in one app.
+
+The tenant id itself is framework-stamped and carried as a durable field, exactly like the correlation id and the principal: you never add a tenant field to a contract. How it is stamped at the origin and read back is the `edict-silo-wiring` and `edict-authoring` skills' territory; the `[EdictTenantScoped]` marker here is the only thing you author on the contract. An origin send of a tenant-scoped command with no tenant is caught at compile time by **`EDICT024`** (see the `edict-silo-wiring` skill) and fails closed at runtime as `EdictMissingTenantException`.
+
 ## When to look up a contract term
 
 When a consumer asks "what counts as a Domain Stream?" / "what is a Route Key here?" / "what does Telemeterized mean on an Event?", or when picking between two terms whose distinction is fuzzy in their head, invoke **`edict_describe_glossary_term`** for the authoritative one-line definition and its `_Avoid_` list. The optional `Edict` prefix on the query is elidable — `Stream`, `Domain Stream`, and `EdictStream` all resolve. Use this before guessing a definition from the attribute name.
@@ -70,6 +90,8 @@ When a consumer asks "can we just use JSON?" or "why can't I add `[Union]`?" or 
 - ADR-0037 — `[EdictTelemeterized]` tag keys, no type prefix.
 - ADR-0046 — Canonical authoring shape for messages and persisted state.
 - ADR-0050 — Saga absolute lifetime cap (the `[EdictSagaTimeout]` attribute).
+- ADR-0065 — Tenant as a routed identity axis (the `[EdictTenantScoped]` marker and the `{tenant}|{guid}` key fold).
+- ADR-0067 — Tenant isolation enforcement and storage (the company wall the marker buys).
 
 `edict_lookup_adr` is the load-bearing trigger for this skill: use it for any contract-attribute "why" question rather than guessing.
 

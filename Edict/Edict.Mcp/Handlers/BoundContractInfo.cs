@@ -1,3 +1,3 @@
 namespace Edict.Mcp.Handlers;
 
-sealed record BoundContractInfo(string FullTypeName, string? RouteKeyPropertyName);
+sealed record BoundContractInfo(string FullTypeName, string? RouteKeyPropertyName, bool TenantScoped = false);

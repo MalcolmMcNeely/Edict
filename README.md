@@ -94,6 +94,16 @@ The consumer-facing surface is seven concepts: **[Command Handler](docs/usage/co
 
 Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 
+## Multi-tenancy
+
+Edict's multi-tenancy draws one hard line and states both sides of it honestly.
+
+**What Edict guarantees: the Company Wall.** Mark an aggregate's route-key type with `[EdictTenantScoped]` and the tenant is folded into every grain, stream, projection, and audit key. A session resolved as Company A can then only ever address Company A's data. This is structural, not a permission check: reaching another tenant's data is a key that cannot be formed, not a check that might be forgotten. A cross-tenant read comes back empty by construction, a missing tenant fails the send closed, and a stolen-key reach is refused by a runtime call filter. Public and tenant-scoped aggregates coexist in one app.
+
+**What stays yours.** Within-tenant authorization (which user inside Company A may see which row) is your domain layer, untouched by Edict. The map from a logged-in user to their tenant is yours too: you resolve it from a trusted, signed source and hand Edict the tenant id, never reading it off the request body.
+
+One honest asymmetry: Postgres persistence adds Row-Level Security as a defense-in-depth backstop; Azure Table and Blob have no equivalent, so the Azure pairing relies on key composition and the call filter alone. Full detail in [Multi-tenancy](docs/usage/concepts/multi-tenancy.md).
+
 ## Agentic tooling
 
 AI-assisted development against Edict isn't guesswork. Same philosophy as the rest of the framework: consumers should be able to use Claude productively against Edict without first writing scaffolding to teach the agent what Edict is. An MCP server (`edict-mcp`) and a Claude Code skill bundle (`edict-skills`) ship from this repo so the agent queries the live solution instead of inventing one:
@@ -137,6 +147,7 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 - **Read-your-writes.** A command returns a cursor; a query with `after:` waits until that write is visible, so a user reliably sees their own change.
 - **Projection species.** Two builders over one root: in-grain state for small, hot, per-id read models; an external list for large or unbounded ones.
 - **Effectively-once.** Per-consumer dedup in the base class.
+- **Multi-tenant by structure.** Mark a route-key type tenant-scoped and the tenant folds into every key; a session can only ever address its own tenant's data. Within-tenant authorization stays yours.
 - **Retries that don't block.** Failing outbox entries back off independently.
 - **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
 - **One trace per business flow.** Trace context follows every async stream hop.

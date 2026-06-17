@@ -6,15 +6,18 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.CancelOrderCommand",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         },
         {
           "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.PlaceOrderCommand",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         },
         {
           "fullTypeName": "FixtureLibrary.WithSubmitOrder.Orders.SubmitOrderCommand",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary.WithSubmitOrder",
@@ -30,7 +33,8 @@
       "boundContracts": [
         {
           "fullTypeName": "Edict.Contracts.DeadLetter.EdictDeadLetterRaised",
-          "routeKeyPropertyName": "SingletonKey"
+          "routeKeyPropertyName": "SingletonKey",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "Edict.Core",

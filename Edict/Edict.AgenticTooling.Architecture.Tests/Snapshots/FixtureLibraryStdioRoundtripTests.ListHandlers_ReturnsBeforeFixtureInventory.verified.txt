@@ -6,7 +6,8 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary",
@@ -22,7 +23,8 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary",
@@ -38,11 +40,13 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.CancelOrderCommand",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         },
         {
           "fullTypeName": "FixtureLibrary.Orders.PlaceOrderCommand",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary",
@@ -58,7 +62,8 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary",
@@ -74,7 +79,8 @@
       "boundContracts": [
         {
           "fullTypeName": "FixtureLibrary.Orders.OrderPlaced",
-          "routeKeyPropertyName": "OrderId"
+          "routeKeyPropertyName": "OrderId",
+          "tenantScoped": false
         }
       ],
       "declaringAssembly": "FixtureLibrary",

@@ -15,6 +15,7 @@ sealed class HandlerScanner
     const string CommandBase = "Edict.Contracts.Commands.EdictCommand";
     const string EventBase = "Edict.Contracts.Events.EdictEvent";
     const string RouteKeyAttributeFullName = "Edict.Contracts.Commands.EdictRouteKeyAttribute";
+    const string TenantScopedAttributeFullName = "Edict.Contracts.Tenancy.EdictTenantScopedAttribute";
     const string SagaTimeoutAttributeFullName = "Edict.Contracts.Sagas.EdictSagaTimeoutAttribute";
     const string ScheduleMessageBase = "Edict.Contracts.Schedules.EdictScheduleMessage";
     const string TaskOfScheduleResultReturnType = "System.Threading.Tasks.Task<Edict.Contracts.Schedules.EdictScheduleResult>";
@@ -112,7 +113,8 @@ sealed class HandlerScanner
             {
                 continue;
             }
-            bound.Add(new BoundContractInfo(displayName, FindRouteKeyPropertyName(named)));
+            var routeKey = FindRouteKey(named);
+            bound.Add(new BoundContractInfo(displayName, routeKey.PropertyName, routeKey.TenantScoped));
         }
         return bound;
     }
@@ -128,7 +130,10 @@ sealed class HandlerScanner
         }
     }
 
-    static string? FindRouteKeyPropertyName(INamedTypeSymbol contractType)
+    // The route-key property names the message's address; the marker that walls it
+    // behind a tenant sits on that property's *type*, not the property, so an
+    // aggregate is tenant-scoped iff the [EdictRouteKey] type carries [EdictTenantScoped].
+    static RouteKeyInfo FindRouteKey(INamedTypeSymbol contractType)
     {
         for (var current = contractType; current is not null; current = current.BaseType)
         {
@@ -138,18 +143,20 @@ sealed class HandlerScanner
                 {
                     continue;
                 }
-                foreach (var attribute in property.GetAttributes())
+                if (!property.GetAttributes().Any(attribute =>
+                        attribute.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)) == RouteKeyAttributeFullName))
                 {
-                    if (attribute.AttributeClass is { } attributeClass &&
-                        attributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)) == RouteKeyAttributeFullName)
-                    {
-                        return property.Name;
-                    }
+                    continue;
                 }
+                var tenantScoped = property.Type.GetAttributes().Any(attribute =>
+                    attribute.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)) == TenantScopedAttributeFullName);
+                return new RouteKeyInfo(property.Name, tenantScoped);
             }
         }
-        return null;
+        return new RouteKeyInfo(null, TenantScoped: false);
     }
+
+    readonly record struct RouteKeyInfo(string? PropertyName, bool TenantScoped);
 
     // Mirrors SagaTimeoutAttributeReader's runtime three-way resolution: Unbounded wins,
     // then a non-empty duration literal, otherwise the saga inherits the silo-wide default.
@@ -362,7 +369,8 @@ sealed class HandlerScanner
                     continue;
                 }
                 var displayName = boundCommand.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted));
-                return [new BoundContractInfo(displayName, FindRouteKeyPropertyName(boundCommand))];
+                var routeKey = FindRouteKey(boundCommand);
+                return [new BoundContractInfo(displayName, routeKey.PropertyName, routeKey.TenantScoped)];
             }
             return [];
         }

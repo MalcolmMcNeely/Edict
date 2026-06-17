@@ -1,8 +1,17 @@
 ﻿{
   "commands": [
     {
+      "commandType": "Acme.Employees.AddEmployeeCommand",
+      "routeKeyProperty": "EmployeeId",
+      "tenantScoped": true,
+      "handlers": [
+        "Acme.Employees.EmployeeCommandHandler"
+      ]
+    },
+    {
       "commandType": "Acme.Orders.PlaceOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "Acme.Orders.OrderCommandHandler",
         "Acme.Orders.RogueOrderCommandHandler"
@@ -11,8 +20,17 @@
   ],
   "events": [
     {
+      "eventType": "Acme.Employees.EmployeeAdded",
+      "routeKeyProperty": "EmployeeId",
+      "tenantScoped": true,
+      "subscribers": [
+        "Acme.Employees.EmployeeDirectoryProjection"
+      ]
+    },
+    {
       "eventType": "Acme.Orders.OrderPlaced",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "subscribers": [
         "Acme.Notifications.OrderPlacedEmailHandler",
         "Acme.Reporting.OrdersByStatusProjection"

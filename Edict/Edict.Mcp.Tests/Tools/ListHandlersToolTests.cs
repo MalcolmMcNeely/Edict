@@ -65,6 +65,15 @@ public class ListHandlersToolTests
                 DeclaringAssembly: "Acme.Returns",
                 SourceLocation: new SourceLocationInfo("Acme.Returns/ReturnSaga.cs", 7, 5),
                 SagaTimeoutCap: SagaTimeoutCap.InheritsDefault),
+            new HandlerEntry(
+                DeclaringTypeName: "Acme.Employees.EmployeeCommandHandler",
+                Role: HandlerRole.CommandHandler,
+                BoundContracts:
+                [
+                    new BoundContractInfo("Acme.Employees.AddEmployeeCommand", "EmployeeId", TenantScoped: true),
+                ],
+                DeclaringAssembly: "Acme.Employees",
+                SourceLocation: new SourceLocationInfo("Acme.Employees/EmployeeCommandHandler.cs", 10, 5)),
         ]);
         var tool = new ListHandlersTool(_ => Task.FromResult(inventory), StubVersionReportProvider.Clean());
 

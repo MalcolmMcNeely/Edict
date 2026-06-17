@@ -3,6 +3,7 @@
     {
       "commandType": "FixtureLibrary.Orders.CancelOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "FixtureLibrary.Orders.OrderCommandHandler"
       ]
@@ -10,6 +11,7 @@
     {
       "commandType": "FixtureLibrary.Orders.PlaceOrderCommand",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "handlers": [
         "FixtureLibrary.Orders.OrderCommandHandler"
       ]
@@ -19,6 +21,7 @@
     {
       "eventType": "FixtureLibrary.Orders.OrderPlaced",
       "routeKeyProperty": "OrderId",
+      "tenantScoped": false,
       "subscribers": [
         "FixtureLibrary.Activity.OrderActivityProjection",
         "FixtureLibrary.Notifications.OrderPlacedEmailHandler",

@@ -37,6 +37,7 @@ A brand-new project is the degenerate case where almost everything is missing, s
 | `AddEdictPostgresPersistence(...)` | `Edict.Postgres` | PostgreSQL as the grain-state provider. |
 | `AddEdictKafkaStreams(...)` | `Edict.Kafka` | Kafka as the stream provider. |
 | `WithAudit()` | `Edict.Core` | Turns on audit capture for the silo. Pairs with `silo.Services.AddEdictAudit(resolver)` (the origin principal resolver). Optional; see the auditing section. |
+| `AddEdictTenant(resolver)` | `Edict.Core` | Registers the tenant edge resolver. The multi-tenancy opt-in; required on every silo and client that handles tenant-scoped aggregates. Optional; see the multi-tenancy section. |
 
 Each `AddEdict*` extension that takes a `(...)` argument accepts an `Action<T>` over its options class. The canonical reference for every options property, its default, and its validation rule is the `docs/configuration` folder in the Edict repository — `core.md` for the provider-agnostic knobs, plus the page matching your streaming and persistence choice. Reach for it before hand-tuning a literal in `Program.cs`.
 
@@ -67,6 +68,33 @@ dotnet_diagnostic.EDICT023.severity = error
 ```
 
 Once enabled it flags every bare `IEdictSender.SendAsync(command)`. Supply a principal explicitly with the `SendAsync(command, principal)` overload for a context-free origin (worker, import, admin script), or silence a resolver-backed site you have confirmed is attributed at runtime with `[SuppressMessage("Edict", "EDICT023")]`. Enable it only in the projects that adopt auditing; leaving it off elsewhere is correct, not an omission.
+
+## Multi-tenancy: wire AddEdictTenant when you have tenant-scoped aggregates
+
+If any aggregate's route-key type carries `[EdictTenantScoped]` (see the `edict-contracts` skill), the silo needs the tenant edge resolver. Register it on both the silo and any client or Web front end that issues commands or reads tenant-scoped projections:
+
+```csharp
+silo.Services.AddEdictTenant(serviceProvider =>
+    serviceProvider.GetRequiredService<IHttpContextAccessor>()
+        .ResolveTenantFromSignedClaim());
+```
+
+The resolver returns the ambient `EdictTenantId?` for the current call, read from a **trusted, signed source** (a session claim, a verified header). Never read the tenant off the request body: that is a confused-deputy hole, the precise thing the wall exists to close. The resolver returns `null` when no tenant is in scope, and at a tenant-scoped origin send that null fails closed (`EdictMissingTenantException`) before anything is dispatched or persisted.
+
+Registering `AddEdictTenant` is the whole opt-in: it turns on origin tenant-stamping and installs the runtime isolation backstop (an incoming grain-call filter that refuses a call landing on another tenant's key). A single-tenant app registers nothing and pays no tenant tax; the filter is silent for public aggregates even when present.
+
+What the wall guarantees and what stays yours: Edict guarantees **structural isolation** (a session resolved as Company A can only ever address Company A's grains, streams, projections, and audit trail, because the tenant is folded into every composed key). Edict does **not** do within-tenant authorization (which user inside Company A may see which row) or own the principal-to-tenant mapping (your resolver supplies it). Keep those two on your side of the line.
+
+### Enable EDICT024 alongside it
+
+Pair the wiring with the opt-in **`EDICT024`** analyzer so a bare origin `SendAsync(command)` of a tenant-scoped command is caught at compile time rather than as the runtime fail-closed throw. Like `EDICT023` for principals, it is on-by-default for the marker but you adopt it per project in `.editorconfig`:
+
+```ini
+[*.cs]
+dotnet_diagnostic.EDICT024.severity = error
+```
+
+It flags only sends whose command's route-key type is `[EdictTenantScoped]`, so a public aggregate never trips it. Supply the tenant explicitly with the `SendAsync(command, EdictTenantId.Of(...))` establishing-crossing overload (the `edict-authoring` skill), or silence a resolver-backed site you have confirmed is attributed at runtime with `[SuppressMessage("Edict", "EDICT024")]`.
 
 ## Telemetry wiring
 
