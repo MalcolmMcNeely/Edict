@@ -45,7 +45,7 @@ public sealed class CartToOrderBridgeTests
         // read-model row (driven through to payment authorization) is here.
         var orderStatus = await app.GetProjectionRow<OrderStatusRow>(
             tableName: "ordersbystatus",
-            partitionKey: cartId.ToString(),
+            partitionKey: cartId.ToString("N"),
             rowKey: "status");
 
         await Verify(new { Placement = placement, OrderStatus = orderStatus });

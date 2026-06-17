@@ -42,7 +42,7 @@ public sealed class AuditSeamTests
         // Assert — placing an order captures one C1 command record plus one E1 event
         // record (it raises one event), in chain order, both attributed to the
         // default test principal a bare WithAudit() applies.
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
 
         Assert.Equal(
             [EdictAuditKind.Command, EdictAuditKind.Event],
@@ -70,7 +70,7 @@ public sealed class AuditSeamTests
 
         // Assert — both the C1 command record and the E1 event record are attributed
         // to the actor ActAs set, and the principal timeline finds them.
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         Assert.NotEmpty(records);
         Assert.All(records, record => Assert.Equal(clerk, record.Principal));
 
@@ -92,18 +92,18 @@ public sealed class AuditSeamTests
         await app.Drain();
 
         // Assert — the freshly captured chain verifies clean.
-        var intact = await app.Audit.VerifyEntityChainAsync(OrderEntityType, orderId.ToString());
+        var intact = await app.Audit.VerifyEntityChainAsync(OrderEntityType, orderId.ToString("N"));
         Assert.True(intact.IsIntact);
         Assert.Null(intact.BrokenAtSequence);
 
         // Act — rewrite the event record's body identity in place, the way an
         // attacker editing the store would, leaving its sealed hash untouched.
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         var eventRecord = records.Single(record => record.Kind == EdictAuditKind.Event);
         app.TamperWithAuditRecord(eventRecord with { MessageType = "Tampered.Event" });
 
         // Assert — verification now fails, naming the altered record's sequence.
-        var tampered = await app.Audit.VerifyEntityChainAsync(OrderEntityType, orderId.ToString());
+        var tampered = await app.Audit.VerifyEntityChainAsync(OrderEntityType, orderId.ToString("N"));
         Assert.False(tampered.IsIntact);
         Assert.Equal(eventRecord.Sequence, tampered.BrokenAtSequence);
     }
@@ -122,7 +122,7 @@ public sealed class AuditSeamTests
         await app.Drain();
 
         // Act — retrieve the C1 command body behind its payload reference.
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         var commandRecord = records.Single(record => record.Kind == EdictAuditKind.Command);
         var body = await app.Audit.GetPayloadAsync(commandRecord.RecordId);
 
@@ -145,7 +145,7 @@ public sealed class AuditSeamTests
         await app.SendAsync(new PlaceOrderCommand(orderId, "REF-005"));
         await app.Drain();
 
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
 
         // Act — read each captured body back as the concrete message the consumer authored.
         var commandMessage = await app.Audit.GetMessageAsync(records.Single(record => record.Kind == EdictAuditKind.Command));
@@ -173,7 +173,7 @@ public sealed class AuditSeamTests
         await app.SendAsync(new PlaceOrderCommand(orderId, "REF-006"));
         await app.Drain();
 
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         var eventRecord = records.Single(record => record.Kind == EdictAuditKind.Event);
 
         // Act — read the event body under a record that claims it is a Command, so

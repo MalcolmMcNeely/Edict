@@ -40,7 +40,7 @@ public sealed class AuditQueryScenariosTests
         // Assert
         Assert.IsType<EdictCommandResult.Rejected>(result);
 
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         var rejected = Assert.Single(records);
         Assert.Equal(EdictAuditKind.Command, rejected.Kind);
         Assert.Equal(EdictAuditOutcome.Rejected, rejected.Outcome);

@@ -139,6 +139,6 @@ public sealed class OrderClosureSagaTests
     static Task<OrderStatusRow?> GetRow(EdictTestApp app, Guid orderId) =>
         app.GetProjectionRow<OrderStatusRow>(
             tableName: "ordersbystatus",
-            partitionKey: orderId.ToString(),
+            partitionKey: orderId.ToString("N"),
             rowKey: "status");
 }

@@ -34,7 +34,7 @@ public sealed class AuditDrillDownRenderTests
         await app.SendAsync(new PlaceOrderCommand(orderId, "AUDIT-DEMO"));
         await app.Drain();
 
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
         var commandRecord = records.Single(record => record.Kind == EdictAuditKind.Command);
 
         // Act — read the captured body back as its concrete type, then render it the way the drill-down does.
@@ -64,7 +64,7 @@ public sealed class AuditDrillDownRenderTests
         await app.SendAsync(new SubmitOrderCommand(orderId, 100m));
         await app.Drain();
 
-        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString());
+        var records = await app.Audit.ByEntityAsync(OrderEntityType, orderId.ToString("N"));
 
         var rendered = new List<object>();
         foreach (var record in records)
