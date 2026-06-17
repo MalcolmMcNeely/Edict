@@ -5,6 +5,7 @@ using Edict.Contracts.Projections;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Tenancy;
 using Edict.Core.Tenancy;
+using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -72,6 +73,13 @@ public sealed class EdictTenantScopedListProjectionReader<TListProjection> : IEd
     {
         var tenant = _tenantResolver?.Resolve()
             ?? throw EdictMissingTenantException.ForProjectionRead(typeof(TListProjection));
+        // Seed the per-turn relay with the resolved tenant so it propagates to the
+        // projection grain's storage read, where the Postgres row-security backstop reads
+        // it as the SET LOCAL tenant. The relay is the resolved tenant itself, taken before
+        // composition, so it is an independent check on the composed key: a key folded for
+        // the wrong partition is denied at the database rather than leaking another tenant's
+        // rows.
+        TenantRelay.Seed(tenant);
         var grainClassName = _resolver.Resolve(typeof(TListProjection));
         var composedKey = EdictKeyComposer.Compose(tenant, routeKey);
         return _grainFactory.GetGrain<IEdictProjectionBuilder>(composedKey, grainClassName);

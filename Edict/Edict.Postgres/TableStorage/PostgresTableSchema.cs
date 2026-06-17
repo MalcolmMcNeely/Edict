@@ -1,3 +1,5 @@
+using Edict.Postgres.Tenancy;
+
 using Npgsql;
 
 namespace Edict.Postgres.TableStorage;
@@ -27,7 +29,11 @@ internal static class PostgresTableSchema
                 "payload BYTEA NOT NULL, " +
                 "etag TEXT NOT NULL, " +
                 "PRIMARY KEY (partition_key, row_key)" +
-                ");";
+                ");" +
+                // The partition key carries the tenant as its {tenant}|... prefix (the
+                // whole value for the tenant-as-partition shape), so a row-security policy
+                // can confine a tenant read to its own partition at the database layer.
+                PostgresTenantRowSecurity.PolicySql(tableName, keyColumn: "partition_key");
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         catch (NpgsqlException exception)

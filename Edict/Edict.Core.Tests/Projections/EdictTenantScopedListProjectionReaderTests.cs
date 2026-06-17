@@ -42,6 +42,20 @@ public sealed class EdictTenantScopedListProjectionReaderTests
     }
 
     [Fact]
+    public async Task QueryMyPartitionAsync_ShouldSeedTheAmbientTenantRelay_SoTheBackstopReadsItDownstream()
+    {
+        var factory = new RecordingGrainFactory();
+        var reader = ReaderFor(factory, EdictTenantId.Of("acme"));
+
+        await reader.QueryMyPartitionAsync();
+
+        // The projection grain's storage read sources the Postgres SET LOCAL tenant from
+        // the per-turn relay; the read path must seed it from the resolved tenant — taken
+        // before composition — so a mis-composed key is denied at the database, not leaked.
+        Assert.Equal(EdictTenantId.Of("acme"), factory.TenantObservedByGrain);
+    }
+
+    [Fact]
     public async Task QueryMyPartitionAsync_ShouldFailClosed_WhenNoAmbientTenant()
     {
         var reader = ReaderFor(new RecordingGrainFactory(), tenant: null);

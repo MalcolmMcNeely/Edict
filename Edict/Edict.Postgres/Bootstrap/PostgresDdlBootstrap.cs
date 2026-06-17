@@ -1,5 +1,7 @@
 using System.Reflection;
 
+using Edict.Postgres.Tenancy;
+
 using Npgsql;
 
 namespace Edict.Postgres.Bootstrap;
@@ -31,6 +33,11 @@ internal static class PostgresDdlBootstrap
 
         // Edict-owned DDL — uses CREATE TABLE IF NOT EXISTS so safe to rerun.
         Execute(connection, ReadResource(EdictBootstrapResource));
+
+        // Arm the tenant-isolation backstop on the grain-state table. Single-sourced
+        // with the per-projection-table policy so the two never drift; the grain id
+        // carries the tenant as its {tenant}|... prefix. Idempotent on rerun.
+        Execute(connection, PostgresTenantRowSecurity.PolicySql("edict_grain_state", keyColumn: "grain_id"));
     }
 
     static void RunIfTableMissing(NpgsqlConnection connection, string tableName, string resource)

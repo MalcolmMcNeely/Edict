@@ -1,4 +1,5 @@
 using Edict.Contracts.TableStorage;
+using Edict.Postgres.Tenancy;
 
 using Npgsql;
 
@@ -41,12 +42,18 @@ public sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
         try
         {
             await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var transaction = await PostgresTenantRowSecurity.BeginTenantScopeAsync(connection, cancellationToken);
             await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
             command.CommandText =
                 $"SELECT payload FROM {quoted} WHERE partition_key = @pk AND row_key = @rk;";
             command.Parameters.AddWithValue("pk", partitionKey);
             command.Parameters.AddWithValue("rk", rowKey);
             var result = await command.ExecuteScalarAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             if (result is null || result is DBNull)
             {
                 return null;
@@ -74,13 +81,21 @@ public sealed class PostgresTableWriteStore<T> : IEdictTableWriteStore<T>
         try
         {
             await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var transaction = await PostgresTenantRowSecurity.BeginTenantScopeAsync(connection, cancellationToken);
             await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
             command.CommandText = $"SELECT payload FROM {quoted} WHERE partition_key = @pk;";
             command.Parameters.AddWithValue("pk", partitionKey);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                results.Add(_serializer.Deserialize<T>((byte[])reader["payload"]));
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    results.Add(_serializer.Deserialize<T>((byte[])reader["payload"]));
+                }
+            }
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
             }
         }
         catch (PostgresException exception) when (exception.SqlState == "42P01")

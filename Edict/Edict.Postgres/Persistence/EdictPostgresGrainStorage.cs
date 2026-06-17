@@ -1,3 +1,5 @@
+using Edict.Postgres.Tenancy;
+
 using Microsoft.Extensions.Logging;
 
 using Npgsql;
@@ -95,7 +97,9 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
                 async () =>
                 {
                     await using var connection = await _openConnection();
+                    await using var transaction = await PostgresTenantRowSecurity.BeginTenantScopeAsync(connection, CancellationToken.None);
                     await using var command = connection.CreateCommand();
+                    command.Transaction = transaction;
                     command.CommandText =
                         "SELECT payload, version FROM edict_grain_state " +
                         "WHERE grain_type = @grain_type AND grain_id = @grain_id " +
@@ -105,17 +109,30 @@ internal sealed class EdictPostgresGrainStorage : IGrainStorage, ILifecycleParti
                     command.Parameters.AddWithValue("state_name", stateName);
                     command.Parameters.AddWithValue("service_id", _serviceId);
 
-                    await using var reader = await command.ExecuteReaderAsync();
-                    if (!await reader.ReadAsync())
+                    bool found;
+                    byte[]? payload;
+                    var version = 0;
+                    await using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        found = await reader.ReadAsync();
+                        payload = found && !reader.IsDBNull(0) ? (byte[])reader["payload"] : null;
+                        if (found)
+                        {
+                            version = reader.GetInt32(1);
+                        }
+                    }
+                    if (transaction is not null)
+                    {
+                        await transaction.CommitAsync();
+                    }
+
+                    if (!found)
                     {
                         grainState.State = Activator.CreateInstance<T>()!;
                         grainState.ETag = null;
                         grainState.RecordExists = false;
                         return;
                     }
-
-                    var payload = reader.IsDBNull(0) ? null : (byte[])reader["payload"];
-                    var version = reader.GetInt32(1);
 
                     if (payload is null || payload.Length == 0)
                     {

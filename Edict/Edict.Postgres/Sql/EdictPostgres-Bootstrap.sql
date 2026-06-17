@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS edict_grain_state
     modified_on  TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (grain_type, grain_id, state_name, service_id)
 );
+-- The tenant-isolation row-security policy on edict_grain_state is armed by
+-- PostgresDdlBootstrap through PostgresTenantRowSecurity.PolicySql, so the policy
+-- expression is single-sourced with the per-projection-table policy rather than
+-- duplicated here.
 
 CREATE TABLE IF NOT EXISTS edict_claim_check
 (
