@@ -70,6 +70,13 @@ public interface IEmailHandlerProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledCountAsync();
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
+
+    // Reserves the EventId's in-flight slot and leaves it held, standing in for a
+    // first delivery still parked mid-turn. A following redelivery of the same id
+    // then deterministically reaches the defense-in-depth in_flight suppression
+    // branch — the slot is reserved but never committed to the window — without
+    // manufacturing the concurrent delivery a non-reentrant activation never sees.
+    Task ClaimInFlightAsync(Guid eventId);
 }
 
 public sealed partial class EmailEventHandler : EdictEventHandler, IEmailHandlerProbe
@@ -86,6 +93,13 @@ public sealed partial class EmailEventHandler : EdictEventHandler, IEmailHandler
 
     public Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync() =>
         Task.FromResult<IReadOnlyList<Guid>>(_handled.AsReadOnly());
+
+    public Task ClaimInFlightAsync(Guid eventId)
+    {
+        EnsureWindowInitialized();
+        TryClaimInFlight(eventId);
+        return Task.CompletedTask;
+    }
 }
 
 static class EmailHandlerWaiters
