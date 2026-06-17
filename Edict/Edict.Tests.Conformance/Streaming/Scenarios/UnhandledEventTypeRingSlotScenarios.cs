@@ -62,19 +62,21 @@ public abstract class UnhandledEventTypeRingSlotScenarios<TFixture>
         });
 
         // Sentinel-after: a fresh handled event published last on the same serially-
-        // delivered stream. Once it is handled, both the unhandled event and the id1
-        // redelivery ahead of it have been processed; the count then settles at four
-        // (id1, id2, id3, id4). A redelivery that leaked through the ring would push it
-        // to five.
+        // delivered stream. Gate on the sentinel id landing, not a handled count — a
+        // count gate would be satisfied by the leaked id1 redelivery itself and return
+        // before the sentinel, masking the leak. Once the sentinel is handled, both the
+        // unhandled event and the id1 redelivery ahead of it have been processed, so the
+        // handled set is exactly {id1, id2, id3, id4} with id1 appearing once. A
+        // redelivery that leaked through the ring would make it five with id1 twice.
         var id4 = Guid.NewGuid();
         await publisher.PublishAsync(new DedupTestEvent(grainId, 4) with
         {
             EventId = id4,
             OccurredAt = DateTimeOffset.UtcNow,
         });
-        await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 4);
+        var handled = await DedupTestWaiters.WaitForHandledIdAsync(consumer, id4);
 
-        var handled = await consumer.GetHandledEventIdsAsync();
         Assert.Equal(4, handled.Count);
+        Assert.Equal(1, handled.Count(id => id == id1));
     }
 }

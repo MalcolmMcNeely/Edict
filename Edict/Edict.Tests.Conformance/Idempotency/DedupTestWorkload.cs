@@ -119,4 +119,25 @@ static class DedupTestWaiters
         }
         return await consumer.GetHandledEventIdsAsync();
     }
+
+    // Gates on the sentinel id itself rather than a handled count: a count a leaked
+    // redelivery could also satisfy would let the sentinel-after assertion pass while
+    // masking the very leak it guards against.
+    public static async Task<IReadOnlyList<Guid>> WaitForHandledIdAsync(
+        IDedupTestConsumer consumer,
+        Guid expectedId,
+        int timeoutSeconds = 20)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var ids = await consumer.GetHandledEventIdsAsync();
+            if (ids.Contains(expectedId))
+            {
+                return ids;
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+        }
+        return await consumer.GetHandledEventIdsAsync();
+    }
 }

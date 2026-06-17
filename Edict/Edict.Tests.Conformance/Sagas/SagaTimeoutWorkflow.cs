@@ -82,6 +82,7 @@ public interface ITimeoutSagaProbe : IGrainWithGuidKey
 {
     Task FireCapAsync();
     Task<int> GetHandledAsync();
+    Task<int> GetPendingOutboxCountAsync();
 }
 
 public interface IThrowingTimeoutSagaProbe : IGrainWithGuidKey
@@ -109,8 +110,8 @@ public interface ICompensationTrackerProbe : IGrainWithGuidKey
 }
 
 // A finite cap with an OnSagaTimeoutAsync override: the fired cap dispatches one
-// compensating Command. The one-second cap lets a conformance run arm, wait past
-// it in wall-clock, then fire it through the probe.
+// compensating Command. The one-second cap lets a conformance run arm, advance past
+// it on the virtual clock, then fire it through the probe.
 [EdictSagaTimeout("00:00:01")]
 public partial class TimeoutCompensatingSaga : EdictSaga<TimeoutSagaProgress>, ITimeoutSagaProbe
 {
@@ -128,6 +129,7 @@ public partial class TimeoutCompensatingSaga : EdictSaga<TimeoutSagaProgress>, I
 
     public Task FireCapAsync() => ReceiveCapReminderAsync();
     public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
+    public Task<int> GetPendingOutboxCountAsync() => Task.FromResult(OutboxStateForProbe.Pending.Count);
 }
 
 // A finite cap whose OnSagaTimeoutAsync override throws — the consumer-bug shape

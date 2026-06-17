@@ -59,10 +59,16 @@ public abstract class SagaTimeoutCapCompensationScenarios<TFixture>
         await saga.FireCapAsync();
 
         var tracker = _fixture.GrainFactory.GetGrain<ICompensationTrackerProbe>(workflowId);
-        await SagaTimeoutWaiters.WaitUntilAsync(async () => await tracker.GetReceivedAsync() >= 1);
 
-        // Only one SendCommand effect was ever staged, so the count converges at one
-        // and stays there regardless of fire order — the second fire adds nothing.
+        // Both fires are awaited, so all staging is done; gate on the saga's outbox
+        // draining to quiescence rather than on the tracker reaching one. A tracker-count
+        // gate would return on the first compensation while an erroneously-staged second
+        // still sat un-drained, so the exactly-once assertion would pass blind to it.
+        // Once Pending is zero, any second SendCommand has fully drained to the tracker.
+        await SagaTimeoutWaiters.WaitUntilAsync(async () => await saga.GetPendingOutboxCountAsync() == 0);
+
+        // Only one SendCommand effect was ever staged: the second fire saw an
+        // already-terminal saga, resolved to a no-op, and added nothing.
         Assert.Equal(1, await tracker.GetReceivedAsync());
         Assert.Equal(workflowId, await tracker.GetLastWorkflowIdAsync());
     }
