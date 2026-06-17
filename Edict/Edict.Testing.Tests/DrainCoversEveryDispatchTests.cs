@@ -34,7 +34,7 @@ public sealed class DrainCoversEveryDispatchTests
 
         var row = await app.GetProjectionRow<TrackerRow>(
             tableName: "trackerinvocations",
-            partitionKey: widgetId.ToString(),
+            partitionKey: widgetId.ToString("N"),
             rowKey: "tracker");
 
         Assert.NotNull(row);
@@ -59,7 +59,7 @@ public sealed class DrainCoversEveryDispatchTests
 
         var row = await app.GetProjectionRow<TrackerRow>(
             tableName: "trackerinvocations",
-            partitionKey: widgetId.ToString(),
+            partitionKey: widgetId.ToString("N"),
             rowKey: "tracker");
 
         Assert.NotNull(row);
@@ -83,7 +83,7 @@ public sealed class DrainCoversEveryDispatchTests
 
         var row = await app.GetProjectionRow<TrackerRow>(
             tableName: "trackerinvocations",
-            partitionKey: widgetId.ToString(),
+            partitionKey: widgetId.ToString("N"),
             rowKey: "tracker");
 
         Assert.NotNull(row);

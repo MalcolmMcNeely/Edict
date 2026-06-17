@@ -40,7 +40,7 @@ public sealed class DeliverySerializationTests
 
         var row = await app.GetProjectionRow<ProbeRow>(
             tableName: "deliveryserializationprobe",
-            partitionKey: aggregateId.ToString(),
+            partitionKey: aggregateId.ToString("N"),
             rowKey: "probe");
 
         Assert.NotNull(row);

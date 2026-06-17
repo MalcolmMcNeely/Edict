@@ -32,7 +32,7 @@ public sealed class ReorderChaosHarnessTests
 
         var row = await app.GetProjectionRow<WidgetCounterRow>(
             tableName: "widgetcounter",
-            partitionKey: widgetId.ToString(),
+            partitionKey: widgetId.ToString("N"),
             rowKey: "counter");
 
         // Strict order would leave Count = 1; reorder lands WidgetPlaced after
