@@ -20,6 +20,7 @@ using Edict.Core.Serialization;
 using Edict.Core.TableStorage;
 using Edict.Core.Tenancy;
 using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.ClaimCheck;
 using Edict.Tests.Conformance.Tenancy;
 using Edict.Tests.Conformance.Outbox;
 using Edict.Tests.Conformance.Persistence;
@@ -73,6 +74,8 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     internal Serializer ClientSerializer => Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
 
+    public override Serializer Serializer => ClientSerializer;
+
     // IEdictClaimCheckStore is internal, so this is private-protected — the
     // claim-check subclasses that read it are derived and in this assembly.
     private protected IEdictClaimCheckStore ClaimCheckStore { get; private set; } = null!;
@@ -98,6 +101,17 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
     protected virtual bool DecorateGrainStorage => false;
 
     protected virtual int? ClaimCheckThresholdBytes => null;
+
+    // The threshold-boundary fixture turns this on so the silo computes its
+    // claim-check threshold as the serialized size of a reference-length probe
+    // event (against the silo's own serializer and the frozen-clock epoch), making
+    // an exactly-at-threshold payload inline and one byte over a pointer.
+    protected virtual bool ComputeThresholdFromReferenceProbe => false;
+
+    // The transient-recovery fixture turns this on to wrap the real claim-check
+    // store with the controllable fault decorator; every other fixture leaves it
+    // off and fetches always hit the real store directly.
+    protected virtual bool WrapClaimCheckStoreWithControllable => false;
 
     // The audit fixture turns this on to wire the Azure audit stores + WithAudit and
     // an origin resolver on the silo and client; every other fixture leaves it off
@@ -149,8 +163,11 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             ReplacePublishExecutorWithControllable,
             DecorateGrainStorage,
             ClaimCheckThresholdBytes,
+            ComputeThresholdFromReferenceProbe,
+            WrapClaimCheckStoreWithControllable,
             OutboxFault,
             StorageFault,
+            ClaimCheckFault,
             UsesVirtualClock ? VirtualClock : TimeProvider.System,
             EnableAudit,
             AuditTableName,
@@ -201,7 +218,27 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             siloBuilder.Services.AddSingleton(ctx.Clock);
             siloBuilder.Services.AddSingleton(ctx.ClaimCheckStore);
 
-            if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)
+            if (ctx.WrapClaimCheckStoreWithControllable)
+            {
+                ControllableClaimCheckStore.Decorate(siloBuilder.Services, ctx.ClaimCheckFault);
+            }
+
+            if (ctx.ComputeThresholdFromReferenceProbe)
+            {
+                // Threshold = the serialized size of a reference-length probe event,
+                // computed against the silo's own serializer so a live event of that
+                // length lands exactly on it (inline) and one byte over crosses it
+                // (pointer).
+                siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                    serviceProvider.GetRequiredService<Serializer>(),
+                    thresholdBytes: ClaimCheckThresholdProbe.SerializedSize(
+                        serviceProvider.GetRequiredService<Serializer>(),
+                        ClaimCheckThresholdProbe.ReferencePayloadLength,
+                        PersistenceConformanceFixture.VirtualClockEpoch),
+                    store: serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                    accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
+            }
+            else if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)
             {
                 // A low threshold forces every raised event onto the pointer
                 // branch, exercising the receiver-unwrap path on the real store.

@@ -5,6 +5,7 @@ using Azure.Storage.Blobs;
 
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
+using Edict.Tests.Conformance.ClaimCheck;
 using Edict.Tests.Conformance.Outbox;
 
 namespace Edict.Azure.Persistence.Tests;
@@ -33,8 +34,11 @@ sealed record AzurePersistenceContext(
     bool ReplacePublishExecutorWithControllable,
     bool DecorateGrainStorage,
     int? ClaimCheckThresholdBytes,
+    bool ComputeThresholdFromReferenceProbe,
+    bool WrapClaimCheckStoreWithControllable,
     OutboxFaultState OutboxFault,
     StorageFaultState StorageFault,
+    ClaimCheckFaultState ClaimCheckFault,
     TimeProvider Clock,
     bool EnableAudit,
     string AuditTableName,

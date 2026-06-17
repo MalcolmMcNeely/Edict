@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using Edict.Contracts.Configuration;
+using Edict.Tests.Conformance.ClaimCheck;
 using Edict.Tests.Conformance.Outbox;
 
 namespace Edict.Postgres.Tests;
@@ -27,8 +28,11 @@ sealed record PostgresPersistenceContext(
     bool ReplacePublishExecutorWithControllable,
     bool DecorateGrainStorage,
     int? ClaimCheckThresholdBytes,
+    bool ComputeThresholdFromReferenceProbe,
+    bool WrapClaimCheckStoreWithControllable,
     OutboxFaultState OutboxFault,
     StorageFaultState StorageFault,
+    ClaimCheckFaultState ClaimCheckFault,
     TimeProvider Clock,
     bool EnableAudit,
     bool EnableTenancy,

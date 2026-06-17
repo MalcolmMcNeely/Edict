@@ -16,6 +16,7 @@ using Edict.Postgres.ClaimCheck;
 using Edict.Postgres.TableStorage;
 using Edict.Core.Tenancy;
 using Edict.Tests.Conformance;
+using Edict.Tests.Conformance.ClaimCheck;
 using Edict.Tests.Conformance.Outbox;
 using Edict.Tests.Conformance.Persistence;
 using Edict.Tests.Conformance.Tenancy;
@@ -69,6 +70,8 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     internal Serializer ClientSerializer => Cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
 
+    public override Serializer Serializer => ClientSerializer;
+
     public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
         new PostgresTableWriteStore<T>(
             _dataSource,
@@ -100,6 +103,17 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
 
     protected virtual int? ClaimCheckThresholdBytes => null;
 
+    // The threshold-boundary fixture turns this on so the silo computes its
+    // claim-check threshold as the serialized size of a reference-length probe
+    // event (against the silo's own serializer and the frozen-clock epoch), making
+    // an exactly-at-threshold payload inline and one byte over a pointer.
+    protected virtual bool ComputeThresholdFromReferenceProbe => false;
+
+    // The transient-recovery fixture turns this on to wrap the real claim-check
+    // store with the controllable fault decorator; every other fixture leaves it
+    // off and fetches always hit the real store directly.
+    protected virtual bool WrapClaimCheckStoreWithControllable => false;
+
     // The audit fixture turns this on to wire WithAudit + an edge resolver on the
     // silo and client; every other fixture leaves it off and never captures.
     protected virtual bool EnableAudit => false;
@@ -130,8 +144,11 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             ReplacePublishExecutorWithControllable,
             DecorateGrainStorage,
             ClaimCheckThresholdBytes,
+            ComputeThresholdFromReferenceProbe,
+            WrapClaimCheckStoreWithControllable,
             OutboxFault,
             StorageFault,
+            ClaimCheckFault,
             UsesVirtualClock ? VirtualClock : TimeProvider.System,
             EnableAudit,
             EnableTenancy,
@@ -247,7 +264,30 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
                 persistenceOptions.ClaimCheckTableName = ctx.ClaimCheckTableName;
             });
 
-            if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)
+            if (ctx.WrapClaimCheckStoreWithControllable)
+            {
+                // Decorate after persistence binds so the wrapped inner store is the
+                // Postgres one the extension registered.
+                ControllableClaimCheckStore.Decorate(siloBuilder.Services, ctx.ClaimCheckFault);
+            }
+
+            if (ctx.ComputeThresholdFromReferenceProbe)
+            {
+                // Threshold = the serialized size of a reference-length probe event,
+                // computed against the silo's own serializer so a live event of that
+                // length lands exactly on it (inline) and one byte over crosses it
+                // (pointer). Registered after persistence binds so the resolved store
+                // is the Postgres one.
+                siloBuilder.Services.AddSingleton(serviceProvider => new ClaimCheckPolicy(
+                    serviceProvider.GetRequiredService<Serializer>(),
+                    thresholdBytes: ClaimCheckThresholdProbe.SerializedSize(
+                        serviceProvider.GetRequiredService<Serializer>(),
+                        ClaimCheckThresholdProbe.ReferencePayloadLength,
+                        PersistenceConformanceFixture.VirtualClockEpoch),
+                    store: serviceProvider.GetRequiredService<IEdictClaimCheckStore>(),
+                    accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
+            }
+            else if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)
             {
                 // A low threshold forces every raised event onto the pointer
                 // branch, exercising the receiver-unwrap path on the real

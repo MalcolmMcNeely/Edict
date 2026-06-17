@@ -1,11 +1,13 @@
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance.ClaimCheck;
 using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.Time.Testing;
 
 using Orleans;
+using Orleans.Serialization;
 
 using Xunit;
 
@@ -38,7 +40,16 @@ public abstract class PersistenceConformanceFixture : IAsyncLifetime
     /// publish executor). An outbox scenario flips it to stage a publish crash;
     /// the instance is fixture-owned, so peer fixtures never see the flip.
     /// </summary>
-    readonly FakeTimeProvider _virtualClock = new(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+    /// <summary>
+    /// The instant the virtual clock starts at — a whole second, so the
+    /// <c>OccurredAt</c> a frozen clock stamps serialises to a stable width. The
+    /// claim-check threshold-boundary scenario computes its threshold against a
+    /// probe event stamped at this same instant, so the live event a fresh-clock
+    /// silo stamps serialises to exactly that size.
+    /// </summary>
+    public static readonly DateTimeOffset VirtualClockEpoch = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    readonly FakeTimeProvider _virtualClock = new(VirtualClockEpoch);
 
     /// <summary>
     /// Opt-in deterministic clock. A fixture whose scenarios drive the engine's
@@ -74,6 +85,25 @@ public abstract class PersistenceConformanceFixture : IAsyncLifetime
     /// the instance is fixture-owned, so peer fixtures never see the flip.
     /// </summary>
     public StorageFaultState StorageFault { get; } = new();
+
+    /// <summary>
+    /// The fault switch this fixture's silo wires into its
+    /// <see cref="ControllableClaimCheckStore"/> (when the fixture wraps the
+    /// claim-check store). A transient-recovery scenario flips it to hold the
+    /// receiver-side fetch down for a count-addressed number of attempts; the
+    /// instance is fixture-owned, so peer fixtures never see the flip.
+    /// </summary>
+    public ClaimCheckFaultState ClaimCheckFault { get; } = new();
+
+    /// <summary>
+    /// The silo's serializer, surfaced so a claim-check scenario can author the
+    /// exact wire bytes the silo round-trips — seed a parked body the receiver
+    /// fetch deserialises, or measure a probe event's serialized size against the
+    /// publish-side threshold. It is the same byte-for-byte serializer the silo
+    /// uses, so a measured size matches what the silo produces. Neutral to axis
+    /// purity: it constructs and measures payloads, it asserts no streaming property.
+    /// </summary>
+    public abstract Serializer Serializer { get; }
 
     public abstract Task InitializeAsync();
 
