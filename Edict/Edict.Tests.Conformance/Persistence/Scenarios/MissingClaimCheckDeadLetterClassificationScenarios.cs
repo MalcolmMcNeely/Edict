@@ -120,7 +120,7 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         Assert.NotNull(deadLetterRow);
         Assert.Equal(EdictDeadLetterFailureKind.BlobMissing, deadLetterRow.FailureKind);
         Assert.Equal(envelope.EventId, deadLetterRow.SourceEventId);
-        Assert.Equal(grainId.ToString(), deadLetterRow.SourceGrainKey);
+        Assert.Equal(grainId.ToString("N"), deadLetterRow.SourceGrainKey);
         // Promoted at the retry cap, not on the first failure.
         Assert.True(deadLetterRow.AttemptCount > 1);
     }

@@ -57,12 +57,12 @@ public abstract class UnregisteredTypePromotesToDeadLetterScenarios<TFixture>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(
                 EdictDeadLetterTable.Name);
-            return entries.Any(e => e.SourceGrainKey.Contains(counterId.ToString()));
+            return entries.Any(e => e.SourceGrainKey.Contains(counterId.ToString("N")));
         });
 
         var allEntries = await deadLetterTable.QueryPartitionAsync(
             EdictDeadLetterTable.Name);
-        var entry = allEntries.Single(e => e.SourceGrainKey.Contains(counterId.ToString()));
+        var entry = allEntries.Single(e => e.SourceGrainKey.Contains(counterId.ToString("N")));
 
         Assert.Equal(typeof(EdictUnregisteredTypeException).FullName, entry.ExceptionType);
     }

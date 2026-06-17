@@ -76,11 +76,11 @@ public abstract class SagaTimeoutTerminalDeadLetterScenarios<TFixture>
         await SagaTimeoutWaiters.WaitUntilAsync(async () =>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
-            return entries.Any(entry => entry.SourceGrainKey.Contains(workflowId.ToString()));
+            return entries.Any(entry => entry.SourceGrainKey.Contains(workflowId.ToString("N")));
         });
 
         var allEntries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
-        var deadLetter = allEntries.Single(entry => entry.SourceGrainKey.Contains(workflowId.ToString()));
+        var deadLetter = allEntries.Single(entry => entry.SourceGrainKey.Contains(workflowId.ToString("N")));
 
         Assert.Equal(typeof(EdictSagaTerminalException).FullName, deadLetter.ExceptionType);
     }
