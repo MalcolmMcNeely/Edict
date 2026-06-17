@@ -29,6 +29,13 @@ public sealed partial record TimeoutThrowingTriggerEvent(Guid WorkflowId) : Edic
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
+[EdictStream("ConformanceSagaTimeoutDefaultHookWorkflow")]
+public sealed partial record TimeoutDefaultHookTriggerEvent(Guid WorkflowId) : EdictEvent
+{
+    [EdictRouteKey]
+    public Guid WorkflowId { get; init; } = WorkflowId;
+}
+
 [EdictStream("ConformanceSagaTerminalWorkflow")]
 public sealed partial record TerminalTriggerEvent(Guid WorkflowId) : EdictEvent
 {
@@ -82,6 +89,12 @@ public interface IThrowingTimeoutSagaProbe : IGrainWithGuidKey
     Task FireCapAsync();
     Task<int> GetHandledAsync();
     Task<int> GetPendingOutboxCountAsync();
+}
+
+public interface IDefaultHookTimeoutSagaProbe : IGrainWithGuidKey
+{
+    Task FireCapAsync();
+    Task<int> GetHandledAsync();
 }
 
 public interface ITerminalSagaProbe : IGrainWithGuidKey
@@ -138,6 +151,23 @@ public partial class TimeoutThrowingSaga : EdictSaga<TimeoutSagaProgress>, IThro
     public Task FireCapAsync() => ReceiveCapReminderAsync();
     public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
     public Task<int> GetPendingOutboxCountAsync() => Task.FromResult(OutboxStateForProbe.Pending.Count);
+}
+
+// A finite cap with no OnSagaTimeoutAsync override: a fired cap routes to the
+// base's default hook, which dead-letters the timeout rather than compensating.
+// The one-second cap lets a conformance run arm, advance past it on the virtual
+// clock, then fire it through the probe.
+[EdictSagaTimeout("00:00:01")]
+public partial class TimeoutDefaultHookSaga : EdictSaga<TimeoutSagaProgress>, IDefaultHookTimeoutSagaProbe
+{
+    Task HandleAsync(TimeoutDefaultHookTriggerEvent edictEvent)
+    {
+        Progress.Handled++;
+        return Task.CompletedTask;
+    }
+
+    public Task FireCapAsync() => ReceiveCapReminderAsync();
+    public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
 }
 
 // Default cap; terminalises via Complete() on the finish event. Used for the

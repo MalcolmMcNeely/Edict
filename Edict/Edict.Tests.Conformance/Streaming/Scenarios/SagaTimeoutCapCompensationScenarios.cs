@@ -34,6 +34,39 @@ public abstract class SagaTimeoutCapCompensationScenarios<TFixture>
     public Task FiredCap_ShouldDeliverCompensation_WhenTriggerArrivesOversized() =>
         FiredCapDeliversCompensationAsync(oversized: true);
 
+    [Fact]
+    public async Task DoubleCapFire_ShouldDeliverCompensationExactlyOnce()
+    {
+        var workflowId = Guid.NewGuid();
+        var publisher = _fixture.GrainFactory.GetGrain<ISagaTimeoutPublisher>(workflowId);
+
+        await publisher.PublishAsync(Stream, new TimeoutTriggerEvent(workflowId)
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+        });
+
+        var saga = _fixture.GrainFactory.GetGrain<ITimeoutSagaProbe>(workflowId);
+        await SagaTimeoutWaiters.WaitUntilAsync(async () => await saga.GetHandledAsync() >= 1);
+
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // Fire the cap twice. The first terminalises the saga and dispatches the one
+        // compensating Command; the second sees an already-terminal saga, resolves to
+        // a no-op, and never re-dispatches. The grain is turn-based, so the second
+        // fire observes the first's durable TimedOut write.
+        await saga.FireCapAsync();
+        await saga.FireCapAsync();
+
+        var tracker = _fixture.GrainFactory.GetGrain<ICompensationTrackerProbe>(workflowId);
+        await SagaTimeoutWaiters.WaitUntilAsync(async () => await tracker.GetReceivedAsync() >= 1);
+
+        // Only one SendCommand effect was ever staged, so the count converges at one
+        // and stays there regardless of fire order — the second fire adds nothing.
+        Assert.Equal(1, await tracker.GetReceivedAsync());
+        Assert.Equal(workflowId, await tracker.GetLastWorkflowIdAsync());
+    }
+
     async Task FiredCapDeliversCompensationAsync(bool oversized)
     {
         var workflowId = Guid.NewGuid();
