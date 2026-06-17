@@ -32,7 +32,7 @@ Characteristics:
 
 **Use Verify on first write. Do not write `Assert.Equal` chains first and add Verify later — that wastes tokens.**
 
-Use Verify whenever the return value has more than one field to assert. Use plain `Assert` only for single scalar checks (e.g. `Assert.True(result.IsSuccess)`). Ignore non-deterministic members (Guids, timestamps) with `.IgnoreMembersWithType<T>()`. If a Guid is semantically important (e.g. OrganizationId ownership), keep it as a separate `Assert.Equal` alongside the snapshot.
+Use Verify whenever the return value has more than one field to assert. Use plain `Assert` only for single scalar checks (e.g. `Assert.True(result.IsSuccess)`). Verify scrubs Guids and timestamps by default (`Guid_1`, `DateTime_1`) — let the default scrubbing work. Do **not** add `.IgnoreMembersWithType<Guid>()`: ignoring removes the member from the snapshot entirely, so its very existence stops being verified (the `testing` skill bans it for this reason). If a Guid is semantically important (e.g. OrganizationId ownership), keep it as a separate `Assert.Equal` alongside the snapshot.
 
 Use Verify for complex return values, serialised output, or Blazor component HTML where hand-writing every `Assert.Equal` would be brittle:
 
@@ -42,7 +42,7 @@ public async Task ContractSummary_MatchesSnapshot()
 {
     var summary = await _contractService.GetSummaryAsync(contractId);
 
-    await Verify(summary).IgnoreMembersWithType<Guid>().IgnoreMembersWithType<DateTimeOffset>();
+    await Verify(summary); // default scrubbing replaces Guids/DateTimes with stable tokens
 }
 ```
 

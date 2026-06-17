@@ -143,6 +143,8 @@ The same shape proves the audit wall: after `RunAsTenant`, `TenantAudit.ByEntity
 
 `Drain` releases held-queue events on its own stability ticks, so no `Task.Delay` is needed (or wanted) anywhere in test code. If a test reaches for `Task.Delay`, replace it with `await app.Drain()` or `await app.AdvanceClock(...)`.
 
+**The virtual timeline proves happy-path *logic*, not the full at-least-once contract — do not depend on it alone.** `AdvanceClock`, `FireDueSchedulesAsync`, and the cursorless `Drain` give you a deterministic walk through the workflow's intended sequence, which is exactly what you want for asserting *what the handler decides*. But that deterministic walk is not your idempotency proof: a consumer that looks correct on the clean timeline can still double-count or mishandle a duplicate. That is what chaos (above) is for — keep it on, and write at least one assertion that survives a redelivered or reordered event (a count that stays exactly-once, a row that does not double, a projection total that is a function of the event *set* not its arrival order). Prove the logic on the timeline and the idempotency under chaos; neither alone is the whole test.
+
 ## What is real and what is bypassed
 
 | Mechanism | Under `Edict.Testing` |

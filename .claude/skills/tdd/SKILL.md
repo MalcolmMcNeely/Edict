@@ -9,7 +9,7 @@ description: Test-driven development with red-green-refactor loop. Use when user
 
 This is a generic TDD loop. **The Edict skills override the generic examples below.** The SessionStart hook injects `csharp`, `testing`, `blazor`, and `surface-config` into every session — those skills are authoritative, not this one. Re-read them before each RED and each GREEN, not just at the start of the task.
 
-The four rules most often blown past during TDD — check each on every cycle:
+The five rules most often blown past during TDD — check each on every cycle:
 
 1. **Naming.** Never abbreviate. `cancellationToken` not `ct`, `serviceProvider` not `sp`, `exception` not `ex`, `logger` not `log`. Applies to test parameters, locals, lambda variables — everywhere. (`csharp` skill, also enforced by the `block-style-violations.ps1` PostToolUse hook.)
 2. **Verify over Assert chains.** When the GREEN outcome has more than one field, the assertion is a single `Verify(...)` snapshot — not a stack of `Assert.Equal`. Use targeted `Assert`s only for a single behavioural fact (e.g. exception type) or for a semantically load-bearing Guid alongside the `Verify`. Contract-surface round-trips **are** the ADR 0007 drift guard. (`testing` skill.)
@@ -21,6 +21,7 @@ The four rules most often blown past during TDD — check each on every cycle:
    - `EDICT00x` diagnostics → `Edict.Analyzers.Tests` (assert diagnostic line positions).
    - Internal framework tests **never** depend on `Edict.Testing` — that surface is proven by Sample app tests only.
 4. **Comments and AAA.** No comments that restate what the code does. No XML doc on internal-only types. No ADR-number citations inline. The `// Arrange` / `// Act` / `// Assert` markers **are** allowed — they are the one permitted readability convention in test bodies. No section-divider comments inside test files; split into separate files instead.
+5. **Determinism — never `Task.Delay` to force a timing outcome.** Scenarios assert, the waiter layer polls (ADR-0068). A conformance scenario asserts an order-independent outcome and drives timers/drains/deactivations through seams (`AdvanceClock`, `ForceDrainViaReminderAsync`, the deactivate-and-confirm probe); any polling lives in a `*Waiters` helper. `Task.Delay` in a `*Scenarios.cs` file is a red build — no allowlist. (`testing` skill states the full doctrine + the four-class wall-clock taxonomy.)
 
 Also: **FluentAssertions is banned** (commercial licence). **Moq is banned for infrastructure boundaries** — use real Azurite/Postgres/Kafka via Testcontainers in the provider suites.
 
@@ -166,5 +167,6 @@ Edict conventions (every cycle, not just the first):
 [ ] Test landed in the right project per ADR 0016 (no Azurite in Core.Tests, no mechanism logic in provider suites, no Edict.Testing dependency from framework tests)
 [ ] No comments that restate what the code does; no XML doc on internal-only types; no ADR-number citations inline; AAA markers are fine
 [ ] No FluentAssertions; no Moq at infrastructure boundaries
+[ ] No Task.Delay to force a timing outcome — scenarios assert, the *Waiters layer polls; conformance timers/drains/deactivations driven through seams (ADR-0068)
 [ ] If the implementation introduced a tunable (TimeSpan, int, magic string) on the Edict.Core / Edict.Contracts / provider surface, the surface-config skill's five-step ADR-0028 checklist was followed — it is an options property, not a literal in mechanism code
 ```
