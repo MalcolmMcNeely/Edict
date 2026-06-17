@@ -1,9 +1,11 @@
 using Confluent.Kafka;
 
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core;
 using Edict.Core.Audit;
 using Edict.Core.Serialization;
+using Edict.Core.Tenancy;
 using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Telemetry;
@@ -108,6 +110,14 @@ builder.Host.UseOrleans((context, silo) =>
     // no sentinel. User-driven sends from the web carry their own actor explicitly.
     silo.Services.AddEdictAudit(() => EdictPrincipal.Of("kafkapostgres-silo"));
     silo.WithAudit();
+
+    // Turn on tenancy so the isolation call filter runs as the runtime backstop: a stolen
+    // route key into another company's wall is denied on the silo, beside the structural
+    // isolation the composed key already gives, and the Postgres row-security backstop reads
+    // the relayed tenant. The silo never originates a tenant-scoped send (the public Orders
+    // aggregate composes bare keys, and a relayed Employee command already carries its
+    // tenant), so the resolver yields none; the web client resolves a company's origin tenant.
+    silo.Services.AddEdictTenant(() => (EdictTenantId?)null);
 });
 
 // The Event Handler reaches out to the Web-hosted notifications sink over HTTP

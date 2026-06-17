@@ -12,5 +12,8 @@ namespace Sample.Domain.Employees.State;
 public sealed class EmployeeState : IEdictPersistedState
 {
     [Id(0)]
+    public string Name { get; set; } = string.Empty;
+
+    [Id(1)]
     public string Department { get; set; } = string.Empty;
 }

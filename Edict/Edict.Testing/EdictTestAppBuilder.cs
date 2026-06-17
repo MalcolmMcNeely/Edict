@@ -19,6 +19,7 @@ public sealed class EdictTestAppBuilder
 
     Assembly? _consumerAssembly;
     bool _auditEnabled;
+    bool _tenancyEnabled;
     readonly List<Action<IServiceCollection>> _replacements = new();
 
     /// <summary>
@@ -63,11 +64,29 @@ public sealed class EdictTestAppBuilder
         return this;
     }
 
+    /// <summary>
+    /// Turns multi-tenancy on for the in-memory app: registers the tenant edge resolver
+    /// and the isolation call filter, so a tenant-scoped aggregate folds its tenant into
+    /// the routed key, the headline ambient-scoped reads (<see cref="EdictTestApp.QueryMyTenantPartitionAsync"/>,
+    /// <see cref="EdictTestApp.TenantAudit"/>) answer the caller's own partition, and a
+    /// stolen route key into another tenant is denied. Drive "act as Acme" with
+    /// <see cref="EdictTestApp.RunAsTenant"/>; establish a new tenant explicitly with
+    /// <see cref="EdictTestApp.SendAsync(Edict.Contracts.Commands.EdictCommand, Edict.Contracts.Tenancy.EdictTenantId)"/>.
+    /// A single-tenant app leaves this off and pays no tenant tax.
+    /// </summary>
+    public EdictTestAppBuilder WithTenancy()
+    {
+        _tenancyEnabled = true;
+        return this;
+    }
+
     internal Assembly ConsumerAssembly =>
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
 
     internal bool AuditEnabled => _auditEnabled;
+
+    internal bool TenancyEnabled => _tenancyEnabled;
 
     internal IReadOnlyList<Action<IServiceCollection>> Replacements => _replacements;
 }

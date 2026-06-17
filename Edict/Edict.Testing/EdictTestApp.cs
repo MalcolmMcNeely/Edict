@@ -8,6 +8,7 @@ using Edict.Contracts.Projections;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Sending;
 using Edict.Contracts.TableStorage;
+using Edict.Contracts.Tenancy;
 using Edict.Core;
 using Edict.Core.Audit;
 using Edict.Core.ClaimCheck;
@@ -84,6 +85,38 @@ public sealed class EdictTestApp : IAsyncDisposable
             : throw new InvalidOperationException(
                 "Auditing is off. Call WithAudit() on the EdictTestApp builder to capture and assert audit records.");
 
+    /// <summary>
+    /// The ambient-tenant-scoped read surface over the in-memory audit log: the same
+    /// queries as <see cref="Audit"/>, each filtered to the tenant
+    /// <see cref="RunAsTenant"/> set, so a business sees only its own trail and neither
+    /// another tenant's records nor the public ones. A read with no
+    /// <see cref="RunAsTenant"/> fails closed rather than answering under the wrong wall.
+    /// Available only when the app was started with both
+    /// <see cref="EdictTestAppBuilder.WithAudit"/> and
+    /// <see cref="EdictTestAppBuilder.WithTenancy"/>.
+    /// </summary>
+    public IEdictTenantScopedAuditRepository TenantAudit
+    {
+        get
+        {
+            if (!_context.AuditEnabled)
+            {
+                throw new InvalidOperationException(
+                    "Auditing is off. Call WithAudit() on the EdictTestApp builder to capture and assert audit records.");
+            }
+            if (!_context.TenancyEnabled)
+            {
+                throw new InvalidOperationException(
+                    "Tenancy is off. Call WithTenancy() on the EdictTestApp builder before TenantAudit can scope reads to a tenant.");
+            }
+
+            var serializer = _cluster.Client.ServiceProvider.GetRequiredService<Serializer>();
+            var operatorRepository = new EdictDefaultAuditRepository(_context.AuditStore, _context.PayloadStore, serializer);
+            var resolver = new DelegateTenantResolver(_cluster.Client.ServiceProvider, _ => _context.CurrentTenant);
+            return new EdictTenantScopedAuditRepository(operatorRepository, resolver);
+        }
+    }
+
     public static async Task<EdictTestApp> StartAsync(Action<EdictTestAppBuilder> configure)
     {
         var builder = new EdictTestAppBuilder();
@@ -99,6 +132,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             new InMemoryClaimCheckStore(),
             EdictTestAppBuilder.DefaultClaimCheckThresholdBytes,
             builder.AuditEnabled,
+            builder.TenancyEnabled,
             builder.Replacements);
 
         TestCluster cluster;
@@ -121,6 +155,26 @@ public sealed class EdictTestApp : IAsyncDisposable
         _cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>().SendAsync(command);
 
     /// <summary>
+    /// Issues a Command through the explicit establishing-crossing overload: stamps
+    /// <paramref name="tenant"/> onto <paramref name="command"/> directly, the public-to-tenant
+    /// send that mints a wall without an ambient resolver, so a test can seed a company's
+    /// data under its own tenant or model the "register your company" onboarding. The
+    /// crossing is authorized by construction; <see cref="RunAsTenant"/> then reads it back.
+    /// Available only when the app was started with
+    /// <see cref="EdictTestAppBuilder.WithTenancy"/>.
+    /// </summary>
+    public Task<EdictCommandResult> SendAsync(EdictCommand command, EdictTenantId tenant)
+    {
+        if (!_context.TenancyEnabled)
+        {
+            throw new InvalidOperationException(
+                "Tenancy is off. Call WithTenancy() on the EdictTestApp builder before an establishing crossing can stamp a tenant.");
+        }
+
+        return _cluster.Client.ServiceProvider.GetRequiredService<IEdictSender>().SendAsync(command, tenant);
+    }
+
+    /// <summary>
     /// Attributes every subsequent audited send to <paramref name="principal"/>, the
     /// actor the audit edge resolver yields at the origin. Call it before
     /// <see cref="SendAsync"/> to record who did what; absent any call, sends carry
@@ -136,6 +190,27 @@ public sealed class EdictTestApp : IAsyncDisposable
         }
 
         _context.CurrentPrincipal = principal;
+    }
+
+    /// <summary>
+    /// Acts as <paramref name="tenant"/>: scopes every subsequent ambient send and read to
+    /// that tenant's wall, the value the tenant edge resolver yields at the origin. Call it
+    /// before <see cref="QueryMyTenantPartitionAsync"/> or <see cref="TenantAudit"/> to read
+    /// "my own" partition, and before a bare <see cref="SendAsync(EdictCommand)"/> of a
+    /// tenant-scoped command to attribute it. Switching the tenant swaps the visible
+    /// directory and audit trail; a tenant that owns no rows reads empty by construction.
+    /// Absent any call the resolver yields null and a tenant-scoped read fails closed.
+    /// Available only when the app was started with <see cref="EdictTestAppBuilder.WithTenancy"/>.
+    /// </summary>
+    public void RunAsTenant(EdictTenantId tenant)
+    {
+        if (!_context.TenancyEnabled)
+        {
+            throw new InvalidOperationException(
+                "Tenancy is off. Call WithTenancy() on the EdictTestApp builder before RunAsTenant() can set the ambient tenant.");
+        }
+
+        _context.CurrentTenant = tenant;
     }
 
     /// <summary>
@@ -246,6 +321,28 @@ public sealed class EdictTestApp : IAsyncDisposable
     {
         var reader = _cluster.Client.ServiceProvider.GetRequiredService<IEdictProjectionReader<TProjection>>();
         return (await reader.ReadAsync(key)).Value;
+    }
+
+    /// <summary>
+    /// Reads every row in the caller's own tenant partition of a tenant-scoped List
+    /// projection, through the same <see cref="IEdictTenantScopedListProjectionReader{TListProjection}"/>
+    /// the application tier binds to. The reader takes no partition key: the framework composes
+    /// the tenant <see cref="RunAsTenant"/> set, so the query answers "my own" rows and a
+    /// different tenant's identical call returns empty by construction. Call <see cref="Drain"/>
+    /// first so the projection write has landed. Available only when the app was started with
+    /// <see cref="EdictTestAppBuilder.WithTenancy"/>.
+    /// </summary>
+    public async Task<IReadOnlyList<TListProjection>> QueryMyTenantPartitionAsync<TListProjection>()
+        where TListProjection : class
+    {
+        if (!_context.TenancyEnabled)
+        {
+            throw new InvalidOperationException(
+                "Tenancy is off. Call WithTenancy() on the EdictTestApp builder before a tenant-scoped partition read.");
+        }
+
+        var reader = _cluster.Client.ServiceProvider.GetRequiredService<IEdictTenantScopedListProjectionReader<TListProjection>>();
+        return (await reader.QueryMyPartitionAsync()).Rows;
     }
 
     /// <summary>
@@ -499,6 +596,16 @@ public sealed class EdictTestApp : IAsyncDisposable
                 siloBuilder.WithAudit();
             }
 
+            // Turn tenancy on when the builder asked for it: the resolver yields the
+            // tenant RunAsTenant set (re-read per send and per read), and AddEdictTenant
+            // arms the isolation call filter so a stolen route key into another tenant is
+            // denied on the silo. A bare WithTenancy() with no RunAsTenant resolves null,
+            // which fails closed at a tenant-scoped origin — the correct default.
+            if (ctx.TenancyEnabled)
+            {
+                siloBuilder.Services.AddEdictTenant(() => ctx.CurrentTenant);
+            }
+
             // Replace AddEdict()'s default IEdictMetricsCache with a
             // harness-shared instance so the probe methods on EdictTestApp
             // read the same cache the silo's OutboxHost + EdictSaga push to.
@@ -573,6 +680,15 @@ public sealed class EdictTestApp : IAsyncDisposable
             if (ctx.AuditEnabled)
             {
                 clientBuilder.Services.AddEdictAudit(() => ctx.CurrentPrincipal);
+            }
+
+            // The client is where a test's SendAsync and ambient-scoped reads originate,
+            // so it carries the same tenant resolver as the silo: the origin stamper reads
+            // it to fold the tenant before the command leaves the client, and the
+            // tenant-scoped readers compose it into the partition they query.
+            if (ctx.TenancyEnabled)
+            {
+                clientBuilder.Services.AddEdictTenant(() => ctx.CurrentTenant);
             }
 
             DecorateSender(clientBuilder.Services, ctx);

@@ -3,11 +3,15 @@
 @using Edict.Contracts.Audit
 @using Edict.Contracts.Commands
 @using Edict.Contracts.Sending
+@using Edict.Contracts.Tenancy
 @using Edict.Core.Audit
 @using Sample.Contracts.Orders.Commands
 @using Sample.Domain.Orders.CommandHandlers
+@using Sample.Web.Components.State
 @inject IEdictSender Sender
 @inject IEdictAuditRepository Audit
+@inject IEdictTenantScopedAuditRepository TenantAudit
+@inject TenantSwitcher Switcher
 @implements IDisposable
 
 <PageTitle>Edict — Audit Log</PageTitle>
@@ -66,6 +70,7 @@
                                 <th>Grain</th>
                                 <th>Decision</th>
                                 <th>Outcome</th>
+                                <th>Tenant</th>
                                 <th>Actor</th>
                             </tr>
                         </thead>
@@ -77,13 +82,14 @@
                                     <td><code>@ShortName(record.EntityType)</code>/<code>@ShortKey(record.EntityKey)</code></td>
                                     <td>@ShortName(record.MessageType) <span class="hub-orders-meta">@record.Kind</span></td>
                                     <td>@OutcomeLabel(record)</td>
+                                    <td><span class="@TenantClass(record)">@TenantLabel(record)</span></td>
                                     <td>@(record.Principal?.Value ?? "—")</td>
                                 </tr>
                                 @if (record.RejectionReasons.Count > 0)
                                 {
                                     <tr class="audit-reasons-row">
                                         <td></td>
-                                        <td colspan="4">
+                                        <td colspan="5">
                                             @foreach (var reason in record.RejectionReasons)
                                             {
                                                 <span class="audit-reason"><code>@reason.Code</code> @reason.Message</span>
@@ -165,13 +171,38 @@
         <ConceptHeader Section="true" Title="Principal activity" Concept="Audit"
                        DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0063-edict-principal-attributable-identity-on-the-wire.md" />
         <div class="spotlight">
+            <div class="audit-scope">
+                <span class="playground-cart">View</span>
+                <select class="audit-actor" @bind="_principalScope">
+                    <option value="@PrincipalScope.Operator">Operator — all tenants</option>
+                    <option value="@PrincipalScope.Tenant">@CurrentCompanyName — its own trail</option>
+                </select>
+                <span class="hub-orders-meta">
+                    @(_principalScope == PrincipalScope.Operator
+                        ? "The operator superset returns every record across every wall, the public ones among them."
+                        : "Scoped to the signed-in company: only its own records, never another wall's or the public Orders.")
+                </span>
+            </div>
             @if (_principalTimeline.Count == 0)
             {
-                <p class="hub-empty-small">Nothing recorded for <code>@ActingPrincipalString</code> yet.</p>
+                <p class="hub-empty-small">
+                    @(_principalScope == PrincipalScope.Operator
+                        ? $"Nothing recorded for {ActingPrincipalString} yet."
+                        : $"Nothing on {CurrentCompanyName}'s wall for {ActingPrincipalString} yet. Add an employee on the Employees page as this actor.")
+                </p>
             }
             else
             {
                 <table class="spotlight-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Decision</th>
+                            <th>Grain</th>
+                            <th>Tenant</th>
+                            <th>Outcome</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         @foreach (var record in _principalTimeline)
                         {
@@ -179,6 +210,7 @@
                                 <td class="spotlight-time">@FormatTime(record.OccurredAt)</td>
                                 <td class="spotlight-state">@ShortName(record.MessageType)</td>
                                 <td class="spotlight-span"><code>@ShortName(record.EntityType)</code>/<code>@ShortKey(record.EntityKey)</code></td>
+                                <td><span class="@TenantClass(record)">@TenantLabel(record)</span></td>
                                 <td>@OutcomeLabel(record)</td>
                             </tr>
                         }
@@ -203,6 +235,12 @@
 
     string _principalChoice = "clerk-7";
     string _customPrincipal = "";
+
+    enum PrincipalScope { Operator, Tenant }
+
+    PrincipalScope _principalScope = PrincipalScope.Operator;
+
+    string CurrentCompanyName => Switcher.DisplayNameFor(Switcher.Current);
 
     string? _entityKey;
     Guid? _correlationId;
@@ -343,8 +381,14 @@
 
             if (ActingError is null)
             {
-                _principalTimeline = await Audit.ByPrincipalAsync(
-                    EdictPrincipal.Of(ActingPrincipalString), DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
+                var principal = EdictPrincipal.Of(ActingPrincipalString);
+                // The operator superset spans every wall; the tenant-scoped repository,
+                // resolved to the signed-in company, drops every record that is not its
+                // own — so the public Order records vanish and only this company's trail
+                // remains, the read a business is legitimately entitled to.
+                _principalTimeline = _principalScope == PrincipalScope.Tenant
+                    ? await TenantAudit.ByPrincipalAsync(principal, DateTimeOffset.MinValue, DateTimeOffset.MaxValue)
+                    : await Audit.ByPrincipalAsync(principal, DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
             }
         }
         catch
@@ -419,6 +463,13 @@
 
     static string RowClass(EdictAuditRecord record) =>
         record.Outcome == EdictAuditOutcome.Rejected ? "audit-rejected" : "";
+
+    // A tenant-less record is a public aggregate (the Orders demo); a stamped one names
+    // the wall its data belongs to. The label is the Public / Tenant column itself.
+    static string TenantLabel(EdictAuditRecord record) => record.Tenant?.Value ?? "Public";
+
+    static string TenantClass(EdictAuditRecord record) =>
+        record.Tenant is null ? "audit-tenant-public" : "audit-tenant-scoped";
 
     static string FormatTime(DateTimeOffset at) => at.ToLocalTime().ToString("HH:mm:ss.fff");
 

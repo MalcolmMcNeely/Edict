@@ -1,6 +1,7 @@
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
+using Edict.Core.Tenancy;
 using Edict.Postgres;
 using Edict.Telemetry;
 
@@ -52,6 +53,15 @@ builder.Services.AddEdictPostgresAuditReader(o => o.ConnectionString = auditConn
 // Hosts the in-memory notifications sink the silo POSTs to over HTTP and the
 // Orders view reads back in-process.
 builder.Services.AddNotificationsSink();
+
+// The B2B Employees pages act as a signed-in company. TenantSwitcher stubs the
+// signed-tenant seam an identity provider would supply; AddEdictTenant yields its
+// Current value as the origin tenant, so a tenant-scoped send folds the company into
+// its routed key and an ambient-scoped read answers only that company's own partition.
+// A real app maps the user's tenant claim here, never a value off the request body.
+builder.Services.AddSingleton<TenantSwitcher>();
+builder.Services.AddSingleton<EmployeeDirectorySeeder>();
+builder.Services.AddEdictTenant(serviceProvider => serviceProvider.GetRequiredService<TenantSwitcher>().Current);
 
 builder.Services.AddSingleton<CurrentOrderTracker>();
 builder.Services.AddSingleton<KnownOrdersRegistry>();

@@ -18,8 +18,9 @@ public partial class EmployeeCommandHandler : EdictCommandHandler<EmployeeState>
 {
     Task<EdictCommandResult> HandleAsync(AddEmployeeCommand command)
     {
+        State.Name = command.Name;
         State.Department = command.Department;
-        Raise(new EmployeeAddedEvent(command.EmployeeId, command.Department));
+        Raise(new EmployeeAddedEvent(command.EmployeeId, command.Name, command.Department));
         return Task.FromResult<EdictCommandResult>(new EdictCommandResult.Accepted());
     }
 }

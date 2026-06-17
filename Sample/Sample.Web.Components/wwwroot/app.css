@@ -543,3 +543,22 @@ main {
     word-break: break-all;
     max-height: 8rem;
 }
+
+.audit-scope {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.audit-tenant-public {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.audit-tenant-scoped {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+}

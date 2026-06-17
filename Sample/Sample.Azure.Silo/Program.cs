@@ -6,9 +6,11 @@ using Edict.Azure.Persistence;
 using Edict.Azure.Streaming;
 using Edict.Azure.Streaming.ClaimCheck;
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core;
 using Edict.Core.Audit;
 using Edict.Core.Serialization;
+using Edict.Core.Tenancy;
 using Edict.Telemetry;
 
 using OpenTelemetry;
@@ -116,6 +118,14 @@ builder.Host.UseOrleans((context, silo) =>
     // explicitly.
     silo.Services.AddEdictAudit(() => EdictPrincipal.Of("azure-silo"));
     silo.WithAudit();
+
+    // Turn on tenancy so the isolation call filter runs as the runtime backstop: a stolen
+    // route key into another company's wall is denied on the silo, beside the structural
+    // isolation the composed key already gives. The silo never originates a tenant-scoped
+    // send (the public Orders aggregate composes bare keys, and a relayed Employee command
+    // already carries its tenant), so the resolver yields none; the web client is where a
+    // company's origin tenant is resolved.
+    silo.Services.AddEdictTenant(() => (EdictTenantId?)null);
 });
 
 // The Event Handler reaches out to the Web-hosted notifications sink over HTTP

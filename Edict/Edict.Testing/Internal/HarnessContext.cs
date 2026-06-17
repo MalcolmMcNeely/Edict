@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Metrics;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,7 @@ sealed class HarnessContext(
     InMemoryClaimCheckStore claimCheckStore,
     int claimCheckThresholdBytes,
     bool auditEnabled,
+    bool tenancyEnabled,
     IReadOnlyList<Action<IServiceCollection>> replacements)
 {
     public Assembly ConsumerAssembly => consumerAssembly;
@@ -37,6 +39,7 @@ sealed class HarnessContext(
     public InMemoryClaimCheckStore ClaimCheckStore => claimCheckStore;
     public int ClaimCheckThresholdBytes => claimCheckThresholdBytes;
     public bool AuditEnabled => auditEnabled;
+    public bool TenancyEnabled => tenancyEnabled;
     public IReadOnlyList<Action<IServiceCollection>> Replacements => replacements;
 
     // The in-memory audit stores the silo drains to and EdictTestApp.Audit reads
@@ -49,6 +52,13 @@ sealed class HarnessContext(
     // EdictTestApp.ActAs can re-attribute subsequent sends; the default keeps a bare
     // WithAudit() from tripping the origin fail-closed.
     public EdictPrincipal CurrentPrincipal { get; set; } = EdictTestApp.DefaultPrincipal;
+
+    // The tenant the edge resolver yields for an originating send and an ambient-scoped
+    // read, on both the silo and the client (one process, one field). Mutable so
+    // EdictTestApp.RunAsTenant can re-scope subsequent sends and reads. Null until a
+    // test acts as a tenant, so a tenant-scoped read with no RunAsTenant fails closed —
+    // the correct behaviour, not a default partition. Only meaningful when TenancyEnabled.
+    public EdictTenantId? CurrentTenant { get; set; }
 
     // Captured by the silo's executor-factory delegate so the test-process
     // Drain loop can reach into the silo-side held queue and flush it. Null

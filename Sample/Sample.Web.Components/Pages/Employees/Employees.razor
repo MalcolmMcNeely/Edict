@@ -1,0 +1,229 @@
+@page "/employees"
+@using Edict.Contracts.Commands
+@using Edict.Contracts.Projections
+@using Edict.Contracts.Sending
+@using Edict.Contracts.Tenancy
+@using Sample.Contracts.Employees.Commands
+@using Sample.Contracts.Employees.Domain
+@using Sample.Contracts.Employees.Projections
+@using Sample.Web.Components.State
+@inject IEdictSender Sender
+@inject IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow> Directory
+@inject TenantSwitcher Switcher
+@inject EmployeeDirectorySeeder Seeder
+@implements IDisposable
+
+<PageTitle>Edict — Employees (B2B)</PageTitle>
+
+<ConceptHeader Title="Employees (B2B)" Concept="Tenancy"
+               DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0067-tenant-isolation-enforcement.md" />
+
+<div class="hub">
+    <section class="hub-controls">
+        <span class="playground-cart">Signed in as</span>
+        <select class="audit-actor" @bind="CurrentTenantValue">
+            @foreach (var company in Switcher.Companies)
+            {
+                <option value="@company.Tenant.Value">@company.DisplayName</option>
+            }
+        </select>
+        <span class="hub-orders-meta">wall <code>@Switcher.Current.Value</code></span>
+        <span class="hub-controls-sep"></span>
+        <span class="hub-orders-meta">The public Orders aggregate keeps working untouched — open Dashboard in another tab.</span>
+    </section>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="hub-message">@_message</div>
+    }
+
+    <div class="hub-grid">
+        <div class="hub-left">
+            <h2>@CurrentCompanyName <span class="hub-orders-meta">@_directory.Count on this wall · cross-tenant read is empty by construction</span></h2>
+            <div class="hub-orders-box">
+                @if (_directory.Count == 0)
+                {
+                    <p class="hub-empty-small">No employees on this wall yet. Add one below, or register a new company to mint a fresh tenant.</p>
+                }
+                else
+                {
+                    <table class="hub-orders">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _directory.OrderBy(employee => employee.Name))
+                            {
+                                <tr>
+                                    <td>@row.Name</td>
+                                    <td>@row.Department</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <div class="hub-right">
+            <h2>Add employee <span class="hub-orders-meta">ambient send</span></h2>
+            <div class="spotlight">
+                <p class="hub-empty-small">A bare <code>SendAsync</code> the AddEdictTenant resolver attributes to the signed-in company. The route key folds <code>@Switcher.Current.Value</code> into the grain and stream key, so it can only land on this wall.</p>
+                <input class="audit-actor-input" placeholder="name" @bind="_newName" @bind:event="oninput" />
+                <input class="audit-actor-input" placeholder="department" @bind="_newDepartment" @bind:event="oninput" />
+                <button @onclick="OnAddEmployee" disabled="@(!CanAdd)">Add to @CurrentCompanyName</button>
+            </div>
+
+            <ConceptHeader Section="true" Title="Register your company" Concept="Establishing crossing"
+                           DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0065-tenant-as-a-routed-identity-axis.md" />
+            <div class="spotlight">
+                <p class="hub-empty-small">The one public-to-tenant crossing: <code>SendAsync(command, EdictTenantId.Of(...))</code> mints a new wall explicitly and adds its first employee under it. Every later send to that company flows through the ambient resolver instead.</p>
+                <input class="audit-actor-input" placeholder="company name" @bind="_companyName" @bind:event="oninput" />
+                <input class="audit-actor-input" placeholder="founder name" @bind="_founderName" @bind:event="oninput" />
+                <button @onclick="OnRegisterCompany" disabled="@(!CanRegister)">Register &amp; act as it</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    IReadOnlyList<EmployeeDirectoryRow> _directory = [];
+    string _newName = "";
+    string _newDepartment = "";
+    string _companyName = "";
+    string _founderName = "";
+    string _message = "";
+
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cancellationTokenSource;
+
+    string CurrentCompanyName => Switcher.DisplayNameFor(Switcher.Current);
+
+    bool CanAdd => !string.IsNullOrWhiteSpace(_newName) && !string.IsNullOrWhiteSpace(_newDepartment);
+
+    bool CanRegister => !string.IsNullOrWhiteSpace(_companyName) && !string.IsNullOrWhiteSpace(_founderName);
+
+    string CurrentTenantValue
+    {
+        get => Switcher.Current.Value;
+        set
+        {
+            Switcher.Switch(EdictTenantId.Of(value));
+            _message = "";
+            _ = RefreshAsync();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _cancellationTokenSource = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    async Task PollAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task RefreshAsync()
+    {
+        try
+        {
+            await SeedCurrentCompanyAsync();
+
+            // The ambient-scoped reader takes no partition key: it composes the
+            // signed-in company into the partition itself, so this only ever returns
+            // this wall's own rows and another company's identical query is empty.
+            _directory = (await Directory.QueryMyPartitionAsync()).Rows;
+        }
+        catch
+        {
+            // Read-only refresh path: a transient store hiccup must not surface as a
+            // Blazor error boundary in the demo.
+        }
+    }
+
+    // Populates a company's directory the first time it is viewed, through the explicit
+    // crossing, so the switcher swaps two populated lists rather than two empty tables.
+    async Task SeedCurrentCompanyAsync()
+    {
+        var tenant = Switcher.Current;
+        if (!Seeder.TryClaimForSeeding(tenant))
+        {
+            return;
+        }
+
+        foreach (var (name, department) in Seeder.RosterFor(tenant))
+        {
+            await Sender.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), name, department), tenant);
+        }
+    }
+
+    async Task OnAddEmployee()
+    {
+        if (!CanAdd)
+        {
+            return;
+        }
+
+        // The production ambient path: a bare send the AddEdictTenant resolver attributes
+        // to the signed-in company. EDICT024 flags a bare send of a tenant-scoped command
+        // and names exactly this resolver-backed origin as its sanctioned suppression.
+#pragma warning disable EDICT024
+        var result = await Sender.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), _newName.Trim(), _newDepartment.Trim()));
+#pragma warning restore EDICT024
+
+        _message = result is EdictCommandResult.Accepted
+            ? $"Added {_newName.Trim()} to {CurrentCompanyName}."
+            : "Add was rejected.";
+        _newName = "";
+        _newDepartment = "";
+        await RefreshAsync();
+    }
+
+    async Task OnRegisterCompany()
+    {
+        if (!CanRegister)
+        {
+            return;
+        }
+
+        var company = Switcher.Register(_companyName);
+
+        // The establishing crossing: the explicit tenant overload stamps the brand-new
+        // wall onto the founding employee's command, the one public-to-tenant send.
+        var result = await Sender.SendAsync(
+            new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), _founderName.Trim(), "Founder"),
+            company.Tenant);
+
+        // The new company is already seeded by its founder, so it never auto-seeds a roster.
+        Seeder.TryClaimForSeeding(company.Tenant);
+
+        _message = result is EdictCommandResult.Accepted
+            ? $"Registered {company.DisplayName} on a fresh wall ({company.Tenant.Value}) and added {_founderName.Trim()} as its founder."
+            : "Registration was rejected.";
+        _companyName = "";
+        _founderName = "";
+        await RefreshAsync();
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _timer?.Dispose();
+        _cancellationTokenSource?.Dispose();
+    }
+}
