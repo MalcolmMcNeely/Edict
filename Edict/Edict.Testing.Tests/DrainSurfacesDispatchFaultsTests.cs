@@ -82,6 +82,24 @@ public sealed class DrainSurfacesDispatchFaultsTests
     }
 
     [Fact]
+    public async Task NonSettlingDrain_TimeoutMessage_CarriesTheRunSeedAndReproduceInstruction()
+    {
+        var widgetId = Guid.Parse("cccccccc-0000-0000-0000-000000000002");
+
+        // The Drain timeout is a harness-owned throw, so it must carry the run's
+        // chaos seed and the env-var reproduce instruction — a raw consumer Assert
+        // cannot be augmented from inside the harness, but this one can.
+        await using var app = await EdictTestApp.StartAsync(b => b
+            .WithConsumer(typeof(DrainSurfacesDispatchFaultsTests).Assembly));
+
+        await app.SendAsync(new TriggerPoisonCommand(widgetId));
+
+        var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
+            app.Drain(TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(500)));
+        Assert.Contains($"EDICT_CHAOS_SEED={EdictChaos.CurrentSeed}", exception.Message);
+    }
+
+    [Fact]
     public async Task ProjectionThrowingInconsistentState_SurfacesFromDrain_WithNoSpecialRetry()
     {
         var widgetId = Guid.Parse("dddddddd-0000-0000-0000-000000000001");

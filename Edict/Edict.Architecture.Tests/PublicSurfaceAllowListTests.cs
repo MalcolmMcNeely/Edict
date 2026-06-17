@@ -13,6 +13,7 @@ using Edict.Core.TableStorage;
 using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Telemetry;
+using Edict.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -258,6 +259,34 @@ public class PublicSurfaceAllowListTests
             unexpected.Count == 0 && missing.Count == 0,
             BuildDriftMessage(unexpected, missing));
     }
+
+    [Fact]
+    public void EdictTesting_PublicTypesMatchAllowList()
+    {
+        var testingAssembly = typeof(EdictTestApp).Assembly;
+        var actual = testingAssembly
+            .GetExportedTypes()
+            .Where(type => !type.IsNested)
+            .Select(type => type.FullName!)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var unexpected = actual.Where(name => !EdictTestingAllowList.Contains(name)).ToList();
+        var missing = EdictTestingAllowList.Where(name => !actual.Contains(name)).ToList();
+
+        Assert.True(
+            unexpected.Count == 0 && missing.Count == 0,
+            BuildDriftMessage(unexpected, missing));
+    }
+
+    static readonly HashSet<string> EdictTestingAllowList = new(StringComparer.Ordinal)
+    {
+        "Edict.Testing.EdictChaos",
+        "Edict.Testing.EdictTestApp",
+        "Edict.Testing.EdictTestAppBuilder",
+        "Edict.Testing.Timeline",
+        "Edict.Testing.TimelineEntry",
+    };
 
     static readonly HashSet<string> EdictContractsAllowList = new(StringComparer.Ordinal)
     {

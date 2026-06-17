@@ -14,13 +14,19 @@ namespace Edict.Testing.Tests;
 /// on every test run — a redelivered older event can land behind a newer one
 /// of the same aggregate, so consumers must tolerate it. A throwaway in-test
 /// consumer — one aggregate plus a "reset on Place" projection — surfaces
-/// the property without depending on any sample-app types.
+/// the property without depending on any sample-app types. The seed is pinned
+/// (the decoy's hold-roll soak below is tuned to it) so this proof of the chaos
+/// machinery stays deterministic under the now-random run-wide default; it joins
+/// the serialized chaos-seed collection because it owns the process-wide seed for
+/// its duration.
 /// </summary>
+[Collection(ChaosSeedCollection.Name)]
 public sealed class ReorderChaosHarnessTests
 {
     [Fact]
-    public async Task ReorderFragileProjection_LandsZero_UnderDefaultChaos()
+    public async Task ReorderFragileProjection_LandsZero_UnderPinnedChaosSeed()
     {
+        using var scope = new ChaosSeedScope(0xED1C7);
         var widgetId = Guid.Parse("66666666-6666-6666-6666-666666666666");
 
         await using var app = await EdictTestApp.StartAsync(b => b

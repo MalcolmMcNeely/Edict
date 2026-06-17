@@ -413,7 +413,8 @@ public sealed class EdictTestApp : IAsyncDisposable
         throw new TimeoutException(
             $"Drain did not settle within {timeout.TotalSeconds:0}s: outstanding dispatches {outstanding}, held queue depth {heldDepth}, " +
             $"pending outbox entries {pendingEntries}, timeline entries {timelineEntries}. A HandleAsync that never returns, or an effect " +
-            "that never drains (e.g. a backoff retry awaiting an AdvanceClock the test never calls), leaves the engine non-quiescent.");
+            "that never drains (e.g. a backoff retry awaiting an AdvanceClock the test never calls), leaves the engine non-quiescent. " +
+            EdictChaos.ReproduceInstruction);
     }
 
     /// <summary>

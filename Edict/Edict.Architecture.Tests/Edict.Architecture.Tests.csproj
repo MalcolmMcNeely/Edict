@@ -18,6 +18,8 @@
         <ProjectReference Include="..\Edict.Substrate.KafkaPostgres\Edict.Substrate.KafkaPostgres.csproj" />
         <ProjectReference Include="..\Edict.Postgres\Edict.Postgres.csproj" />
         <ProjectReference Include="..\Edict.Telemetry\Edict.Telemetry.csproj" />
+        <!-- Reflection-only, for the Edict.Testing public-surface allow-list guard. -->
+        <ProjectReference Include="..\Edict.Testing\Edict.Testing.csproj" />
         <!-- Needed for the TelemeterizedTagPrefix parity test. -->
         <ProjectReference Include="..\Edict.Generators\Edict.Generators.csproj" ReferenceOutputAssembly="true" />
         <ProjectReference Include="..\Edict.Tests.Conformance\Edict.Tests.Conformance.csproj" />

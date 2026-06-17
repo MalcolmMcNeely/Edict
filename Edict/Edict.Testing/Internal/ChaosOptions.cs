@@ -34,8 +34,12 @@ sealed record ChaosOptions(
     int MaxReorderDistance,
     bool InvocationsEnabled)
 {
-    public static ChaosOptions Default { get; } = new(
-        Seed: 0xED1C7,
+    // Reads the run-wide seed on every access (memoised, so stable within a run)
+    // rather than capturing it at static-init, so a test that pins EDICT_CHAOS_SEED
+    // before building an app gets the seed it pinned. Seed is the only field that
+    // varies per run; the probabilities and bounds are the shipped chaos contract.
+    public static ChaosOptions Default => new(
+        Seed: EdictChaos.CurrentSeed,
         DuplicateProbability: 0.5,
         MaxExtraDeliveries: 1,
         ReorderProbability: 0.3,
