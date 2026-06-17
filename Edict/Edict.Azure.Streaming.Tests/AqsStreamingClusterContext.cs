@@ -21,7 +21,8 @@ sealed record AqsStreamingClusterContext(
     string ConnectionString,
     ReferenceClaimCheckStore ClaimCheckStore,
     ReferenceTableStoreFactory TableStoreFactory,
-    StorageFaultState StorageFault);
+    StorageFaultState StorageFault,
+    TimeProvider Clock);
 
 static class AqsStreamingClusterContextRegistry
 {

@@ -65,7 +65,8 @@ public sealed class KafkaStreamingFixture : StreamingConformanceFixture
             $"edict-kafka-streaming-{Guid.NewGuid():N}",
             _claimCheckStore,
             new ReferenceTableStoreFactory(),
-            StorageFault);
+            StorageFault,
+            UsesVirtualClock ? VirtualClock : TimeProvider.System);
         _contextKey = KafkaStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -115,6 +116,10 @@ public sealed class KafkaStreamingFixture : StreamingConformanceFixture
             // persistence registers no provider, so the persistence marker is
             // supplied here to satisfy the startup wiring validator.
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            // Registered ahead of AddEdict so the host's TryAddSingleton(TimeProvider.System)
+            // loses; a fixture that opted into the virtual clock drives the engine's
+            // cap/backoff/reminder timing through it.
+            siloBuilder.Services.AddSingleton(ctx.Clock);
             siloBuilder.AddEdict();
             siloBuilder.AddEdictKafkaStreams(o =>
             {

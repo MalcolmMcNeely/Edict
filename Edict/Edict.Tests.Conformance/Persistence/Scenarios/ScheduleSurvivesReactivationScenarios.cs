@@ -17,7 +17,7 @@ namespace Edict.Tests.Conformance.Persistence;
 /// asserted property is the schedule's durable survival across reactivation.
 /// </summary>
 public abstract class ScheduleSurvivesReactivationScenarios<TFixture>
-    where TFixture : PersistenceConformanceFixture, IScheduleClockFixture
+    where TFixture : PersistenceConformanceFixture
 {
     static readonly TimeSpan Cadence = TimeSpan.FromHours(1);
 

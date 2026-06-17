@@ -62,7 +62,8 @@ public sealed class KafkaClaimCheckStreamingFixture : StreamingConformanceFixtur
             $"edict-kafka-claimcheck-streaming-{Guid.NewGuid():N}",
             _claimCheckStore,
             new ReferenceTableStoreFactory(),
-            StorageFault);
+            StorageFault,
+            UsesVirtualClock ? VirtualClock : TimeProvider.System);
         _contextKey = KafkaStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -115,6 +116,10 @@ public sealed class KafkaClaimCheckStreamingFixture : StreamingConformanceFixtur
                 accessors: serviceProvider.GetRequiredService<IEventStreamAccessors>()));
 
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            // Registered ahead of AddEdict so the host's TryAddSingleton(TimeProvider.System)
+            // loses; a fixture that opted into the virtual clock drives the engine's
+            // cap/backoff/reminder timing through it.
+            siloBuilder.Services.AddSingleton(ctx.Clock);
             siloBuilder.AddEdict();
             siloBuilder.AddEdictKafkaStreams(o =>
             {

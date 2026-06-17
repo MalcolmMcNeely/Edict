@@ -55,7 +55,8 @@ public sealed class AqsClaimCheckStreamingFixture : StreamingConformanceFixture
         _claimCheckStore = new ReferenceClaimCheckStore();
 
         var context = new AqsStreamingClusterContext(
-            connectionString, _claimCheckStore, new ReferenceTableStoreFactory(), StorageFault);
+            connectionString, _claimCheckStore, new ReferenceTableStoreFactory(), StorageFault,
+            UsesVirtualClock ? VirtualClock : TimeProvider.System);
         _contextKey = AqsStreamingClusterContextRegistry.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -107,6 +108,10 @@ public sealed class AqsClaimCheckStreamingFixture : StreamingConformanceFixture
 
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictStreamsProviderMarker>();
             siloBuilder.Services.AddSingleton<IEdictWiringMarker, EdictPersistenceProviderMarker>();
+            // Registered ahead of AddEdict so the host's TryAddSingleton(TimeProvider.System)
+            // loses; a fixture that opted into the virtual clock drives the engine's
+            // cap/backoff/reminder timing through it.
+            siloBuilder.Services.AddSingleton(ctx.Clock);
             siloBuilder.AddEdict();
             siloBuilder.UseInMemoryReminderService();
             siloBuilder.AddMemoryGrainStorage("PubSubStore");

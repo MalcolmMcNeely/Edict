@@ -23,7 +23,8 @@ sealed record KafkaStreamingClusterContext(
     string ConsumerGroup,
     ReferenceClaimCheckStore ClaimCheckStore,
     ReferenceTableStoreFactory TableStoreFactory,
-    StorageFaultState StorageFault);
+    StorageFaultState StorageFault,
+    TimeProvider Clock);
 
 static class KafkaStreamingClusterContextRegistry
 {

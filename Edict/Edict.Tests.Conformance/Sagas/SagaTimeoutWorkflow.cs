@@ -22,6 +22,13 @@ public sealed partial record TimeoutTriggerEvent(Guid WorkflowId) : EdictEvent
     public Guid WorkflowId { get; init; } = WorkflowId;
 }
 
+[EdictStream("ConformanceSagaTimeoutThrowingWorkflow")]
+public sealed partial record TimeoutThrowingTriggerEvent(Guid WorkflowId) : EdictEvent
+{
+    [EdictRouteKey]
+    public Guid WorkflowId { get; init; } = WorkflowId;
+}
+
 [EdictStream("ConformanceSagaTerminalWorkflow")]
 public sealed partial record TerminalTriggerEvent(Guid WorkflowId) : EdictEvent
 {
@@ -70,6 +77,13 @@ public interface ITimeoutSagaProbe : IGrainWithGuidKey
     Task<int> GetHandledAsync();
 }
 
+public interface IThrowingTimeoutSagaProbe : IGrainWithGuidKey
+{
+    Task FireCapAsync();
+    Task<int> GetHandledAsync();
+    Task<int> GetPendingOutboxCountAsync();
+}
+
 public interface ITerminalSagaProbe : IGrainWithGuidKey
 {
     Task<int> GetHandledAsync();
@@ -101,6 +115,29 @@ public partial class TimeoutCompensatingSaga : EdictSaga<TimeoutSagaProgress>, I
 
     public Task FireCapAsync() => ReceiveCapReminderAsync();
     public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
+}
+
+// A finite cap whose OnSagaTimeoutAsync override throws — the consumer-bug shape
+// the cap handler must contain. A fired cap runs the throwing hook; the engine
+// rolls back the half-applied compensation, terminalises the saga, and
+// dead-letters as a ConsumerBug rather than re-throwing on every reminder tick.
+// The one-second cap lets a conformance run arm, advance past it on the virtual
+// clock, then fire it through the probe.
+[EdictSagaTimeout("00:00:01")]
+public partial class TimeoutThrowingSaga : EdictSaga<TimeoutSagaProgress>, IThrowingTimeoutSagaProbe
+{
+    Task HandleAsync(TimeoutThrowingTriggerEvent edictEvent)
+    {
+        Progress.Handled++;
+        return Task.CompletedTask;
+    }
+
+    protected override Task OnSagaTimeoutAsync() =>
+        throw new InvalidOperationException("Simulated compensation fault from OnSagaTimeoutAsync.");
+
+    public Task FireCapAsync() => ReceiveCapReminderAsync();
+    public Task<int> GetHandledAsync() => Task.FromResult(Progress.Handled);
+    public Task<int> GetPendingOutboxCountAsync() => Task.FromResult(OutboxStateForProbe.Pending.Count);
 }
 
 // Default cap; terminalises via Complete() on the finish event. Used for the
@@ -192,6 +229,26 @@ static class SagaTimeoutWaiters
                 return;
             }
             await Task.Delay(TimeSpan.FromMilliseconds(200));
+        }
+    }
+
+    // On a virtual-clock fixture the reference stream's pulling agent polls on that
+    // clock, so a queued message never delivers until the clock moves. This nudges
+    // the clock forward in small steps to pump delivery, polling the condition
+    // between nudges; the nudge drives the agent, the wall-clock delay lets the
+    // resulting async grain delivery settle. The cap itself stays driven by an
+    // explicit AdvanceClock + FireCapAsync, never by this pump.
+    public static async Task PumpUntilAsync(Action<TimeSpan> advanceClock, Func<Task<bool>> condition, int timeoutSeconds = 20)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (await condition())
+            {
+                return;
+            }
+            advanceClock(TimeSpan.FromMilliseconds(250));
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
     }
 }

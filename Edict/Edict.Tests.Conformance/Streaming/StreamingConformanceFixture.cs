@@ -1,6 +1,8 @@
 using Edict.Contracts.Sending;
 using Edict.Tests.Conformance.Outbox;
 
+using Microsoft.Extensions.Time.Testing;
+
 using Orleans;
 
 using Xunit;
@@ -32,6 +34,33 @@ public abstract class StreamingConformanceFixture : IAsyncLifetime
     /// collection never see the flip.
     /// </summary>
     public StorageFaultState StorageFault { get; } = new();
+
+    readonly FakeTimeProvider _virtualClock = new(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+
+    /// <summary>
+    /// Opt-in deterministic clock. A fixture whose scenarios drive the engine's
+    /// cap, backoff, or reminder timing overrides this <c>true</c>; the silo
+    /// configurator then registers <see cref="VirtualClock"/> as the silo's
+    /// <see cref="TimeProvider"/> ahead of the host's <see cref="TimeProvider.System"/>
+    /// default. Every other fixture leaves it <c>false</c> and runs on the wall
+    /// clock, so backoff-gated recovery scenarios still elapse in real time.
+    /// </summary>
+    protected virtual bool UsesVirtualClock => false;
+
+    /// <summary>
+    /// The virtual clock the silo configurator registers when
+    /// <see cref="UsesVirtualClock"/> is set. <see cref="AdvanceClock"/> pushes it
+    /// forward; the silo reads it as its <see cref="TimeProvider"/>.
+    /// </summary>
+    protected TimeProvider VirtualClock => _virtualClock;
+
+    /// <summary>
+    /// Advances the fixture's virtual clock past a cap, backoff, or deadline
+    /// instant so a scenario can fire the engine's time-gated work deterministically
+    /// with no wall-clock wait. It moves the silo's clock only when the fixture
+    /// opted in via <see cref="UsesVirtualClock"/>.
+    /// </summary>
+    public void AdvanceClock(TimeSpan by) => _virtualClock.Advance(by);
 
     public abstract Task InitializeAsync();
 

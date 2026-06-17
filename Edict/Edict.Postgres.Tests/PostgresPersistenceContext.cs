@@ -29,7 +29,7 @@ sealed record PostgresPersistenceContext(
     int? ClaimCheckThresholdBytes,
     OutboxFaultState OutboxFault,
     StorageFaultState StorageFault,
-    TimeProvider? ClockOverride,
+    TimeProvider Clock,
     bool EnableAudit,
     bool EnableTenancy);
 

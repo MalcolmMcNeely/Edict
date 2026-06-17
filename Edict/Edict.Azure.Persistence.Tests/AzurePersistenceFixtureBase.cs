@@ -94,11 +94,6 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
 
     protected virtual int? ClaimCheckThresholdBytes => null;
 
-    // A schedule fixture returns a FakeTimeProvider here so its scenarios can push
-    // a schedule past-due on a virtual clock; every other fixture leaves it null
-    // and runs on TimeProvider.System.
-    protected virtual TimeProvider? ClockOverride => null;
-
     // The audit fixture turns this on to wire the Azure audit stores + WithAudit and
     // an origin resolver on the silo and client; every other fixture leaves it off
     // and never captures.
@@ -151,7 +146,7 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             ClaimCheckThresholdBytes,
             OutboxFault,
             StorageFault,
-            ClockOverride,
+            UsesVirtualClock ? VirtualClock : TimeProvider.System,
             EnableAudit,
             AuditTableName,
             AuditPayloadContainerName,
@@ -197,7 +192,7 @@ public abstract class AzurePersistenceFixtureBase : PersistenceConformanceFixtur
             siloBuilder.Services.AddSingleton(ctx.TableServiceClient);
             siloBuilder.Services.AddSingleton<IEdictTableStoreFactory>(
                 _ => new AzureTableWriteStoreFactory(ctx.TableServiceClient));
-            siloBuilder.Services.AddSingleton(ctx.ClockOverride ?? TimeProvider.System);
+            siloBuilder.Services.AddSingleton(ctx.Clock);
             siloBuilder.Services.AddSingleton(ctx.ClaimCheckStore);
 
             if (ctx.ClaimCheckThresholdBytes is int thresholdBytes)
