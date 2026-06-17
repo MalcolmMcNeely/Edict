@@ -91,6 +91,22 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
     }
 
     [Fact]
+    public async Task Capture_ShouldStampTheTenant_OntoEveryCommandAndEventRecord()
+    {
+        // Arrange
+        var counterId = Guid.NewGuid();
+        var entityKey = counterId.ToString("N");
+
+        // Act — a batch increment raises two events, so the chain is one C1 command
+        // record plus two E1 event records, all under the resolved tenant.
+        await fixture.Sender.SendAsync(new BatchIncrementCounterCommand(counterId, 2));
+
+        // Assert — every captured record carries the origin tenant, sibling to the principal.
+        var records = await WaitForRecordsAsync(entityKey, expectedCount: 3);
+        Assert.All(records, record => Assert.Equal(AuditCaptureClusterFixture.CaptureTenant, record.Tenant));
+    }
+
+    [Fact]
     public async Task Capture_ShouldEmitTheRecordsCapturedCounter_TaggedByKindAndOutcome()
     {
         // Arrange

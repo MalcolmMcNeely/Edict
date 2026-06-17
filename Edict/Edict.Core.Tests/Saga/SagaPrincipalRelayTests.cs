@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using Xunit;
 
@@ -33,5 +34,30 @@ public sealed class SagaPrincipalRelayTests(PrincipalRelaySagaClusterFixture fix
         var tracker = fixture.GrainFactory.GetGrain<ISpanTrackerProbe>(workflowId);
         await SpanSagaWaiters.WaitForReceivedAsync(tracker);
         Assert.Equal(principal, await tracker.GetLastPrincipalAsync());
+    }
+
+    [Fact]
+    public async Task DispatchedCommand_ShouldInheritHandledEventTenant_UnderAuditingWithNoPrincipal()
+    {
+        // Arrange
+        var workflowId = Guid.NewGuid();
+        var tenant = EdictTenantId.Of("acme");
+        var publisher = fixture.GrainFactory.GetGrain<ISpanSagaEventPublisher>(workflowId);
+
+        // Act — a tenant-bearing, principal-less event handled while auditing is on:
+        // the tenant must still ride the saga hop, not be dropped by the audit-on
+        // receive path.
+        await publisher.PublishAsync(new SpanSagaTriggerEvent(workflowId)
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+            CorrelationId = Guid.NewGuid(),
+            Tenant = tenant,
+        });
+
+        // Assert
+        var tracker = fixture.GrainFactory.GetGrain<ISpanTrackerProbe>(workflowId);
+        await SpanSagaWaiters.WaitForReceivedAsync(tracker);
+        Assert.Equal(tenant, await tracker.GetLastTenantAsync());
     }
 }

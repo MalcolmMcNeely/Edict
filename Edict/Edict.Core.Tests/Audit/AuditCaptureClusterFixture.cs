@@ -1,8 +1,10 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.Sending;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
+using Edict.Core.Tenancy;
 using Edict.Core.Serialization;
 using Edict.Core.Tests.Grains;
 
@@ -80,6 +82,7 @@ public sealed class AuditCaptureClusterFixture : IAsyncLifetime
             siloBuilder.Services.AddEdict();
             siloBuilder.Services.AddEdictOutbox();
             siloBuilder.Services.AddEdictAudit(_ => CapturePrincipal);
+            siloBuilder.Services.AddEdictTenant(() => CaptureTenant);
             siloBuilder.Services.AddSingleton<IEdictAuditStore>(AuditCaptureStoreHolder.Instance);
             siloBuilder.Services.AddSingleton<IEdictAuditPayloadStore>(AuditCaptureStoreHolder.PayloadInstance);
             siloBuilder.Services.AddSingleton<IValidator<RejectByValidatorCommand>, RejectByValidatorCommandValidator>();
@@ -99,12 +102,17 @@ public sealed class AuditCaptureClusterFixture : IAsyncLifetime
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Services.AddEdict();
             clientBuilder.Services.AddEdictAudit(() => CapturePrincipal);
+            clientBuilder.Services.AddEdictTenant(() => CaptureTenant);
         }
     }
 
     // A constant edge principal, distinct from the AuditOrigin collection's shared
     // mutable static so the two collections never race each other in parallel.
     public static readonly EdictPrincipal CapturePrincipal = EdictPrincipal.Of("alice");
+
+    // A constant edge tenant the resolver stamps onto every origin send, so a
+    // captured record carries the tenant alongside the principal.
+    public static readonly EdictTenantId CaptureTenant = EdictTenantId.Of("acme");
 }
 
 sealed class RejectByValidatorCommandValidator : AbstractValidator<RejectByValidatorCommand>

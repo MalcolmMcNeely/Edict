@@ -12,4 +12,7 @@ public enum EdictAuditKind
 
     /// <summary>An Event occurrence: an event the framework published.</summary>
     Event,
+
+    /// <summary>A privileged cross-tenant crossing: an authorized call reached into a tenant other than the calling turn's, recorded so no boundary crossing is silent.</summary>
+    TenantCrossing,
 }

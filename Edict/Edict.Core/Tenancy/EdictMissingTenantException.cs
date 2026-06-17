@@ -33,4 +33,15 @@ public sealed class EdictMissingTenantException : Exception
             + "The edge resolver registered via AddEdictTenant returned null at the read edge, so the read "
             + "would scope to a default partition rather than the caller's own. Fix the resolver, or read a "
             + "non-tenant projection through IEdictListProjectionReader instead.");
+
+    /// <summary>
+    /// A tenant-scoped audit read with no ambient tenant. Reading without a tenant would
+    /// surface another wall's trail, so the read is refused at the edge rather than
+    /// answered under the wrong tenant.
+    /// </summary>
+    public static EdictMissingTenantException ForAuditRead() =>
+        new("No tenant resolved for a tenant-scoped audit read. The edge resolver registered via "
+            + "AddEdictTenant returned null at the read edge, so the read would surface another tenant's "
+            + "trail rather than the caller's own. Fix the resolver, or read the whole audit log through "
+            + "the operator-scoped IEdictAuditRepository instead.");
 }

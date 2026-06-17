@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Core.Tenancy;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -62,6 +63,17 @@ public static class EdictAuditServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IEdictAuditStore>(),
                 serviceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
                 serviceProvider.GetRequiredService<Serializer>()));
+        AddTenantScopedAuditReader(services);
         return services;
     }
+
+    // Registers the ambient-tenant-scoped read surface over the operator repository.
+    // It resolves the tenant resolver optionally: with tenancy off there is no resolver
+    // and the reader fails closed on use, which is correct — a tenant-scoped read makes
+    // no sense without an ambient tenant.
+    internal static void AddTenantScopedAuditReader(IServiceCollection services) =>
+        services.TryAddSingleton<IEdictTenantScopedAuditRepository>(serviceProvider =>
+            new EdictTenantScopedAuditRepository(
+                serviceProvider.GetRequiredService<IEdictAuditRepository>(),
+                serviceProvider.GetService<IEdictTenantResolver>()));
 }

@@ -34,6 +34,7 @@ public static class EdictAuditSiloBuilderExtensions
                 serviceProvider.GetRequiredService<IEdictAuditStore>(),
                 serviceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
                 serviceProvider.GetRequiredService<Serializer>()));
+        EdictAuditServiceCollectionExtensions.AddTenantScopedAuditReader(silo.Services);
         return silo;
     }
 }

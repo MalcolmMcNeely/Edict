@@ -1,4 +1,5 @@
 using Edict.Contracts.Commands;
+using Edict.Contracts.Tenancy;
 
 using MessagePack;
 
@@ -37,6 +38,9 @@ public sealed record EdictAuditRecord
 
     /// <summary>The actor on whose authority the captured decision was made; <see langword="null"/> when auditing carried no principal.</summary>
     public EdictPrincipal? Principal { get; init; }
+
+    /// <summary>The tenant whose data the captured decision belongs to, sibling to <see cref="Principal"/>; <see langword="null"/> for a public (tenant-less) decision.</summary>
+    public EdictTenantId? Tenant { get; init; }
 
     /// <summary>Chain-stable correlation id of the conversation the captured decision belongs to.</summary>
     public Guid CorrelationId { get; init; }

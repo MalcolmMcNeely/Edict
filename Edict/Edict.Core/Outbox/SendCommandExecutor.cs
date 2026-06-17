@@ -40,8 +40,19 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
         // A saga's dispatch is fire-and-forget: the handled command runs in its own
         // grain turn. Carry this send span as the cross-turn link source so the
         // receiving edict.command.handle links back to it as a new root, and the
-        // intervening edict.command does not clobber it as the carrier.
-        activity?.CaptureToRequestContext(crossTurnLink: true);
+        // intervening edict.command does not clobber it as the carrier. The marker
+        // also exempts this relayed send from origin fail-closed in the receiving
+        // identity stampers, so it must be set even when no span is recording —
+        // otherwise an untraced audited dispatch of a principal-less command would
+        // wrongly fail closed and dead-letter.
+        if (activity is not null)
+        {
+            activity.CaptureToRequestContext(crossTurnLink: true);
+        }
+        else
+        {
+            ActivityExtensions.MarkCrossTurnLink();
+        }
 
         var sender = services.GetRequiredService<IEdictSender>();
         await sender.SendAsync(command);

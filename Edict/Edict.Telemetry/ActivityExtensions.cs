@@ -44,6 +44,16 @@ public static class ActivityExtensions
     public static bool IsCrossTurnLink() => RequestContext.Get(EdictDiagnostics.CrossTurnLinkKey) is true;
 
     /// <summary>
+    /// Marks the current context as a fire-and-forget cross-turn dispatch without a
+    /// recording span. The marker is a control signal the receiving handler's
+    /// identity stampers read to exempt a relayed send from origin fail-closed, so it
+    /// must be set even when no tracing listener is attached;
+    /// <see cref="CaptureToRequestContext"/> sets it alongside the trace context when
+    /// a span is recording, and this sets it alone when one is not.
+    /// </summary>
+    public static void MarkCrossTurnLink() => RequestContext.Set(EdictDiagnostics.CrossTurnLinkKey, true);
+
+    /// <summary>
     /// Clears the cross-turn marker once the receiving handle span has consumed it,
     /// so a command this handler itself dispatches does not inherit the flag.
     /// </summary>

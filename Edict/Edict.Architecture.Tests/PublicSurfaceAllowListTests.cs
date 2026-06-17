@@ -267,6 +267,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Contracts.Audit.EdictAuditRecord",
         "Edict.Contracts.Audit.EdictPrincipal",
         "Edict.Contracts.Audit.IEdictAuditRepository",
+        "Edict.Contracts.Audit.IEdictTenantScopedAuditRepository",
         "Edict.Contracts.ClaimCheck.EdictEnvelopeOverflowException",
         "Edict.Contracts.Commands.EdictCommand",
         "Edict.Contracts.Commands.EdictCommandResult",

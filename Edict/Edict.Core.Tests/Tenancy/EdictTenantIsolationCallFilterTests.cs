@@ -1,9 +1,13 @@
 using System.Diagnostics;
 
+using Edict.Contracts.Audit;
 using Edict.Contracts.Routing;
 using Edict.Contracts.Tenancy;
 using Edict.Core.Tenancy;
+using Edict.Core.Tests.Audit;
 using Edict.Telemetry;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Orleans.Runtime;
 
@@ -31,7 +35,7 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
         OriginIdentity.Seed(null, EdictTenantId.Of("acme"));
         var context = CommandContext(EdictKeyComposer.Compose(EdictTenantId.Of("acme"), RouteGuid.ToString("N")));
 
-        await new EdictTenantIsolationCallFilter().Invoke(context);
+        await FilterWithoutAudit().Invoke(context);
 
         Assert.True(context.Invoked);
     }
@@ -43,7 +47,7 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
         var context = CommandContext(EdictKeyComposer.Compose(EdictTenantId.Of("globex"), RouteGuid.ToString("N")));
 
         await Assert.ThrowsAsync<EdictCrossTenantAccessException>(() =>
-            new EdictTenantIsolationCallFilter().Invoke(context));
+            FilterWithoutAudit().Invoke(context));
         Assert.False(context.Invoked);
     }
 
@@ -57,10 +61,42 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
         using var listener = ListenForActivities();
         using var activity = EdictDiagnostics.ActivitySource.StartActivity("test.crossing");
 
-        await new EdictTenantIsolationCallFilter().Invoke(context);
+        await FilterWithoutAudit().Invoke(context);
 
         Assert.True(context.Invoked);
         Assert.Contains(activity!.Events, recorded => recorded.Name == SemanticConventions.Tenant.Events.CrossTenantAuthorized);
+    }
+
+    [Fact]
+    public async Task Invoke_ShouldLandACrossingAuditRow_WhenCrossingIsAuthorizedAndAuditingIsOn()
+    {
+        OriginIdentity.Seed(EdictPrincipal.Of("operator-9"), null);
+        TenantCrossing.Authorize();
+        var grainKey = EdictKeyComposer.Compose(EdictTenantId.Of("globex"), RouteGuid.ToString("N"));
+        var context = CommandContext(grainKey);
+        var store = new RecordingAuditStore();
+
+        await FilterWith(store).Invoke(context);
+
+        // The crossing lands one row in the crossed wall's trail, attributed to the
+        // operator who crossed, kinded as a tenant crossing.
+        var record = Assert.Single(await store.ByEntityAsync(typeof(FakeCommandHandlerGrain).FullName!, grainKey, CancellationToken.None));
+        Assert.Equal(EdictAuditKind.TenantCrossing, record.Kind);
+        Assert.Equal(EdictTenantId.Of("globex"), record.Tenant);
+        Assert.Equal(EdictPrincipal.Of("operator-9"), record.Principal);
+    }
+
+    [Fact]
+    public async Task Invoke_ShouldNotLandACrossingAuditRow_WhenCrossingIsDenied()
+    {
+        OriginIdentity.Seed(EdictPrincipal.Of("operator-9"), EdictTenantId.Of("acme"));
+        var grainKey = EdictKeyComposer.Compose(EdictTenantId.Of("globex"), RouteGuid.ToString("N"));
+        var context = CommandContext(grainKey);
+        var store = new RecordingAuditStore();
+
+        await Assert.ThrowsAsync<EdictCrossTenantAccessException>(() => FilterWith(store).Invoke(context));
+
+        Assert.Equal(0, store.Count);
     }
 
     [Fact]
@@ -69,7 +105,7 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
         OriginIdentity.Seed(null, null);
         var context = CommandContext(EdictKeyComposer.Compose(null, RouteGuid.ToString("N")));
 
-        await new EdictTenantIsolationCallFilter().Invoke(context);
+        await FilterWithoutAudit().Invoke(context);
 
         Assert.True(context.Invoked);
     }
@@ -81,9 +117,19 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
         var tenantKey = EdictKeyComposer.Compose(EdictTenantId.Of("globex"), RouteGuid.ToString("N"));
         var context = new FakeIncomingGrainCallContext(new FakeProjectionGrain(), GrainId.Create("projection", tenantKey));
 
-        await new EdictTenantIsolationCallFilter().Invoke(context);
+        await FilterWithoutAudit().Invoke(context);
 
         Assert.True(context.Invoked);
+    }
+
+    static EdictTenantIsolationCallFilter FilterWithoutAudit() =>
+        new(new ServiceCollection().BuildServiceProvider());
+
+    static EdictTenantIsolationCallFilter FilterWith(IEdictAuditStore store)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(store);
+        return new EdictTenantIsolationCallFilter(services.BuildServiceProvider());
     }
 
     static FakeIncomingGrainCallContext CommandContext(string grainKey) =>

@@ -1,5 +1,6 @@
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
 
 using static VerifyXunit.Verifier;
@@ -44,6 +45,18 @@ public sealed class AuditRecordBuilderTests
         var sealedRecord = AuditRecordBuilder.Seal(content, HashChain.Genesis, sequence: 0);
 
         return Verify(sealedRecord);
+    }
+
+    [Fact]
+    public void Seal_ShouldFoldTenantIntoTheChainHash()
+    {
+        var withoutTenant = AuditRecordBuilder.Seal(AcceptedContent(), HashChain.Genesis, sequence: 0);
+        var withTenant = AuditRecordBuilder.Seal(
+            AcceptedContent() with { Tenant = EdictTenantId.Of("acme") },
+            HashChain.Genesis,
+            sequence: 0);
+
+        Assert.NotEqual(withoutTenant.RecordHash, withTenant.RecordHash);
     }
 
     [Fact]
