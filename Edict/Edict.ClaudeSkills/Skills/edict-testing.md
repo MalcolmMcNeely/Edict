@@ -5,7 +5,7 @@ description: Use this skill when working on a consumer app built on Edict and wr
 
 # Testing an Edict consumer app
 
-Tests against an Edict consumer ride on the shipped `Edict.Testing` package. The harness boots the consumer's grains on an in-memory Orleans cluster with the real Outbox/saga engine, memory streams, an in-memory single store, and a virtual `TimeProvider`. Consumer code behaves identically under test and in production. Chaos delivery is on by default and not configurable.
+Tests against an Edict consumer ride on the shipped `Edict.Testing` package. The harness boots the consumer's grains on an in-memory Orleans cluster with the real Outbox/saga engine, memory streams, an in-memory single store, and a virtual `TimeProvider`. Consumer code behaves identically under test and in production. Chaos delivery is on by default, riding a run-wide seed; the only opt-out is `WithoutChaos()`, narrow and characterization-only (see [Chaos is on by default](#chaos-is-on-by-default)).
 
 Reach for `EdictTestApp` in every consumer test. Do not mock Orleans, do not mock `IEdictSender`, do not stub out a Saga, a Projection Builder, or a Command Handler — those are the code under test.
 
@@ -52,6 +52,8 @@ A projection has two species, and each has its own read probe. Reach for the one
 - **`EdictTestApp.AdvanceClock(TimeSpan)`** — advances the virtual `TimeProvider` (the engine's backoff/reminder gate) and drains. Backoff timing elapses with no wall-clock wait.
 - **`EdictTestApp.FireDueSchedulesAsync()`** — drives the next round of due schedule fires. Reads the soonest due instant across every grain a Command has been routed to, advances the virtual clock to it, fires every grain now due, and drains so the fired outcome (raised Events, dispatched Commands) lands on the `Timeline`. A no-op when no schedule is active.
 - **`EdictTestApp.FireScheduleTimeoutsAsync()`** — the symmetric seam for the timeout cap. Advances to the soonest cap instant, fires the timeout on every grain at or past its cap, and drains so the compensation (`OnScheduleTimeoutAsync`) or the dead-letter (when no hook is written) lands on the `Timeline`.
+- **`EdictTestAppBuilder.WithoutChaos()`** — zeroes duplicate redelivery and bounded reorder for this app, so events arrive exactly once in raise order regardless of the run-wide seed. Characterization-only: reserve it for a `Verify(app.Timeline)` snapshot that documents the canonical workflow shape, never for an invariant test that should be riding reorder. Absolute — it wins over any seed (`EDICT_CHAOS_SEED` or the random default). See [Chaos is on by default](#chaos-is-on-by-default).
+- **`EdictChaos.CurrentSeed`** — the run's chaos seed, resolved once and stable thereafter. Read it to surface the seed through your own test output, or copy the value the harness prints into `EDICT_CHAOS_SEED` to reproduce a failing interleaving.
 - **`EdictTestAppBuilder.WithAudit()`** — turns auditing on, backed by in-memory audit stores so no container is needed. Sends are attributed to a default principal so simply turning it on never trips the origin fail-closed.
 - **`EdictTestApp.ActAs(EdictPrincipal)`** — attributes every subsequent audited send to that actor. Call it before `SendAsync`; absent any call, sends carry the default test principal.
 - **`EdictTestApp.Audit`** — the consumer read surface (`IEdictAuditRepository`) over the captured chain: `ByEntityAsync` / `ByCorrelationAsync` / `ByPrincipalAsync`, `VerifyEntityChainAsync`, and `GetPayloadAsync`. Available only after `WithAudit()`.
@@ -139,7 +141,17 @@ The same shape proves the audit wall: after `RunAsTenant`, `TenantAudit.ByEntity
 
 ## Chaos is on by default
 
-`Edict.Testing` applies bounded duplicate redelivery and bounded reorder to every published event on every test run. There is no `WithoutChaos`, no seed override, no per-test escape hatch. Chaos models the at-least-once production contract; if a test is order-sensitive, it is asserting on a stricter contract than Edict guarantees in production — fix the consumer, not the harness.
+`Edict.Testing` applies bounded duplicate redelivery and bounded reorder to every published event on every test run. Chaos models the at-least-once production contract; if an invariant test is order-sensitive, it is asserting a stricter contract than Edict guarantees in production — fix the consumer, not the harness.
+
+The seed is **random per run**: taken from `EDICT_CHAOS_SEED` when set (hex `0x...` or decimal), otherwise one random `int` generated once at process start and shared by every `EdictTestApp` in the run, so per-test determinism holds while the run as a whole explores a fresh interleaving each time. The seed is **printed to standard output once** and exposed as `EdictChaos.CurrentSeed`, so a failing run always carries the value that produced it. To **reproduce** a failure, copy the printed seed into the environment and rerun — this pins the whole run to that interleaving:
+
+```
+EDICT_CHAOS_SEED=123456789 dotnet test
+```
+
+There is deliberately no per-test seed knob; reproduction is the single global env var, so an author cannot reseed *away* from a failure.
+
+The one opt-out is **`WithoutChaos()`**, and it is **characterization-only**: use it on a `Verify(app.Timeline)` snapshot that documents the canonical workflow shape, where a varying seed would drift the snapshot every run and the reorder noise is unhelpful. It zeroes the four chaos knobs for that one app and wins over any seed. Never reach for it to quiet an invariant test that should be riding reorder — that is where the reorder-tolerance coverage actually lands.
 
 `Drain` releases held-queue events on its own stability ticks, so no `Task.Delay` is needed (or wanted) anywhere in test code. If a test reaches for `Task.Delay`, replace it with `await app.Drain()` or `await app.AdvanceClock(...)`.
 
