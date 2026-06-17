@@ -1,6 +1,7 @@
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
 using Edict.Core.Idempotency;
+using Edict.Tests.Conformance.Reactivation;
 
 using Orleans;
 using Orleans.Runtime;
@@ -26,11 +27,10 @@ public sealed partial record UnhandledDedupTestEvent(Guid AggregateId) : EdictEv
     public Guid AggregateId { get; init; } = AggregateId;
 }
 
-public interface IDedupTestConsumer : IGrainWithGuidKey
+public interface IDedupTestConsumer : IConfirmsDeactivation
 {
     Task<IReadOnlyList<Guid>> GetHandledEventIdsAsync();
     Task ArmThrowOnNextAsync();
-    Task DeactivateSelfAsync();
 }
 
 public interface IDedupPublisherGrain : IGrainWithGuidKey
@@ -53,8 +53,19 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
 {
     readonly List<Guid> _handledEventIds = [];
     bool _throwOnNext;
+    Guid _activationId;
 
     protected override int WindowSize => 3;
+
+    // Fresh per activation so the deactivate-and-confirm seam can poll until it
+    // changes to confirm the ring genuinely reloaded from durable state.
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        _activationId = Guid.NewGuid();
+        await base.OnActivateAsync(cancellationToken);
+    }
+
+    public Task<Guid> GetActivationIdAsync() => Task.FromResult(_activationId);
 
     protected override Task<EdictDispatchOutcome> DispatchAsync(EdictEvent edictEvent)
     {
@@ -82,7 +93,7 @@ public sealed class DedupTestConsumer : EdictIdempotencyBase, IDedupTestConsumer
         return Task.CompletedTask;
     }
 
-    public Task DeactivateSelfAsync()
+    public Task DeactivateAsync()
     {
         DeactivateOnIdle();
         return Task.CompletedTask;

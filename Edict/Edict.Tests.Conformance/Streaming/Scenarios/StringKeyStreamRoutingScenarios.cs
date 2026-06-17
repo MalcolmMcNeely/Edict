@@ -42,16 +42,8 @@ public abstract class StringKeyStreamRoutingScenarios<TFixture>
 
     static async Task<StringKeyRoutingCapture?> WaitForCaptureAsync(IStringKeyRoutingProjectionAccess projection)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var capture = await projection.GetCaptureAsync();
-            if (capture is not null)
-            {
-                return capture;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        return null;
+        StringKeyRoutingCapture? capture = null;
+        await ConformanceWaiters.WaitUntilAsync(async () => (capture = await projection.GetCaptureAsync()) is not null);
+        return capture;
     }
 }

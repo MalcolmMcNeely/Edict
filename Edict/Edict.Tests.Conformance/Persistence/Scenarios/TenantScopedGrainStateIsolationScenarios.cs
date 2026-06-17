@@ -62,16 +62,8 @@ public abstract class TenantScopedGrainStateIsolationScenarios<TFixture>
     static async Task<EmployeeDirectoryRow?> WaitForRowAsync(
         IEdictTableWriteStore<EmployeeDirectoryRow> store, string partitionKey, string rowKey)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var row = await store.GetAsync(partitionKey, rowKey);
-            if (row is not null)
-            {
-                return row;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        return await store.GetAsync(partitionKey, rowKey);
+        EmployeeDirectoryRow? row = null;
+        await ConformanceWaiters.WaitUntilAsync(async () => (row = await store.GetAsync(partitionKey, rowKey)) is not null);
+        return row;
     }
 }

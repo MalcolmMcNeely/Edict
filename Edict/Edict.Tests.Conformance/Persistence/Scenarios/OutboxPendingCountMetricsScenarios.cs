@@ -73,7 +73,7 @@ public abstract class OutboxPendingCountMetricsScenarios<TFixture>
                 catch { /* publish-side failure surfaces via the gauge, not the sender */ }
             }
 
-            await WaitUntilAsync(() =>
+            await ConformanceWaiters.WaitUntilAsync(() =>
             {
                 listener.RecordObservableInstruments();
                 lock (captures)
@@ -94,16 +94,6 @@ public abstract class OutboxPendingCountMetricsScenarios<TFixture>
         finally
         {
             _fixture.OutboxFault.ShouldFail = false;
-        }
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition()) { return; }
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
         }
     }
 

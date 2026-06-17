@@ -42,18 +42,10 @@ public abstract class ReceiverUnwrapsClaimCheckScenarios<TFixture>
     }
 
     static async Task<IReadOnlyList<ClaimCheckCounterIncrementedEvent>> WaitForHandledAsync(
-        IClaimCheckEventHandlerProbe handler, int expectedCount = 1, int timeoutSeconds = 30)
+        IClaimCheckEventHandlerProbe handler, int expectedCount = 1)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var events = await handler.GetHandledEventsAsync();
-            if (events.Count >= expectedCount)
-            {
-                return events;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        return await handler.GetHandledEventsAsync();
+        IReadOnlyList<ClaimCheckCounterIncrementedEvent> events = [];
+        await ConformanceWaiters.WaitUntilAsync(async () => (events = await handler.GetHandledEventsAsync()).Count >= expectedCount);
+        return events;
     }
 }

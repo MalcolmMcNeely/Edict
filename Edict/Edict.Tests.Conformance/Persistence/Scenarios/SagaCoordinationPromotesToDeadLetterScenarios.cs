@@ -37,18 +37,16 @@ public abstract class SagaCoordinationPromotesToDeadLetterScenarios<TFixture>
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
             return _fixture.OutboxFault.FailedAttempts >= 2;
         });
 
         _fixture.OutboxFault.ShouldFail = false;
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
             await probe.ForceDrainViaReminderAsync();
             return await probe.GetPendingOutboxCountAsync() == 0;
         });
@@ -56,7 +54,7 @@ public abstract class SagaCoordinationPromotesToDeadLetterScenarios<TFixture>
         var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(
             EdictDeadLetterTable.Name);
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(
                 EdictDeadLetterTable.Name);
@@ -68,18 +66,5 @@ public abstract class SagaCoordinationPromotesToDeadLetterScenarios<TFixture>
         var entry = allEntries.Single(e => e.SourceGrainKey.Contains(counterId.ToString("N")));
 
         Assert.Equal(typeof(EdictSagaCoordinationException).FullName, entry.ExceptionType);
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
-        }
     }
 }

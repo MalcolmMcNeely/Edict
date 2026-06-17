@@ -61,9 +61,8 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
 
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
             return _fixture.OutboxFault.FailedAttempts >= 2;
         });
@@ -71,9 +70,8 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
         // Heal so the promotion goes through the rest of the outbox path.
         _fixture.OutboxFault.ShouldFail = false;
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
             await probe.ForceDrainViaReminderAsync();
             lock (captures) { return captures.Count > 0; }
         });
@@ -92,19 +90,6 @@ public abstract class DeadLetterPromotionMetricsScenarios<TFixture>
         Assert.Equal(
             SemanticConventions.DeadLetter.Tags.FailureReasonValues.Unhandled,
             capture.Tags[SemanticConventions.DeadLetter.Tags.FailureReason]);
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
-        }
     }
 
     sealed record Capture(long Value, IReadOnlyDictionary<string, object?> Tags);

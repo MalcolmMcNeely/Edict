@@ -39,11 +39,8 @@ public abstract class ProjectionDeliverySerializationScenarios<TFixture>
 
         var projection = _fixture.GrainFactory.GetGrain<IOrderProjectionAccess>(orderId);
 
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(45);
-        while (await projection.GetOrderCountAsync() < eventCount && DateTimeOffset.UtcNow < deadline)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
+        await ConformanceWaiters.WaitUntilAsync(
+            async () => await projection.GetOrderCountAsync() >= eventCount, timeoutSeconds: 45);
 
         Assert.Equal(eventCount, await projection.GetOrderCountAsync());
         Assert.Equal(1, await projection.GetMaxConcurrentHandlerTurnsAsync());

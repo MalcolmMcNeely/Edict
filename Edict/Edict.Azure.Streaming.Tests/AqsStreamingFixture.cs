@@ -36,7 +36,7 @@ namespace Edict.Azure.Streaming.Tests;
 /// redeliver-after-throw scenario can fault a consumer turn out to the stream
 /// layer and observe the real queue redeliver.
 /// </summary>
-public sealed class AqsStreamingFixture : StreamingConformanceFixture
+public class AqsStreamingFixture : StreamingConformanceFixture
 {
     ReferenceClaimCheckStore _claimCheckStore = null!;
     string _contextKey = "";

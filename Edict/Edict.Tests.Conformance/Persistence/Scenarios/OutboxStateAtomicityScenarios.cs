@@ -1,4 +1,5 @@
 using Edict.Tests.Conformance.Outbox;
+using Edict.Tests.Conformance.Reactivation;
 
 using Xunit;
 
@@ -31,8 +32,9 @@ public abstract class OutboxStateAtomicityScenarios<TFixture>
         await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         Assert.Equal(1, await aggregate.GetCountAsync());
 
-        await aggregate.DeactivateAsync();
-        await Task.Delay(TimeSpan.FromSeconds(1)); // let the activation drain
+        // Force a confirmed deactivate/reactivate round trip so the second command
+        // can only see the count if the {State, Outbox} envelope committed durably.
+        await DeactivationWaiter.DeactivateAndConfirmAsync(aggregate);
 
         await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
 

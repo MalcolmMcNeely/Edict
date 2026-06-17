@@ -1,4 +1,5 @@
 using Edict.Tests.Conformance.Outbox;
+using Edict.Tests.Conformance.Reactivation;
 
 using Xunit;
 
@@ -31,15 +32,18 @@ public abstract class OutboxDrainOnActivationScenarios<TFixture>
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);
 
-        await probe.DeactivateAsync();
-        await Task.Delay(TimeSpan.FromSeconds(1));
-
-        // DeactivateOnIdle + delay alone is not reliable for activation-drain
-        // coverage; the Reminder path exercises the same code deterministically.
+        // Heal, then force a confirmed reactivation so the drain-on-activation path
+        // runs against durable state with the fault cleared. The Reminder-driven poll
+        // exercises the same drain code deterministically and finishes the publish
+        // once the pending entry's backoff comes due.
         _fixture.OutboxFault.ShouldFail = false;
-        await probe.ForceDrainViaReminderAsync();
+        await DeactivationWaiter.DeactivateAndConfirmAsync(probe);
 
-        await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 0);
+        await ConformanceWaiters.WaitUntilAsync(async () =>
+        {
+            await probe.ForceDrainViaReminderAsync();
+            return await probe.GetPendingOutboxCountAsync() == 0;
+        });
         Assert.False(await probe.HasDrainReminderAsync());
     }
 

@@ -31,16 +31,6 @@ public abstract class ProjectionDeliveryScenarios<TFixture>
         Assert.Equal(1, await projection.GetOrderCountAsync());
     }
 
-    static async Task WaitForProjectionAsync(IOrderProjectionAccess projection, int expectedCount)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await projection.GetOrderCountAsync() >= expectedCount)
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-    }
+    static Task WaitForProjectionAsync(IOrderProjectionAccess projection, int expectedCount) =>
+        ConformanceWaiters.WaitUntilAsync(async () => await projection.GetOrderCountAsync() >= expectedCount);
 }

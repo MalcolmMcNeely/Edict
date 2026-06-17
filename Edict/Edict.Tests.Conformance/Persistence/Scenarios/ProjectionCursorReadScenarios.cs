@@ -2,6 +2,7 @@ using Edict.Contracts.Commands;
 using Edict.Contracts.Projections;
 using Edict.Core.Projections;
 using Edict.Tests.Conformance.Projections;
+using Edict.Tests.Conformance.Reactivation;
 
 using Orleans;
 
@@ -46,11 +47,11 @@ public abstract class ProjectionCursorReadScenarios<TFixture>
         var store = _fixture.GetTableStore<OrderTableRow>("orderprojection");
         await TableProjectionWaiters.WaitForRowAsync(store, orderId.ToString(), orderId.ToString());
 
-        // Force the projection to drop its in-memory state, so a CursorReached
-        // answer can only come from the persisted ring re-seeding the wait mirror.
+        // Force the projection to drop its in-memory state and come back from durable
+        // storage, so a CursorReached answer can only come from the persisted ring
+        // re-seeding the wait mirror at activation.
         var probe = _fixture.GrainFactory.GetGrain<IOrderListProjectionProbe>(orderId);
-        await probe.DeactivateSelfAsync();
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await DeactivationWaiter.DeactivateAndConfirmAsync(probe);
 
         // Act — read through the grain with the cursor against the reactivated grain.
         var projection = _fixture.GrainFactory

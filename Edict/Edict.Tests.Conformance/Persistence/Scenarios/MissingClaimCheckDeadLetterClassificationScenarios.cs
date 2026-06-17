@@ -83,9 +83,8 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
 
         await consumer.DeliverAsync(envelope);
 
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
             await consumer.ForceDrainViaReminderAsync();
             lock (captures)
             {
@@ -108,9 +107,8 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         // assembly, so the pointer envelope's unique EventId isolates this row.
         var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
         EdictDeadLetterEntry? deadLetterRow = null;
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
             await consumer.ForceDrainViaReminderAsync();
             var entries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
             deadLetterRow = entries.SingleOrDefault(entry => entry.SourceEventId == envelope.EventId);
@@ -123,18 +121,5 @@ public abstract class MissingClaimCheckDeadLetterClassificationScenarios<TFixtur
         Assert.Equal(grainId.ToString("N"), deadLetterRow.SourceGrainKey);
         // Promoted at the retry cap, not on the first failure.
         Assert.True(deadLetterRow.AttemptCount > 1);
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
-        }
     }
 }

@@ -141,9 +141,8 @@ public abstract class StolenRouteKeyScenarios<TFixture>
 #pragma warning restore EDICT024
 
         var probe = _fixture.GrainFactory.GetGrain<IEmployeeOutboxProbe>(composedKey);
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
             await probe.ForceDrainViaReminderAsync();
             return _fixture.OutboxFault.FailedAttempts >= 2;
         });
@@ -151,15 +150,14 @@ public abstract class StolenRouteKeyScenarios<TFixture>
         // Heal so the promoted EdictDeadLetterRaised entry can publish instead of
         // looping on the same fail/promote cycle.
         _fixture.OutboxFault.ShouldFail = false;
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
             await probe.ForceDrainViaReminderAsync();
             return await probe.GetPendingOutboxCountAsync() == 0;
         });
 
         var deadLetterTable = _fixture.GetTableStore<EdictDeadLetterEntry>(EdictDeadLetterTable.Name);
-        await WaitUntilAsync(async () =>
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
             var entries = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
             return entries.Any(entry => entry.SourceGrainKey == composedKey);
@@ -185,32 +183,12 @@ public abstract class StolenRouteKeyScenarios<TFixture>
     static async Task<EdictProjectionPartitionRead<EmployeeDirectoryRow>> WaitForPartitionCountAsync(
         IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow> reader, int expectedCount)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        EdictProjectionPartitionRead<EmployeeDirectoryRow> read;
-        do
+        EdictProjectionPartitionRead<EmployeeDirectoryRow> read = default;
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
             read = await reader.QueryMyPartitionAsync();
-            if (read.Rows.Count >= expectedCount)
-            {
-                return read;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        while (DateTimeOffset.UtcNow < deadline);
-
+            return read.Rows.Count >= expectedCount;
+        });
         return read;
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
-        }
     }
 }

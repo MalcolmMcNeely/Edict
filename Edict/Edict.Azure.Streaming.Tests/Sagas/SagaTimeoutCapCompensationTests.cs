@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Edict.Azure.Streaming.Tests.Sagas;
 
-[Collection(AqsStreamingCollection.Name)]
-public sealed class SagaTimeoutCapCompensationTests : SagaTimeoutCapCompensationScenarios<AqsStreamingFixture>
+[Collection(AqsSagaTimeoutStreamingCollection.Name)]
+public sealed class SagaTimeoutCapCompensationTests : SagaTimeoutCapCompensationScenarios<AqsSagaTimeoutStreamingFixture>
 {
-    public SagaTimeoutCapCompensationTests(AqsStreamingFixture fixture) : base(fixture) { }
+    public SagaTimeoutCapCompensationTests(AqsSagaTimeoutStreamingFixture fixture) : base(fixture) { }
 }

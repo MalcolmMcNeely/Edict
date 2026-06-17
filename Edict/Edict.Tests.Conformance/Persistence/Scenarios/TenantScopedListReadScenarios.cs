@@ -61,19 +61,12 @@ public abstract class TenantScopedListReadScenarios<TFixture>
     static async Task<EdictProjectionPartitionRead<EmployeeDirectoryRow>> WaitForPartitionCountAsync(
         IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow> reader, int expectedCount)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        EdictProjectionPartitionRead<EmployeeDirectoryRow> read;
-        do
+        EdictProjectionPartitionRead<EmployeeDirectoryRow> read = default;
+        await ConformanceWaiters.WaitUntilAsync(async () =>
         {
             read = await reader.QueryMyPartitionAsync();
-            if (read.Rows.Count >= expectedCount)
-            {
-                return read;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        while (DateTimeOffset.UtcNow < deadline);
-
+            return read.Rows.Count >= expectedCount;
+        });
         return read;
     }
 }

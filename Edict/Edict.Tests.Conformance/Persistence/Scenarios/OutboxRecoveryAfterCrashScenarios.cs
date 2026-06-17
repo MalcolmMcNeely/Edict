@@ -43,11 +43,15 @@ public abstract class OutboxRecoveryAfterCrashScenarios<TFixture>
         await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 1);
         Assert.True(await probe.HasDrainReminderAsync());
 
+        // Recovery is Reminder-driven: once the fault heals, a drain retries the
+        // pending publish the moment the entry's backoff comes due. The poll drives
+        // that drain each iteration until it lands.
         _fixture.OutboxFault.ShouldFail = false;
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
-        await probe.ForceDrainViaReminderAsync();
-
-        await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetPendingOutboxCountAsync() == 0);
+        await ConformanceWaiters.WaitUntilAsync(async () =>
+        {
+            await probe.ForceDrainViaReminderAsync();
+            return await probe.GetPendingOutboxCountAsync() == 0;
+        });
         Assert.False(await probe.HasDrainReminderAsync());
     }
 }

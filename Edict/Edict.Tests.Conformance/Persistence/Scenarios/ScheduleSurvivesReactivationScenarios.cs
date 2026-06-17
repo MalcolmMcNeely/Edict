@@ -45,9 +45,9 @@ public abstract class ScheduleSurvivesReactivationScenarios<TFixture>
 
         var activationBeforeDeactivation = await probe.GetActivationIdAsync();
         await probe.DeactivateAsync();
-        await WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
+        await ConformanceWaiters.WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
 
-        await WaitUntilAsync(async () => await probe.GetTickCountAsync() == 1);
+        await ConformanceWaiters.WaitUntilAsync(async () => await probe.GetTickCountAsync() == 1);
 
         Assert.Equal(1, await probe.GetTickCountAsync());
         // The tick re-armed for the next cadence; a Continue keeps the schedule live.
@@ -69,27 +69,14 @@ public abstract class ScheduleSurvivesReactivationScenarios<TFixture>
 
         var activationBeforeDeactivation = await probe.GetActivationIdAsync();
         await probe.DeactivateAsync();
-        await WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
+        await ConformanceWaiters.WaitUntilAsync(async () => await probe.GetActivationIdAsync() != activationBeforeDeactivation);
 
-        await WaitUntilAsync(async () => await probe.GetTimeoutCountAsync() == 1);
+        await ConformanceWaiters.WaitUntilAsync(async () => await probe.GetTimeoutCountAsync() == 1);
 
         Assert.Equal(1, await probe.GetTimeoutCountAsync());
         // The timeout is terminal: the cap ran the compensation hook and removed the
         // schedule, so no tick fired and nothing remains due.
         Assert.Equal(0, await probe.GetTickCountAsync());
         Assert.Null(await probe.PeekSoonestDueAsync());
-    }
-
-    static async Task WaitUntilAsync(Func<Task<bool>> condition, int timeoutSeconds = 30)
-    {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            if (await condition())
-            {
-                return;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
     }
 }

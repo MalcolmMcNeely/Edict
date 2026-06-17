@@ -28,8 +28,16 @@ public abstract class RejectedCommandPublishesNoEventScenarios<TFixture>
 
         await _fixture.Sender.SendAsync(new CancelOrderCommand(orderId, "changed mind"));
 
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        // Sentinel-after: an accepted command on the same aggregate that DOES publish.
+        // Both sends are awaited in order, so when the sentinel's event is captured the
+        // rejected command has already been fully processed — and published nothing,
+        // since the only captured event is the sentinel's.
+        await _fixture.Sender.SendAsync(new PlaceOrderCommand(orderId, "SKU-sentinel"));
+
         var captureGrain = _fixture.GrainFactory.GetGrain<IOrderEventCaptureGrain>(orderId);
-        Assert.Empty(await captureGrain.GetCapturedEventsAsync());
+        await ConformanceWaiters.WaitUntilAsync(async () => (await captureGrain.GetCapturedEventsAsync()).Count >= 1);
+
+        var captured = await captureGrain.GetCapturedEventsAsync();
+        Assert.IsType<OrderPlacedEvent>(Assert.Single(captured));
     }
 }

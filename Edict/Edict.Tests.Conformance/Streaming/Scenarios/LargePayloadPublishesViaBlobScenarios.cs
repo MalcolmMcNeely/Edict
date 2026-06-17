@@ -45,19 +45,10 @@ public abstract class LargePayloadPublishesViaBlobScenarios<TFixture>
             $"claim-check body for event '{envelope.EventId:N}' must exist in the fixture's claim-check store.");
     }
 
-    static async Task<IReadOnlyList<EdictEvent>> WaitForCapturedAsync(
-        IClaimCheckEventCaptureGrain capture, int timeoutSeconds = 15)
+    static async Task<IReadOnlyList<EdictEvent>> WaitForCapturedAsync(IClaimCheckEventCaptureGrain capture)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var events = await capture.GetCapturedEventsAsync();
-            if (events.Count > 0)
-            {
-                return events;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        return await capture.GetCapturedEventsAsync();
+        IReadOnlyList<EdictEvent> events = [];
+        await ConformanceWaiters.WaitUntilAsync(async () => (events = await capture.GetCapturedEventsAsync()).Count > 0);
+        return events;
     }
 }

@@ -52,7 +52,6 @@ public abstract class UnhandledEventTypeRingSlotScenarios<TFixture>
             OccurredAt = DateTimeOffset.UtcNow,
         };
         await publisher.PublishAsync(unhandled);
-        await Task.Delay(TimeSpan.FromSeconds(3));
 
         // If the unhandled event had evicted id1 from the ring it would
         // dispatch again — correct behaviour is still suppressed.
@@ -61,9 +60,21 @@ public abstract class UnhandledEventTypeRingSlotScenarios<TFixture>
             EventId = id1,
             OccurredAt = DateTimeOffset.UtcNow,
         });
-        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        // Sentinel-after: a fresh handled event published last on the same serially-
+        // delivered stream. Once it is handled, both the unhandled event and the id1
+        // redelivery ahead of it have been processed; the count then settles at four
+        // (id1, id2, id3, id4). A redelivery that leaked through the ring would push it
+        // to five.
+        var id4 = Guid.NewGuid();
+        await publisher.PublishAsync(new DedupTestEvent(grainId, 4) with
+        {
+            EventId = id4,
+            OccurredAt = DateTimeOffset.UtcNow,
+        });
+        await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 4);
 
         var handled = await consumer.GetHandledEventIdsAsync();
-        Assert.Equal(3, handled.Count);
+        Assert.Equal(4, handled.Count);
     }
 }

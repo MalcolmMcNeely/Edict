@@ -47,9 +47,9 @@ public abstract class SagaTimeoutCapCompensationScenarios<TFixture>
         });
 
         var saga = _fixture.GrainFactory.GetGrain<ITimeoutSagaProbe>(workflowId);
-        await SagaTimeoutWaiters.WaitUntilAsync(async () => await saga.GetHandledAsync() >= 1);
+        await SagaTimeoutWaiters.PumpUntilAsync(_fixture.AdvanceClock, async () => await saga.GetHandledAsync() >= 1);
 
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        _fixture.AdvanceClock(TimeSpan.FromSeconds(2));
 
         // Fire the cap twice. The first terminalises the saga and dispatches the one
         // compensating Command; the second sees an already-terminal saga, resolves to
@@ -90,9 +90,9 @@ public abstract class SagaTimeoutCapCompensationScenarios<TFixture>
         // The cap arms only once the trigger is handled; wait for that before
         // advancing past the one-second cap and firing it through the probe.
         var saga = _fixture.GrainFactory.GetGrain<ITimeoutSagaProbe>(workflowId);
-        await SagaTimeoutWaiters.WaitUntilAsync(async () => await saga.GetHandledAsync() >= 1);
+        await SagaTimeoutWaiters.PumpUntilAsync(_fixture.AdvanceClock, async () => await saga.GetHandledAsync() >= 1);
 
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        _fixture.AdvanceClock(TimeSpan.FromSeconds(2));
         await saga.FireCapAsync();
 
         var tracker = _fixture.GrainFactory.GetGrain<ICompensationTrackerProbe>(workflowId);

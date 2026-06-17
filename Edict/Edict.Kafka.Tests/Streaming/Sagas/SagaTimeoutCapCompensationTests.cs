@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Edict.Kafka.Tests.Streaming.Sagas;
 
-[Collection(KafkaStreamingCollection.Name)]
-public sealed class SagaTimeoutCapCompensationTests : SagaTimeoutCapCompensationScenarios<KafkaStreamingFixture>
+[Collection(KafkaSagaTimeoutStreamingCollection.Name)]
+public sealed class SagaTimeoutCapCompensationTests : SagaTimeoutCapCompensationScenarios<KafkaSagaTimeoutStreamingFixture>
 {
-    public SagaTimeoutCapCompensationTests(KafkaStreamingFixture fixture) : base(fixture) { }
+    public SagaTimeoutCapCompensationTests(KafkaSagaTimeoutStreamingFixture fixture) : base(fixture) { }
 }

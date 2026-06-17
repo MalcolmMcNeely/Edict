@@ -1,4 +1,5 @@
 using Edict.Tests.Conformance.Idempotency;
+using Edict.Tests.Conformance.Reactivation;
 
 using Xunit;
 
@@ -37,8 +38,7 @@ public abstract class RingSurvivesDeactivationScenarios<TFixture>
         await publisher.PublishAsync(firstEvent);
         await DedupTestWaiters.WaitForHandledCountAsync(consumer, expectedCount: 1);
 
-        await consumer.DeactivateSelfAsync();
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await DeactivationWaiter.DeactivateAndConfirmAsync(consumer);
 
         var idY = Guid.NewGuid();
         var secondEvent = new DedupTestEvent(grainId, 2) with
@@ -49,19 +49,16 @@ public abstract class RingSurvivesDeactivationScenarios<TFixture>
         await publisher.PublishAsync(firstEvent);
         await publisher.PublishAsync(secondEvent);
 
+        // idY is published after the idX redelivery on the same serially-delivered
+        // stream, so it is the sentinel: once the fresh activation has handled idY,
+        // the earlier redelivery has already been processed. The reactivated
+        // activation's handled list starts empty, so a redelivery that slipped past
+        // the surviving ring would show up as idX here — correct behaviour leaves it
+        // out entirely.
         var reactivated = _fixture.GrainFactory.GetGrain<IDedupTestConsumer>(grainId);
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var ids = await reactivated.GetHandledEventIdsAsync();
-            if (ids.Contains(idY))
-            {
-                break;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
+        await ConformanceWaiters.WaitUntilAsync(
+            async () => (await reactivated.GetHandledEventIdsAsync()).Contains(idY), timeoutSeconds: 20);
 
-        await Task.Delay(TimeSpan.FromSeconds(1));
         var handled = await reactivated.GetHandledEventIdsAsync();
         Assert.Contains(idY, handled);
         Assert.DoesNotContain(idX, handled);

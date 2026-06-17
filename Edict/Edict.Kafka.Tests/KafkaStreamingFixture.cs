@@ -40,7 +40,7 @@ namespace Edict.Kafka.Tests;
 /// the uncommitted event to a clean activation. A single silo matches the Kafka
 /// adapter's known-working shape; multi-silo partition ownership is unimplemented.
 /// </summary>
-public sealed class KafkaStreamingFixture : StreamingConformanceFixture
+public class KafkaStreamingFixture : StreamingConformanceFixture
 {
     ReferenceClaimCheckStore _claimCheckStore = null!;
     string _contextKey = "";

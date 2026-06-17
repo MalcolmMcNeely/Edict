@@ -5,6 +5,7 @@ using Edict.Contracts.Persistence;
 using Edict.Core.Idempotency;
 using Edict.Core.Projections;
 using Edict.Core.TableStorage;
+using Edict.Tests.Conformance.Reactivation;
 
 using Orleans;
 using Orleans.Runtime;
@@ -20,11 +21,9 @@ public sealed class OrderTableRow : IEdictPersistedState
     public int OrderCount { get; set; }
 }
 
-public interface IOrderListProjectionProbe : IGrainWithGuidKey
+public interface IOrderListProjectionProbe : IConfirmsDeactivation
 {
     Task<RingStateProbe> GetRingStateAsync();
-
-    Task DeactivateSelfAsync();
 }
 
 [GenerateSerializer]
@@ -36,10 +35,22 @@ public sealed record RingStateProbe(
 public sealed partial class OrderListProjectionBuilder
     : EdictListProjectionBuilder<OrderTableRow>, IOrderListProjectionProbe
 {
+    Guid _activationId;
+
     public OrderListProjectionBuilder(IEdictTableStoreFactory storeFactory)
         : base(storeFactory) { }
 
     protected override string TableName => "orderprojection";
+
+    // Fresh per activation so the deactivate-and-confirm seam can poll until it
+    // changes to confirm the grain genuinely came back from durable storage.
+    public override async Task OnActivateAsync(CancellationToken cancellationToken)
+    {
+        _activationId = Guid.NewGuid();
+        await base.OnActivateAsync(cancellationToken);
+    }
+
+    public Task<Guid> GetActivationIdAsync() => Task.FromResult(_activationId);
 
     protected override string GetRowKey(EdictEvent edictEvent) =>
         edictEvent switch
@@ -59,7 +70,7 @@ public sealed partial class OrderListProjectionBuilder
             State.Idempotency.HandledEventIds.Length,
             State.Idempotency.Count));
 
-    public Task DeactivateSelfAsync()
+    public Task DeactivateAsync()
     {
         DeactivateOnIdle();
         return Task.CompletedTask;

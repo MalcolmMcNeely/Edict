@@ -12,9 +12,9 @@ namespace Edict.Tests.Conformance.Persistence;
 /// The deactivation is driven through the <see cref="IConfirmsDeactivation"/> seam,
 /// which completes only once the activation is genuinely torn down (a fresh
 /// activation answers with a new id) — Orleans teardown is not gated by the injected
-/// clock, so there is no <c>Task.Delay</c> bridge wait. The asserted property is the
-/// durable survival of the projected total across reactivation, a function of the
-/// event set.
+/// clock, so the seam drives a real reactivation rather than a wall-clock bridge
+/// wait. The asserted property is the durable survival of the projected total across
+/// reactivation, a function of the event set.
 /// </summary>
 public abstract class StateProjectionReactivationScenarios<TFixture>
     where TFixture : PersistenceConformanceFixture

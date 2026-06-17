@@ -33,7 +33,18 @@ public abstract class ProjectionUnhandledEventScenarios<TFixture>
         };
         await publisher.PublishAsync("ConformanceOrders", unhandled);
 
-        await Task.Delay(TimeSpan.FromSeconds(3));
-        Assert.Equal(0, await projection.GetOrderCountAsync());
+        // Sentinel-after: a handled event published after the unhandled one on the
+        // same serially-delivered stream. Once the projection has counted it, the
+        // unhandled event ahead of it has been processed — as the no-op it must be,
+        // since the count settles at one (the sentinel alone).
+        var sentinel = new OrderPlacedEvent(grainId, "SKU-sentinel") with
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+        };
+        await publisher.PublishAsync("ConformanceOrders", sentinel);
+
+        await ConformanceWaiters.WaitUntilAsync(async () => await projection.GetOrderCountAsync() >= 1);
+        Assert.Equal(1, await projection.GetOrderCountAsync());
     }
 }

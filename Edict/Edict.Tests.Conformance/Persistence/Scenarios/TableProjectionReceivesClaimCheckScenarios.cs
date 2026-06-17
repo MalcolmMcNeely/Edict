@@ -46,18 +46,10 @@ public abstract class TableProjectionReceivesClaimCheckScenarios<TFixture>
     }
 
     static async Task<ClaimCheckProjectionRow?> WaitForRowAsync(
-        IEdictTableWriteStore<ClaimCheckProjectionRow> repository, string partitionKey, string rowKey, int timeoutSeconds = 30)
+        IEdictTableWriteStore<ClaimCheckProjectionRow> repository, string partitionKey, string rowKey)
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(timeoutSeconds);
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var row = await repository.GetAsync(partitionKey, rowKey);
-            if (row is not null)
-            {
-                return row;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
-        }
-        return await repository.GetAsync(partitionKey, rowKey);
+        ClaimCheckProjectionRow? row = null;
+        await ConformanceWaiters.WaitUntilAsync(async () => (row = await repository.GetAsync(partitionKey, rowKey)) is not null);
+        return row;
     }
 }

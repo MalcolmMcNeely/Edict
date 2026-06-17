@@ -6,6 +6,7 @@ using Edict.Contracts.Persistence;
 using Edict.Contracts.Telemetry;
 using Edict.Core.Commands;
 using Edict.Core.Outbox;
+using Edict.Tests.Conformance.Reactivation;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -57,12 +58,12 @@ public sealed partial record CounterIncrementedEvent(Guid CounterId, int NewCoun
 
 // Hand-written probe (Orleans codegen can't see the Edict-generated grain
 // interface) so tests can read framework-owned State and drive the Reminder
-// recovery path deterministically.
-public interface ICounterProbe : IGrainWithGuidKey
+// recovery path deterministically. IConfirmsDeactivation contributes
+// GetActivationIdAsync + DeactivateAsync, so the deactivate-and-confirm seam
+// drives a real reactivation without a wall-clock bridge.
+public interface ICounterProbe : IConfirmsDeactivation
 {
     Task<int> GetCountAsync();
-    Task<Guid> GetActivationIdAsync();
-    Task DeactivateAsync();
     Task ForceDrainViaReminderAsync();
     Task<int> GetPendingOutboxCountAsync();
     Task<bool> HasDrainReminderAsync();
