@@ -128,7 +128,7 @@ public sealed class EdictTestApp : IAsyncDisposable
             new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
             new InMemoryTableStoreFactory(),
             SubscriberMap.Build(builder.ConsumerAssembly),
-            ChaosOptions.Default,
+            builder.ChaosDisabled ? ChaosOptions.None : ChaosOptions.Default,
             new InMemoryClaimCheckStore(),
             EdictTestAppBuilder.DefaultClaimCheckThresholdBytes,
             builder.AuditEnabled,

@@ -21,8 +21,9 @@ namespace Sample.Azure.Silo.Tests.Cart;
 /// <c>CheckedOutCartProjectionBuilder</c> was driven by that Event. Neither
 /// assertion reaches into private grain <c>State</c>. The bridge Saga's
 /// downstream Order cascade (covered by <see cref="CartToOrderBridgeTests"/>) is
-/// scoped out: its multi-saga ordering is chaos-sensitive, so a full-timeline
-/// snapshot here would be non-deterministic.
+/// scoped out of this characterization by the cart-scoped filter — it is the
+/// bridge test's subject, not this one's. Chaos is off so the ordered cart slice
+/// is a stable characterization snapshot rather than a seed-varying one.
 /// </summary>
 public sealed class CartCheckoutTests
 {
@@ -32,7 +33,8 @@ public sealed class CartCheckoutTests
         var cartId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
         await using var app = await EdictTestApp.StartAsync(b => b
-            .WithConsumer(typeof(CartCommandHandler).Assembly));
+            .WithConsumer(typeof(CartCommandHandler).Assembly)
+            .WithoutChaos());
 
         // Two state-only Commands: each mutates State and raises no Event.
         await app.SendAsync(new AddItemToCartCommand(cartId, "SKU-A"));
@@ -49,7 +51,7 @@ public sealed class CartCheckoutTests
 
         var row = await app.GetProjectionRow<CheckedOutCartRow>(
             tableName: "checkedoutcarts",
-            partitionKey: cartId.ToString(),
+            partitionKey: cartId.ToString("N"),
             rowKey: "cart");
 
         await Verify(new { CartTimeline = cartTimeline, ProjectionRow = row });

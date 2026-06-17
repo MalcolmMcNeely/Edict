@@ -22,7 +22,8 @@ public sealed class OrderLifecycleTests
         var orderId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
         await using var app = await EdictTestApp.StartAsync(b => b
-            .WithConsumer(typeof(OrderCommandHandler).Assembly));
+            .WithConsumer(typeof(OrderCommandHandler).Assembly)
+            .WithoutChaos());
 
         await app.SendAsync(new PlaceOrderCommand(orderId, "REF-001"));
         await app.Drain();

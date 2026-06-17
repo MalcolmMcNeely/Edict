@@ -45,4 +45,15 @@ sealed record ChaosOptions(
         ReorderProbability: 0.3,
         MaxReorderDistance: 2,
         InvocationsEnabled: false);
+
+    // The opt-out for timeline characterization snapshots: every chaos knob zeroed,
+    // so ChaosRoller short-circuits to no duplicates and no reorder. Seed is irrelevant
+    // once the bounds are zero, so this wins over any run-wide seed.
+    public static ChaosOptions None => new(
+        Seed: 0,
+        DuplicateProbability: 0,
+        MaxExtraDeliveries: 0,
+        ReorderProbability: 0,
+        MaxReorderDistance: 0,
+        InvocationsEnabled: false);
 }

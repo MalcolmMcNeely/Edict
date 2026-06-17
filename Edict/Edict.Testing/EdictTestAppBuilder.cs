@@ -10,8 +10,9 @@ namespace Edict.Testing;
 /// Configures an <see cref="EdictTestApp"/>. The consumer's grain assembly is
 /// the only required input — Edict is auto-wired from it (the generated route
 /// map plus the real Outbox/saga engine), so consumer code is identical under
-/// test and in production. Chaos delivery is implicit and always on; tests
-/// cannot opt out.
+/// test and in production. Chaos delivery is implicit and always on, riding the
+/// run-wide seed; only a timeline characterization snapshot opts out with
+/// <see cref="WithoutChaos"/>.
 /// </summary>
 public sealed class EdictTestAppBuilder
 {
@@ -20,6 +21,7 @@ public sealed class EdictTestAppBuilder
     Assembly? _consumerAssembly;
     bool _auditEnabled;
     bool _tenancyEnabled;
+    bool _chaosDisabled;
     readonly List<Action<IServiceCollection>> _replacements = new();
 
     /// <summary>
@@ -80,6 +82,22 @@ public sealed class EdictTestAppBuilder
         return this;
     }
 
+    /// <summary>
+    /// Disables chaos delivery for this app: duplicate redelivery and bounded reorder
+    /// are both off, so events arrive exactly once, in raise order, regardless of the
+    /// run-wide seed. Reserve it for timeline <em>characterization</em> snapshots — a
+    /// <c>Verify(app.Timeline)</c> that documents the canonical workflow shape, where
+    /// duplicate/reorder noise is unhelpful and a varying seed would drift the snapshot.
+    /// Every invariant-asserting test leaves chaos on and rides the varying seed, which
+    /// is where the reorder-tolerance coverage actually lands. Absolute: this wins over
+    /// any seed, whether from <c>EDICT_CHAOS_SEED</c> or the random default.
+    /// </summary>
+    public EdictTestAppBuilder WithoutChaos()
+    {
+        _chaosDisabled = true;
+        return this;
+    }
+
     internal Assembly ConsumerAssembly =>
         _consumerAssembly ?? throw new InvalidOperationException(
             "EdictTestApp needs a consumer assembly: call WithConsumer(typeof(SomeCommandHandler).Assembly).");
@@ -87,6 +105,8 @@ public sealed class EdictTestAppBuilder
     internal bool AuditEnabled => _auditEnabled;
 
     internal bool TenancyEnabled => _tenancyEnabled;
+
+    internal bool ChaosDisabled => _chaosDisabled;
 
     internal IReadOnlyList<Action<IServiceCollection>> Replacements => _replacements;
 }
