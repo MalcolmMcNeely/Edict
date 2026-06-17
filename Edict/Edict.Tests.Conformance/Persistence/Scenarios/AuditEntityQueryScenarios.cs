@@ -45,7 +45,7 @@ public abstract class AuditEntityQueryScenarios<TFixture>
 
         // Assert — only the order aggregate's own two records (its command decision
         // then its raised event), in chain order, never the stock aggregate's.
-        var history = await _fixture.ByEntityInRangeAsync(OrderEntityType, orderId.ToString(), before, after);
+        var history = await _fixture.ByEntityInRangeAsync(OrderEntityType, orderId.ToString("N"), before, after);
         Assert.Equal([EdictAuditKind.Command, EdictAuditKind.Event], history.Select(record => record.Kind));
         Assert.Equal(
             [typeof(AuditPlaceOrderCommand).FullName, typeof(AuditOrderPlacedEvent).FullName],
@@ -53,7 +53,7 @@ public abstract class AuditEntityQueryScenarios<TFixture>
         Assert.All(history, record => Assert.Equal(OrderEntityType, record.EntityType));
 
         // A window that opens after the transaction excludes its records.
-        var afterWindow = await _fixture.ByEntityInRangeAsync(OrderEntityType, orderId.ToString(), after, after.AddMinutes(1));
+        var afterWindow = await _fixture.ByEntityInRangeAsync(OrderEntityType, orderId.ToString("N"), after, after.AddMinutes(1));
         Assert.Empty(afterWindow);
     }
 }

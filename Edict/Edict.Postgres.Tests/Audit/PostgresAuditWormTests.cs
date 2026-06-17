@@ -25,7 +25,7 @@ public sealed class PostgresAuditWormTests(PostgresAuditFixture fixture)
         // Arrange — the increment captures a C1 command record plus an E1 event record.
         var counterId = Guid.NewGuid();
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
-        var records = await WaitForRecordsAsync(counterId.ToString(), expectedCount: 2);
+        var records = await WaitForRecordsAsync(counterId.ToString("N"), expectedCount: 2);
         var recordId = records[0].RecordId;
 
         // Act + Assert — the BEFORE UPDATE/DELETE trigger raises insufficient
@@ -39,7 +39,7 @@ public sealed class PostgresAuditWormTests(PostgresAuditFixture fixture)
         Assert.Equal("42501", deleteState);
 
         // Both records are still present and the chain still verifies.
-        var afterAttempts = await fixture.ReadEntityAsync(EntityType, counterId.ToString());
+        var afterAttempts = await fixture.ReadEntityAsync(EntityType, counterId.ToString("N"));
         Assert.Equal(2, afterAttempts.Count);
     }
 
@@ -49,7 +49,7 @@ public sealed class PostgresAuditWormTests(PostgresAuditFixture fixture)
         // Arrange — the increment captures records, each with a stored body.
         var counterId = Guid.NewGuid();
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
-        var records = await WaitForRecordsAsync(counterId.ToString(), expectedCount: 2);
+        var records = await WaitForRecordsAsync(counterId.ToString("N"), expectedCount: 2);
         var recordId = records[0].RecordId;
 
         // Act + Assert — the BEFORE UPDATE/DELETE trigger raises insufficient

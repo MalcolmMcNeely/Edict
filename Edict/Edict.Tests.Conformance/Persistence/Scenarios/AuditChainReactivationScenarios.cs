@@ -29,7 +29,7 @@ public abstract class AuditChainReactivationScenarios<TFixture>
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
         // Increment (C1 + E1) then reject (C1) — three records before deactivation.

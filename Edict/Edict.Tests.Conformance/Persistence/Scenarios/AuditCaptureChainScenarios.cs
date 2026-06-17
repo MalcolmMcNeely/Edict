@@ -32,7 +32,7 @@ public abstract class AuditCaptureChainScenarios<TFixture>
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
 
         // Act — the accepted increment raises one event (one C1 command record plus
         // one E1 event record); the rejection raises nothing (one C1 command record).

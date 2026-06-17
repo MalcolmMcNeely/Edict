@@ -30,7 +30,7 @@ public abstract class AuditPayloadScenarios<TFixture>
     {
         // Arrange
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
 
         // The increment captures a C1 command record plus an E1 event record, each

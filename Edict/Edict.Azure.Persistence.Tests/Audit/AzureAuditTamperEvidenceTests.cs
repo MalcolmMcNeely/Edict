@@ -23,7 +23,7 @@ public sealed class AzureAuditTamperEvidenceTests(AzureAuditFixture fixture)
     {
         // Arrange — capture a C1 command record plus an E1 event record, intact.
         var counterId = Guid.NewGuid();
-        var entityKey = counterId.ToString();
+        var entityKey = counterId.ToString("N");
         await fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
         var records = await WaitForRecordsAsync(entityKey, expectedCount: 2);
 
