@@ -32,8 +32,12 @@ namespace Edict.Tests.Conformance.Persistence;
 public abstract class StolenRouteKeyScenarios<TFixture>
     where TFixture : PersistenceConformanceFixture, IEdictTenancyConformanceFixture, IClaimCheckStoreFixture
 {
-    static readonly EdictTenantId Owner = EdictTenantId.Of("acme");
-    static readonly EdictTenantId Thief = EdictTenantId.Of("globex");
+    // Unique per test instance: the directory table is one partition-per-tenant table
+    // shared across every fixture in the assembly's Azurite, so a literal "acme" would
+    // collide with the sibling list-read scenario's identical-tenant writes and overshoot
+    // the count. A fresh pair per run keeps each scenario's wall in its own partition.
+    readonly EdictTenantId Owner = EdictTenantId.Of("acme-" + Guid.NewGuid().ToString("N"));
+    readonly EdictTenantId Thief = EdictTenantId.Of("globex-" + Guid.NewGuid().ToString("N"));
 
     readonly TFixture _fixture;
 

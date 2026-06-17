@@ -27,8 +27,12 @@ public abstract class TenantScopedListReadScenarios<TFixture>
     [Fact]
     public async Task TenantListsOwnEmployees_WhileAnotherTenantsIdenticalQueryIsEmpty()
     {
-        var acme = EdictTenantId.Of("acme");
-        var globex = EdictTenantId.Of("globex");
+        // The directory table is one literal partition-per-tenant table shared across
+        // every fixture in the assembly's Azurite, so a literal tenant id would let a
+        // sibling scenario's identical-tenant writes pile into the same partition and
+        // overshoot the count. Unique ids give this run its own partitions.
+        var acme = EdictTenantId.Of("acme-" + Guid.NewGuid().ToString("N"));
+        var globex = EdictTenantId.Of("globex-" + Guid.NewGuid().ToString("N"));
         var reader = _fixture.EmployeeDirectoryReader;
 
         // Arrange + Act: act as Acme and add three employees. The bare send is the
