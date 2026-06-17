@@ -31,7 +31,7 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
 
     public Task WriteStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
     {
-        if (_fault.ShouldFailWrites)
+        if (ShouldFailWrite())
         {
             Interlocked.Increment(ref _fault.FailedWrites);
             throw new InvalidOperationException("Simulated grain-state write fault.");
@@ -39,6 +39,11 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
 
         return _inner.WriteStateAsync(stateName, grainId, grainState);
     }
+
+    bool ShouldFailWrite() =>
+        _fault.FailUntilWrite is { } writesToFail
+            ? _fault.FailedWrites < writesToFail
+            : _fault.ShouldFailWrites;
 
     public Task ReadStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState) =>
         _inner.ReadStateAsync(stateName, grainId, grainState);

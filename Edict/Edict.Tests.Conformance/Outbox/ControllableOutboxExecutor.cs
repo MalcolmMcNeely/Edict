@@ -5,44 +5,68 @@ using Edict.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using Orleans.Serialization;
 using Orleans.Streams;
 
 namespace Edict.Tests.Conformance.Outbox;
 
 /// <summary>
-/// Flippable <see cref="OutboxEffectKind.PublishEvent"/> executor used by the
-/// outbox conformance scenarios to simulate a crash between the ring/outbox
-/// commit and the publish, then drive a recovery drain against the bound
-/// substrate. Delegates to the real <see cref="PublishEventExecutor"/> when
-/// not failing, so a successful drain actually publishes to the stream. The
-/// fault switch is the <see cref="OutboxFaultState"/> the owning fixture passes
-/// in: it is per-fixture instance state, so a scenario flips only its own
-/// fixture's executor and fixture shapes never race a shared toggle.
+/// Flippable executor used by the outbox conformance scenarios to simulate a
+/// crash between the ring/outbox commit and an effect's execution, then drive a
+/// recovery drain against the bound substrate. Wraps a real inner executor and
+/// delegates to it when not failing, so a successful drain actually publishes to
+/// the stream or relays the command. It deliberately leaves <c>TryResolveBatchKey</c>
+/// and <c>ExecuteBatchAsync</c> at their interface defaults, so every entry lands
+/// in a singleton group and flows through <see cref="ExecuteAsync"/> independently
+/// — that per-entry path is what lets a scenario fault one effect in a batch and
+/// leave its siblings done. The fault switch is the <see cref="OutboxFaultState"/>
+/// the owning fixture passes in: it is per-fixture instance state, so a scenario
+/// flips only its own fixture's executor and fixture shapes never race a shared
+/// toggle.
 /// </summary>
 public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
 {
-    readonly PublishEventExecutor _inner;
+    readonly IOutboxEffectExecutor _inner;
     readonly OutboxFaultState _fault;
 
-    public ControllableOutboxExecutor(IServiceProvider serviceProvider, OutboxFaultState fault)
+    ControllableOutboxExecutor(IOutboxEffectExecutor inner, OutboxFaultState fault)
     {
-        _inner = ActivatorUtilities.CreateInstance<PublishEventExecutor>(serviceProvider);
+        _inner = inner;
         _fault = fault;
     }
 
-    public OutboxEffectKind Kind => OutboxEffectKind.PublishEvent;
+    public OutboxEffectKind Kind => _inner.Kind;
 
     public Task<OutboxEntry?> ExecuteAsync(
         OutboxEntry entry, IStreamProvider streamProvider, Func<EdictEvent, Task<OutboxEntry?>>? deferredDispatch, Type? consumerType, EdictEvent? liveWireEvent)
     {
-        if (_fault.ShouldFail)
+        if (ShouldFault(entry))
         {
             Interlocked.Increment(ref _fault.FailedAttempts);
             throw BuildFailure();
         }
 
         return _inner.ExecuteAsync(entry, streamProvider, deferredDispatch, consumerType, liveWireEvent);
+    }
+
+    bool ShouldFault(OutboxEntry entry)
+    {
+        if (_fault.FailOnlyKind is { } onlyKind && entry.Kind != onlyKind)
+        {
+            return false;
+        }
+
+        if (_fault.FailEffectIndex is { } targetIndex)
+        {
+            var ordinal = Interlocked.Increment(ref _fault.EffectsSeen) - 1;
+            return ordinal == targetIndex;
+        }
+
+        if (_fault.FailUntilAttempt is { } attemptsToFail)
+        {
+            return _fault.FailedAttempts < attemptsToFail;
+        }
+
+        return _fault.ShouldFail;
     }
 
     Exception BuildFailure() => _fault.FailureKind switch
@@ -57,20 +81,28 @@ public sealed class ControllableOutboxExecutor : IOutboxEffectExecutor
     };
 
     /// <summary>
-    /// Removes the <see cref="PublishEventExecutor"/> <c>AddEdict</c> registered
-    /// and registers this controllable executor in its place, wired to the
-    /// fixture's <paramref name="fault"/>. Appending instead of replacing would
-    /// make the outbox host's keyed lookup on <see cref="OutboxEffectKind"/>
-    /// throw on the duplicate <see cref="OutboxEffectKind.PublishEvent"/> key.
+    /// Removes the real <see cref="PublishEventExecutor"/> and
+    /// <see cref="SendCommandExecutor"/> <c>AddEdict</c> registered and registers a
+    /// controllable wrapper for each in their place, both wired to the fixture's
+    /// <paramref name="fault"/>. Appending instead of replacing would make the
+    /// outbox host's keyed lookup on <see cref="OutboxEffectKind"/> throw on the
+    /// duplicate key.
     /// </summary>
     public static void Replace(IServiceCollection services, OutboxFaultState fault)
     {
-        var publish = services.Single(descriptor =>
+        ReplaceKind<PublishEventExecutor>(services, fault);
+        ReplaceKind<SendCommandExecutor>(services, fault);
+    }
+
+    static void ReplaceKind<TExecutor>(IServiceCollection services, OutboxFaultState fault)
+        where TExecutor : IOutboxEffectExecutor
+    {
+        var registration = services.Single(descriptor =>
             descriptor.ServiceType == typeof(IOutboxEffectExecutor)
-            && descriptor.ImplementationType == typeof(PublishEventExecutor));
-        services.Remove(publish);
+            && descriptor.ImplementationType == typeof(TExecutor));
+        services.Remove(registration);
         services.AddSingleton<IOutboxEffectExecutor>(serviceProvider =>
-            new ControllableOutboxExecutor(serviceProvider, fault));
+            new ControllableOutboxExecutor(ActivatorUtilities.CreateInstance<TExecutor>(serviceProvider), fault));
     }
 }
 

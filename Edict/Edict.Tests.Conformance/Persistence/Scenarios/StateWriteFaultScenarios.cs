@@ -66,4 +66,38 @@ public abstract class StateWriteFaultScenarios<TFixture>
         var incremented = Assert.IsType<CounterIncrementedEvent>(Assert.Single(captured));
         Assert.Equal(1, incremented.NewCount);
     }
+
+    [Fact]
+    public async Task CountAddressedWriteFault_DropsDirtyActivation_ThenSecondWriteRecoversWithoutManualHeal()
+    {
+        _fixture.StorageFault.Reset();
+        var counterId = Guid.NewGuid();
+        var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
+        var initialActivationId = await probe.GetActivationIdAsync();
+
+        // Arrange — fault only the first grain-state write, so recovery is the
+        // count-addressed auto-heal, not a flag the scenario flips back.
+        _fixture.StorageFault.FailUntilWrite = 1;
+
+        // Act — the first commit write faults; the command is not accepted.
+        await Assert.ThrowsAnyAsync<Exception>(
+            () => _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId)));
+
+        // Assert — the write faulted, dropping the dirty activation.
+        Assert.True(_fixture.StorageFault.FailedWrites >= 1);
+        await OutboxProbeWaiters.WaitUntilAsync(async () => await probe.GetActivationIdAsync() != initialActivationId);
+
+        // Act — retry against the clean activation; the second write is past the
+        // count-addressed fault, so it succeeds with no manual heal.
+        var retry = await _fixture.Sender.SendAsync(new IncrementCounterCommand(counterId));
+
+        // Assert — accepted, applied exactly once, event published exactly once.
+        Assert.IsType<EdictCommandResult.Accepted>(retry);
+        Assert.Equal(1, await probe.GetCountAsync());
+
+        var capture = _fixture.GrainFactory.GetGrain<ICounterEventCaptureGrain>(counterId);
+        await OutboxProbeWaiters.WaitUntilAsync(async () => (await capture.GetCapturedEventsAsync()).Count == 1);
+        var incremented = Assert.IsType<CounterIncrementedEvent>(Assert.Single(await capture.GetCapturedEventsAsync()));
+        Assert.Equal(1, incremented.NewCount);
+    }
 }

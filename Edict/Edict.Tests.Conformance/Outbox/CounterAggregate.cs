@@ -73,6 +73,11 @@ public interface ICounterProbe : IGrainWithGuidKey
     Task StageUnserialisableForensicBodyEntryAsync();
     Task StageUnsupportedKindEntryAsync();
     Task StageMissingRouteKeySendCommandEntryAsync();
+
+    // Stage a valid SendCommand outbox effect that relays an increment to another
+    // counter, so a real drain exercises the SendCommand executor's fault and
+    // recovery path. The scenario drives the drain and reads the relayed target.
+    Task StageSendCommandAsync(Guid targetCounterId);
 }
 
 public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICounterProbe
@@ -145,6 +150,13 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
 
     public Task StageUnsupportedKindEntryAsync() =>
         StageAndCommitAsync(UnsupportedKindFailingExecutor.Kind, []);
+
+    public Task StageSendCommandAsync(Guid targetCounterId)
+    {
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var payload = serializer.SerializeToArray<EdictCommand>(new IncrementCounterCommand(targetCounterId));
+        return StageAndCommitAsync(OutboxEffectKind.SendCommand, payload);
+    }
 
     // Enqueues a hand-built entry directly onto the framework-owned outbox slot —
     // since no consumer path produces an unsupported-kind or route-key-less entry —
