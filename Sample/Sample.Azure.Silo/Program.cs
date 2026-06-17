@@ -85,7 +85,13 @@ builder.Host.UseOrleans((context, silo) =>
         // so the Claim Check button trips the oversize-event path on a
         // single padded line item instead of needing realistic payload sizes.
         o.ClaimCheckThresholdBytes = 4 * 1024;
-        o.QueuePollingPeriod       = TimeSpan.FromMilliseconds(500);
+        // Deviates from the 10ms framework default. 10ms makes the silo re-poll
+        // each queue ~100 times a second, which floods Azurite locally; but at
+        // 500ms the two-hop Cart->Saga->Order bridge can burn most of the 2s
+        // ProjectionReadTimeout, so the Checkout read-your-writes cursor often
+        // falls back to the timeout path (especially on a cold first checkout).
+        // 50ms is the middle ground: light on Azurite, cursor lands with headroom.
+        o.QueuePollingPeriod       = TimeSpan.FromMilliseconds(50);
         o.QueueServiceClient       = new QueueServiceClient(queueConnectionString);
     });
 
