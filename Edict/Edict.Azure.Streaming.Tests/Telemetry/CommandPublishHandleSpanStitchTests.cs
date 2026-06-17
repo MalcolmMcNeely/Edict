@@ -17,7 +17,7 @@ public sealed class CommandPublishHandleSpanStitchTests(AqsStreamingFixture fixt
 
         var commandSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} NotifyCustomerCommand"
-                && customerId.Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
+                && customerId.ToString("N").Equals(activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey)),
             "command span for NotifyCustomerCommand");
         var publishSpan = await capture.WaitForSpanAsync(
             activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} CustomerNotifiedEvent"

@@ -91,7 +91,7 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
         where T : class, new()
     {
         var store = await _tableStoreFactory.CreateAsync<T>(tableName);
-        return await store.GetAsync(aggregateId.ToString(), aggregateId.ToString());
+        return await store.GetAsync(aggregateId.ToString("N"), aggregateId.ToString());
     }
 
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>

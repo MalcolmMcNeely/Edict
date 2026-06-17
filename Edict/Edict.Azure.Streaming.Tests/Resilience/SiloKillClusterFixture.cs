@@ -102,7 +102,7 @@ public sealed class SiloKillClusterFixture : IAsyncLifetime
     public async Task<SiloKillTableRow?> GetProjectionRowAsync(Guid aggregateId)
     {
         var store = await _tableStoreFactory.CreateAsync<SiloKillTableRow>(SiloKillProjectionBuilder.Table);
-        return await store.GetAsync(aggregateId.ToString(), aggregateId.ToString());
+        return await store.GetAsync(aggregateId.ToString("N"), aggregateId.ToString());
     }
 
     static void ConfigureEdictSerialization(ISerializerBuilder serializer) =>
