@@ -1,6 +1,8 @@
 using System.Reflection;
 using Azure.Data.Tables;
 
+using Edict.Contracts.Tenancy;
+
 namespace Edict.Azure.Persistence.TableStorage;
 
 internal static class AzureTablePocoMapper
@@ -26,6 +28,15 @@ internal static class AzureTablePocoMapper
                 continue;
             }
 
+            // A tenant tag is an EdictTenantId, not one of Azure Tables' native
+            // column types; store its safe-everywhere string so the row carries the
+            // wall and round-trips symmetric with FromTableEntity below.
+            if (value is EdictTenantId tenantId)
+            {
+                entity[prop.Name] = tenantId.Value;
+                continue;
+            }
+
             entity[prop.Name] = value;
         }
 
@@ -48,6 +59,12 @@ internal static class AzureTablePocoMapper
                 if (targetType.IsEnum)
                 {
                     prop.SetValue(instance, Enum.Parse(targetType, (string)value));
+                    continue;
+                }
+
+                if (targetType == typeof(EdictTenantId))
+                {
+                    prop.SetValue(instance, new EdictTenantId((string)value));
                     continue;
                 }
 
