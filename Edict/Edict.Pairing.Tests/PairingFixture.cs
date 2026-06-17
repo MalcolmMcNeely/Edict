@@ -1,7 +1,10 @@
 using System.Collections.Concurrent;
 
+using Edict.Contracts.Projections;
 using Edict.Contracts.Sending;
+using Edict.Contracts.Tenancy;
 using Edict.Tests.Conformance.Outbox;
+using Edict.Tests.Conformance.Tenancy;
 
 using Orleans;
 
@@ -35,9 +38,37 @@ public abstract class PairingFixture : IAsyncLifetime
     /// </summary>
     public StorageFaultState StorageFault { get; } = new();
 
+    /// <summary>
+    /// The per-fixture ambient tenant the silo and client tenant resolvers read.
+    /// Owned by the fixture rather than a process-wide static so the two shipped
+    /// pairings, which run as parallel collections, never race each other's wall;
+    /// the tenant round-trip scenario sets it to act as each tenant in turn.
+    /// </summary>
+    public TenantAmbient TenantAmbient { get; } = new();
+
+    /// <summary>
+    /// The ambient-scoped reader the tenant round-trip reads through, resolved from
+    /// the client once tenancy is wired. Proves the composed-key stream routing and
+    /// the tenant-partitioned persistence land a tenant's rows in its own wall
+    /// across <strong>both</strong> real backends at once — the conjunction neither
+    /// single-axis battery can show.
+    /// </summary>
+    public abstract IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow> EmployeeDirectoryReader { get; }
+
     public abstract Task InitializeAsync();
 
     public abstract Task DisposeAsync();
+}
+
+/// <summary>
+/// A per-fixture mutable holder for the ambient tenant. The silo and client tenant
+/// resolvers close over one instance, so a scenario sets the wall it acts as on the
+/// fixture and both the origin send and the scoped read see it, with no process-wide
+/// static for a parallel peer pairing to clobber.
+/// </summary>
+public sealed class TenantAmbient
+{
+    public EdictTenantId? Current { get; set; }
 }
 
 /// <summary>

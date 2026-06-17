@@ -436,6 +436,8 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Sagas.Codec_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Copier_Invokable_IEdictSaga_GrainReference_747818AD",
         "OrleansCodeGen.Edict.Core.Sagas.Invokable_IEdictSaga_GrainReference_747818AD",
+        "OrleansCodeGen.Edict.Core.Tenancy.Codec_EdictCrossTenantAccessException",
+        "OrleansCodeGen.Edict.Core.Tenancy.Copier_EdictCrossTenantAccessException",
     };
 
     static readonly HashSet<string> EdictAzurePersistenceAllowList = new(StringComparer.Ordinal)

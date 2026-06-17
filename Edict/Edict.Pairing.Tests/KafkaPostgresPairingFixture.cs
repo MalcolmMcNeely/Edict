@@ -1,12 +1,16 @@
 using Confluent.Kafka;
 
+using Edict.Contracts.Projections;
 using Edict.Contracts.Sending;
+using Edict.Contracts.Tenancy;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
+using Edict.Core.Tenancy;
 using Edict.Kafka;
 using Edict.Postgres;
 using Edict.Tests.Conformance.Outbox;
+using Edict.Tests.Conformance.Tenancy;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,8 +45,15 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
 
     public override IGrainFactory GrainFactory => Cluster.GrainFactory;
 
+    public override IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow> EmployeeDirectoryReader =>
+        Cluster.Client.ServiceProvider.GetRequiredService<IEdictTenantScopedListProjectionReader<EmployeeDirectoryRow>>();
+
     public override async Task InitializeAsync()
     {
+        // Tenancy is on, so every origin send needs an ambient tenant or the stamper
+        // fails closed; seed one before deploy. Public-aggregate sends (boot, the
+        // write-fault conjunction) compose bare keys and ignore it.
+        TenantAmbient.Current = EdictTenantId.Of("warmup");
         var bootstrapServers = await KafkaAssemblyHost.GetBootstrapServersAsync();
         var adminConnectionString = await PostgresAssemblyHost.GetAdminConnectionStringAsync();
         var databaseName = $"edict_{Guid.NewGuid():N}";
@@ -52,7 +63,8 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
             bootstrapServers,
             ConsumerGroup: $"edict-pairing-{Guid.NewGuid():N}",
             ConnectionString: connectionString,
-            StorageFault: StorageFault);
+            StorageFault: StorageFault,
+            TenantAmbient: TenantAmbient);
         _contextKey = PairingContextRegistry<KafkaPostgresPairingContext>.Register(context);
 
         var builder = new TestClusterBuilder();
@@ -110,6 +122,10 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
             // Wrap the real Postgres edict-state store so the conjunction can fault
             // a real grain-state write; transparent while the fixture's switch is off.
             ControllableGrainStorage.Decorate(siloBuilder.Services, ctx.StorageFault, "edict-state");
+
+            // Arm tenancy so a tenant-scoped command folds its wall into the stream
+            // and grain keys and the ambient-scoped reader resolves the read wall.
+            siloBuilder.Services.AddEdictTenant(_ => ctx.TenantAmbient.Current);
         }
     }
 
@@ -121,12 +137,21 @@ public sealed class KafkaPostgresPairingFixture : PairingFixture
             clientBuilder.Services.AddSerializer(ConfigureEdictSerialization);
             clientBuilder.Configure<ClientMessagingOptions>(o => o.ResponseTimeout = TimeSpan.FromMinutes(2));
             clientBuilder.Services.AddEdict();
+
+            var key = configuration[PairingContextRegistry<KafkaPostgresPairingContext>.ContextKeyProperty];
+            if (key is not null)
+            {
+                // The client is the originating send and the read edge, so it reads
+                // the same per-fixture ambient tenant for the send stamp and the read.
+                var ctx = PairingContextRegistry<KafkaPostgresPairingContext>.Get(key);
+                clientBuilder.Services.AddEdictTenant(_ => ctx.TenantAmbient.Current);
+            }
         }
     }
 }
 
 sealed record KafkaPostgresPairingContext(
-    string BootstrapServers, string ConsumerGroup, string ConnectionString, StorageFaultState StorageFault);
+    string BootstrapServers, string ConsumerGroup, string ConnectionString, StorageFaultState StorageFault, TenantAmbient TenantAmbient);
 
 [CollectionDefinition(Name)]
 public sealed class KafkaPostgresPairingCollection : ICollectionFixture<KafkaPostgresPairingFixture>

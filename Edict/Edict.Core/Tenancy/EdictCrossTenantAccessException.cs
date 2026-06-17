@@ -1,5 +1,7 @@
 using Edict.Contracts.Tenancy;
 
+using Orleans;
+
 namespace Edict.Core.Tenancy;
 
 /// <summary>
@@ -11,6 +13,13 @@ namespace Edict.Core.Tenancy;
 /// outside the composition chokepoint, or an illegitimate attempt to reach into another
 /// wall — so it fails the call loud rather than letting a cross-tenant access through.
 /// </summary>
+/// <remarks>
+/// The filter runs inside the silo and a stolen-key reach is a direct grain call from
+/// the client, so this exception is serialized back across that hop. It carries an
+/// Orleans codec so the denial reaches the caller as itself, with its message intact,
+/// rather than as an opaque serialization failure that hides why the call was refused.
+/// </remarks>
+[GenerateSerializer]
 public sealed class EdictCrossTenantAccessException : Exception
 {
     public EdictCrossTenantAccessException(EdictTenantId? relayTenant, EdictTenantId? keyTenant)
