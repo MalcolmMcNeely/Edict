@@ -36,7 +36,10 @@ public abstract class StateWriteFaultScenarios<TFixture>
         var probe = _fixture.GrainFactory.GetGrain<ICounterProbe>(counterId);
         var initialActivationId = await probe.GetActivationIdAsync();
 
-        // Arrange — the next grain-state write faults.
+        // Arrange — the next grain-state write faults. Scope the fault to this
+        // counter so a peer grain's write (e.g. an event handler's dedup commit)
+        // can never consume it.
+        _fixture.StorageFault.TargetGrainKey = counterId.ToString("N");
         _fixture.StorageFault.ShouldFailWrites = true;
 
         // Act — the handler increments in-memory state, then the commit write faults.
@@ -76,7 +79,12 @@ public abstract class StateWriteFaultScenarios<TFixture>
         var initialActivationId = await probe.GetActivationIdAsync();
 
         // Arrange — fault only the first grain-state write, so recovery is the
-        // count-addressed auto-heal, not a flag the scenario flips back.
+        // count-addressed auto-heal, not a flag the scenario flips back. Scope the
+        // fault to this counter: the count is silo-wide otherwise, and a peer
+        // grain's write (an event handler's dedup commit, delivered asynchronously
+        // and unawaited by the producer) lands in the armed window and steals the
+        // single fault, leaving the counter's own commit to succeed.
+        _fixture.StorageFault.TargetGrainKey = counterId.ToString("N");
         _fixture.StorageFault.FailUntilWrite = 1;
 
         // Act — the first commit write faults; the command is not accepted.

@@ -31,7 +31,7 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
 
     public Task WriteStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
     {
-        if (ShouldFailWrite())
+        if (ShouldFailWrite(grainId))
         {
             Interlocked.Increment(ref _fault.FailedWrites);
             throw new InvalidOperationException("Simulated grain-state write fault.");
@@ -40,10 +40,19 @@ public sealed class ControllableGrainStorage : IGrainStorage, ILifecycleParticip
         return _inner.WriteStateAsync(stateName, grainId, grainState);
     }
 
-    bool ShouldFailWrite() =>
-        _fault.FailUntilWrite is { } writesToFail
+    bool ShouldFailWrite(GrainId grainId)
+    {
+        // A grain-scoped fault passes every other grain's write through untouched,
+        // so a peer grain's write never consumes the count-addressed fault.
+        if (_fault.TargetGrainKey is { } targetKey && grainId.Key.ToString() != targetKey)
+        {
+            return false;
+        }
+
+        return _fault.FailUntilWrite is { } writesToFail
             ? _fault.FailedWrites < writesToFail
             : _fault.ShouldFailWrites;
+    }
 
     public Task ReadStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState) =>
         _inner.ReadStateAsync(stateName, grainId, grainState);

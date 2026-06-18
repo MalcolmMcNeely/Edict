@@ -47,6 +47,10 @@ public abstract class ClaimCheckTransientRecoveryScenarios<TFixture>
         var body = _fixture.Serializer.SerializeToArray<EdictEvent>(innerEvent);
         await _fixture.PutClaimCheckAsync(tenant: null, eventId, body, CancellationToken.None);
 
+        // Scope the fault to this event's key: the count is silo-wide otherwise,
+        // and a peer receiver's fetch landing in the armed window would consume an
+        // attempt and heal the recovery before this event's own retries elapse.
+        _fixture.ClaimCheckFault.FailFetchForEvent = eventId;
         _fixture.ClaimCheckFault.FailFetchUntilAttempt = 2;
 
         var envelope = new EdictEventEnvelope(inlinePayload: null, eventId: eventId)

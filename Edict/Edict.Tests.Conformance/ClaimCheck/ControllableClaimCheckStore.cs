@@ -36,7 +36,10 @@ public sealed class ControllableClaimCheckStore : IEdictClaimCheckStore
 
     public Task<ReadOnlyMemory<byte>> GetAsync(EdictTenantId? tenant, Guid eventId, CancellationToken cancellationToken)
     {
-        if (_fault.FailFetchUntilAttempt is { } fetchesToFail && _fault.FailedFetches < fetchesToFail)
+        // A targeted fault passes every other key's fetch through untouched, so a
+        // peer receiver's fetch never consumes the count-addressed fault.
+        var faultsThisKey = _fault.FailFetchForEvent is null || _fault.FailFetchForEvent == eventId;
+        if (faultsThisKey && _fault.FailFetchUntilAttempt is { } fetchesToFail && _fault.FailedFetches < fetchesToFail)
         {
             Interlocked.Increment(ref _fault.FailedFetches);
             throw new EdictClaimCheckFetchException(

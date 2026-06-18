@@ -21,11 +21,22 @@ public sealed class ClaimCheckFaultState
     /// </summary>
     public int? FailFetchUntilAttempt;
 
+    /// <summary>
+    /// Scopes the count-addressed fault to a single claim-check key (the event id
+    /// the scenario authored and parked the body under). The decorated store is
+    /// silo-wide, so an unscoped count is stolen by any peer receiver's fetch that
+    /// lands in the armed window — and a receiver fetch is triggered by stream
+    /// delivery, not awaited by the producer. Null faults every fetch (the
+    /// historical behaviour).
+    /// </summary>
+    public Guid? FailFetchForEvent;
+
     public int FailedFetches;
 
     public void Reset()
     {
         FailFetchUntilAttempt = null;
+        FailFetchForEvent = null;
         FailedFetches = 0;
     }
 }

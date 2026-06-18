@@ -21,12 +21,26 @@ public sealed class StorageFaultState
     /// </summary>
     public int? FailUntilWrite;
 
+    /// <summary>
+    /// Scopes both fault modes to a single grain, identified by its
+    /// <see cref="Orleans.Runtime.GrainId.Key"/> text (an N-format key string). A
+    /// count-addressed fault is only deterministic when it counts the grain under
+    /// test: the decorated provider is silo-wide, so an unscoped count is stolen by
+    /// any peer grain whose write lands in the armed window — most sharply an event
+    /// handler's dedup-commit write, which is triggered by stream delivery and is
+    /// not awaited by the producing command. Null faults silo-wide (the historical
+    /// behaviour, kept for the unbounded case where every write faults so the grain
+    /// under test always faults too).
+    /// </summary>
+    public volatile string? TargetGrainKey;
+
     public int FailedWrites;
 
     public void Reset()
     {
         ShouldFailWrites = false;
         FailUntilWrite = null;
+        TargetGrainKey = null;
         FailedWrites = 0;
     }
 }
