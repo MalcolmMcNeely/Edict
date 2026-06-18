@@ -75,6 +75,12 @@ public interface ICounterProbe : IConfirmsDeactivation
     Task StageUnsupportedKindEntryAsync();
     Task StageMissingRouteKeySendCommandEntryAsync();
 
+    // Stage the unserialisable-forensic-body entry with a known conversation id
+    // stamped on the durable OutboxEntry, so a conformance scenario can prove the
+    // id survives onto the promoted row even though the serialization-failure arm
+    // never reads the body — the durable field is then the row's only source.
+    Task StageUnserialisableForensicBodyEntryWithConversationIdAsync(Guid conversationId);
+
     // Stage a valid SendCommand outbox effect that relays an increment to another
     // counter, so a real drain exercises the SendCommand executor's fault and
     // recovery path. The scenario drives the drain and reads the relayed target.
@@ -141,6 +147,14 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
         return StageAndCommitAsync(OutboxEffectKind.PublishEvent, payload);
     }
 
+    public Task StageUnserialisableForensicBodyEntryWithConversationIdAsync(Guid conversationId)
+    {
+        var serializer = ServiceProvider.GetRequiredService<Serializer>();
+        var payload = serializer.SerializeToArray<EdictEvent>(
+            new UnserialisableForensicBodyEvent { RouteKey = this.GetPrimaryKey() });
+        return StageAndCommitAsync(OutboxEffectKind.PublishEvent, payload, conversationId);
+    }
+
     public Task StageMissingRouteKeySendCommandEntryAsync()
     {
         var serializer = ServiceProvider.GetRequiredService<Serializer>();
@@ -168,7 +182,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
     // growing a staging seam for it. The next reminder drain runs the entry through
     // the real engine, exhausts its attempts against the failing executor wired for
     // its kind, and promotes it.
-    async Task StageAndCommitAsync(OutboxEffectKind kind, byte[] payload)
+    async Task StageAndCommitAsync(OutboxEffectKind kind, byte[] payload, Guid conversationId = default)
     {
         var now = ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
         var entry = new OutboxEntry
@@ -178,6 +192,7 @@ public partial class CounterAggregate : EdictCommandHandler<CounterState>, ICoun
             Payload = payload,
             NextAttemptUtc = now,
             EnqueuedAt = now,
+            ConversationId = conversationId,
         };
 
         var envelope = (GrainEnvelope<CounterState>)EnvelopeStateProperty.GetValue(this)!;
