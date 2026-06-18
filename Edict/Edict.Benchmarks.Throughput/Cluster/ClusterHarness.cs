@@ -44,7 +44,43 @@ public static class ClusterHarness
         ArgumentNullException.ThrowIfNull(substrate);
         ArgumentNullException.ThrowIfNull(body);
 
-        await using var runtime = await substrate.StartAsync(cancellationToken, mode);
+        var tuning = BringUpTuning.FromEnvironment();
+        try
+        {
+            return await RunPassAsync(substrate, mode, body, tuning, cancellationToken);
+        }
+        finally
+        {
+            // Cross-boot settle: this pass's containers are now disposed
+            // (RunPassAsync's await-using scope has exited). Pause before the
+            // next pass's fresh bring-up so the dispose→create churn does not
+            // slam the gvproxy port-forwarder mid-churn — the stall the retry
+            // guards against. It sits outside the setup deadline by
+            // construction (after the bring-up, not within it) and carries no
+            // cross-pass timing state — every pass simply tails the same gap.
+            await SettleAsync(tuning.CrossBootSettleGap, cancellationToken);
+        }
+    }
+
+    static async Task<TResult> RunPassAsync<TResult>(
+        ISubstrate substrate,
+        SubstrateStartMode mode,
+        Func<TestCluster, Task<TResult>> body,
+        BringUpTuning tuning,
+        CancellationToken cancellationToken)
+    {
+        // Setup deadline spans the two phases that are otherwise unbounded: the
+        // container bring-up (StartAsync, retries included) and the Orleans silo
+        // deploy. A breach cancels StartAsync genuinely — the token reaches
+        // container.StartAsync, tearing the Docker startup down — and abandons
+        // the non-token-aware DeployAsync via WaitAsync. Either way the
+        // exception propagates and the run fails fast. The measurement body is
+        // deliberately not under this deadline: it keeps its own window
+        // CancelAfter, linked to the outer token.
+        using var setupDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        setupDeadline.CancelAfter(tuning.SetupDeadline);
+
+        await using var runtime = await substrate.StartAsync(setupDeadline.Token, mode);
 
         var contextKey = ClusterContextRegistry.Register(new ClusterContext(runtime, mode));
         try
@@ -65,9 +101,13 @@ public static class ClusterHarness
             clusterBuilder.AddSiloBuilderConfigurator<SiloConfigurator>();
             clusterBuilder.AddClientBuilderConfigurator<ClientConfigurator>();
             var cluster = clusterBuilder.Build();
-            await cluster.DeployAsync();
             try
             {
+                // DeployAsync is not token-aware; WaitAsync abandons the wait on a
+                // deadline breach and the finally below disposes the abandoned
+                // cluster (the deploy keeps running detached, but the dispose
+                // reclaims it). Inside this try so a deploy fault is reclaimed too.
+                await cluster.DeployAsync().WaitAsync(setupDeadline.Token);
                 return await body(cluster);
             }
             finally
@@ -78,6 +118,23 @@ public static class ClusterHarness
         finally
         {
             ClusterContextRegistry.Unregister(contextKey);
+        }
+    }
+
+    static async Task SettleAsync(TimeSpan gap, CancellationToken cancellationToken)
+    {
+        if (gap <= TimeSpan.Zero)
+        {
+            return;
+        }
+        try
+        {
+            await Task.Delay(gap, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancelled run is being torn down; the inter-pass pacing is moot.
+            // Swallow rather than mask the bring-up failure that is unwinding.
         }
     }
 

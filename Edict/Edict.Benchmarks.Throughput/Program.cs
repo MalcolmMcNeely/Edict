@@ -67,74 +67,110 @@ var perSubstrateRunDate = new Dictionary<string, DateTimeOffset>();
 var interceptorsEmitted = InterceptorProbe.SendInterceptorsEmitted();
 Console.WriteLine($"Send interceptors emitted: {(interceptorsEmitted ? "yes (fast path)" : "no (registrar slow path)")}");
 
+// A manually-run bench owns one external cancellation source: Ctrl-C. Threading
+// its token through every pass lets a maintainer abort a doomed run without
+// hard-killing the process and leaking containers, and gives the per-pass setup
+// deadline inside ClusterHarness a real parent to link onto.
+using var runCancellation = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    runCancellation.Cancel();
+};
+var runToken = runCancellation.Token;
+
 foreach (var substrate in substrates)
 {
-    perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
-    Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window);
-    foreach (var point in commandsResults)
+    try
     {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
-    }
+        perSubstrateRunDate[substrate.Name] = DateTimeOffset.UtcNow;
+        Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+        var commandsResults = await closedLoop.RunCommandsSweepAsync(substrate, parallelisms, warmup, window, runToken);
+        foreach (var point in commandsResults)
+        {
+            Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
+        }
 
-    // A/B: the typed scenario above exercises the interceptor fast path
-    // (when emitted); the base-typed scenario below forces the registrar
-    // slow path even when interceptors are present. Both must produce
-    // valid runs — the second proves the perf claim at the call-site
-    // level.
-    Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance (base-typed, slow path): N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var baseTypedResults = await closedLoop.RunCommandsBaseTypedSweepAsync(substrate, parallelisms, warmup, window);
-    foreach (var point in baseTypedResults)
+        // A/B: the typed scenario above exercises the interceptor fast path
+        // (when emitted); the base-typed scenario below forces the registrar
+        // slow path even when interceptors are present. Both must produce
+        // valid runs — the second proves the perf claim at the call-site
+        // level.
+        Console.WriteLine($"Sweeping {substrate.Name} — Command acceptance (base-typed, slow path): N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+        var baseTypedResults = await closedLoop.RunCommandsBaseTypedSweepAsync(substrate, parallelisms, warmup, window, runToken);
+        foreach (var point in baseTypedResults)
+        {
+            Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
+        }
+
+        Console.WriteLine($"Sweeping {substrate.Name} — Command → Event delivery: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
+        var eventsResults = await closedLoop.RunEventsSweepAsync(substrate, parallelisms, warmup, window, runToken);
+        foreach (var point in eventsResults)
+        {
+            Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
+        }
+
+        var perSubstrate = new List<ThroughputResults>(commandsResults.Count + baseTypedResults.Count + eventsResults.Count);
+        perSubstrate.AddRange(commandsResults);
+        perSubstrate.AddRange(baseTypedResults);
+        perSubstrate.AddRange(eventsResults);
+        combined.AddRange(perSubstrate);
+
+        var closedLoopCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-closedloop.csv");
+        await CsvWriter.WriteAsync(closedLoopCsvPath, perSubstrate);
+        Console.WriteLine($"  Wrote {closedLoopCsvPath}");
+
+        // Saturation passes — fresh cluster per species, sat-mode signal, N=256
+        // fire-and-forget, single sum-of-counters read at window-end. The closed-loop
+        // cluster was torn down inside RunSweepAsync; each saturation pass brings up
+        // its own. Both species run the identical producer workload and differ only in
+        // how the window-end count is read, so the EPS delta isolates the
+        // storage-commit cost (inline grain-state write vs external UpsertRow drain).
+        var substrateSaturation = new List<SaturationResults>();
+        foreach (var species in new[] { ProjectionSpecies.List, ProjectionSpecies.State })
+        {
+            Console.WriteLine($"Saturating {substrate.Name} — Events ({species}): N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
+            var saturationResult = await saturation.RunAsync(
+                substrate, species, saturationParallelism, saturationWarmup, saturationWindow, runToken);
+            Console.WriteLine($"  {species}: {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount}) — {FormatHealth(saturationResult.Health)}");
+            substrateSaturation.Add(saturationResult);
+            saturationCombined.Add(saturationResult);
+        }
+
+        var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
+        await SaturationCsvWriter.WriteAsync(saturationCsvPath, substrateSaturation);
+        Console.WriteLine($"  Wrote {saturationCsvPath}");
+
+        // Per-substrate sidecar summary — keyed by substrate name (no date in the
+        // file name), so a single-substrate run only refreshes its own file. The
+        // markdown render below unions every substrate's summary on disk, so
+        // unrun substrates keep their published rows + run date.
+        var substrateSummary = SubstrateSummaryStore.BuildFromResults(
+            substrate.Name, perSubstrateRunDate[substrate.Name], perSubstrate, substrateSaturation);
+        var substrateSummaryPath = SubstrateSummaryStore.PathFor(rawDirectory, substrate.Name);
+        await SubstrateSummaryStore.WriteAsync(substrateSummaryPath, substrateSummary);
+    }
+    catch (Exception exception) when (exception is SubstrateBringUpFailedException or OperationCanceledException)
     {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} commands in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
+        // A setup-deadline breach or retry exhaustion (or a Ctrl-C) aborts the
+        // whole run rather than silently skipping this substrate and letting the
+        // render below republish its stale prior sidecar as if freshly measured.
+        // We return before the render, so the published throughput.md and every
+        // per-substrate summary already on disk are left untouched.
+        Console.Error.WriteLine();
+        if (runCancellation.IsCancellationRequested)
+        {
+            Console.Error.WriteLine($"✗ Run cancelled while sweeping '{substrate.Name}'.");
+        }
+        else
+        {
+            var phase = (exception as SubstrateBringUpFailedException)?.Phase ?? "setup";
+            Console.Error.WriteLine($"✗ Aborting run: substrate '{substrate.Name}' stalled during {phase} and exceeded the setup deadline.");
+            Console.Error.WriteLine($"  {exception.Message}");
+        }
+        Console.Error.WriteLine("Published throughput.md and per-substrate summaries on disk are unchanged.");
+        return 3;
     }
-
-    Console.WriteLine($"Sweeping {substrate.Name} — Command → Event delivery: N ∈ {{{string.Join(", ", parallelisms)}}}, warmup {warmup}, window {window}");
-    var eventsResults = await closedLoop.RunEventsSweepAsync(substrate, parallelisms, warmup, window);
-    foreach (var point in eventsResults)
-    {
-        Console.WriteLine($"  N={point.Parallelism}: {point.CompletedCount} events in {point.ElapsedMeasurement.TotalSeconds:F1}s — {point.EventsPerSecond:F0} EPS — {FormatHealth(point.Health)}");
-    }
-
-    var perSubstrate = new List<ThroughputResults>(commandsResults.Count + baseTypedResults.Count + eventsResults.Count);
-    perSubstrate.AddRange(commandsResults);
-    perSubstrate.AddRange(baseTypedResults);
-    perSubstrate.AddRange(eventsResults);
-    combined.AddRange(perSubstrate);
-
-    var closedLoopCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-closedloop.csv");
-    await CsvWriter.WriteAsync(closedLoopCsvPath, perSubstrate);
-    Console.WriteLine($"  Wrote {closedLoopCsvPath}");
-
-    // Saturation passes — fresh cluster per species, sat-mode signal, N=256
-    // fire-and-forget, single sum-of-counters read at window-end. The closed-loop
-    // cluster was torn down inside RunSweepAsync; each saturation pass brings up
-    // its own. Both species run the identical producer workload and differ only in
-    // how the window-end count is read, so the EPS delta isolates the
-    // storage-commit cost (inline grain-state write vs external UpsertRow drain).
-    var substrateSaturation = new List<SaturationResults>();
-    foreach (var species in new[] { ProjectionSpecies.List, ProjectionSpecies.State })
-    {
-        Console.WriteLine($"Saturating {substrate.Name} — Events ({species}): N={saturationParallelism}, warmup {saturationWarmup}, window {saturationWindow}");
-        var saturationResult = await saturation.RunAsync(
-            substrate, species, saturationParallelism, saturationWarmup, saturationWindow);
-        Console.WriteLine($"  {species}: {saturationResult.EventsPerSecond:F0} EPS (window {saturationResult.WindowSeconds}s, N={saturationResult.ProducerConcurrency}, aggregates={saturationResult.AggregateCount}) — {FormatHealth(saturationResult.Health)}");
-        substrateSaturation.Add(saturationResult);
-        saturationCombined.Add(saturationResult);
-    }
-
-    var saturationCsvPath = Path.Combine(docsRoot, "raw", $"{runDate:yyyy-MM-dd}-{substrate.Name}-saturation.csv");
-    await SaturationCsvWriter.WriteAsync(saturationCsvPath, substrateSaturation);
-    Console.WriteLine($"  Wrote {saturationCsvPath}");
-
-    // Per-substrate sidecar summary — keyed by substrate name (no date in the
-    // file name), so a single-substrate run only refreshes its own file. The
-    // markdown render below unions every substrate's summary on disk, so
-    // unrun substrates keep their published rows + run date.
-    var substrateSummary = SubstrateSummaryStore.BuildFromResults(
-        substrate.Name, perSubstrateRunDate[substrate.Name], perSubstrate, substrateSaturation);
-    var substrateSummaryPath = SubstrateSummaryStore.PathFor(rawDirectory, substrate.Name);
-    await SubstrateSummaryStore.WriteAsync(substrateSummaryPath, substrateSummary);
 }
 
 var templatePath = Path.Combine(docsRoot, "throughput.template.md");
