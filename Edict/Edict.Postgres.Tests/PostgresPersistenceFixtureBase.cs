@@ -203,6 +203,23 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
         {
             await _dataSource.DisposeAsync();
         }
+
+        // Disposing the cluster and the test data source closes their own pools,
+        // but the silo's Orleans AdoNet PubSubStore/Reminders run on Npgsql's
+        // process-wide pool keyed by the connection string — cluster teardown
+        // returns those connections to the pool, it does not evict them. Clearing
+        // the pool for this fixture's unique connection string releases them
+        // immediately rather than after the idle-prune window, so the next
+        // collection starts from zero remnant. Because collections run serially,
+        // this makes peak concurrent connections equal to one collection's
+        // footprint — independent of how many tests or collections the assembly
+        // grows to.
+        if (_connectionString.Length > 0)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            NpgsqlConnection.ClearPool(connection);
+        }
+
         PostgresPersistenceContextRegistry.Unregister(_contextKey);
     }
 
@@ -262,6 +279,14 @@ public abstract class PostgresPersistenceFixtureBase : PersistenceConformanceFix
             {
                 persistenceOptions.ConnectionString = ctx.ConnectionString;
                 persistenceOptions.ClaimCheckTableName = ctx.ClaimCheckTableName;
+                // BuildDataSource overrides the connection string's pool keywords
+                // with these, so the production default (MaxPoolSize 200, MinPoolSize
+                // 10) would otherwise apply. Conformance silos run a handful of
+                // grains, not the N=256 sweep that default sizes for — a small,
+                // non-eager pool keeps the shared testcontainer well under its
+                // connection ceiling across the serial collection run.
+                persistenceOptions.MaxPoolSize = 30;
+                persistenceOptions.MinPoolSize = 0;
             });
 
             if (ctx.WrapClaimCheckStoreWithControllable)

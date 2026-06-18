@@ -41,12 +41,12 @@ static class PostgresAssemblyHost
     {
         var container = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")
-            // Collections run serially, so the fixture shapes never deploy at
-            // once — but a single silo's pool plus its AdoNet PubSubStore and
-            // reminders, alongside the unit-test data source, can still oversubscribe
-            // the default 100 cap and surface as `53300: sorry, too many clients
-            // already`. Mirror the pattern KafkaPostgresSubstrate uses for the
-            // same reason.
+            // Headroom above Postgres' default 100 cap. The real control on the
+            // `53300: sorry, too many clients already` failure is the bounded,
+            // fast-pruned per-fixture pools wired in PostgresDatabaseFactory and
+            // PostgresPersistenceFixtureBase; this generous server ceiling just
+            // absorbs the brief overlap as a disposed collection's idle backends
+            // drain. Mirror the pattern KafkaPostgresSubstrate uses.
             .WithCommand("-c", "max_connections=512")
             .Build();
         await container.StartAsync();

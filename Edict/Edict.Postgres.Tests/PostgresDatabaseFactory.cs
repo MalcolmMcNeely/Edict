@@ -24,6 +24,21 @@ static class PostgresDatabaseFactory
         var builder = new NpgsqlConnectionStringBuilder(adminConnectionString)
         {
             Database = databaseName,
+            // Collections run serially, but a disposed collection's pooled
+            // connections linger as idle server backends until Npgsql prunes
+            // them (default ~300 s). With wall-clock waits gone the cadence is
+            // fast enough that many collections' worth of un-pruned idle
+            // backends overlap and oversubscribe the server, surfacing as
+            // `53300: sorry, too many clients already`. A small pool plus an
+            // aggressive idle-prune window keeps each collection's footprint
+            // bounded and releases it within seconds of teardown. These flow
+            // into both the test data source and the silo's Orleans AdoNet
+            // PubSubStore/Reminders pool; the idle settings also carry into
+            // Edict's own data source (which overrides only Max/MinPoolSize).
+            MaxPoolSize = 30,
+            MinPoolSize = 0,
+            ConnectionIdleLifetime = 5,
+            ConnectionPruningInterval = 1,
         };
         return builder.ConnectionString;
     }
