@@ -82,6 +82,13 @@ public sealed class EdictTenantScopedListProjectionReader<TListProjection> : IEd
         TenantRelay.Seed(tenant);
         var grainClassName = _resolver.Resolve(typeof(TListProjection));
         var composedKey = EdictKeyComposer.Compose(tenant, routeKey);
+        // The reader is the one composition chokepoint, so a row key that will not fold
+        // into a well-formed routed key is rejected here, in the caller's process. A
+        // stolen already-composed key folds the ambient wall over a key that already
+        // carries one, and any non-Guid row key leaves a route part the grain could never
+        // parse; either way the grain would otherwise throw while computing its own
+        // partition, on the far side of a hop that cannot carry the typed fault back.
+        EdictKeyComposer.Parse(composedKey);
         return _grainFactory.GetGrain<IEdictProjectionBuilder>(composedKey, grainClassName);
     }
 }

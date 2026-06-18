@@ -20,14 +20,22 @@ namespace Edict.Tests.Conformance.Persistence;
 /// empty" denial, but isolation held <em>under attack</em>. A thief holds tenant
 /// <c>acme</c>'s raw route key — the bearer capability the whole design exists to
 /// demote — and wields it against every entry point a stolen key could travel:
-/// command send, projection read, claim-check fetch, and dead-letter. Each door
-/// denies on a real persistence backend, so a regression that re-promoted the key to
-/// a capability would turn one of these red rather than ship a cross-wall leak. The
-/// doors deny by different mechanisms, which is the point: the command grain is
-/// guarded by the runtime isolation call filter, the read by the reader's shape (no
-/// partition key to forge), the claim-check by the tenant fold in the store key, and
-/// the dead-letter by being operator-scoped with no tenant-addressable partition at
-/// all. A stolen key is a useful lever at none of them.
+/// command send, projection read, claim-check fetch, and dead-letter. Each door denies
+/// on a real persistence backend, so a regression that re-promoted the key to a
+/// capability would turn one of these red rather than ship a cross-wall leak.
+/// <para>
+/// The four doors split into two kinds. Two are <em>typed-denial</em> doors: the command
+/// send is refused by the runtime isolation call filter, and the claim-check fetch by the
+/// tenant fold in the store key — each raises its own <c>Edict*</c> exception the thief
+/// cannot talk past. The other two are <em>structural-isolation</em> proofs that feed the
+/// stolen key through the one real input seam and watch the ambient fold defeat it: the
+/// projection read takes the stolen owner key as a row key and folds the thief's own wall
+/// over it, producing a doubly-walled key no composer could have made, which the reader's
+/// chokepoint rejects as malformed unless it ever honoured an already-composed key; the
+/// dead-letter row is operator-scoped and discriminated only by its tenant tag, so
+/// filtering the one operator partition by acme's wall selects the row and by the thief's
+/// excludes it. A stolen key is a useful lever at none of them.
+/// </para>
 /// </summary>
 public abstract class StolenRouteKeyScenarios<TFixture>
     where TFixture : PersistenceConformanceFixture, IEdictTenancyConformanceFixture, IClaimCheckStoreFixture
@@ -82,25 +90,36 @@ public abstract class StolenRouteKeyScenarios<TFixture>
         var reader = _fixture.EmployeeDirectoryReader;
 
         // Arrange: acme writes three employees under its own wall. The thief, by the
-        // adversary's premise, learns every one of these raw EmployeeId keys.
+        // adversary's premise, learns acme's raw EmployeeId keys — and the fully-composed
+        // owner key each one folds into.
         ConformanceTenantSource.Current = Owner;
+        var stolenEmployee = new EmployeeId(Guid.NewGuid());
         for (var index = 0; index < 3; index++)
         {
+            var employeeId = index == 0 ? stolenEmployee : new EmployeeId(Guid.NewGuid());
 #pragma warning disable EDICT024
-            await _fixture.Sender.SendAsync(new AddEmployeeCommand(new EmployeeId(Guid.NewGuid()), "Engineering"));
+            await _fixture.Sender.SendAsync(new AddEmployeeCommand(employeeId, "Engineering"));
 #pragma warning restore EDICT024
         }
         var ownerDirectory = await WaitForPartitionCountAsync(reader, expectedCount: 3);
 
-        // Act: the thief reads from its own wall. Possessing acme's raw keys buys
-        // nothing — the reader takes no partition key, so there is no seam to feed a
-        // stolen key into and no way to express acme's partition.
-        ConformanceTenantSource.Current = Thief;
-        var thiefDirectory = await reader.QueryMyPartitionAsync();
+        // acme point-gets its own row through the same seam, proving the row exists and
+        // is reachable from acme's wall — so the thief's denial below is the stolen key
+        // being rejected, not the row being absent.
+        var ownerRow = await reader.GetMyAsync(stolenEmployee.Value.ToString("N"));
 
-        // Assert: acme sees its three; the thief sees none, by construction.
+        // Act + Assert: the thief feeds the stolen, fully-composed owner key into
+        // GetMyAsync — the reader's one input-taking seam. The reader folds the thief's
+        // own wall over it, producing a doubly-walled key no composer could have made, and
+        // rejects it at the chokepoint with the typed fault. The row would surface only if
+        // the reader honoured the key as already-composed instead of folding its own wall.
+        ConformanceTenantSource.Current = Thief;
+        var stolenComposedKey = EdictKeyComposer.Compose(Owner, stolenEmployee.Value.ToString("N"));
+        await Assert.ThrowsAsync<EdictMalformedRoutedKeyException>(() => reader.GetMyAsync(stolenComposedKey));
+
+        // Assert: acme sees its three and reads its own row.
         Assert.Equal(3, ownerDirectory.Rows.Count);
-        Assert.Empty(thiefDirectory.Rows);
+        Assert.NotNull(ownerRow.Value);
     }
 
     [Fact]
@@ -164,19 +183,20 @@ public abstract class StolenRouteKeyScenarios<TFixture>
         });
 
         // Act: the failure lands in the single operator-scoped partition, tagged with
-        // acme's wall so an operator can filter by tenant.
+        // acme's wall. Dead-letter is never partitioned by tenant, so the tenant tag is
+        // the only seam that discriminates owner from thief — an operator filters the one
+        // partition by it.
         var operatorRows = await deadLetterTable.QueryPartitionAsync(EdictDeadLetterTable.Name);
         var deadLetterEntry = operatorRows.Single(entry => entry.SourceGrainKey == composedKey);
+        var underOwnersWall = operatorRows.Where(entry => entry.Tenant == Owner).ToList();
+        var underThiefsWall = operatorRows.Where(entry => entry.Tenant == Thief).ToList();
 
-        // The thief, knowing acme's wall, addresses a partition named by a tenant —
-        // the natural stolen-key reach. There is none: dead-letter is never
-        // partitioned by tenant, so the forensic payload has no tenant-addressable home.
-        var thiefPartition = await deadLetterTable.QueryPartitionAsync(Thief.Value);
-
-        // Assert: the row is operator-scoped and tenant-tagged; no tenant partition
-        // exposes it.
+        // Assert: the row is acme's by tag; filtering the operator partition on acme's
+        // wall selects it and on the thief's wall excludes it — a positive proof the tag
+        // discriminates, not reliance on a vacuously-empty tenant partition.
         Assert.Equal(Owner, deadLetterEntry.Tenant);
-        Assert.DoesNotContain(thiefPartition, entry => entry.SourceGrainKey == composedKey);
+        Assert.Contains(underOwnersWall, entry => entry.SourceGrainKey == composedKey);
+        Assert.DoesNotContain(underThiefsWall, entry => entry.SourceGrainKey == composedKey);
         RequestContext.Clear();
     }
 

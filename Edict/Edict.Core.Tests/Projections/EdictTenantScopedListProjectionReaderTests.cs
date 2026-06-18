@@ -1,3 +1,4 @@
+using Edict.Contracts.Routing;
 using Edict.Contracts.Tenancy;
 using Edict.Core.Projections;
 using Edict.Core.Tenancy;
@@ -53,6 +54,21 @@ public sealed class EdictTenantScopedListProjectionReaderTests
         // the per-turn relay; the read path must seed it from the resolved tenant — taken
         // before composition — so a mis-composed key is denied at the database, not leaked.
         Assert.Equal(EdictTenantId.Of("acme"), factory.TenantObservedByGrain);
+    }
+
+    [Fact]
+    public async Task GetMyAsync_ShouldRejectAnAlreadyComposedRowKey_AtTheChokepoint()
+    {
+        var reader = ReaderFor(new RecordingGrainFactory(), EdictTenantId.Of("globex"));
+
+        // A row key that already carries a wall — a stolen, fully-composed key, or any
+        // non-Guid key — folds into a key no composer could have produced. The reader is
+        // the composition chokepoint, so it rejects it in the caller's process rather than
+        // dispatching a key the grain could only reject across a hop that cannot carry the
+        // typed fault back.
+        var stolenComposedKey = EdictKeyComposer.Compose(EdictTenantId.Of("acme"), "9b2c0f5d4e1a4b8c9d3e2f1a0b5c6d7e");
+
+        await Assert.ThrowsAsync<EdictMalformedRoutedKeyException>(() => reader.GetMyAsync(stolenComposedKey));
     }
 
     [Fact]
