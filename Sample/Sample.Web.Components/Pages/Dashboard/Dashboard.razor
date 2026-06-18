@@ -175,7 +175,7 @@
             var entries = new List<OrderEntry>(knownIds.Count);
             foreach (var orderId in knownIds)
             {
-                var row = (await OrdersByStatus.GetAsync(orderId.ToString(), "status")).Value;
+                var row = (await OrdersByStatus.GetAsync(orderId.ToString("N"), "status")).Value;
                 if (row is not null)
                 {
                     entries.Add(new OrderEntry(orderId, row));
@@ -191,8 +191,8 @@
             if (_spotlightedOrderId is { } id)
             {
                 _spotlightedStatus = _orderRows.FirstOrDefault(e => e.OrderId == id)?.Row
-                                     ?? (await OrdersByStatus.GetAsync(id.ToString(), "status")).Value;
-                _fulfillmentLines = (await FulfillmentRows.QueryPartitionAsync(id.ToString())).Rows;
+                                     ?? (await OrdersByStatus.GetAsync(id.ToString("N"), "status")).Value;
+                _fulfillmentLines = (await FulfillmentRows.QueryPartitionAsync(id.ToString("N"))).Rows;
             }
             else
             {

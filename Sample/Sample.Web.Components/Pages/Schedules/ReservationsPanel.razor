@@ -110,7 +110,7 @@
             // Cursorless point-get: the projection does not track Confirmed, so this
             // read only surfaces the Cancelled the hold's expiry stamps; confirmation
             // is held locally off the ConfirmOrder result.
-            _status = (await OrdersByStatus.GetAsync(_orderId.ToString(), "status")).Value;
+            _status = (await OrdersByStatus.GetAsync(_orderId.ToString("N"), "status")).Value;
         }
         catch
         {

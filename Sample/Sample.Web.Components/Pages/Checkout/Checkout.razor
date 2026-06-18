@@ -99,7 +99,7 @@
             // boundedly, until the bridge Saga's placed Order is visible, so the row
             // comes back on this same click. The correlation propagates through the
             // bridge, so the cursor reaches the Order keyed by the cart id.
-            var read = await OrdersByStatus.GetAsync(_cartId.ToString(), "status", after: accepted.Cursor);
+            var read = await OrdersByStatus.GetAsync(_cartId.ToString("N"), "status", after: accepted.Cursor);
             _orderStatus = read.Value;
             _message = read.Status == EdictReadStatus.CursorReached
                 ? "Checked out. The bridge Saga placed an Order and the cursor read it straight back: no poll, no lag."

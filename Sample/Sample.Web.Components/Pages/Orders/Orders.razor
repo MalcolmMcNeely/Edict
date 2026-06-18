@@ -165,8 +165,8 @@
             // with the latest projected row and the visitor watches the lifecycle
             // catch up across polls (eventual), the opposite of Checkout's
             // read-your-writes cursor.
-            _status = (await OrdersByStatus.GetAsync(id.ToString(), "status")).Value;
-            _outcome = (await Outcomes.GetAsync(id.ToString(), "outcome")).Value;
+            _status = (await OrdersByStatus.GetAsync(id.ToString("N"), "status")).Value;
+            _outcome = (await Outcomes.GetAsync(id.ToString("N"), "outcome")).Value;
             _notifications = Notifications.Query().Where(notification => notification.OrderId == id).ToArray();
         }
         catch

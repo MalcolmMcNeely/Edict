@@ -335,7 +335,7 @@
         var submit = await Sender.SendAsync(new SubmitOrderCommand(orderId, 100m), principal);
 
         _correlationId = submit is EdictCommandResult.Accepted accepted ? accepted.Cursor.CorrelationId : null;
-        _entityKey = orderId.ToString();
+        _entityKey = orderId.ToString("N");
         _message = $"Drove an accepted order as {principal.Value}: the submit correlation spans the order and payment grains.";
         ResetPayload();
         await RefreshAsync();
@@ -356,7 +356,7 @@
         var result = await Sender.SendAsync(new SubmitOrderCommand(orderId, 50m), principal);
 
         _correlationId = null;
-        _entityKey = orderId.ToString();
+        _entityKey = orderId.ToString("N");
         _message = result is EdictCommandResult.Rejected
             ? $"Submit was rejected and recorded against {principal.Value} with its reasons."
             : "Submit was unexpectedly accepted.";
