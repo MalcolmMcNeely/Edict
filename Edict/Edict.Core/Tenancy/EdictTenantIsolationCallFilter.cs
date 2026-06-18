@@ -42,6 +42,9 @@ sealed class EdictTenantIsolationCallFilter(IServiceProvider serviceProvider) : 
             return;
         }
 
+        // The send path now refuses to compose a tenant-scoped key with a null tenant, so a
+        // key reaching here with a delimiter was composed from a real wall: this filter trusts
+        // that invariant and reads the wall back off the key rather than re-deriving it.
         var keyTenant = EdictKeyComposer.Parse(grainKey).Tenant;
         var relayTenant = TenantRelay.Current();
         if (keyTenant == relayTenant)

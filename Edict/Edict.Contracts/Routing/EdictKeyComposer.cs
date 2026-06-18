@@ -32,8 +32,11 @@ public static class EdictKeyComposer
         tenant is { } wall ? $"{wall.Value}{Delimiter}{routeKey}" : routeKey;
 
     /// <summary>
-    /// Recovers the tenant and route Guid from a composed key, the inverse of
-    /// <see cref="Compose"/>. A bare key parses to no tenant; a <c>"{tenant}|{guid}"</c>
+    /// Recovers the tenant and route Guid from a composed Guid-routed grain or stream key,
+    /// the inverse of <see cref="Compose"/>. Only keys whose route part is a Guid are
+    /// parsed — opaque projection partition keys (a consumer-chosen string the list
+    /// projection partitions on) are never round-tripped through here, only composed.
+    /// A bare key parses to no tenant; a <c>"{tenant}|{guid}"</c>
     /// key parses to the exact tenant and route Guid. Throws
     /// <see cref="EdictMalformedRoutedKeyException"/> rather than mis-parse anything
     /// that is not a key this composer could have produced: a non-Guid route part, an

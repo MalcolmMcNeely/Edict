@@ -26,6 +26,7 @@ public sealed class EmployeeDirectorySeeder
         ("Grace Gibson", "Legal"),
         ("Henry Hughes", "Operations"),
         ("Isla Ingram", "Marketing"),
+        ("Jack Jenkins", "Finance"),
     ];
 
     readonly HashSet<string> _seeded = new();

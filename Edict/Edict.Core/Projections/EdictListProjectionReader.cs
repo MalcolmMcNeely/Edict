@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 using Edict.Contracts.Commands;
 using Edict.Contracts.Projections;
+using Edict.Contracts.Routing;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -65,6 +66,10 @@ public sealed class EdictListProjectionReader<TListProjection> : IEdictListProje
     IEdictProjectionBuilder ResolveGrain(string partitionKey)
     {
         var grainClassName = _resolver.Resolve(typeof(TListProjection));
-        return _grainFactory.GetGrain<IEdictProjectionBuilder>(partitionKey, grainClassName);
+        // Fold the partition key through the one composition chokepoint like the State
+        // sibling, so a future change to composition reaches every reader uniformly. A
+        // public list partition carries no tenant, so this composes to the bare key today.
+        var composedKey = EdictKeyComposer.Compose(null, partitionKey);
+        return _grainFactory.GetGrain<IEdictProjectionBuilder>(composedKey, grainClassName);
     }
 }
