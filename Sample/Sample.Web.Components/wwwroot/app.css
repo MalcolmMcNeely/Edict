@@ -562,3 +562,12 @@ main {
     font-weight: 600;
     color: #2563eb;
 }
+
+.audit-trace-hint {
+    border-left: 3px solid #2563eb;
+    padding-left: 0.6rem;
+}
+
+.audit-trace-hint code {
+    word-break: break-all;
+}

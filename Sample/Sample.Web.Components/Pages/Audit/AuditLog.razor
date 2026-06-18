@@ -139,6 +139,17 @@
                         <div class="orders-outcome">
                             Integrity: @_payloadLength bytes · hash @(_payloadHashMatches ? "✓ matches the sealed record" : "✗ does not match")
                         </div>
+                        @if (_payloadRecord.ConversationId != Guid.Empty)
+                        {
+                            <div class="orders-outcome audit-trace-hint">
+                                Conversation <code>@_payloadRecord.ConversationId</code>
+                                <p class="hub-empty-small">
+                                    Every turn of this conversation carries this id on its trace span. Filter the Aspire dashboard
+                                    traces by <code>@AuditTraceFilterHint.ForConversation(_payloadRecord.ConversationId)</code> to
+                                    follow the whole chain across grains — the same spine you see here, read from the trace view.
+                                </p>
+                            </div>
+                        }
                         <pre class="audit-payload">@_payloadPreview</pre>
                     }
                 </div>
