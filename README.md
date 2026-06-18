@@ -163,7 +163,6 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 
 - **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
 - **External-work primitive.** Dispatch a slow out-of-grain operation (API call, batch job, external process), park via reminder, resume with the result to issue a command. Orleans grain turns should stay short, and there is no framework-shape way to do this today.
-- **Tenant-scoped substrate.** A tenant scope carried on the message envelope that every storage provider honours, so one deployment can serve many customers with isolation enforced at the store, not just hoped for in queries. Today the only safe multi-tenant path is a separate deployment per customer; pooled compute would leak, because grain state, projections, claim-check blobs, and the dead-letter pool all share partitions.
 - **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider: no public-API changes, and provider-specific fault classification is a registered extension point.
 
 ## Running locally
