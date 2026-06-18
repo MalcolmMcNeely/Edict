@@ -25,7 +25,7 @@ public sealed class SagaCorrelationPropagationTests(SubstrateIndependentClusterF
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = correlationId,
+            ConversationId = correlationId,
         });
 
         // Assert

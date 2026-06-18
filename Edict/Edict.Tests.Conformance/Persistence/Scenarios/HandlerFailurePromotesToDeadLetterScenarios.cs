@@ -84,6 +84,6 @@ public abstract class HandlerFailurePromotesToDeadLetterScenarios<TFixture>
             .ScrubMember<EdictDeadLetterEntry>(e => e.PayloadJson)
             .ScrubMember<EdictDeadLetterEntry>(e => e.SourceGrainKey)
             .ScrubMember<EdictDeadLetterEntry>(e => e.SourceEventId)
-            .ScrubMember<EdictDeadLetterEntry>(e => e.CorrelationId);
+            .ScrubMember<EdictDeadLetterEntry>(e => e.ConversationId);
     }
 }

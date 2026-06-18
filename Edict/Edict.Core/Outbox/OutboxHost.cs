@@ -293,7 +293,7 @@ sealed class OutboxHost<TPayload>
         var identified = new EdictEvent[events.Count];
         for (var i = 0; i < events.Count; i++)
         {
-            identified[i] = events[i] with { EventId = Guid.NewGuid(), CorrelationId = correlationId, Principal = principal, Tenant = tenant };
+            identified[i] = events[i] with { EventId = Guid.NewGuid(), ConversationId = correlationId, Principal = principal, Tenant = tenant };
         }
 
         // E1 audit capture rides the same write that commits the enqueue: the

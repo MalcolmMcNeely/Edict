@@ -26,7 +26,7 @@ public sealed class SagaPrincipalRelayTests(PrincipalRelaySagaClusterFixture fix
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
             Principal = principal,
         });
 
@@ -51,7 +51,7 @@ public sealed class SagaPrincipalRelayTests(PrincipalRelaySagaClusterFixture fix
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
             Tenant = tenant,
         });
 

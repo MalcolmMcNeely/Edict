@@ -73,7 +73,7 @@ Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 - `edict.dead_letter.failure_reason` — on dead-letter metrics. A closed allowlist: `Timeout`, `Saturated`, `Serialization`, `Substrate`, `Wiring`, `ConsumerBug`, `InternalBug`, `SagaTimeout`, `SagaTerminal`, `Unhandled`.
 - `edict.saga.timeout.outcome` — on the saga timeout-fired counter. A closed allowlist: `compensated`, `deadlettered`.
 - `edict.idempotency.dedup.reason` — on the duplicate-suppression counter. A closed allowlist: `window` (the EventId was already in the committed dedup window) and `in_flight` (the EventId's slot was still reserved on the grain, retained as defense-in-depth since serial stream delivery makes a concurrent same-id redelivery structurally impossible).
-- `edict.audit.kind`, `edict.audit.outcome` — on the audit-records-captured counter. Closed allowlists: `command`/`event` and (on commands) `accepted`/`rejected`. Never the principal, correlation id, or grain key, which are unbounded.
+- `edict.audit.kind`, `edict.audit.outcome` — on the audit-records-captured counter. Closed allowlists: `command`/`event` and (on commands) `accepted`/`rejected`. Never the principal, conversation id, or grain key, which are unbounded.
 
 The full set lives in `Edict.Telemetry.SemanticConventions`.
 

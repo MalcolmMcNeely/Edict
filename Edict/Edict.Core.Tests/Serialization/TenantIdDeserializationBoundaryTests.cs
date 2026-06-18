@@ -43,7 +43,7 @@ public sealed class TenantIdDeserializationBoundaryTests
     {
         public Guid CommandId { get; init; }
 
-        public Guid CorrelationId { get; init; }
+        public Guid ConversationId { get; init; }
 
         public EdictPrincipal? Principal { get; init; }
 

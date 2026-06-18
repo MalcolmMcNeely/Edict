@@ -22,9 +22,9 @@ sealed class EdictDefaultAuditRepository(IEdictAuditStore store, IEdictAuditPayl
         string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
         store.ByEntityAsync(entityType, entityKey, from, to, tenant, cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(
         Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
-        store.ByCorrelationAsync(correlationId, tenant, cancellationToken);
+        store.ByConversationAsync(correlationId, tenant, cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(
         EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>

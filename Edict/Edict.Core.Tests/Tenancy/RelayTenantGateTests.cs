@@ -32,7 +32,7 @@ public sealed class RelayTenantGateTests(RelayTenantGateClusterFixture fixture)
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
         });
 
         // Assert — the relayed dispatch dead-letters as a missing-tenant fault, and the
@@ -60,7 +60,7 @@ public sealed class RelayTenantGateTests(RelayTenantGateClusterFixture fixture)
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
             Tenant = tenant,
         });
 
@@ -83,7 +83,7 @@ public sealed class RelayTenantGateTests(RelayTenantGateClusterFixture fixture)
         {
             EventId = Guid.NewGuid(),
             OccurredAt = DateTimeOffset.UtcNow,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
         });
 
         // Assert

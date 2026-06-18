@@ -17,7 +17,7 @@ public sealed class AuditRecordBuilderTests
         Kind = EdictAuditKind.Command,
         Outcome = EdictAuditOutcome.Accepted,
         Principal = EdictPrincipal.Of("alice"),
-        CorrelationId = new Guid("22222222-2222-2222-2222-222222222222"),
+        ConversationId = new Guid("22222222-2222-2222-2222-222222222222"),
         EntityType = "Sample.Domain.OrderCommandHandler",
         EntityKey = "order-1",
         MessageType = "Sample.Contracts.PlaceOrderCommand",

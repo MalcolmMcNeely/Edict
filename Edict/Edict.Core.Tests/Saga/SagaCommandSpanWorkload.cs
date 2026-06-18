@@ -85,7 +85,7 @@ public partial class SpanTrackerCommandHandler : EdictCommandHandler<SpanTracker
     Task<EdictCommandResult> HandleAsync(SpanTrackerCommand command)
     {
         State.Received++;
-        State.LastCorrelationId = command.CorrelationId;
+        State.LastCorrelationId = command.ConversationId;
         State.LastPrincipal = command.Principal;
         State.LastTenant = command.Tenant;
         Raise(new SpanTrackerRaisedEvent(command.WorkflowId));

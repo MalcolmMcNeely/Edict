@@ -128,7 +128,7 @@ public sealed class ScheduleLifecycleTests
         var published = Assert.Single(
             ScheduleRaiseCapturingExecutor.Captured.OfType<ScheduleTickedEvent>(),
             tick => tick.Key == probeId);
-        Assert.NotEqual(Guid.Empty, published.CorrelationId);
+        Assert.NotEqual(Guid.Empty, published.ConversationId);
     }
 
     [Fact]

@@ -39,7 +39,7 @@ public abstract class AuditEntityQueryScenarios<TFixture>
 
         // Act
         var accepted = await _fixture.Sender.SendAsync(new AuditPlaceOrderCommand(orderId));
-        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.CorrelationId;
+        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.ConversationId;
         await AuditConformanceWaiters.WaitForCorrelationRecordsAsync(_fixture, correlationId, expectedCount: 4);
         var after = DateTimeOffset.UtcNow;
 

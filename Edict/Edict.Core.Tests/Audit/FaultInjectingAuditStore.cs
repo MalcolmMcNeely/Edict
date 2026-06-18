@@ -34,8 +34,8 @@ public sealed class FaultInjectingAuditStore : IEdictAuditStore
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         _inner.ByEntityAsync(entityType, entityKey, from, to, tenant, cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
-        _inner.ByCorrelationAsync(correlationId, tenant, cancellationToken);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+        _inner.ByConversationAsync(correlationId, tenant, cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         _inner.ByPrincipalAsync(principal, from, to, tenant, cancellationToken);

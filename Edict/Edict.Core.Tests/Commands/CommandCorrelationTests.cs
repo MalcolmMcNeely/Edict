@@ -22,7 +22,7 @@ public sealed class CommandCorrelationTests(RaiseStampClusterFixture fixture)
 
         // Assert
         var accepted = Assert.IsType<EdictCommandResult.Accepted>(result);
-        Assert.NotEqual(Guid.Empty, accepted.Cursor.CorrelationId);
+        Assert.NotEqual(Guid.Empty, accepted.Cursor.ConversationId);
     }
 
     [Fact]
@@ -33,11 +33,11 @@ public sealed class CommandCorrelationTests(RaiseStampClusterFixture fixture)
 
         // Act
         var result = await fixture.Sender.SendAsync(
-            new IncrementCounterCommand(CounterId) { CorrelationId = callerCorrelation });
+            new IncrementCounterCommand(CounterId) { ConversationId = callerCorrelation });
 
         // Assert
         var accepted = Assert.IsType<EdictCommandResult.Accepted>(result);
-        Assert.Equal(callerCorrelation, accepted.Cursor.CorrelationId);
+        Assert.Equal(callerCorrelation, accepted.Cursor.ConversationId);
     }
 
     [Fact]
@@ -49,10 +49,10 @@ public sealed class CommandCorrelationTests(RaiseStampClusterFixture fixture)
 
         // Act
         await fixture.Sender.SendAsync(
-            new IncrementCounterCommand(CounterId) { CorrelationId = callerCorrelation });
+            new IncrementCounterCommand(CounterId) { ConversationId = callerCorrelation });
 
         // Assert
         var published = Assert.Single(RaiseStampCapturingExecutor.Captured);
-        Assert.Equal(callerCorrelation, published.CorrelationId);
+        Assert.Equal(callerCorrelation, published.ConversationId);
     }
 }

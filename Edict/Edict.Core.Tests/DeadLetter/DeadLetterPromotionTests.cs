@@ -52,13 +52,13 @@ public sealed class DeadLetterPromotionTests
     {
         var correlationId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc");
         var entry = PublishEventEntry();
-        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1") { CorrelationId = correlationId };
+        var edictEvent = new OrderPlacedEvent(FixedOrderId, "ITEM-1") { ConversationId = correlationId };
 
         var raised = DeadLetterPromotion.Build(
             entry, edictEvent, Accessors, new InvalidOperationException("nope"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
-        Assert.Equal(correlationId, raised.CorrelationId);
+        Assert.Equal(correlationId, raised.ConversationId);
     }
 
     [Fact]
@@ -72,14 +72,14 @@ public sealed class DeadLetterPromotionTests
             Payload = [],
             AttemptCount = 3,
         };
-        var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1") { CorrelationId = correlationId };
+        var command = new PlaceOrderCommand(FixedOrderId, "ITEM-1") { ConversationId = correlationId };
 
         var raised = DeadLetterPromotion.Build(
             entry, command, "Sample.PaymentCommandHandler", FixedOrderId.ToString("N"),
             new InvalidOperationException("rejected"),
             SourceGrainKey, SourceGrainType, FixedDeadLetteredAt);
 
-        Assert.Equal(correlationId, raised.CorrelationId);
+        Assert.Equal(correlationId, raised.ConversationId);
     }
 
     [Fact]

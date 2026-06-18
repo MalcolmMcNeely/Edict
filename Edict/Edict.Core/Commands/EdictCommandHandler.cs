@@ -548,7 +548,7 @@ public abstract class EdictCommandHandler<TState>
             StageAuditRecord(command, result);
         }
 
-        await CommitAndDrainRaisedEventsAsync(command.CorrelationId, command.Principal, command.Tenant);
+        await CommitAndDrainRaisedEventsAsync(command.ConversationId, command.Principal, command.Tenant);
 
         // A handler that called Schedule(...) staged an entry that the commit
         // above just made durable; arm its timer and Reminder now. Skipped
@@ -564,7 +564,7 @@ public abstract class EdictCommandHandler<TState>
         // through, so a consumer handler keeps returning a bare Accepted and never
         // threads the correlation by hand.
         return result is EdictCommandResult.Accepted accepted
-            ? accepted with { Cursor = new EdictCursor(command.CorrelationId) }
+            ? accepted with { Cursor = new EdictCursor(command.ConversationId) }
             : result;
     }
 
@@ -602,7 +602,7 @@ public abstract class EdictCommandHandler<TState>
             RejectionReasons = reasons,
             Principal = command.Principal,
             Tenant = command.Tenant,
-            CorrelationId = command.CorrelationId,
+            ConversationId = command.ConversationId,
             EntityType = GetType().FullName ?? GetType().Name,
             EntityKey = this.GetPrimaryKeyString(),
             MessageType = command.GetType().FullName ?? command.GetType().Name,
@@ -645,7 +645,7 @@ public abstract class EdictCommandHandler<TState>
                 Kind = EdictAuditKind.Event,
                 Principal = raisedEvent.Principal,
                 Tenant = raisedEvent.Tenant,
-                CorrelationId = raisedEvent.CorrelationId,
+                ConversationId = raisedEvent.ConversationId,
                 EntityType = entityType,
                 EntityKey = entityKey,
                 MessageType = raisedEvent.GetType().FullName ?? raisedEvent.GetType().Name,

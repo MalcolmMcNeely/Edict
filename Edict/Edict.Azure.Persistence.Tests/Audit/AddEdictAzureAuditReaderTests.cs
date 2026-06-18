@@ -66,7 +66,7 @@ public sealed class AddEdictAzureAuditReaderTests
         {
             RecordId = Guid.NewGuid(),
             Kind = EdictAuditKind.Command,
-            CorrelationId = Guid.NewGuid(),
+            ConversationId = Guid.NewGuid(),
             EntityType = "Order",
             EntityKey = entityKey,
             MessageType = "PlaceOrder",

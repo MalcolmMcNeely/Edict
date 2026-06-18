@@ -61,7 +61,7 @@ Treat the table as registered defaults on a laptop emulator. A real Azure Storag
 
 ## What you're looking at — `kafkapostgres` (Testcontainers Kafka + Postgres)
 
-`Edict.Kafka` (custom `IQueueAdapter` over `Confluent.Kafka`, ADR-0028) + `Edict.Postgres` persistence. Testcontainers Kafka broker + Postgres 17, same single silo, same `BenchAggregateHandler` workload, same per-send `CorrelationId`-keyed completion poll as `azure`. A single-broker container under Docker defaults is the relevant ceiling here, not a multi-broker Kafka cluster on dedicated hardware.
+`Edict.Kafka` (custom `IQueueAdapter` over `Confluent.Kafka`, ADR-0028) + `Edict.Postgres` persistence. Testcontainers Kafka broker + Postgres 17, same single silo, same `BenchAggregateHandler` workload, same per-send `ConversationId`-keyed completion poll as `azure`. A single-broker container under Docker defaults is the relevant ceiling here, not a multi-broker Kafka cluster on dedicated hardware.
 
 - Producer: `acks=all`, idempotent, lz4. Consumer: `enable.auto.commit=false`, manual commit after `HandleAsync` (ADR-0028 §2).
 - `PartitionCount = 32` per `[EdictStream]` — Edict's framework default (ADR-0028), inherited by the bench substrate.

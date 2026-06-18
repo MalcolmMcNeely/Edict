@@ -59,7 +59,7 @@ public abstract class AuditCaptureChainScenarios<TFixture>
         // The E1 event record: present, attributed, carrying the inherited
         // correlation, with no command outcome.
         var eventRecord = Assert.Single(records, record => record.Kind == EdictAuditKind.Event);
-        Assert.Equal(cursor.CorrelationId, eventRecord.CorrelationId);
+        Assert.Equal(cursor.ConversationId, eventRecord.ConversationId);
         Assert.Null(eventRecord.Outcome);
         Assert.Equal(typeof(CounterIncrementedEvent).FullName, eventRecord.MessageType);
 

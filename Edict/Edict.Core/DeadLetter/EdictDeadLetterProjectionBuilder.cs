@@ -42,7 +42,7 @@ internal sealed class EdictDeadLetterProjectionBuilder(IEdictTableStoreFactory s
             SourceEventType = raised.SourceEventType,
             SourceEventId = raised.SourceEventId,
             FailureKind = raised.FailureKind,
-            CorrelationId = raised.CorrelationId,
+            ConversationId = raised.ConversationId,
             Tenant = raised.Tenant,
         };
         return Task.CompletedTask;

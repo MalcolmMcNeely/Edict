@@ -31,7 +31,7 @@ static class AuditRecordCanonicalForm
         }
 
         WriteString(buffer, record.Principal?.Value);
-        WriteGuid(buffer, record.CorrelationId);
+        WriteGuid(buffer, record.ConversationId);
         WriteString(buffer, record.EntityType);
         WriteString(buffer, record.EntityKey);
         WriteString(buffer, record.MessageType);

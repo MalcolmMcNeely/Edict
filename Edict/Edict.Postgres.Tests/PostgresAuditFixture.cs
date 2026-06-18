@@ -37,8 +37,8 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAudi
     public Task<EdictAuditChainVerification> VerifyChainAsync(string entityType, string entityKey) =>
         Repository.VerifyEntityChainAsync(entityType, entityKey);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId) =>
-        Repository.ByCorrelationAsync(correlationId);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId) =>
+        Repository.ByConversationAsync(correlationId);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to) =>
         Repository.ByPrincipalAsync(principal, from, to);
@@ -50,10 +50,10 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAudi
         Store.AppendAsync(records, CancellationToken.None);
 
     public Task<IReadOnlyList<EdictAuditRecord>> OperatorByCorrelationAsync(Guid correlationId, EdictTenantId? tenant) =>
-        Repository.ByCorrelationAsync(correlationId, tenant);
+        Repository.ByConversationAsync(correlationId, tenant);
 
     public Task<IReadOnlyList<EdictAuditRecord>> TenantScopedByCorrelationAsync(Guid correlationId, EdictTenantId? ambientTenant) =>
-        new EdictTenantScopedAuditRepository(Repository, new FixedTenantResolver(ambientTenant)).ByCorrelationAsync(correlationId);
+        new EdictTenantScopedAuditRepository(Repository, new FixedTenantResolver(ambientTenant)).ByConversationAsync(correlationId);
 
     sealed class FixedTenantResolver(EdictTenantId? tenant) : IEdictTenantResolver
     {

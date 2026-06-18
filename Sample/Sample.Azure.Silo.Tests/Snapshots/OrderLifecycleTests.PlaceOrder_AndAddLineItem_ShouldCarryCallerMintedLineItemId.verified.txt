@@ -1,9 +1,9 @@
-﻿[
+[
   {
     Kind: Event,
     Type: LineItemAddedEvent,
     Data: {
-      CorrelationId: Guid_1,
+      ConversationId: Guid_1,
       LineItemId: Guid_2,
       OrderId: Guid_3,
       Principal: null,

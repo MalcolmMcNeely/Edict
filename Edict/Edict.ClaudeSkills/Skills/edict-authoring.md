@@ -63,7 +63,7 @@ foreach (var sku in command.Skus)
 Raise(new OrderSubmittedEvent(command.OrderId, command.Skus.Count * LineItemAmount));
 ```
 
-The full worked reference is `Sample.Domain/Orders/CommandHandlers/OrderCommandHandler.cs`. Weigh the shape against the read-your-writes guidance below: a correlation with several effects on one projection reports `CursorReached` on its *first* applied effect, not its last, so where exact read-your-writes matters, prefer one Event per Command.
+The full worked reference is `Sample.Domain/Orders/CommandHandlers/OrderCommandHandler.cs`. Weigh the shape against the read-your-writes guidance below: a conversation with several effects on one projection reports `CursorReached` on its *first* applied effect, not its last, so where exact read-your-writes matters, prefer one Event per Command.
 
 ## Authoring a Command Validator
 
@@ -329,9 +329,9 @@ if (result is EdictCommandResult.Accepted accepted)
 }
 ```
 
-The cursor names a framework-stamped correlation that propagates across the whole chain — a Command's raised Events and a Saga's dispatched Commands inherit it — so the cursor a Command returns reaches a projection effect that lands *downstream of a Saga*, not just the immediate write. You never author the correlation: keep returning `new EdictCommandResult.Accepted()` and the runtime stamps the cursor after the handler returns.
+The cursor names a framework-stamped conversation id that propagates across the whole chain — a Command's raised Events and a Saga's dispatched Commands inherit it — so the cursor a Command returns reaches a projection effect that lands *downstream of a Saga*, not just the immediate write. You never author the conversation id: keep returning `new EdictCommandResult.Accepted()` and the runtime stamps the cursor after the handler returns.
 
-`CursorReached` is **any-applied**: it means at least the correlation's first effect on this projection is visible, not that every effect has landed. Where exact read-your-writes matters, prefer one Event per Command, so the correlation has a single effect on the projection and "first applied" equals "fully applied". On a bounded-wait timeout the read returns `CursorTimedOut` with the latest available row — that is lag, not a fault, so never wrap a read in a `try`/`catch` expecting a stale-read exception. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely; an omitted timeout is always bounded (it falls back to `EdictOptions.ProjectionReadTimeout`, never to infinite).
+`CursorReached` is **any-applied**: it means at least the conversation's first effect on this projection is visible, not that every effect has landed. Where exact read-your-writes matters, prefer one Event per Command, so the conversation has a single effect on the projection and "first applied" equals "fully applied". On a bounded-wait timeout the read returns `CursorTimedOut` with the latest available row — that is lag, not a fault, so never wrap a read in a `try`/`catch` expecting a stale-read exception. Pass `Timeout.InfiniteTimeSpan` to wait indefinitely; an omitted timeout is always bounded (it falls back to `EdictOptions.ProjectionReadTimeout`, never to infinite).
 
 ## Attribution and the principal
 

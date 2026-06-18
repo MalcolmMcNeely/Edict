@@ -39,7 +39,7 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
                 command.Parameters.AddWithValue("entity_type", record.EntityType);
                 command.Parameters.AddWithValue("entity_key", record.EntityKey);
                 command.Parameters.AddWithValue("sequence", record.Sequence);
-                command.Parameters.AddWithValue("correlation_id", record.CorrelationId);
+                command.Parameters.AddWithValue("correlation_id", record.ConversationId);
                 command.Parameters.AddWithValue("principal", (object?)record.Principal?.Value ?? DBNull.Value);
                 command.Parameters.AddWithValue("tenant", (object?)record.Tenant?.Value ?? DBNull.Value);
                 command.Parameters.AddWithValue("kind", record.Kind.ToString());
@@ -91,7 +91,7 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
     // The chain is per-aggregate, so a correlation that fanned across grains has no
     // single sequence to follow; intent-time rebuilds the cross-grain order, with
     // entity and sequence as a stable tie-break when two records share a timestamp.
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         QueryAsync(
             $"SELECT record FROM {tableName} WHERE correlation_id = @correlation_id" + TenantPredicate(tenant)
             + " ORDER BY occurred_at, entity_type, entity_key, sequence;",
@@ -100,7 +100,7 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
                 parameters.AddWithValue("correlation_id", correlationId);
                 BindTenant(parameters, tenant);
             },
-            nameof(ByCorrelationAsync),
+            nameof(ByConversationAsync),
             cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>

@@ -30,7 +30,7 @@ static class AuditConformanceWaiters
         IReadOnlyList<EdictAuditRecord> records = [];
         await WaitUntilAsync(async () =>
         {
-            records = await fixture.ByCorrelationAsync(correlationId);
+            records = await fixture.ByConversationAsync(correlationId);
             return records.Count >= expectedCount;
         });
         Assert.True(records.Count >= expectedCount, $"Expected {expectedCount} audit records for correlation {correlationId}, saw {records.Count}.");

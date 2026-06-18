@@ -308,7 +308,7 @@ public static class SemanticConventions
         {
             /// <summary>Counter of audit records captured, partitioned by <see cref="Tags.Kind"/> and
             /// <see cref="Tags.Outcome"/>. The compliance "we recorded this decision" signal. No
-            /// principal, correlation, or grain key — those are unbounded and live on spans only.</summary>
+            /// principal, conversation, or grain key — those are unbounded and live on spans only.</summary>
             public const string RecordsCaptured = "edict.audit.records.captured";
 
             /// <summary>Counter of audit-drain failures: a batch of captured records that could not be

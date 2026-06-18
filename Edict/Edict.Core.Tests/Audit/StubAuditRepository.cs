@@ -16,7 +16,7 @@ sealed class StubAuditRepository(IReadOnlyList<EdictAuditRecord> records) : IEdi
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
         Echo(tenant);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
         Echo(tenant);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>

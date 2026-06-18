@@ -83,12 +83,12 @@ public sealed record EdictDeadLetterEntry : IEdictPersistedState
     public EdictDeadLetterFailureKind FailureKind { get; init; } = EdictDeadLetterFailureKind.EffectFailure;
 
     /// <summary>
-    /// Chain-stable correlation id of the conversation whose effect failed,
+    /// Chain-stable conversation id of the conversation whose effect failed,
     /// recovered from the failing event or command payload. Lets an operator
     /// group a dead-letter with the whole chain that caused it; <c>Guid.Empty</c>
     /// when the failing effect carried no payload to recover one from.
     /// </summary>
-    public Guid CorrelationId { get; init; }
+    public Guid ConversationId { get; init; }
 
     /// <summary>
     /// The tenant wall of the source aggregate whose Outbox produced the failed

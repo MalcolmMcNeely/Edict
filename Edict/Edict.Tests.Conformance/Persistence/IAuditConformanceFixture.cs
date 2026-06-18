@@ -24,7 +24,7 @@ public interface IAuditConformanceFixture
 
     Task<EdictAuditChainVerification> VerifyChainAsync(string entityType, string entityKey);
 
-    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId);
+    Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId);
 
     Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to);
 

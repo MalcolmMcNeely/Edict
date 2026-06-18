@@ -27,7 +27,7 @@ Attribution **fails closed at the origin**: when auditing is on and a consumer o
 
 Tamper-evidence is a **per-aggregate** hash chain, never a global one. A single global chain would need one sequencer grain serialising the whole fleet — exactly the bottleneck Orleans warns against. Instead each Command Handler grain chains its own records: a `PreviousHash` carried in grain state and a `RecordHash` computed over a frozen, framework-defined canonical encoding re-derived from the record's fields (deliberately not the stored MessagePack bytes), sealing each record's content and linking it to its predecessor. The first record in an aggregate's chain links to a genesis hash (32 zero bytes); each `Sequence` is monotonic within that aggregate, starting at zero.
 
-This proves "show me this aggregate's unaltered history" — the question regulators actually ask. Global cross-aggregate order is reconstructed at *query time* from `CorrelationId` and `OccurredAt`, not from a global chain. Hashing that re-derived canonical encoding rather than the stored bytes is what makes verification immune to a serializer version bump: a serialization version change alters the stored bytes but not the canonical form the hash is computed over.
+This proves "show me this aggregate's unaltered history" — the question regulators actually ask. Global cross-aggregate order is reconstructed at *query time* from `ConversationId` and `OccurredAt`, not from a global chain. Hashing that re-derived canonical encoding rather than the stored bytes is what makes verification immune to a serializer version bump: a serialization version change alters the stored bytes but not the canonical form the hash is computed over.
 
 `VerifyEntityChainAsync` re-walks a stored chain and returns an `EdictAuditChainVerification` (`IsIntact`, and `BrokenAtSequence` naming the first altered record). To verify a chain already held in memory — a deliberately altered copy, since a WORM store refuses an in-place edit — call the pure `EdictAuditChain.Verify(records)`.
 
@@ -36,20 +36,20 @@ This proves "show me this aggregate's unaltered history" — the question regula
 Read the captured log through `IEdictAuditRepository`:
 
 - `ByEntityAsync(entityType, entityKey)` — one aggregate's full chain, in sequence (also a time-windowed overload).
-- `ByCorrelationAsync(correlationId)` — every decision one command set in motion, across grains, ordered by intent-time (`OccurredAt`). This is where the cross-aggregate chain reassembles.
+- `ByConversationAsync(conversationId)` — every decision one command set in motion, across grains, ordered by intent-time (`OccurredAt`). This is where the cross-aggregate chain reassembles.
 - `ByPrincipalAsync(principal, from, to)` — one actor's timeline over a window.
 - `VerifyEntityChainAsync(entityType, entityKey)` — the tamper verdict.
 - `GetPayloadAsync(recordId)` — the captured message body as raw bytes.
 - `GetMessageAsync(record)` — the same body deserialized back to the typed `EdictCommand`/`EdictEvent`.
 
-The record (`EdictAuditRecord`) holds attribution, spine, and outcome but **not** the body: `Principal`, `CorrelationId`, `EntityType`/`EntityKey`, `MessageType`, `Kind` (`Command`/`Event`), `Outcome` (`Accepted`/`Rejected`, with `RejectionReasons` on a rejected command), `OccurredAt`, `Sequence`, the chain hashes, and a `PayloadHash`. The body lives in a separate `IEdictAuditPayloadStore`, keyed by record id and distinct from the claim-check store. Inlining the body into the immutable chain was rejected: it welds permanent personal data to the tamper-evident structure and could never be shredded later without breaking the chain. Keeping the chain to a hash leaves it personal-data-free and keeps the door open for the deferred crypto-shred.
+The record (`EdictAuditRecord`) holds attribution, spine, and outcome but **not** the body: `Principal`, `ConversationId`, `EntityType`/`EntityKey`, `MessageType`, `Kind` (`Command`/`Event`), `Outcome` (`Accepted`/`Rejected`, with `RejectionReasons` on a rejected command), `OccurredAt`, `Sequence`, the chain hashes, and a `PayloadHash`. The body lives in a separate `IEdictAuditPayloadStore`, keyed by record id and distinct from the claim-check store. Inlining the body into the immutable chain was rejected: it welds permanent personal data to the tamper-evident structure and could never be shredded later without breaking the chain. Keeping the chain to a hash leaves it personal-data-free and keeps the door open for the deferred crypto-shred.
 
 ## Reading a captured body
 
 Two reads recover *what* a record decided, not merely that it decided, and the distinction between them is load-bearing:
 
 - **`GetPayloadAsync(recordId)`** returns the captured body as the raw serialized bytes — the exact bytes the record's `PayloadHash` was computed over. This is the **integrity anchor**: it needs no live type, never goes stale, and is what you verify content against.
-- **`GetMessageAsync(record)`** is the convenience over it: it deserializes those bytes back into the concrete `EdictCommand` or `EdictEvent` the consumer authored. It is boxed as `object` because a correlation drill-down (`ByCorrelationAsync`) walks records of types the caller does not know in advance — pattern-match the result against the types you own.
+- **`GetMessageAsync(record)`** is the convenience over it: it deserializes those bytes back into the concrete `EdictCommand` or `EdictEvent` the consumer authored. It is boxed as `object` because a conversation drill-down (`ByConversationAsync`) walks records of types the caller does not know in advance — pattern-match the result against the types you own.
 
 The typed read carries a **schema-stability obligation**. The audit log is infinite-retention, and a body is read back by deserializing it into its originating type, so turning auditing on makes every audited message type part of the permanent record's readable schema. Deleting, renaming, or breaking-changing an audited Command or Event — or its generated `[Alias]` — silently severs the typed read of every record already captured under that type. Treat audited message types as **append-only**: add fields, never remove or rename them. This is recorded discipline, not an enforced rule — an analyzer cannot know your retention intent.
 

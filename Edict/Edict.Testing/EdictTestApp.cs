@@ -69,7 +69,7 @@ public sealed class EdictTestApp : IAsyncDisposable
     /// <summary>
     /// The consumer read surface over the in-memory audit log: query the captured
     /// chain (<see cref="IEdictAuditRepository.ByEntityAsync(string, string, EdictTenantId?, CancellationToken)"/>,
-    /// <c>ByCorrelationAsync</c>, <c>ByPrincipalAsync</c>), verify it is unaltered
+    /// <c>ByConversationAsync</c>, <c>ByPrincipalAsync</c>), verify it is unaltered
     /// (<see cref="IEdictAuditRepository.VerifyEntityChainAsync"/>), and retrieve a
     /// captured body as bytes (<see cref="IEdictAuditRepository.GetPayloadAsync"/>)
     /// or as the typed message (<see cref="IEdictAuditRepository.GetMessageAsync"/>).

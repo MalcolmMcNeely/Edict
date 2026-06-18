@@ -124,7 +124,7 @@ public abstract class EdictListProjectionBuilder<TListProjection>(IEdictTableSto
 
         // Remember this event's correlation so the commit advances the
         // read-your-writes ring for it alongside the dedup-ring commit.
-        StashCorrelation(edictEvent.CorrelationId);
+        StashCorrelation(edictEvent.ConversationId);
 
         await handler(edictEvent);
 

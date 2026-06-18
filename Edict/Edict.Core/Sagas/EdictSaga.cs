@@ -376,7 +376,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         var command = buffer.Take();
         var effect = command is null
             ? null
-            : BuildSendCommandEntry(command with { CorrelationId = edictEvent.CorrelationId, Principal = PrincipalRelay.Current(), Tenant = TenantRelay.Current() });
+            : BuildSendCommandEntry(command with { ConversationId = edictEvent.ConversationId, Principal = PrincipalRelay.Current(), Tenant = TenantRelay.Current() });
 
         ReportSagaProgress();
 

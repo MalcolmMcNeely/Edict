@@ -1,11 +1,11 @@
-﻿{
+{
   CartTimeline: [
     {
       Kind: Command,
       Type: AddItemToCartCommand,
       Data: {
         CartId: Guid_1,
-        CorrelationId: Guid_Empty,
+        ConversationId: Guid_Empty,
         Principal: null,
         Sku: SKU-A,
         Tenant: null
@@ -16,7 +16,7 @@
       Type: AddItemToCartCommand,
       Data: {
         CartId: Guid_1,
-        CorrelationId: Guid_Empty,
+        ConversationId: Guid_Empty,
         Principal: null,
         Sku: SKU-B,
         Tenant: null
@@ -27,7 +27,7 @@
       Type: CheckoutCartCommand,
       Data: {
         CartId: Guid_1,
-        CorrelationId: Guid_Empty,
+        ConversationId: Guid_Empty,
         Principal: null,
         Tenant: null
       }
@@ -37,7 +37,7 @@
       Type: CartCheckedOutEvent,
       Data: {
         CartId: Guid_1,
-        CorrelationId: Guid_2,
+        ConversationId: Guid_2,
         ItemCount: 2,
         Principal: null,
         Skus: [

@@ -57,7 +57,7 @@ public abstract class ProjectionCursorReadScenarios<TFixture>
         var projection = _fixture.GrainFactory
             .GetGrain<IOrderListProjectionProbe>(orderId)
             .AsReference<IEdictProjectionBuilder>();
-        var read = await projection.EdictReadRowAsync(orderId.ToString(), cursor.CorrelationId, timeout: null);
+        var read = await projection.EdictReadRowAsync(orderId.ToString(), cursor.ConversationId, timeout: null);
 
         // Assert
         Assert.Equal(EdictReadStatus.CursorReached, read.Status);

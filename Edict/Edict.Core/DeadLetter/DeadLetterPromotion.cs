@@ -25,7 +25,7 @@ static class DeadLetterPromotion
         var effectTarget = $"{streamName}/{edictEvent.GetType().Name}";
         var payloadJson = JsonSerializer.Serialize(edictEvent, edictEvent.GetType());
         var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
-        return raised with { SourceEventId = edictEvent.EventId, CorrelationId = edictEvent.CorrelationId };
+        return raised with { SourceEventId = edictEvent.EventId, ConversationId = edictEvent.ConversationId };
     }
 
     public static EdictDeadLetterRaised Build(
@@ -41,7 +41,7 @@ static class DeadLetterPromotion
         var effectTarget = $"{targetGrainType}/{targetGrainKey}";
         var payloadJson = JsonSerializer.Serialize(command, command.GetType());
         var raised = Compose(entry, effectTarget, payloadJson, exception, sourceGrainKey, sourceGrainType, deadLetteredAt);
-        return raised with { CorrelationId = command.CorrelationId };
+        return raised with { ConversationId = command.ConversationId };
     }
 
     public static EdictDeadLetterRaised BuildForInvokeHandler(
@@ -61,7 +61,7 @@ static class DeadLetterPromotion
         {
             SourceEventType = edictEvent.GetType().FullName,
             SourceEventId = edictEvent.EventId,
-            CorrelationId = edictEvent.CorrelationId,
+            ConversationId = edictEvent.ConversationId,
         };
     }
 

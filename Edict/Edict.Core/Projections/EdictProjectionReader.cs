@@ -48,7 +48,7 @@ public sealed class EdictProjectionReader<TProjection> : IEdictProjectionReader<
         // a read addresses it through the one chokepoint rather than the bare Guid.
         var composedKey = EdictKeyComposer.Compose(null, key.ToString("N"));
         var grain = _grainFactory.GetGrain<IEdictProjectionBuilder>(composedKey, grainClassName);
-        var result = await grain.EdictReadAsync(after?.CorrelationId, timeout).ConfigureAwait(false);
+        var result = await grain.EdictReadAsync(after?.ConversationId, timeout).ConfigureAwait(false);
         return new EdictProjectionRead<TProjection>((TProjection?)result.Payload, result.Status);
     }
 }

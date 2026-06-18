@@ -42,13 +42,13 @@ public abstract class AuditCorrelationQueryScenarios<TFixture>
         // Act — placing the order raises an event the saga turns into a stock
         // reservation on a second aggregate, so one correlation spans two grains.
         var accepted = await _fixture.Sender.SendAsync(new AuditPlaceOrderCommand(orderId));
-        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.CorrelationId;
+        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.ConversationId;
 
         var records = await AuditConformanceWaiters.WaitForCorrelationRecordsAsync(_fixture, correlationId, expectedCount: 4);
 
         // Assert — four records, all on one correlation under one principal.
         Assert.Equal(4, records.Count);
-        Assert.All(records, record => Assert.Equal(correlationId, record.CorrelationId));
+        Assert.All(records, record => Assert.Equal(correlationId, record.ConversationId));
         Assert.All(records, record => Assert.Equal(_fixture.AuditPrincipal, record.Principal));
 
         // Returned in non-decreasing intent-time order.

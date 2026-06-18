@@ -210,7 +210,7 @@ public sealed class OutboxHostTests
         await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null, correlationId);
 
         var correlations = executor.Invocations
-            .Select(entry => Serializer.Deserialize<EdictEvent>(entry.Payload).CorrelationId)
+            .Select(entry => Serializer.Deserialize<EdictEvent>(entry.Payload).ConversationId)
             .ToArray();
         Assert.Equal([correlationId, correlationId], correlations);
     }

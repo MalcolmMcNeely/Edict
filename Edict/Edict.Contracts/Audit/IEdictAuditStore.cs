@@ -20,7 +20,7 @@ internal interface IEdictAuditStore
 
     Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken);
+    Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken);
 }

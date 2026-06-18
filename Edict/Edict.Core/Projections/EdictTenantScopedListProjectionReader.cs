@@ -54,7 +54,7 @@ public sealed class EdictTenantScopedListProjectionReader<TListProjection> : IEd
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(rowKey);
         var grain = ResolveGrain(rowKey);
-        var result = await grain.EdictReadRowAsync(rowKey, after?.CorrelationId, timeout).ConfigureAwait(false);
+        var result = await grain.EdictReadRowAsync(rowKey, after?.ConversationId, timeout).ConfigureAwait(false);
         return new EdictProjectionRead<TListProjection>((TListProjection?)result.Payload, result.Status);
     }
 
@@ -65,7 +65,7 @@ public sealed class EdictTenantScopedListProjectionReader<TListProjection> : IEd
     {
         cancellationToken.ThrowIfCancellationRequested();
         var grain = ResolveGrain(PartitionSentinelRouteKey);
-        var result = await grain.EdictReadPartitionAsync(after?.CorrelationId, timeout).ConfigureAwait(false);
+        var result = await grain.EdictReadPartitionAsync(after?.ConversationId, timeout).ConfigureAwait(false);
         return new EdictProjectionPartitionRead<TListProjection>(result.Payload.Cast<TListProjection>().ToList(), result.Status);
     }
 

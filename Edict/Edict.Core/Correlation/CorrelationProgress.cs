@@ -4,7 +4,7 @@ namespace Edict.Core.Correlation;
 
 /// <summary>
 /// The processed-correlation slot of the grain-state envelope: a bounded ring of
-/// the most recently processed <c>EdictEvent.CorrelationId</c>s, persisted so a
+/// the most recently processed <c>EdictEvent.ConversationId</c>s, persisted so a
 /// read-your-writes read survives a projection deactivate/reactivate. Shape
 /// mirrors the dedup ring (<c>Guid[]</c> + head + count); the ring advances on the
 /// same atomic write as the dedup-ring commit, so tracking processed correlations

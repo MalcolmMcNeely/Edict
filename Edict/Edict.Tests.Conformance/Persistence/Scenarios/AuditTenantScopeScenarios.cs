@@ -83,7 +83,7 @@ public abstract class AuditTenantScopeScenarios<TFixture>
         Kind = EdictAuditKind.Command,
         Tenant = tenant,
         Principal = EdictPrincipal.Of("auditor"),
-        CorrelationId = correlationId,
+        ConversationId = correlationId,
         EntityType = "OrderCommandHandler",
         EntityKey = entityKey,
         OccurredAt = Window.AddSeconds(sequence),

@@ -21,7 +21,7 @@ public sealed class EdictOptions
     public int IdempotencyWindowSize { get; set; } = 100;
 
     /// <summary>
-    /// Maximum number of distinct <c>EdictEvent.CorrelationId</c> values a
+    /// Maximum number of distinct <c>EdictEvent.ConversationId</c> values a
     /// Projection remembers for read-your-writes. Distinct from
     /// <see cref="IdempotencyWindowSize"/>: a Projection that never reads with a
     /// cursor pays nothing, and the two windows tune independently. A cursor for a

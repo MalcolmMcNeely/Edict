@@ -38,14 +38,14 @@ public abstract record EdictEvent
     public string? TraceState { get; init; }
 
     /// <summary>
-    /// Chain-stable correlation id inherited from the message that caused this
+    /// Chain-stable conversation id inherited from the message that caused this
     /// event. Framework-stamped as the event enters the outbox (from the handling
-    /// Command's correlation), distinct from the per-event <see cref="EventId"/>
+    /// Command's conversation id), distinct from the per-event <see cref="EventId"/>
     /// and from W3C trace context: it is constant across the whole conversation,
     /// so it survives a Saga hop where the EventId does not and is present even
     /// when no trace is sampled.
     /// </summary>
-    public Guid CorrelationId { get; init; }
+    public Guid ConversationId { get; init; }
 
     /// <summary>
     /// The actor on whose authority the causing Command was issued, inherited

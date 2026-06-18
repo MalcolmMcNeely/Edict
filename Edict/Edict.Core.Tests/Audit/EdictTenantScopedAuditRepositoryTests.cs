@@ -22,7 +22,7 @@ public sealed class EdictTenantScopedAuditRepositoryTests
         Kind = EdictAuditKind.Command,
         Tenant = tenant,
         Principal = EdictPrincipal.Of("alice"),
-        CorrelationId = new Guid("22222222-2222-2222-2222-222222222222"),
+        ConversationId = new Guid("22222222-2222-2222-2222-222222222222"),
         EntityType = "OrderCommandHandler",
         EntityKey = entityKey,
         OccurredAt = Window,
@@ -39,7 +39,7 @@ public sealed class EdictTenantScopedAuditRepositoryTests
         ]);
         var repository = ReaderFor(inner, EdictTenantId.Of("acme"));
 
-        var records = await repository.ByCorrelationAsync(new Guid("22222222-2222-2222-2222-222222222222"));
+        var records = await repository.ByConversationAsync(new Guid("22222222-2222-2222-2222-222222222222"));
 
         Assert.All(records, record => Assert.Equal(EdictTenantId.Of("acme"), record.Tenant));
         Assert.Single(records);
@@ -94,7 +94,7 @@ public sealed class EdictTenantScopedAuditRepositoryTests
         var repository = ReaderFor(new StubAuditRepository([]), tenant: null);
 
         await Assert.ThrowsAsync<EdictMissingTenantException>(
-            () => repository.ByCorrelationAsync(Guid.NewGuid()));
+            () => repository.ByConversationAsync(Guid.NewGuid()));
     }
 
     static EdictTenantScopedAuditRepository ReaderFor(IEdictAuditRepository inner, EdictTenantId? tenant) =>

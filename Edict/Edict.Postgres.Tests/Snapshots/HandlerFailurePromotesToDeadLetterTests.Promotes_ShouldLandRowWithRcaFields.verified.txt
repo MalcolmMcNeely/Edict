@@ -1,4 +1,4 @@
-﻿{
+{
   EntryId: {Scrubbed},
   Kind: PublishEvent,
   AttemptCount: 2,
@@ -11,5 +11,5 @@
   Reason: controllable publish failure (outbox conformance test),
   PayloadJson: {Scrubbed},
   SourceEventId: {Scrubbed},
-  CorrelationId: {Scrubbed}
+  ConversationId: {Scrubbed}
 }

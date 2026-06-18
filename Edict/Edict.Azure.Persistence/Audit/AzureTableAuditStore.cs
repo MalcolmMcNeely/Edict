@@ -82,7 +82,7 @@ sealed class AzureTableAuditStore : IEdictAuditStore
             var tenant = record.Tenant?.Value;
 
             await TryAddRowAsync(EntityPartition(record.EntityType, record.EntityKey), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
-            await TryAddRowAsync(CorrelationPartition(record.CorrelationId), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
+            await TryAddRowAsync(CorrelationPartition(record.ConversationId), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
             if (record.Principal is { } principal)
             {
                 await TryAddRowAsync(PrincipalPartition(principal), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
@@ -129,7 +129,7 @@ sealed class AzureTableAuditStore : IEdictAuditStore
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         var partition = CorrelationPartition(correlationId);
         return QueryAsync(

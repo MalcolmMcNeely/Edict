@@ -1,10 +1,10 @@
-﻿{
+{
   RecordId: Guid_1,
   Outcome: Accepted,
   Principal: {
     Value: alice
   },
-  CorrelationId: Guid_2,
+  ConversationId: Guid_2,
   EntityType: Sample.Domain.OrderCommandHandler,
   EntityKey: order-1,
   MessageType: Sample.Contracts.PlaceOrderCommand,

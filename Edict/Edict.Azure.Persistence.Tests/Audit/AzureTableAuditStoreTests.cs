@@ -53,7 +53,7 @@ public sealed class AzureTableAuditStoreTests
         {
             RecordId = Guid.NewGuid(),
             Kind = kind,
-            CorrelationId = correlationId,
+            ConversationId = correlationId,
             EntityType = entityType,
             EntityKey = entityKey,
             MessageType = "Msg",
@@ -105,11 +105,11 @@ public sealed class AzureTableAuditStoreTests
             CancellationToken.None);
 
         // Act
-        var read = await store.ByCorrelationAsync(correlationId, tenant: null, CancellationToken.None);
+        var read = await store.ByConversationAsync(correlationId, tenant: null, CancellationToken.None);
 
         // Assert — every record, ordered by intent-time.
         Assert.Equal(3, read.Count);
-        Assert.All(read, record => Assert.Equal(correlationId, record.CorrelationId));
+        Assert.All(read, record => Assert.Equal(correlationId, record.ConversationId));
         var occurredTimes = read.Select(record => record.OccurredAt).ToList();
         Assert.Equal(occurredTimes.OrderBy(time => time).ToList(), occurredTimes);
     }

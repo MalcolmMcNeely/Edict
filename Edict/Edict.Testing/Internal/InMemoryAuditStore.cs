@@ -46,10 +46,10 @@ sealed class InMemoryAuditStore : IEdictAuditStore
         return Task.FromResult(result);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         IReadOnlyList<EdictAuditRecord> result = _records.Values
-            .Where(record => record.CorrelationId == correlationId)
+            .Where(record => record.ConversationId == correlationId)
             .Where(record => InWall(record, tenant))
             .OrderBy(record => record.OccurredAt)
             .ThenBy(record => record.EntityType, StringComparer.Ordinal)

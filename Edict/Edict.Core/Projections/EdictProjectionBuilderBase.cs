@@ -110,7 +110,7 @@ public abstract class EdictProjectionBuilderBase<TPayload> : EdictIdempotencyBas
     /// </summary>
     protected override async Task<EdictDispatchOutcome> DispatchEventAsync<TEvent>(TEvent edictEvent, Func<TEvent, Task> handler)
     {
-        StashCorrelation(edictEvent.CorrelationId);
+        StashCorrelation(edictEvent.ConversationId);
         await handler(edictEvent);
         return EdictDispatchOutcome.HandledWithNoEffect;
     }

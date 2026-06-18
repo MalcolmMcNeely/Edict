@@ -4,7 +4,7 @@ namespace Edict.Contracts.Audit;
 
 /// <summary>
 /// The consumer-facing read surface over the audit log. It reconstructs a whole
-/// decision chain across grains (<see cref="ByCorrelationAsync"/>), a principal's
+/// decision chain across grains (<see cref="ByConversationAsync"/>), a principal's
 /// timeline (<see cref="ByPrincipalAsync"/>), and one aggregate's history
 /// (<see cref="ByEntityAsync(string, string, CancellationToken)"/> for the full
 /// chain, or the time-ranged overload for a window); it verifies an aggregate's
@@ -32,13 +32,13 @@ public interface IEdictAuditRepository
     Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Every record a correlation touched, across every grain it reached,
+    /// Every record a conversation touched, across every grain it reached,
     /// reconstructed into one global order by <see cref="EdictAuditRecord.OccurredAt"/>
     /// (intent-time) so an auditor follows the transaction end to end. A non-null
     /// <paramref name="tenant"/> narrows the result to that wall in the store; the
     /// default <see langword="null"/> returns the operator superset across every wall.
     /// </summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid conversationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Everything a principal did over a time range: every record attributed to
@@ -69,7 +69,7 @@ public interface IEdictAuditRepository
     /// <summary>
     /// The captured body behind <paramref name="record"/> deserialized back to the
     /// concrete <c>EdictCommand</c> or <c>EdictEvent</c> the consumer authored,
-    /// boxed because a correlation drill-down walks records of types the caller
+    /// boxed because a conversation drill-down walks records of types the caller
     /// does not know in advance: pattern-match the returned object against the
     /// types you own. Takes the already-fetched record (its
     /// <see cref="EdictAuditRecord.Kind"/> selects the base, its

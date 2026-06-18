@@ -26,11 +26,11 @@ public interface IEdictTenantScopedAuditRepository
     Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The caller's own slice of a correlation: every record the correlation touched
-    /// that belongs to the ambient tenant, ordered by intent-time. A correlation that
+    /// The caller's own slice of a conversation: every record the conversation touched
+    /// that belongs to the ambient tenant, ordered by intent-time. A conversation that
     /// crossed walls returns only this tenant's part.
     /// </summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(Guid conversationId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// A principal's activity within the caller's tenant over <c>[from, to)</c>

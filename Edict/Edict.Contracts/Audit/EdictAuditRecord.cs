@@ -11,7 +11,7 @@ namespace Edict.Contracts.Audit;
 /// the only choke point that sees a rejection; each raised Event is captured at E1
 /// (the outbox enqueue point where its <c>EventId</c> is minted), one record per
 /// event. The record holds the attribution
-/// (<see cref="Principal"/>), the causal spine (<see cref="CorrelationId"/>,
+/// (<see cref="Principal"/>), the causal spine (<see cref="ConversationId"/>,
 /// <see cref="RecordId"/>), the message type identity, the outcome, and a
 /// <see cref="PayloadHash"/> of the body — never the body inline; the body is
 /// fetched from a separate payload store by <see cref="RecordId"/>. It is made
@@ -42,8 +42,8 @@ public sealed record EdictAuditRecord
     /// <summary>The tenant whose data the captured decision belongs to, sibling to <see cref="Principal"/>; <see langword="null"/> for a public (tenant-less) decision.</summary>
     public EdictTenantId? Tenant { get; init; }
 
-    /// <summary>Chain-stable correlation id of the conversation the captured decision belongs to.</summary>
-    public Guid CorrelationId { get; init; }
+    /// <summary>Chain-stable conversation id of the conversation the captured decision belongs to.</summary>
+    public Guid ConversationId { get; init; }
 
     /// <summary>Full type name of the aggregate grain whose decision this is — the entity the chain belongs to.</summary>
     public string EntityType { get; init; } = string.Empty;

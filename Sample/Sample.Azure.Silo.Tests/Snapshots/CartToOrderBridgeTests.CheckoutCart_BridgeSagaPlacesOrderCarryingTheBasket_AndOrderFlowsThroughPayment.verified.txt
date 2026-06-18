@@ -1,9 +1,9 @@
-﻿{
+{
   Placement: {
     Kind: Command,
     Type: PlaceOrderFromCartCommand,
     Data: {
-      CorrelationId: Guid_1,
+      ConversationId: Guid_1,
       OrderId: Guid_2,
       Principal: null,
       Skus: [

@@ -334,7 +334,7 @@
         await Sender.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "WIDGET", 1), principal);
         var submit = await Sender.SendAsync(new SubmitOrderCommand(orderId, 100m), principal);
 
-        _correlationId = submit is EdictCommandResult.Accepted accepted ? accepted.Cursor.CorrelationId : null;
+        _correlationId = submit is EdictCommandResult.Accepted accepted ? accepted.Cursor.ConversationId : null;
         _entityKey = orderId.ToString("N");
         _message = $"Drove an accepted order as {principal.Value}: the submit correlation spans the order and payment grains.";
         ResetPayload();
@@ -374,7 +374,7 @@
         try
         {
             _records = _correlationId is { } correlation && correlation != Guid.Empty
-                ? await Audit.ByCorrelationAsync(correlation)
+                ? await Audit.ByConversationAsync(correlation)
                 : await Audit.ByEntityAsync(OrderEntityType, entityKey);
             _entityChain = await Audit.ByEntityAsync(OrderEntityType, entityKey);
             _verification = await Audit.VerifyEntityChainAsync(OrderEntityType, entityKey);

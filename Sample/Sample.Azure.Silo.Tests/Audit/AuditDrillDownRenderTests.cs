@@ -92,10 +92,10 @@ public sealed class AuditDrillDownRenderTests
         await app.SendAsync(new PlaceOrderCommand(orderId, "AUDIT-DEMO"));
         await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "WIDGET", 1));
         var submit = await app.SendAsync(new SubmitOrderCommand(orderId, 100m));
-        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(submit).Cursor.CorrelationId;
+        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(submit).Cursor.ConversationId;
         await app.Drain();
 
-        var records = await app.Audit.ByCorrelationAsync(correlationId);
+        var records = await app.Audit.ByConversationAsync(correlationId);
 
         // Assert — every record on the chain decodes to a Sample message the drill-down
         // pattern-matches: none falls through to the bare type-name fallback. The failure

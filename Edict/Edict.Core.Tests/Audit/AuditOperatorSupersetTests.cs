@@ -26,7 +26,7 @@ public sealed class AuditOperatorSupersetTests
         RecordId = Guid.NewGuid(),
         Kind = EdictAuditKind.Command,
         Tenant = tenant,
-        CorrelationId = Correlation,
+        ConversationId = Correlation,
         EntityType = "OrderCommandHandler",
         EntityKey = entityKey,
         OccurredAt = Window.AddSeconds(sequence),
@@ -48,7 +48,7 @@ public sealed class AuditOperatorSupersetTests
         var repository = OperatorRepositoryOver(store);
 
         // Act — the operator read returns the whole superset, unfiltered.
-        var records = await repository.ByCorrelationAsync(Correlation);
+        var records = await repository.ByConversationAsync(Correlation);
 
         // Assert — every tenant is present, and the Public record is the one whose
         // tenant is null, so an operator distinguishes Public from Tenant on the record.
@@ -73,7 +73,7 @@ public sealed class AuditOperatorSupersetTests
         var repository = OperatorRepositoryOver(store);
 
         // Act — an operator narrows the same query to one wall via the tenant filter.
-        var records = await repository.ByCorrelationAsync(Correlation, EdictTenantId.Of("acme"));
+        var records = await repository.ByConversationAsync(Correlation, EdictTenantId.Of("acme"));
 
         // Assert — only the acme wall's record comes back; the predicate, not the
         // caller, dropped the other tenant and the public record.

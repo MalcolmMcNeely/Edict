@@ -65,13 +65,13 @@ public sealed class AuditQueryScenariosTests
         await app.SendAsync(new PlaceOrderCommand(orderId, "REF-011"));
         await app.SendAsync(new AddLineItemCommand(orderId, Guid.NewGuid(), "WIDGET", 1));
         var submit = await app.SendAsync(new SubmitOrderCommand(orderId, 100m));
-        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(submit).Cursor.CorrelationId;
+        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(submit).Cursor.ConversationId;
         await app.Drain();
 
         // Assert — every record on the correlation, across more than one grain,
         // attributed to the same actor and returned in non-decreasing intent-time order.
-        var records = await app.Audit.ByCorrelationAsync(correlationId);
-        Assert.All(records, record => Assert.Equal(correlationId, record.CorrelationId));
+        var records = await app.Audit.ByConversationAsync(correlationId);
+        Assert.All(records, record => Assert.Equal(correlationId, record.ConversationId));
         Assert.All(records, record => Assert.Equal(operatorPrincipal, record.Principal));
 
         var entityTypes = records.Select(record => record.EntityType).Distinct().ToList();

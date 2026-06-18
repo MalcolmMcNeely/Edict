@@ -79,7 +79,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         Assert.All(eventRecords, record =>
         {
             Assert.Equal(AuditCaptureClusterFixture.CapturePrincipal, record.Principal);
-            Assert.Equal(cursor.CorrelationId, record.CorrelationId);
+            Assert.Equal(cursor.ConversationId, record.ConversationId);
             Assert.Null(record.Outcome);
             Assert.Equal(typeof(CounterIncrementedEvent).FullName, record.MessageType);
         });

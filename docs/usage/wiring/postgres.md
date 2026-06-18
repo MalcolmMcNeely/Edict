@@ -73,7 +73,7 @@ builder.Services.AddEdictPostgresAuditReader(o =>
     o.ConnectionString = builder.Configuration.GetConnectionString("appdb")!);
 ```
 
-The page or service then injects `IEdictAuditRepository` and queries by entity, correlation, or principal, verifies a stored chain with `VerifyEntityChainAsync`, and fetches a captured body with `GetPayloadAsync`. To verify a chain already held in memory — for example a deliberately altered copy, since the WORM store refuses an in-place edit — call the pure `EdictAuditChain.Verify(records)`; it reports the first record whose hash or linkage fails.
+The page or service then injects `IEdictAuditRepository` and queries by entity, conversation, or principal, verifies a stored chain with `VerifyEntityChainAsync`, and fetches a captured body with `GetPayloadAsync`. To verify a chain already held in memory — for example a deliberately altered copy, since the WORM store refuses an in-place edit — call the pure `EdictAuditChain.Verify(records)`; it reports the first record whose hash or linkage fails.
 
 ## Configuration
 

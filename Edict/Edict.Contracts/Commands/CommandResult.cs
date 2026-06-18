@@ -23,7 +23,7 @@ public abstract record EdictCommandResult
     /// consumer feeds it to a read-your-writes Projection read. The cursor is
     /// stamped by the runtime after the handler returns, so a consumer handler
     /// keeps writing <c>new EdictCommandResult.Accepted()</c> and never threads
-    /// the correlation by hand.
+    /// the conversation id by hand.
     /// </summary>
     /// <param name="Cursor">The read-your-writes cursor for this command's chain.</param>
     [MessagePackObject(keyAsPropertyName: true)]

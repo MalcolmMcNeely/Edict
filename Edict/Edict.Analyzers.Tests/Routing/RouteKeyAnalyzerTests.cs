@@ -43,12 +43,12 @@ public class RouteKeyAnalyzerTests
             using System;
             using Edict.Contracts.Commands;
             namespace Sample;
-            public sealed record PlaceOrder(Guid OrderId, Guid CorrelationId) : EdictCommand
+            public sealed record PlaceOrder(Guid OrderId, Guid ConversationId) : EdictCommand
             {
                 [EdictRouteKey]
                 public Guid OrderId { get; init; } = OrderId;
                 [EdictRouteKey]
-                public Guid CorrelationId { get; init; } = CorrelationId;
+                public Guid ConversationId { get; init; } = ConversationId;
             }
             """;
 

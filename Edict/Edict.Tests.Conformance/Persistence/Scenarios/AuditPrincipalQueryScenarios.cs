@@ -34,7 +34,7 @@ public abstract class AuditPrincipalQueryScenarios<TFixture>
 
         // Act
         var accepted = await _fixture.Sender.SendAsync(new AuditPlaceOrderCommand(orderId));
-        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.CorrelationId;
+        var correlationId = Assert.IsType<EdictCommandResult.Accepted>(accepted).Cursor.ConversationId;
         await AuditConformanceWaiters.WaitForCorrelationRecordsAsync(_fixture, correlationId, expectedCount: 4);
         var after = DateTimeOffset.UtcNow;
 
@@ -43,7 +43,7 @@ public abstract class AuditPrincipalQueryScenarios<TFixture>
         var withinWindow = await _fixture.ByPrincipalAsync(_fixture.AuditPrincipal, before, after);
         Assert.Equal(4, withinWindow.Count);
         Assert.All(withinWindow, record => Assert.Equal(_fixture.AuditPrincipal, record.Principal));
-        Assert.All(withinWindow, record => Assert.Equal(correlationId, record.CorrelationId));
+        Assert.All(withinWindow, record => Assert.Equal(correlationId, record.ConversationId));
 
         var occurredTimes = withinWindow.Select(record => record.OccurredAt).ToList();
         Assert.Equal(occurredTimes.OrderBy(time => time).ToList(), occurredTimes);
@@ -51,6 +51,6 @@ public abstract class AuditPrincipalQueryScenarios<TFixture>
         // A window that opens after the transaction excludes its records, so the
         // lower bound is honoured and the range is not the whole store.
         var afterWindow = await _fixture.ByPrincipalAsync(_fixture.AuditPrincipal, after, after.AddMinutes(1));
-        Assert.DoesNotContain(afterWindow, record => record.CorrelationId == correlationId);
+        Assert.DoesNotContain(afterWindow, record => record.ConversationId == correlationId);
     }
 }

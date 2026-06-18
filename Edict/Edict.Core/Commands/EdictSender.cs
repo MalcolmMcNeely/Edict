@@ -208,5 +208,5 @@ public sealed class EdictSender : IEdictSender
     // minted command is what dispatches, so the correlation is present when the
     // handler runs and propagates onto every event it raises.
     static TCommand EnsureCorrelation<TCommand>(TCommand command) where TCommand : EdictCommand =>
-        command.CorrelationId == Guid.Empty ? command with { CorrelationId = Guid.NewGuid() } : command;
+        command.ConversationId == Guid.Empty ? command with { ConversationId = Guid.NewGuid() } : command;
 }

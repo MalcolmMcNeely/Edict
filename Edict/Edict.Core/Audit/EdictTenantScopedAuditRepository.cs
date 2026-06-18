@@ -21,11 +21,11 @@ sealed class EdictTenantScopedAuditRepository(IEdictAuditRepository inner, IEdic
         return ScopeToTenant(records, tenant);
     }
 
-    public async Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(
+    public async Task<IReadOnlyList<EdictAuditRecord>> ByConversationAsync(
         Guid correlationId, CancellationToken cancellationToken = default)
     {
         var tenant = AmbientTenant();
-        var records = await inner.ByCorrelationAsync(correlationId, tenant, cancellationToken).ConfigureAwait(false);
+        var records = await inner.ByConversationAsync(correlationId, tenant, cancellationToken).ConfigureAwait(false);
         return ScopeToTenant(records, tenant);
     }
 
