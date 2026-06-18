@@ -69,6 +69,16 @@ builder.Services.AddEdict();
 
 `EdictKafkaAdapterFactory` resolves `EdictKafkaStreamsOptions` as a DI singleton instance directly, **not** through `IOptionsMonitor<EdictKafkaStreamsOptions>`. Orleans' named-options path (the shape most stream providers wire through) silently drops the dictionary fields — `PartitionCountByStream`, `ProducerConfigOverrides`, `ConsumerConfigOverrides` — and any other reference-type field set after construction. The mapper would then never see the per-stream overrides, and a hot stream's partition count would silently fall back to the fleet-wide `PartitionCount` without a wiring-time error. The singleton-resolution path is the one safe form; do not refactor it to `IOptionsMonitor` when forking this extension.
 
+### `AutoOffsetReset` on an ephemeral broker drops read-your-writes
+
+`AutoOffsetReset` controls only one moment: where a consumer-group member starts when the group has *no committed offset* — a fresh group, or one whose offsets the broker has discarded. It never re-runs once the group has committed. So the choice only bites against a broker that keeps handing you a clean slate.
+
+`Latest` is the production-safe default and the framework default. On a long-lived silo against a durable broker, a group that has lost its committed offset resumes at the live end of the topic rather than replaying history from the beginning — the right behaviour when the alternative is re-processing every event ever published.
+
+`Earliest` is for an ephemeral or dev broker that is recreated per run — the shape the sample's AppHost produces. There the consumer group joins every run with no committed offset, so `AutoOffsetReset` always fires. Under `Latest` the group establishes its position at the live end, *after* events that landed in the join window. Those early events — a checkout's first saga hop, for instance — are silently skipped: no error, no dead-letter, just a position past them. A read-your-writes cursor that depends on one of the skipped events then never converges, and the read falls through to its timeout path. `Earliest` replays from the start of the freshly created topic, so nothing in the join window is missed.
+
+State which environment you are wiring: a durable, long-lived broker wants `Latest`; a per-run ephemeral broker wants `Earliest`. (This is consumer wiring guidance — the framework default stays `Latest`.)
+
 ## See also
 
 - `CONTEXT.md` — [Language](../../../CONTEXT.md#language): `Domain Stream`, `Event`, `Outbox`.
