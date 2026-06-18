@@ -4,9 +4,6 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
         <PackageReference Include="Verify.Xunit" />
-        <!-- For the EDICT018 packaging integration test below: load the analyzer
-             in-process and run it against a consumer-shaped source. -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.3.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -22,10 +19,6 @@
         <!-- For OrleansReadyHealthCheck + OrleansReadyGate; the sample-side cross-cutting
              helpers live in ServiceDefaults so both silos and Web can wire them. -->
         <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
-        <!-- For the analyzer-packaging integration test (HandleMustBeHandleAsyncAnalyzerPackagingTests).
-             ReferenceOutputAssembly=true so the test can directly instantiate the
-             analyzer and assert it fires on consumer-shaped source. -->
-        <ProjectReference Include="../../Edict/Edict.Analyzers/Edict.Analyzers.csproj" ReferenceOutputAssembly="true" />
     </ItemGroup>
 
 </Project>
