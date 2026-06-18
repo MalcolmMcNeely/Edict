@@ -26,6 +26,12 @@ internal static class CommandRouteRegistrarEmitter
                 // of whichever tenant a hop happened to carry.
                 var tenantArgument = command.IsTenantScoped ? "command.Tenant" : "null";
 
+                // Surface the same static fact on the descriptor so the resolver send
+                // path can refuse a tenant-scoped target carrying a null tenant before
+                // composing a bare key. Omitted for a public route — the param defaults
+                // to false.
+                var tenantScopedArgument = command.IsTenantScoped ? ", TenantScoped: true" : "";
+
                 if (command.TelemeterizedProperties.IsEmpty)
                 {
                     entries.Append("            routes[typeof(")
@@ -43,7 +49,9 @@ internal static class CommandRouteRegistrarEmitter
                         .Append(")command).")
                         .Append(command.RouteKeyProperty)
                         .Append(command.RouteKeyStringification)
-                        .Append("));\n");
+                        .Append(")")
+                        .Append(tenantScopedArgument)
+                        .Append(");\n");
                 }
                 else
                 {
@@ -69,7 +77,9 @@ internal static class CommandRouteRegistrarEmitter
                         .Append("                {\n")
                         .Append("                    var typedCommand = (").Append(command.Fqn).Append(")command;\n")
                         .Append(tagLines)
-                        .Append("                });\n");
+                        .Append("                }")
+                        .Append(tenantScopedArgument)
+                        .Append(");\n");
                 }
             }
         }

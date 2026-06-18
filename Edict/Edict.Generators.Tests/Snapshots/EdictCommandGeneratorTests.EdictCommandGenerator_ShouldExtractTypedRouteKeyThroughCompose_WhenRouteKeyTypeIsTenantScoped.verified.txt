@@ -13,7 +13,7 @@ namespace Edict.Generated
             global::System.Collections.Generic.Dictionary<
                 global::System.Type, global::Edict.Core.Commands.CommandRoute> routes)
         {
-            routes[typeof(global::Sample.AddEmployee)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.AddEmployee), typeof(global::Sample.IEmployeeCommandHandler), "Sample.EmployeeCommandHandler", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((global::Sample.AddEmployee)command).EmployeeId.Value.ToString("N")));
+            routes[typeof(global::Sample.AddEmployee)] = new global::Edict.Core.Commands.CommandRoute(typeof(global::Sample.AddEmployee), typeof(global::Sample.IEmployeeCommandHandler), "Sample.EmployeeCommandHandler", command => global::Edict.Contracts.Routing.EdictKeyComposer.Compose(command.Tenant, ((global::Sample.AddEmployee)command).EmployeeId.Value.ToString("N")), TenantScoped: true);
         }
     }
 }

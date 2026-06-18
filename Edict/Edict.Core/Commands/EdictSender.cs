@@ -72,6 +72,16 @@ public sealed class EdictSender : IEdictSender
         }
 
         var route = _resolver.GetRoute(command);
+        // A relayed send (a saga Dispatch, an outbox SendCommand) is exempt from the
+        // origin stamper's fail-closed gate, so a tenant-scoped target reached without a
+        // tenant would otherwise compose a bare key and co-mingle its state in the shared
+        // default partition. Refuse it here, before composition: relayed, this propagates
+        // to the outbox catch and dead-letters; at an origin the stamper has already
+        // thrown, so this is the defence-in-depth backstop.
+        if (route.TenantScoped && command.Tenant is null)
+        {
+            throw new EdictMissingTenantException(command.GetType());
+        }
         var key = route.RouteKeySelector(command);
         var grain = _grainFactory.GetGrain<IEdictCommandHandler>(key, route.GrainClassName);
 
@@ -155,6 +165,13 @@ public sealed class EdictSender : IEdictSender
         // Seed the relay so the isolation filter on the target grain compares against
         // this send's tenant (and principal, together) rather than an empty slot.
         OriginIdentity.Seed(command.Principal, command.Tenant);
+        // A relayed send exempt from the origin stamper's fail-closed gate must not
+        // compose a bare key for a tenant-scoped target: refuse the tenant-less send
+        // here so it dead-letters rather than co-mingling state in the default partition.
+        if (tenantScoped && command.Tenant is null)
+        {
+            throw new EdictMissingTenantException(command.GetType());
+        }
         // Fold the tenant in after stamping, but only for a tenant-scoped aggregate:
         // the decision is static per route-key type, so a public command composes the
         // bare key even when a relayed tenant rides it.

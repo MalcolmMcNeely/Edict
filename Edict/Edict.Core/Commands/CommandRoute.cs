@@ -31,9 +31,18 @@ namespace Edict.Core.Commands;
 /// as OTEL tags on the active span. <see langword="null"/> when the command has
 /// no annotated primitive properties.
 /// </param>
+/// <param name="TenantScoped">
+/// Whether the route-key type carries <c>[EdictTenantScoped]</c>. A static fact of the
+/// route, computed by the generator. The send paths refuse a tenant-scoped target
+/// carrying a null tenant before composing a key, so a relayed send that lost its
+/// tenant dead-letters rather than co-mingling tenant state in the shared default
+/// partition. <see langword="false"/> for a public route, which composes a bare key
+/// even when a relayed tenant rides the message.
+/// </param>
 public sealed record CommandRoute(
     Type CommandType,
     Type GrainInterfaceType,
     string GrainClassName,
     Func<EdictCommand, string> RouteKeySelector,
-    Action<EdictCommand, Activity?>? TagWriter = null);
+    Action<EdictCommand, Activity?>? TagWriter = null,
+    bool TenantScoped = false);
