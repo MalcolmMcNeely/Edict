@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Edict.Contracts.Audit;
 using Edict.Contracts.Commands;
 using Edict.Contracts.Events;
@@ -5,6 +7,7 @@ using Edict.Contracts.Persistence;
 using Edict.Contracts.Tenancy;
 using Edict.Core.Commands;
 using Edict.Core.Sagas;
+using Edict.Telemetry;
 
 using Orleans;
 using Orleans.Runtime;
@@ -113,6 +116,19 @@ public sealed class SpanSagaEventPublisher : Grain, ISpanSagaEventPublisher
             .GetStream<EdictEvent>(StreamId.Create("SpanSagaWorkflow", this.GetPrimaryKey()));
         return stream.OnNextAsync(edictEvent);
     }
+}
+
+static class SpanWorkflowScoping
+{
+    // SpanCapture's ActivityListener is process-wide, so a collection running in
+    // parallel that drives these same workload types emits spans with identical
+    // operation names. Scope a lookup to this workflow by the route-key tag the
+    // edict.command and edict.command.handle spans carry, then thread the rest of
+    // the trace off that anchor — a name-only match would grab a foreign span.
+    public static bool BelongsToWorkflow(Activity activity, Guid workflowId) =>
+        activity.GetTagItem(SemanticConventions.Commands.Tags.RouteKey) is string routeKey
+        && Guid.TryParse(routeKey, out var key)
+        && key == workflowId;
 }
 
 static class SpanSagaWaiters

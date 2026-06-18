@@ -32,15 +32,22 @@ public sealed class SagaCommandSpanNestsUnderHandleSpanTests
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
+        // The edict.command span carries the route-key tag, so it anchors this
+        // workflow's trace unambiguously; the trigger handle and the send share that
+        // one trace the dispatch hop threads, so scope them to it rather than match
+        // by name alone (a parallel collection drives the same workload types).
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} SpanTrackerCommand"
+                && SpanWorkflowScoping.BelongsToWorkflow(activity, workflowId),
+            "command span for SpanTrackerCommand");
         var handleSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} SpanSagaTriggerEvent",
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} SpanSagaTriggerEvent"
+                && activity.TraceId == commandSpan.TraceId,
             "event handle span for SpanSagaTriggerEvent");
         var sendSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand",
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand"
+                && activity.TraceId == commandSpan.TraceId,
             "send span for SpanTrackerCommand");
-        var commandSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} SpanTrackerCommand",
-            "command span for SpanTrackerCommand");
 
         Assert.Equal(handleSpan.SpanId, sendSpan.ParentSpanId);
         Assert.Equal(handleSpan.TraceId, sendSpan.TraceId);

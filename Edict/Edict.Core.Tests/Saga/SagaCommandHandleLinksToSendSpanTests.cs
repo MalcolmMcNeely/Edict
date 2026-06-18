@@ -33,11 +33,22 @@ public sealed class SagaCommandHandleLinksToSendSpanTests
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
+        // Anchor on the route-key-tagged edict.command span to pin this workflow's
+        // saga-side trace, then scope the send to it; the command handle is the
+        // dispatched command's own new root, found by the same route-key tag. A
+        // name-only match would grab a foreign span from a parallel collection
+        // driving these same workload types.
+        var commandSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Command} SpanTrackerCommand"
+                && SpanWorkflowScoping.BelongsToWorkflow(activity, workflowId),
+            "command span for SpanTrackerCommand");
         var sendSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand",
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand"
+                && activity.TraceId == commandSpan.TraceId,
             "send span for SpanTrackerCommand");
         var handleSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} SpanTrackerCommand",
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} SpanTrackerCommand"
+                && SpanWorkflowScoping.BelongsToWorkflow(activity, workflowId),
             "command handle span for SpanTrackerCommand");
 
         // The dispatched command's turn is its own trace — it does not share the
@@ -64,11 +75,17 @@ public sealed class SagaCommandHandleLinksToSendSpanTests
             OccurredAt = DateTimeOffset.UtcNow,
         });
 
+        // Scope to this workflow via the route-key tag on the command handle, then
+        // thread the publish off the handle's own trace — the dispatched command is a
+        // new root, so its turn owns a distinct trace the raised-event publish nests
+        // under.
         var handleSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} SpanTrackerCommand",
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} SpanTrackerCommand"
+                && SpanWorkflowScoping.BelongsToWorkflow(activity, workflowId),
             "command handle span for SpanTrackerCommand");
         var publishSpan = await capture.WaitForSpanAsync(
-            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} SpanTrackerRaisedEvent",
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Publish} SpanTrackerRaisedEvent"
+                && activity.TraceId == handleSpan.TraceId,
             "publish span for SpanTrackerRaisedEvent");
 
         // An event the dispatched command raises belongs to its turn, not the saga's:
