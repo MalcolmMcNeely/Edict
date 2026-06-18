@@ -66,6 +66,7 @@ builder.Host.UseOrleans((context, silo) =>
         o.OutboxMaxAttempts         = 3;
         o.OutboxJitterFraction      = 0.2;
         o.OutboxDrainReminderPeriod = TimeSpan.FromMinutes(1);
+        o.ReminderRegistrationRetryCount = 3;
     },
     saga =>
     {

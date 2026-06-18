@@ -93,7 +93,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
     EdictOptions Options => _cachedOptions ??= ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
     EdictSagaOptions SagaOptions =>
         _cachedSagaOptions ??= ServiceProvider.GetService<IOptions<EdictSagaOptions>>()?.Value ?? new EdictSagaOptions();
-    IReminderRegistrar CapReminders => _capReminders ??= new GrainReminderRegistrar(this);
+    IReminderRegistrar CapReminders => _capReminders ??= new GrainReminderRegistrar(this, Options.ReminderRegistrationRetryCount);
     Serializer Serializer => _cachedSerializer ??= ServiceProvider.GetRequiredService<Serializer>();
     ScheduleHost<TProgress> ScheduleHost => _scheduleHost ??= BuildScheduleHost();
     IDeadLetterPromoter DeadLetterPromoter => _deadLetterPromoter ??= ServiceProvider.GetRequiredService<IDeadLetterPromoter>();
@@ -769,7 +769,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
                 get: () => base.State,
                 set: v => base.State = v,
                 writeState: WriteStateAsync),
-            new GrainReminderRegistrar(this),
+            new GrainReminderRegistrar(this, Options.ReminderRegistrationRetryCount),
             new GrainScheduleTimer(this),
             Clock,
             Options,

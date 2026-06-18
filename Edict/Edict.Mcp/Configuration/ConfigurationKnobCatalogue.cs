@@ -19,6 +19,7 @@ static class ConfigurationKnobCatalogue
             new("OutboxMaxAttempts", KnobRequirement.None),
             new("OutboxJitterFraction", KnobRequirement.None),
             new("OutboxDrainReminderPeriod", KnobRequirement.None),
+            new("ReminderRegistrationRetryCount", KnobRequirement.None),
         ]),
         new("EdictSagaOptions", "AddEdict",
         [

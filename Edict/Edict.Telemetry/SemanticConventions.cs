@@ -160,6 +160,48 @@ public static class SemanticConventions
         }
     }
 
+    public static class Reminders
+    {
+        public static class Tags
+        {
+            /// <summary>Which reminder operation a <see cref="Meters.RegistrationRetryCount"/> increment
+            /// covers: <see cref="OperationValues.Register"/> or <see cref="OperationValues.Unregister"/>.
+            /// The set is closed at compile time so the dimension stays bounded.</summary>
+            public const string Operation = "edict.reminder.operation";
+
+            /// <summary>The closed allowlist of values for <see cref="Operation"/>.</summary>
+            public static class OperationValues
+            {
+                public const string Register = "register";
+                public const string Unregister = "unregister";
+            }
+
+            /// <summary>How a reminder-registration cold-start retry resolved:
+            /// <see cref="OutcomeValues.Recovered"/> when it succeeded after at least one retry,
+            /// <see cref="OutcomeValues.Exhausted"/> when the budget ran out and the registrar threw.
+            /// The set is closed at compile time so the dimension stays bounded.</summary>
+            public const string Outcome = "edict.reminder.outcome";
+
+            /// <summary>The closed allowlist of values for <see cref="Outcome"/>.</summary>
+            public static class OutcomeValues
+            {
+                public const string Recovered = "recovered";
+                public const string Exhausted = "exhausted";
+            }
+        }
+
+        public static class Meters
+        {
+            /// <summary>Counter of reminder-registration cold-start retries that crossed a terminal
+            /// state, partitioned by <see cref="Tags.Operation"/> and <see cref="Tags.Outcome"/>.
+            /// Incremented once when a registration recovers after retrying and once when the budget
+            /// is exhausted — never per attempt. A rising <c>recovered</c> rate means silos are
+            /// arming reminders during the reminder-service cold-start window; any <c>exhausted</c>
+            /// increment is a hard, silo-wide reminder outage — alert on it.</summary>
+            public const string RegistrationRetryCount = "edict.reminder.registration.retry.count";
+        }
+    }
+
     public static class Sagas
     {
         public static class Spans

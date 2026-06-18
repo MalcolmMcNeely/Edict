@@ -25,6 +25,7 @@ silo.AddEdict(
 | `OutboxDrainReminderPeriod` | `1 min` | Period of the lazy outbox drain reminder. Orleans' reminder floor is one minute; a value below that throws at startup. |
 | `CorrelationWindowSize` | `100` | Number of distinct `ConversationId` values a Projection remembers for read-your-writes. Distinct from `IdempotencyWindowSize`, so a Projection that never reads with a cursor pays nothing and the two windows tune independently. A cursor for a conversation that has aged out of this window degrades to a plain read. Must be at least 1. |
 | `ProjectionReadTimeout` | `2 s` | Bounded default a read-your-writes Projection read waits when the caller supplies a cursor but no explicit timeout. An omitted timeout falls back to this bound and never to an infinite wait; pass `Timeout.InfiniteTimeSpan` explicitly to wait indefinitely. Must be greater than zero, so the default can never be infinite. |
+| `ReminderRegistrationRetryCount` | `3` | Total attempts (one try plus retries) the reminder registrar makes when Orleans' reminder service is still initializing during silo cold-start. Every durability backstop — outbox drain, schedule reactivation, saga lifetime cap, audit drain — arms through the one registrar, which retries the transient "still initializing" fault and only fails loud once the budget is exhausted. Widen it for a cluster whose reminder service is slow to start. The common path (service already started) pays nothing. Must be at least 1. |
 
 ### Per-grain `WindowSize` override
 

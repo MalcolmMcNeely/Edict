@@ -702,16 +702,18 @@ public abstract class EdictCommandHandler<TState>
             });
     }
 
-    OutboxHost<TState> BuildHost() =>
-        new(
+    OutboxHost<TState> BuildHost()
+    {
+        var options = ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
+        return new(
             new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
                 get: () => base.State,
                 set: v => base.State = v,
                 writeState: WriteStateAsync),
             this.GetStreamProvider("edict"),
-            new GrainReminderRegistrar(this),
+            new GrainReminderRegistrar(this, options.ReminderRegistrationRetryCount),
             ServiceProvider.GetServices<IOutboxEffectExecutor>(),
-            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
+            options,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKeyString(),
@@ -719,32 +721,39 @@ public abstract class EdictCommandHandler<TState>
             claimCheckPolicy: ResolveClaimCheckPolicy(ServiceProvider),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
             requestDeactivation: DeactivateOnIdle);
+    }
 
-    ScheduleHost<TState> BuildScheduleHost() =>
-        new(
+    ScheduleHost<TState> BuildScheduleHost()
+    {
+        var options = ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
+        return new(
             new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
                 get: () => base.State,
                 set: v => base.State = v,
                 writeState: WriteStateAsync),
-            new GrainReminderRegistrar(this),
+            new GrainReminderRegistrar(this, options.ReminderRegistrationRetryCount),
             new GrainScheduleTimer(this),
             ServiceProvider.GetRequiredService<TimeProvider>(),
-            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
+            options,
             FireScheduleEntryAsync,
             FireScheduleTimeoutEntryAsync);
+    }
 
-    AuditHost<TState> BuildAuditHost() =>
-        new(
+    AuditHost<TState> BuildAuditHost()
+    {
+        var options = ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
+        return new(
             new GrainPersistentStateAdapter<GrainEnvelope<TState>>(
                 get: () => base.State,
                 set: v => base.State = v,
                 writeState: WriteStateAsync),
-            new GrainReminderRegistrar(this),
+            new GrainReminderRegistrar(this, options.ReminderRegistrationRetryCount),
             ServiceProvider.GetRequiredService<IEdictAuditStore>(),
             ServiceProvider.GetRequiredService<IEdictAuditPayloadStore>(),
             Serializer,
-            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value.OutboxDrainReminderPeriod,
+            options.OutboxDrainReminderPeriod,
             GetType().FullName ?? GetType().Name);
+    }
 
     static ClaimCheckPolicy ResolveClaimCheckPolicy(IServiceProvider serviceProvider) =>
         // AddEdictOutbox registers the default policy; pre-existing test

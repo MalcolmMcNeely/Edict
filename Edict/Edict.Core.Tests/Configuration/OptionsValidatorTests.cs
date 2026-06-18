@@ -126,6 +126,17 @@ public sealed class EdictOptionsValidatorTests
     }
 
     [Fact]
+    public Task Validate_ShouldReportFailure_WhenReminderRegistrationRetryCountBelowOne()
+    {
+        var failures = EdictOptionsValidator.Validate(new EdictOptions
+        {
+            ReminderRegistrationRetryCount = 0,
+        });
+
+        return Verify(failures);
+    }
+
+    [Fact]
     public Task Validate_ShouldReportEveryFailure_WhenMultipleValuesAreInvalid()
     {
         var failures = EdictOptionsValidator.Validate(new EdictOptions

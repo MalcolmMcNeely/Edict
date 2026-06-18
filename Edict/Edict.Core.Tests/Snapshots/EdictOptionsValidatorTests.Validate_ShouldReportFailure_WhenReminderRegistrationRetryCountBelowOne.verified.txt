@@ -1,0 +1,3 @@
+[
+  ReminderRegistrationRetryCount must be at least 1 (a count below one would disable the cold-start retry) but was 0.
+]

@@ -440,16 +440,18 @@ public abstract class EdictIdempotencyBase<TPayload>
     {
     }
 
-    OutboxHost<TPayload> BuildHost() =>
-        new(
+    OutboxHost<TPayload> BuildHost()
+    {
+        var options = ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value;
+        return new(
             new GrainPersistentStateAdapter<GrainEnvelope<TPayload>>(
                 get: () => base.State,
                 set: v => base.State = v,
                 writeState: WriteStateAsync),
             this.GetStreamProvider("edict"),
-            new GrainReminderRegistrar(this),
+            new GrainReminderRegistrar(this, options.ReminderRegistrationRetryCount),
             ServiceProvider.GetServices<IOutboxEffectExecutor>(),
-            ServiceProvider.GetRequiredService<IOptions<EdictOptions>>().Value,
+            options,
             ServiceProvider.GetRequiredService<TimeProvider>(),
             ServiceProvider.GetRequiredService<IDeadLetterPromoter>(),
             grainKey: this.GetPrimaryKeyString(),
@@ -458,6 +460,7 @@ public abstract class EdictIdempotencyBase<TPayload>
             consumerType: GetType(),
             metricsCache: ServiceProvider.GetService<IEdictMetricsCache>(),
             requestDeactivation: DeactivateOnIdle);
+    }
 }
 
 /// <summary>

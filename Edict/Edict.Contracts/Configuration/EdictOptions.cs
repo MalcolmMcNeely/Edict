@@ -65,4 +65,15 @@ public sealed class EdictOptions
     /// floor is one minute; values below that throw at startup.
     /// </summary>
     public TimeSpan OutboxDrainReminderPeriod { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Total attempts (one try plus retries) the reminder registrar makes when Orleans'
+    /// reminder service is still initializing during silo cold-start. The first reminder
+    /// armed by a durability backstop after a fresh activation can race that startup
+    /// window; the registrar retries the transient and only fails loud once the budget is
+    /// exhausted. Widen it for a cluster whose reminder service is slow to start. Values
+    /// below one are rejected at startup. The common path — service already started — pays
+    /// nothing: the first attempt returns with zero added latency.
+    /// </summary>
+    public int ReminderRegistrationRetryCount { get; set; } = 3;
 }

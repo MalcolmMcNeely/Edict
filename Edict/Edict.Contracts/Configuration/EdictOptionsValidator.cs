@@ -62,6 +62,13 @@ internal static class EdictOptionsValidator
                 $"falls back to this bound, so it can never be infinite) but was {options.ProjectionReadTimeout}.");
         }
 
+        if (options.ReminderRegistrationRetryCount < 1)
+        {
+            failures.Add(
+                $"{nameof(EdictOptions.ReminderRegistrationRetryCount)} must be at least 1 (a count below one would " +
+                $"disable the cold-start retry) but was {options.ReminderRegistrationRetryCount}.");
+        }
+
         return failures;
     }
 }

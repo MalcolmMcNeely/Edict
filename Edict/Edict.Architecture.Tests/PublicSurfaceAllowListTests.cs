@@ -380,6 +380,7 @@ public class PublicSurfaceAllowListTests
         "Edict.Core.Idempotency.IEdictEventConsumer",
         "Edict.Core.Idempotency.IdempotencyState", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Metrics.IEdictMetricsCache",
+        "Edict.Core.Outbox.EdictReminderRegistrationException", // [GenerateSerializer]: propagates grain→caller on the command paths, so it carries an Orleans codec.
         "Edict.Core.Outbox.GrainEnvelope`1", // ADR 0045: base chain of EdictCommandHandler<TState> / EdictIdempotencyBase<TPayload> — permanent resident (CS9338).
         "Edict.Core.Outbox.OutboxEffectKind", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
         "Edict.Core.Outbox.OutboxEntry", // ADR 0045: persisted-state slot on GrainEnvelope<TPayload> — permanent resident.
@@ -436,10 +437,12 @@ public class PublicSurfaceAllowListTests
         "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_29999D4E",
         "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_D6B10A4C",
         "OrleansCodeGen.Edict.Core.Projections.Invokable_IEdictProjectionBuilder_GrainReference_E9C0DEAA",
+        "OrleansCodeGen.Edict.Core.Outbox.Codec_EdictReminderRegistrationException",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_GrainEnvelope`1",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxEntry",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_OutboxSlice",
         "OrleansCodeGen.Edict.Core.Outbox.Codec_UpsertRowEffect",
+        "OrleansCodeGen.Edict.Core.Outbox.Copier_EdictReminderRegistrationException",
         "OrleansCodeGen.Edict.Core.Outbox.Copier_GrainEnvelope`1",
         "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxEntry",
         "OrleansCodeGen.Edict.Core.Outbox.Copier_OutboxSlice",
