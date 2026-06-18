@@ -91,7 +91,17 @@ builder.Host.UseOrleans((context, silo) =>
         // and a real production cluster (uses 3). Assigning explicitly
         // would flip into strict mode and throw on the dev container.
         o.Compression         = CompressionType.Lz4;
-        o.AutoOffsetReset     = AutoOffsetReset.Latest;
+        // The framework default is Latest — correct for a long-lived production
+        // silo, where it stops an accidentally lost offset from replaying the
+        // whole topic. The sample is the opposite environment: the AppHost spins
+        // up a fresh broker every run, so the consumer group always joins with no
+        // committed offset and AutoOffsetReset actually fires. Under Latest the
+        // first events — the bridge Saga's CartCheckedOut → Order hop — land
+        // before the consumer establishes its position and are silently skipped,
+        // so the read-your-writes cursor never converges. Earliest replays from
+        // the start of the (freshly created, near-empty) topic, so nothing in the
+        // join window is missed. This matches every test fixture.
+        o.AutoOffsetReset     = AutoOffsetReset.Earliest;
     });
 
     silo.AddEdictPostgresPersistence(o =>
