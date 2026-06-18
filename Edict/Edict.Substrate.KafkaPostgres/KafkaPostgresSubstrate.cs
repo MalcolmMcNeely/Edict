@@ -41,8 +41,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
     async Task<ISubstrateRuntime> StartOnceAsync(CancellationToken cancellationToken, SubstrateStartMode mode)
     {
-        var postgresContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        var postgresContainer = new PostgreSqlBuilder("postgres:17-alpine")
             // Postgres ships max_connections=100. The bench silo opens up to
             // EdictPostgresPersistenceOptions.MaxPoolSize=200 on its
             // dedicated DataSource, plus Orleans PubSubStore + Reminders each
@@ -54,7 +53,7 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             // ("silos × MaxPoolSize ≤ pg.max_connections").
             .WithCommand("-c", "max_connections=1024")
             .Build();
-        var kafkaContainer = new KafkaBuilder().Build();
+        var kafkaContainer = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         try
         {
             await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));

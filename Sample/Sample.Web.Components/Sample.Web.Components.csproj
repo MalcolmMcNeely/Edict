@@ -17,11 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Components and Components.Web ship in the Microsoft.AspNetCore.App
+             framework reference above; only the static-assets package is a
+             standalone reference the shared framework does not prune. -->
         <PackageReference Include="Microsoft.AspNetCore.App.Internal.Assets" />
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
-        <!-- Hub.razor injects IEdictSender; the Aspire AppHost's silo binds it.
-             The RCL just needs the contract types to compile. -->
-        <PackageReference Include="Microsoft.AspNetCore.Components" />
     </ItemGroup>
 
     <ItemGroup>

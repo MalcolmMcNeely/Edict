@@ -44,7 +44,7 @@ static class KafkaAssemblyHost
 
     static async Task<KafkaContainer> StartAsync()
     {
-        var container = new KafkaBuilder().Build();
+        var container = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         await container.StartAsync();
         // Testcontainers' Kafka wait strategy keys off an in-container log line,
         // so the container is reported ready while the broker is still settling

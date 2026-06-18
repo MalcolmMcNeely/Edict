@@ -41,8 +41,7 @@ public sealed class ResilienceClusterFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _azurite = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+        _azurite = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.35.0")
             .WithCreateParameterModifier(p =>
             {
                 p.Cmd ??= [];

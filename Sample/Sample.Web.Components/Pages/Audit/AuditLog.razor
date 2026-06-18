@@ -159,7 +159,7 @@
         <ConceptHeader Section="true" Title="Chain verification" Concept="Tamper-evident"
                        DocsHref="https://github.com/MalcolmMcNeely/Edict/blob/main/docs/adr/0064-alcoa-audit-log.md" />
         <div class="spotlight">
-            <div class="orders-outcome">Order grain chain: <strong>@VerificationLabel(_verification)</strong></div>
+            <div class="orders-outcome">Order grain chain: <strong>@(_verification is null ? "verifying…" : VerificationLabel(_verification))</strong></div>
             <label class="audit-toggle">
                 <input type="checkbox" @bind="_showTamper" />
                 Show tamper detection on an in-memory copy

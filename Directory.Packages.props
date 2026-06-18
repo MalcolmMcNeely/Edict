@@ -2,9 +2,15 @@
 
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <OrleansVersion>10.1.0</OrleansVersion>
-    <MicrosoftExtensionsRuntimeVersion>10.0.8</MicrosoftExtensionsRuntimeVersion>
   </PropertyGroup>
+
+  <!--
+    Version families are pinned in Directory.Build.props (imported first):
+    $(OrleansVersion), $(MicrosoftExtensionsRuntimeVersion), $(AspNetCoreVersion),
+    $(MicrosoftExtensionsLibrariesVersion), $(AspireVersion), $(OpenTelemetryVersion),
+    $(MessagePackVersion), $(TestcontainersVersion), $(FluentValidationVersion).
+    Bump a family there; everything below that reads the property moves together.
+  -->
 
   <!--
     Microsoft.CodeAnalysis.CSharp default is 5.0.0 — the floor for shipped
@@ -19,7 +25,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.3.0" />
   </ItemGroup>
 
-  <!-- Orleans 10.1.0 family — bump $(OrleansVersion) above to move all 14 packages together -->
+  <!-- Orleans family — bump $(OrleansVersion) in Directory.Build.props to move all 14 packages together -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.Orleans.Client" Version="$(OrleansVersion)" />
     <PackageVersion Include="Microsoft.Orleans.Core" Version="$(OrleansVersion)" />
@@ -38,11 +44,10 @@
   </ItemGroup>
 
   <!--
-    Microsoft.Extensions runtime 10.0.8 family — bump
-    $(MicrosoftExtensionsRuntimeVersion) above to move all five together.
-    Microsoft.Extensions.TimeProvider.Testing, .Http.Resilience, and
-    .ServiceDiscovery track their own version lines (10.6.0) and stay
-    Shape A literals below.
+    Microsoft.Extensions runtime family (dotnet/runtime servicing line) — bump
+    $(MicrosoftExtensionsRuntimeVersion). The dotnet/extensions libraries
+    (Http.Resilience, ServiceDiscovery, TimeProvider.Testing) track their own
+    line via $(MicrosoftExtensionsLibrariesVersion) below.
   -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsRuntimeVersion)" />
@@ -53,41 +58,69 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsRuntimeVersion)" />
   </ItemGroup>
 
+  <!-- ASP.NET Core shared-framework packages — bump $(AspNetCoreVersion) (tracks the same .NET servicing patch) -->
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Kafka" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.3.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
+  </ItemGroup>
+
+  <!-- dotnet/extensions libraries — bump $(MicrosoftExtensionsLibrariesVersion) -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="$(MicrosoftExtensionsLibrariesVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="$(MicrosoftExtensionsLibrariesVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="$(MicrosoftExtensionsLibrariesVersion)" />
+  </ItemGroup>
+
+  <!-- Aspire — bump $(AspireVersion) -->
+  <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.Kafka" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="$(AspireVersion)" />
+  </ItemGroup>
+
+  <!-- OpenTelemetry core — bump $(OpenTelemetryVersion); the instrumentation packages track their own lines -->
+  <ItemGroup>
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+  </ItemGroup>
+
+  <!-- MessagePack — bump $(MessagePackVersion) (3.1.7 patches CVE-2026-48109 / GHSA-hv8m-jj95-wg3x) -->
+  <ItemGroup>
+    <PackageVersion Include="MessagePack" Version="$(MessagePackVersion)" />
+    <PackageVersion Include="MessagePack.Annotations" Version="$(MessagePackVersion)" />
+  </ItemGroup>
+
+  <!-- FluentValidation — bump $(FluentValidationVersion) -->
+  <ItemGroup>
+    <PackageVersion Include="FluentValidation" Version="$(FluentValidationVersion)" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="$(FluentValidationVersion)" />
+  </ItemGroup>
+
+  <!-- Testcontainers — bump $(TestcontainersVersion) -->
+  <ItemGroup>
+    <PackageVersion Include="Testcontainers.Azurite" Version="$(TestcontainersVersion)" />
+    <PackageVersion Include="Testcontainers.Kafka" Version="$(TestcontainersVersion)" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="$(TestcontainersVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.28.0" />
     <PackageVersion Include="Azure.Storage.Queues" Version="12.26.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Confluent.Kafka" Version="2.14.0" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="FluentValidation" Version="12.1.1" />
-    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
-    <PackageVersion Include="MessagePack" Version="3.1.6" />
-    <PackageVersion Include="MessagePack.Annotations" Version="3.1.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Build.Locator" Version="1.9.1" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.6.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.Build.Locator" Version="1.11.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <PackageVersion Include="MinVer" Version="6.0.0" />
-    <PackageVersion Include="ModelContextProtocol" Version="1.3.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+    <PackageVersion Include="MinVer" Version="7.0.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
-    <PackageVersion Include="Testcontainers.Azurite" Version="4.12.0" />
-    <PackageVersion Include="Testcontainers.Kafka" Version="4.12.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnit" Version="0.13.3" />
     <PackageVersion Include="Verify.Xunit" Version="31.12.5" />
     <PackageVersion Include="xunit" Version="2.9.3" />

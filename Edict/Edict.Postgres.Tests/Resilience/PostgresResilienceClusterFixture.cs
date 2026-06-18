@@ -62,8 +62,7 @@ public sealed class PostgresResilienceClusterFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         var hostPort = GetFreeTcpPort();
-        _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        _postgres = new PostgreSqlBuilder("postgres:17-alpine")
             .WithPortBinding(hostPort, 5432)
             .Build();
         await _postgres.StartAsync();

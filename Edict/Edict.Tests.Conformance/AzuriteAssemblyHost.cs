@@ -43,8 +43,7 @@ public static class AzuriteAssemblyHost
 
     static async Task<AzuriteContainer> StartAsync()
     {
-        var container = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:3.35.0")
+        var container = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.35.0")
             .WithCreateParameterModifier(p =>
             {
                 p.Cmd ??= [];

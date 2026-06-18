@@ -39,8 +39,7 @@ static class PostgresAssemblyHost
 
     static async Task<PostgreSqlContainer> StartAsync()
     {
-        var container = new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        var container = new PostgreSqlBuilder("postgres:17-alpine")
             // Headroom above Postgres' default 100 cap. The real control on the
             // `53300: sorry, too many clients already` failure is the bounded,
             // fast-pruned per-fixture pools wired in PostgresDatabaseFactory and

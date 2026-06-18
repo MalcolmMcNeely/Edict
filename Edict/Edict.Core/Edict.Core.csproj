@@ -15,6 +15,10 @@
         <PackageReference Include="Microsoft.Orleans.Streaming" />
         <PackageReference Include="Microsoft.Orleans.Reminders" />
         <PackageReference Include="Microsoft.Orleans.Serialization.MessagePack" />
+        <!-- The Orleans MessagePack serializer pulls MessagePack transitively at a
+             version exposed to GHSA-hv8m-jj95-wg3x; reference it directly so the
+             whole graph resolves the patched line and consumers inherit it. -->
+        <PackageReference Include="MessagePack" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>

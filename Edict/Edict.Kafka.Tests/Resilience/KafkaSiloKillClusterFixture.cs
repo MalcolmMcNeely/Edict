@@ -48,7 +48,7 @@ public sealed class KafkaSiloKillClusterFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _kafka = new KafkaBuilder().Build();
+        _kafka = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         await _kafka.StartAsync();
 
         var address = _kafka.GetBootstrapAddress();

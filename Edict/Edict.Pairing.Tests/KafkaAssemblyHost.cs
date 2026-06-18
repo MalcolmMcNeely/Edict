@@ -46,7 +46,7 @@ static class KafkaAssemblyHost
 
     static async Task<KafkaContainer> StartAsync()
     {
-        var container = new KafkaBuilder().Build();
+        var container = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         await container.StartAsync();
         await WaitForKafkaReadyAsync(StripScheme(container.GetBootstrapAddress()));
         return container;

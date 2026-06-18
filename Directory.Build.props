@@ -7,6 +7,23 @@
   </PropertyGroup>
 
   <!--
+    Centralised package-version families. Bump one property here to move every
+    package in the family together; Directory.Packages.props (imported after
+    this file) reads these. One-off packages keep literal versions there.
+  -->
+  <PropertyGroup>
+    <OrleansVersion>10.1.0</OrleansVersion>
+    <MicrosoftExtensionsRuntimeVersion>10.0.9</MicrosoftExtensionsRuntimeVersion>
+    <AspNetCoreVersion>10.0.9</AspNetCoreVersion>
+    <MicrosoftExtensionsLibrariesVersion>10.7.0</MicrosoftExtensionsLibrariesVersion>
+    <AspireVersion>13.4.5</AspireVersion>
+    <OpenTelemetryVersion>1.16.0</OpenTelemetryVersion>
+    <MessagePackVersion>3.1.7</MessagePackVersion>
+    <TestcontainersVersion>4.12.0</TestcontainersVersion>
+    <FluentValidationVersion>12.1.1</FluentValidationVersion>
+  </PropertyGroup>
+
+  <!--
     The Roslyn 5.0 compiler only honours [InterceptsLocation] attributes whose
     containing namespace is listed in InterceptorsNamespaces. The unified
     generator emits its Send/Raise/Dispatch interceptor stubs into
@@ -35,6 +52,19 @@
   -->
   <PropertyGroup>
     <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Edict.Mcp registers the SDK's MSBuild via MSBuildLocator.RegisterDefaults()
+    before any MSBuild type loads, so the MSBuild engine assemblies that Roslyn's
+    Workspaces.MSBuild drags in are resolved from the SDK at runtime, not from the
+    copies in the output folder. Microsoft.Build.Locator's MSBL001 check errors on
+    those copies; opt out since the Locator registration is what owns resolution.
+    The check's target only runs where Build.Locator is referenced (Edict.Mcp and
+    the projects that reference it), so this property is inert elsewhere.
+  -->
+  <PropertyGroup>
+    <DisableMSBuildAssemblyCopyCheck>true</DisableMSBuildAssemblyCopyCheck>
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
