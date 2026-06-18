@@ -95,6 +95,20 @@ public class SkillPrescriptionTests
     }
 
     [Fact]
+    public void EdictDiagnosticsSkill_ExplainsReminderRegistrationExhaustion()
+    {
+        var body = LoadSkillBody("edict-diagnostics");
+
+        Assert.Contains("EdictReminderRegistrationException", body, StringComparison.Ordinal);
+        Assert.True(
+            AreCoLocated(body, "EdictReminderRegistrationException", "reminder service"),
+            "edict-diagnostics must tie EdictReminderRegistrationException to reminder-service unavailability / silo health so the diagnosis survives.");
+        Assert.True(
+            AreCoLocated(body, "EdictReminderRegistrationException", "cold-start"),
+            "edict-diagnostics must explain that EdictReminderRegistrationException means the cold-start retry window was already exhausted, so a consumer does not wrap it in their own retry.");
+    }
+
+    [Fact]
     public void EdictDiagnosticsSkill_TeachesTheConversationIdQueryRecipe()
     {
         var body = LoadSkillBody("edict-diagnostics");
