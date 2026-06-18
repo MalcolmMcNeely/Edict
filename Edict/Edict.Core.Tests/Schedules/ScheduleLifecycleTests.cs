@@ -203,7 +203,7 @@ public sealed class ScheduleLifecycleTests
         var deadline = Stopwatch.GetTimestamp() + (Stopwatch.Frequency * 10);
         while (Stopwatch.GetTimestamp() < deadline)
         {
-            var records = await _fixture.AuditStore.ByEntityAsync(entityType, entityKey, CancellationToken.None);
+            var records = await _fixture.AuditStore.ByEntityAsync(entityType, entityKey, tenant: null, CancellationToken.None);
             if (records.Count(record => record.Kind == EdictAuditKind.Event) >= expectedCount)
             {
                 return records;

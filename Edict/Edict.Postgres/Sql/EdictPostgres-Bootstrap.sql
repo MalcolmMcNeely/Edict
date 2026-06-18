@@ -74,12 +74,21 @@ CREATE TABLE IF NOT EXISTS edict_audit_record
     sequence       BIGINT      NOT NULL,
     correlation_id UUID        NOT NULL,
     principal      TEXT,
+    tenant         TEXT,
     kind           TEXT        NOT NULL,
     outcome        TEXT,
     occurred_at    TIMESTAMPTZ NOT NULL,
     record         BYTEA       NOT NULL,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Additive tenant column for the tenant-scoped read predicate, brought onto a table
+-- that predates the column. The audit table is not armed with row-level security:
+-- isolation is the explicit tenant predicate plus the operator/tenant read split, the
+-- same stated query-filter posture as claim-check, not an RLS backstop. ADD COLUMN is
+-- DDL, not a row mutation, so the WORM trigger below does not fire on it.
+ALTER TABLE edict_audit_record
+    ADD COLUMN IF NOT EXISTS tenant TEXT;
 
 CREATE INDEX IF NOT EXISTS ix_edict_audit_entity
     ON edict_audit_record (entity_type, entity_key, sequence);
@@ -89,6 +98,9 @@ CREATE INDEX IF NOT EXISTS ix_edict_audit_correlation
 
 CREATE INDEX IF NOT EXISTS ix_edict_audit_principal
     ON edict_audit_record (principal);
+
+CREATE INDEX IF NOT EXISTS ix_edict_audit_tenant
+    ON edict_audit_record (tenant);
 
 CREATE OR REPLACE FUNCTION edict_audit_record_block_mutation()
     RETURNS TRIGGER AS $$

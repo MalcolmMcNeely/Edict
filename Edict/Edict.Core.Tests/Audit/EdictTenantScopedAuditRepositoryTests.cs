@@ -76,6 +76,19 @@ public sealed class EdictTenantScopedAuditRepositoryTests
     }
 
     [Fact]
+    public async Task ByEntityAsync_ShouldPushTheAmbientTenantIntoTheStore_RatherThanFilterInMemory()
+    {
+        var inner = new StubAuditRepository([RecordFor(EdictTenantId.Of("acme"), "acme|order-1")]);
+        var repository = ReaderFor(inner, EdictTenantId.Of("acme"));
+
+        await repository.ByEntityAsync("OrderCommandHandler", "acme|order-1");
+
+        // The resolved wall reached the operator query as its filter, so the predicate
+        // runs in the store and another tenant's rows never come back to be re-dropped.
+        Assert.Equal(EdictTenantId.Of("acme"), inner.LastTenantFilter);
+    }
+
+    [Fact]
     public async Task ByCorrelationAsync_ShouldFailClosed_WhenNoAmbientTenant()
     {
         var repository = ReaderFor(new StubAuditRepository([]), tenant: null);

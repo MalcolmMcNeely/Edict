@@ -80,7 +80,7 @@ public sealed class EdictTenantIsolationCallFilterTests : IDisposable
 
         // The crossing lands one row in the crossed wall's trail, attributed to the
         // operator who crossed, kinded as a tenant crossing.
-        var record = Assert.Single(await store.ByEntityAsync(typeof(FakeCommandHandlerGrain).FullName!, grainKey, CancellationToken.None));
+        var record = Assert.Single(await store.ByEntityAsync(typeof(FakeCommandHandlerGrain).FullName!, grainKey, tenant: null, CancellationToken.None));
         Assert.Equal(EdictAuditKind.TenantCrossing, record.Kind);
         Assert.Equal(EdictTenantId.Of("globex"), record.Tenant);
         Assert.Equal(EdictPrincipal.Of("operator-9"), record.Principal);

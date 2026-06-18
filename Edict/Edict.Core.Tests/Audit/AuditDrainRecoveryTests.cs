@@ -37,7 +37,7 @@ public sealed class AuditDrainRecoveryTests(AuditDrainRecoveryClusterFixture fix
         // Scoped to this entity rather than the store's global count: the static store
         // is shared across this collection's tests, so only this grain's records are a
         // sound oracle for "nothing reached the store yet".
-        Assert.Empty(await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, CancellationToken.None));
+        Assert.Empty(await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, tenant: null, CancellationToken.None));
 
         // Deactivate before any drain reaches the store, then reactivate by touching
         // the grain — on-activation recovery is the only path that can drain it now.
@@ -80,7 +80,7 @@ public sealed class AuditDrainRecoveryTests(AuditDrainRecoveryClusterFixture fix
         var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
         while (Stopwatch.GetTimestamp() < deadline)
         {
-            var records = await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, CancellationToken.None);
+            var records = await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, tenant: null, CancellationToken.None);
             if (records.Count >= expectedCount)
             {
                 return records;

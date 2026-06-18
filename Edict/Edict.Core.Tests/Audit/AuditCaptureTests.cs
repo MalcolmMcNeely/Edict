@@ -207,7 +207,7 @@ public sealed class AuditCaptureTests(AuditCaptureClusterFixture fixture)
         var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
         while (Stopwatch.GetTimestamp() < deadline)
         {
-            var records = await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, CancellationToken.None);
+            var records = await fixture.AuditStore.ByEntityAsync(EntityType, entityKey, tenant: null, CancellationToken.None);
             if (records.Count >= expectedCount)
             {
                 return records;

@@ -1,5 +1,7 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
+using Edict.Core.Tenancy;
 using Edict.Postgres.Audit;
 using Edict.Tests.Conformance.Persistence;
 
@@ -27,7 +29,7 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAudi
     IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore, ClientSerializer);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
-        Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);
+        Store.ByEntityAsync(entityType, entityKey, tenant: null, CancellationToken.None);
 
     public Task<ReadOnlyMemory<byte>> GetPayloadAsync(Guid recordId) =>
         PayloadStore.GetAsync(recordId, CancellationToken.None);
@@ -43,6 +45,20 @@ public sealed class PostgresAuditFixture : PostgresPersistenceFixtureBase, IAudi
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityInRangeAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to) =>
         Repository.ByEntityAsync(entityType, entityKey, from, to);
+
+    public Task AppendAsync(IReadOnlyList<EdictAuditRecord> records) =>
+        Store.AppendAsync(records, CancellationToken.None);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> OperatorByCorrelationAsync(Guid correlationId, EdictTenantId? tenant) =>
+        Repository.ByCorrelationAsync(correlationId, tenant);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> TenantScopedByCorrelationAsync(Guid correlationId, EdictTenantId? ambientTenant) =>
+        new EdictTenantScopedAuditRepository(Repository, new FixedTenantResolver(ambientTenant)).ByCorrelationAsync(correlationId);
+
+    sealed class FixedTenantResolver(EdictTenantId? tenant) : IEdictTenantResolver
+    {
+        public EdictTenantId? Resolve() => tenant;
+    }
 
     // Runs a raw mutation and returns the SQLSTATE Postgres rejected it with, or
     // null when it (wrongly) succeeded. The WORM trigger raises insufficient

@@ -1,3 +1,5 @@
+using Edict.Contracts.Tenancy;
+
 namespace Edict.Contracts.Audit;
 
 /// <summary>
@@ -12,30 +14,41 @@ namespace Edict.Contracts.Audit;
 /// </summary>
 public interface IEdictAuditRepository
 {
-    /// <summary>Every audit record for one aggregate, ordered by chain <see cref="EdictAuditRecord.Sequence"/>.</summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Every audit record for one aggregate, ordered by chain
+    /// <see cref="EdictAuditRecord.Sequence"/>. A non-null <paramref name="tenant"/>
+    /// narrows the result to that wall in the store; the default <see langword="null"/>
+    /// returns the operator superset across every wall.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// One aggregate's records whose <see cref="EdictAuditRecord.OccurredAt"/> falls
     /// in <c>[from, to)</c> (<paramref name="from"/> inclusive, <paramref name="to"/>
-    /// exclusive), ordered by chain <see cref="EdictAuditRecord.Sequence"/>.
+    /// exclusive), ordered by chain <see cref="EdictAuditRecord.Sequence"/>. A non-null
+    /// <paramref name="tenant"/> narrows the result to that wall in the store; the
+    /// default <see langword="null"/> returns the operator superset across every wall.
     /// </summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Every record a correlation touched, across every grain it reached,
     /// reconstructed into one global order by <see cref="EdictAuditRecord.OccurredAt"/>
-    /// (intent-time) so an auditor follows the transaction end to end.
+    /// (intent-time) so an auditor follows the transaction end to end. A non-null
+    /// <paramref name="tenant"/> narrows the result to that wall in the store; the
+    /// default <see langword="null"/> returns the operator superset across every wall.
     /// </summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Everything a principal did over a time range: every record attributed to
     /// <paramref name="principal"/> whose <see cref="EdictAuditRecord.OccurredAt"/>
     /// falls in <c>[from, to)</c> (<paramref name="from"/> inclusive,
-    /// <paramref name="to"/> exclusive), ordered by intent-time.
+    /// <paramref name="to"/> exclusive), ordered by intent-time. A non-null
+    /// <paramref name="tenant"/> narrows the result to that wall in the store; the
+    /// default <see langword="null"/> returns the operator superset across every wall.
     /// </summary>
-    Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Verifies one aggregate's chain is unaltered: every record's hash

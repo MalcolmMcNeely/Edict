@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 namespace Edict.Tests.Conformance.Persistence;
 
@@ -28,4 +29,25 @@ public interface IAuditConformanceFixture
     Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to);
 
     Task<IReadOnlyList<EdictAuditRecord>> ByEntityInRangeAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to);
+
+    /// <summary>
+    /// Writes audit records straight to the backing store, so a tenant-scope scenario
+    /// can seed records under several walls without standing up tenancy wiring on the
+    /// capture silo (the conformance silo captures public, tenant-less records).
+    /// </summary>
+    Task AppendAsync(IReadOnlyList<EdictAuditRecord> records);
+
+    /// <summary>
+    /// The operator read with a tenant filter: a non-null <paramref name="tenant"/>
+    /// narrows to one wall via the store predicate, a null filter returns the operator
+    /// superset across every wall. Proves the predicate runs in the database.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> OperatorByCorrelationAsync(Guid correlationId, EdictTenantId? tenant);
+
+    /// <summary>
+    /// The ambient-scoped read over the real store, resolving the given ambient tenant:
+    /// returns only that wall's rows (predicate pushed into the store) and fails closed
+    /// when <paramref name="ambientTenant"/> is <see langword="null"/>.
+    /// </summary>
+    Task<IReadOnlyList<EdictAuditRecord>> TenantScopedByCorrelationAsync(Guid correlationId, EdictTenantId? ambientTenant);
 }

@@ -2,7 +2,9 @@ using Azure.Data.Tables;
 
 using Edict.Azure.Persistence.Audit;
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 using Edict.Core.Audit;
+using Edict.Core.Tenancy;
 using Edict.Tests.Conformance.Persistence;
 
 using Xunit;
@@ -29,7 +31,7 @@ public sealed class AzureAuditFixture : AzurePersistenceFixtureBase, IAuditConfo
     IEdictAuditRepository Repository => new EdictDefaultAuditRepository(Store, PayloadStore, ClientSerializer);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ReadEntityAsync(string entityType, string entityKey) =>
-        Store.ByEntityAsync(entityType, entityKey, CancellationToken.None);
+        Store.ByEntityAsync(entityType, entityKey, tenant: null, CancellationToken.None);
 
     public Task<ReadOnlyMemory<byte>> GetPayloadAsync(Guid recordId) =>
         PayloadStore.GetAsync(recordId, CancellationToken.None);
@@ -45,6 +47,20 @@ public sealed class AzureAuditFixture : AzurePersistenceFixtureBase, IAuditConfo
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityInRangeAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to) =>
         Repository.ByEntityAsync(entityType, entityKey, from, to);
+
+    public Task AppendAsync(IReadOnlyList<EdictAuditRecord> records) =>
+        Store.AppendAsync(records, CancellationToken.None);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> OperatorByCorrelationAsync(Guid correlationId, EdictTenantId? tenant) =>
+        Repository.ByCorrelationAsync(correlationId, tenant);
+
+    public Task<IReadOnlyList<EdictAuditRecord>> TenantScopedByCorrelationAsync(Guid correlationId, EdictTenantId? ambientTenant) =>
+        new EdictTenantScopedAuditRepository(Repository, new FixedTenantResolver(ambientTenant)).ByCorrelationAsync(correlationId);
+
+    sealed class FixedTenantResolver(EdictTenantId? tenant) : IEdictTenantResolver
+    {
+        public EdictTenantId? Resolve() => tenant;
+    }
 
     // Rewrites the entity-path row's stored record under a tampered principal, the
     // mutation the Postgres WORM trigger refuses outright. On Azure it succeeds, so

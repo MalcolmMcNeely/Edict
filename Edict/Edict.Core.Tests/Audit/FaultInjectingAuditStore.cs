@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 namespace Edict.Core.Tests.Audit;
 
@@ -27,15 +28,15 @@ public sealed class FaultInjectingAuditStore : IEdictAuditStore
         return _inner.AppendAsync(records, cancellationToken);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken) =>
-        _inner.ByEntityAsync(entityType, entityKey, cancellationToken);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+        _inner.ByEntityAsync(entityType, entityKey, tenant, cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
-        _inner.ByEntityAsync(entityType, entityKey, from, to, cancellationToken);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+        _inner.ByEntityAsync(entityType, entityKey, from, to, tenant, cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken) =>
-        _inner.ByCorrelationAsync(correlationId, cancellationToken);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+        _inner.ByCorrelationAsync(correlationId, tenant, cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
-        _inner.ByPrincipalAsync(principal, from, to, cancellationToken);
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
+        _inner.ByPrincipalAsync(principal, from, to, tenant, cancellationToken);
 }

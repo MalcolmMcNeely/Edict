@@ -82,7 +82,7 @@ public sealed class AzureTableAuditStoreTests
         await store.AppendAsync(records, CancellationToken.None);
 
         // Act
-        var read = await store.ByEntityAsync("Order", entityKey, CancellationToken.None);
+        var read = await store.ByEntityAsync("Order", entityKey, tenant: null, CancellationToken.None);
 
         // Assert
         Assert.Equal([0L, 1L, 2L], read.Select(record => record.Sequence));
@@ -105,7 +105,7 @@ public sealed class AzureTableAuditStoreTests
             CancellationToken.None);
 
         // Act
-        var read = await store.ByCorrelationAsync(correlationId, CancellationToken.None);
+        var read = await store.ByCorrelationAsync(correlationId, tenant: null, CancellationToken.None);
 
         // Assert — every record, ordered by intent-time.
         Assert.Equal(3, read.Count);
@@ -128,8 +128,8 @@ public sealed class AzureTableAuditStoreTests
         var after = before.AddSeconds(5);
 
         // Act
-        var withinWindow = await store.ByPrincipalAsync(principal, before, after, CancellationToken.None);
-        var afterWindow = await store.ByPrincipalAsync(principal, after, after.AddMinutes(1), CancellationToken.None);
+        var withinWindow = await store.ByPrincipalAsync(principal, before, after, tenant: null, CancellationToken.None);
+        var afterWindow = await store.ByPrincipalAsync(principal, after, after.AddMinutes(1), tenant: null, CancellationToken.None);
 
         // Assert — the escaped principal round-trips, and the lower bound is honoured.
         var single = Assert.Single(withinWindow);
@@ -153,7 +153,7 @@ public sealed class AzureTableAuditStoreTests
             CancellationToken.None);
 
         // Act — a window that holds only the first record.
-        var read = await store.ByEntityAsync("Order", entityKey, before, before.AddMinutes(1), CancellationToken.None);
+        var read = await store.ByEntityAsync("Order", entityKey, before, before.AddMinutes(1), tenant: null, CancellationToken.None);
 
         // Assert
         Assert.Equal([0L], read.Select(record => record.Sequence));
@@ -173,7 +173,7 @@ public sealed class AzureTableAuditStoreTests
         await store.AppendAsync([record], CancellationToken.None);
 
         // Assert
-        var read = await store.ByEntityAsync("Order", entityKey, CancellationToken.None);
+        var read = await store.ByEntityAsync("Order", entityKey, tenant: null, CancellationToken.None);
         Assert.Single(read);
     }
 
@@ -189,9 +189,9 @@ public sealed class AzureTableAuditStoreTests
             CancellationToken.None);
 
         // Act + Assert — present on the entity path, absent from any principal path.
-        var byEntity = await store.ByEntityAsync("Order", entityKey, CancellationToken.None);
+        var byEntity = await store.ByEntityAsync("Order", entityKey, tenant: null, CancellationToken.None);
         Assert.Single(byEntity);
-        var byPrincipal = await store.ByPrincipalAsync(EdictPrincipal.Of("auditor-bob"), before, before.AddMinutes(1), CancellationToken.None);
+        var byPrincipal = await store.ByPrincipalAsync(EdictPrincipal.Of("auditor-bob"), before, before.AddMinutes(1), tenant: null, CancellationToken.None);
         Assert.Empty(byPrincipal);
     }
 }

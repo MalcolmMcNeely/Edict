@@ -58,6 +58,28 @@ public sealed class AuditOperatorSupersetTests
         Assert.Single(records, record => record.Tenant is null);
     }
 
+    [Fact]
+    public async Task ByCorrelationAsync_ShouldReturnOnlyTheGivenWall_WhenFilteredByTenant()
+    {
+        // Arrange — the same correlation across two tenants and a public aggregate.
+        var store = new RecordingAuditStore();
+        await store.AppendAsync(
+        [
+            RecordFor(EdictTenantId.Of("acme"), "acme|order-1", 0),
+            RecordFor(EdictTenantId.Of("globex"), "globex|order-1", 1),
+            RecordFor(tenant: null, "settlement-1", 2),
+        ],
+            CancellationToken.None);
+        var repository = OperatorRepositoryOver(store);
+
+        // Act — an operator narrows the same query to one wall via the tenant filter.
+        var records = await repository.ByCorrelationAsync(Correlation, EdictTenantId.Of("acme"));
+
+        // Assert — only the acme wall's record comes back; the predicate, not the
+        // caller, dropped the other tenant and the public record.
+        Assert.Equal(EdictTenantId.Of("acme"), Assert.Single(records).Tenant);
+    }
+
     static IEdictAuditRepository OperatorRepositoryOver(IEdictAuditStore store)
     {
         var services = new ServiceCollection();

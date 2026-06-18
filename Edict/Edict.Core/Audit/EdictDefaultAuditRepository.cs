@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using Orleans.Serialization;
 
@@ -14,25 +15,25 @@ namespace Edict.Core.Audit;
 sealed class EdictDefaultAuditRepository(IEdictAuditStore store, IEdictAuditPayloadStore payloadStore, Serializer serializer) : IEdictAuditRepository
 {
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(
-        string entityType, string entityKey, CancellationToken cancellationToken = default) =>
-        store.ByEntityAsync(entityType, entityKey, cancellationToken);
+        string entityType, string entityKey, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
+        store.ByEntityAsync(entityType, entityKey, tenant, cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(
-        string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
-        store.ByEntityAsync(entityType, entityKey, from, to, cancellationToken);
+        string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
+        store.ByEntityAsync(entityType, entityKey, from, to, tenant, cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(
-        Guid correlationId, CancellationToken cancellationToken = default) =>
-        store.ByCorrelationAsync(correlationId, cancellationToken);
+        Guid correlationId, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
+        store.ByCorrelationAsync(correlationId, tenant, cancellationToken);
 
     public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(
-        EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default) =>
-        store.ByPrincipalAsync(principal, from, to, cancellationToken);
+        EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant = null, CancellationToken cancellationToken = default) =>
+        store.ByPrincipalAsync(principal, from, to, tenant, cancellationToken);
 
     public async Task<EdictAuditChainVerification> VerifyEntityChainAsync(
         string entityType, string entityKey, CancellationToken cancellationToken = default)
     {
-        var records = await store.ByEntityAsync(entityType, entityKey, cancellationToken);
+        var records = await store.ByEntityAsync(entityType, entityKey, tenant: null, cancellationToken);
         return HashChain.Verify(records);
     }
 

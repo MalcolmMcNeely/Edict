@@ -1,4 +1,5 @@
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using Npgsql;
 
@@ -31,8 +32,8 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
             {
                 var command = new NpgsqlBatchCommand(
                     $"INSERT INTO {tableName} "
-                    + "(record_id, entity_type, entity_key, sequence, correlation_id, principal, kind, outcome, occurred_at, record) "
-                    + "VALUES (@record_id, @entity_type, @entity_key, @sequence, @correlation_id, @principal, @kind, @outcome, @occurred_at, @record) "
+                    + "(record_id, entity_type, entity_key, sequence, correlation_id, principal, tenant, kind, outcome, occurred_at, record) "
+                    + "VALUES (@record_id, @entity_type, @entity_key, @sequence, @correlation_id, @principal, @tenant, @kind, @outcome, @occurred_at, @record) "
                     + "ON CONFLICT (record_id) DO NOTHING;");
                 command.Parameters.AddWithValue("record_id", record.RecordId);
                 command.Parameters.AddWithValue("entity_type", record.EntityType);
@@ -40,6 +41,7 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
                 command.Parameters.AddWithValue("sequence", record.Sequence);
                 command.Parameters.AddWithValue("correlation_id", record.CorrelationId);
                 command.Parameters.AddWithValue("principal", (object?)record.Principal?.Value ?? DBNull.Value);
+                command.Parameters.AddWithValue("tenant", (object?)record.Tenant?.Value ?? DBNull.Value);
                 command.Parameters.AddWithValue("kind", record.Kind.ToString());
                 command.Parameters.AddWithValue("outcome", (object?)record.Outcome?.ToString() ?? DBNull.Value);
                 command.Parameters.AddWithValue("occurred_at", record.OccurredAt);
@@ -58,27 +60,30 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
         }
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         QueryAsync(
-            $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key ORDER BY sequence;",
+            $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key"
+            + TenantPredicate(tenant) + " ORDER BY sequence;",
             parameters =>
             {
                 parameters.AddWithValue("entity_type", entityType);
                 parameters.AddWithValue("entity_key", entityKey);
+                BindTenant(parameters, tenant);
             },
             nameof(ByEntityAsync),
             cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         QueryAsync(
             $"SELECT record FROM {tableName} WHERE entity_type = @entity_type AND entity_key = @entity_key "
-            + "AND occurred_at >= @from AND occurred_at < @to ORDER BY sequence;",
+            + "AND occurred_at >= @from AND occurred_at < @to" + TenantPredicate(tenant) + " ORDER BY sequence;",
             parameters =>
             {
                 parameters.AddWithValue("entity_type", entityType);
                 parameters.AddWithValue("entity_key", entityKey);
                 parameters.AddWithValue("from", from);
                 parameters.AddWithValue("to", to);
+                BindTenant(parameters, tenant);
             },
             nameof(ByEntityAsync),
             cancellationToken);
@@ -86,27 +91,45 @@ sealed class PostgresAuditStore(NpgsqlDataSource dataSource, Serializer serializ
     // The chain is per-aggregate, so a correlation that fanned across grains has no
     // single sequence to follow; intent-time rebuilds the cross-grain order, with
     // entity and sequence as a stable tie-break when two records share a timestamp.
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         QueryAsync(
-            $"SELECT record FROM {tableName} WHERE correlation_id = @correlation_id "
-            + "ORDER BY occurred_at, entity_type, entity_key, sequence;",
-            parameters => parameters.AddWithValue("correlation_id", correlationId),
+            $"SELECT record FROM {tableName} WHERE correlation_id = @correlation_id" + TenantPredicate(tenant)
+            + " ORDER BY occurred_at, entity_type, entity_key, sequence;",
+            parameters =>
+            {
+                parameters.AddWithValue("correlation_id", correlationId);
+                BindTenant(parameters, tenant);
+            },
             nameof(ByCorrelationAsync),
             cancellationToken);
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken) =>
         QueryAsync(
             $"SELECT record FROM {tableName} WHERE principal = @principal "
-            + "AND occurred_at >= @from AND occurred_at < @to "
-            + "ORDER BY occurred_at, entity_type, entity_key, sequence;",
+            + "AND occurred_at >= @from AND occurred_at < @to" + TenantPredicate(tenant)
+            + " ORDER BY occurred_at, entity_type, entity_key, sequence;",
             parameters =>
             {
                 parameters.AddWithValue("principal", principal.Value);
                 parameters.AddWithValue("from", from);
                 parameters.AddWithValue("to", to);
+                BindTenant(parameters, tenant);
             },
             nameof(ByPrincipalAsync),
             cancellationToken);
+
+    // A null filter is the operator superset; a non-null filter pushes the wall into
+    // the SQL so another tenant's rows never leave the database.
+    static string TenantPredicate(EdictTenantId? tenant) =>
+        tenant is null ? string.Empty : " AND tenant = @tenant";
+
+    static void BindTenant(NpgsqlParameterCollection parameters, EdictTenantId? tenant)
+    {
+        if (tenant is { } value)
+        {
+            parameters.AddWithValue("tenant", value.Value);
+        }
+    }
 
     async Task<IReadOnlyList<EdictAuditRecord>> QueryAsync(
         string commandText, Action<NpgsqlParameterCollection> bindParameters, string operation, CancellationToken cancellationToken)

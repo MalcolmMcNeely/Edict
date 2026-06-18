@@ -4,6 +4,7 @@ using Azure;
 using Azure.Data.Tables;
 
 using Edict.Contracts.Audit;
+using Edict.Contracts.Tenancy;
 
 using Orleans.Serialization;
 
@@ -78,23 +79,25 @@ sealed class AzureTableAuditStore : IEdictAuditStore
         {
             var serialized = _serializer.SerializeToArray(record);
             var rowKey = record.RecordId.ToString("N");
+            var tenant = record.Tenant?.Value;
 
-            await TryAddRowAsync(EntityPartition(record.EntityType, record.EntityKey), rowKey, record.OccurredAt, serialized, cancellationToken);
-            await TryAddRowAsync(CorrelationPartition(record.CorrelationId), rowKey, record.OccurredAt, serialized, cancellationToken);
+            await TryAddRowAsync(EntityPartition(record.EntityType, record.EntityKey), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
+            await TryAddRowAsync(CorrelationPartition(record.CorrelationId), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
             if (record.Principal is { } principal)
             {
-                await TryAddRowAsync(PrincipalPartition(principal), rowKey, record.OccurredAt, serialized, cancellationToken);
+                await TryAddRowAsync(PrincipalPartition(principal), rowKey, record.OccurredAt, tenant, serialized, cancellationToken);
             }
         }
     }
 
-    async Task TryAddRowAsync(string partitionKey, string rowKey, DateTimeOffset occurredAt, byte[] serialized, CancellationToken cancellationToken)
+    async Task TryAddRowAsync(string partitionKey, string rowKey, DateTimeOffset occurredAt, string? tenant, byte[] serialized, CancellationToken cancellationToken)
     {
         var entity = new AuditRowEntity
         {
             PartitionKey = partitionKey,
             RowKey = rowKey,
             OccurredAt = occurredAt,
+            Tenant = tenant,
             Record = serialized,
         };
         try
@@ -108,40 +111,57 @@ sealed class AzureTableAuditStore : IEdictAuditStore
         }
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         var partition = EntityPartition(entityType, entityKey);
         return QueryAsync(
-            entity => entity.PartitionKey == partition,
+            WithTenant(entity => entity.PartitionKey == partition, tenant),
             BySequence,
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByEntityAsync(string entityType, string entityKey, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         var partition = EntityPartition(entityType, entityKey);
         return QueryAsync(
-            entity => entity.PartitionKey == partition && entity.OccurredAt >= from && entity.OccurredAt < to,
+            WithTenant(entity => entity.PartitionKey == partition && entity.OccurredAt >= from && entity.OccurredAt < to, tenant),
             BySequence,
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByCorrelationAsync(Guid correlationId, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         var partition = CorrelationPartition(correlationId);
         return QueryAsync(
-            entity => entity.PartitionKey == partition,
+            WithTenant(entity => entity.PartitionKey == partition, tenant),
             ByIntentTime,
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<EdictAuditRecord>> ByPrincipalAsync(EdictPrincipal principal, DateTimeOffset from, DateTimeOffset to, EdictTenantId? tenant, CancellationToken cancellationToken)
     {
         var partition = PrincipalPartition(principal);
         return QueryAsync(
-            entity => entity.PartitionKey == partition && entity.OccurredAt >= from && entity.OccurredAt < to,
+            WithTenant(entity => entity.PartitionKey == partition && entity.OccurredAt >= from && entity.OccurredAt < to, tenant),
             ByIntentTime,
             cancellationToken);
+    }
+
+    // ANDs a server-side tenant predicate onto the partition scan so a non-null filter
+    // narrows to one wall in the Table query itself — another wall's rows never leave
+    // storage. A null filter is the operator superset and the scan is returned as-is.
+    // Reuses the base filter's parameter so the composed body needs no rebinding.
+    static Expression<Func<AuditRowEntity, bool>> WithTenant(Expression<Func<AuditRowEntity, bool>> filter, EdictTenantId? tenant)
+    {
+        if (tenant is not { } value)
+        {
+            return filter;
+        }
+        var parameter = filter.Parameters[0];
+        var tenantClause = Expression.Equal(
+            Expression.Property(parameter, nameof(AuditRowEntity.Tenant)),
+            Expression.Constant(value.Value, typeof(string)));
+        return Expression.Lambda<Func<AuditRowEntity, bool>>(Expression.AndAlso(filter.Body, tenantClause), parameter);
     }
 
     async Task<IReadOnlyList<EdictAuditRecord>> QueryAsync(
@@ -178,6 +198,7 @@ sealed class AzureTableAuditStore : IEdictAuditStore
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
         public DateTimeOffset OccurredAt { get; set; }
+        public string? Tenant { get; set; }
         public byte[] Record { get; set; } = [];
     }
 }
