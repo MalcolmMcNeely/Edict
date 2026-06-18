@@ -9,16 +9,32 @@ namespace Edict.Contracts.Tenancy;
 /// <c>EdictPrincipal</c>. Unlike a principal, a tenant id is folded into the
 /// routed grain and stream key, so its character set is a security boundary rather
 /// than a convenience: a value smuggling the key delimiter could forge another
-/// tenant's key space. <see cref="Of"/> admits only a strict safe-everywhere set
-/// and rejects anything else; the public constructor exists only for the serializer.
+/// tenant's key space. The constructor admits only a strict safe-everywhere set
+/// and rejects anything else, so the charset holds on every path — minting via
+/// <see cref="Of"/>, direct construction, and reconstruction off the wire, the
+/// constructor being the deserialization entry point for this single-member record.
 /// </summary>
 [MessagePackObject(keyAsPropertyName: true)]
 public readonly record struct EdictTenantId
 {
-    /// <summary>Deserialization entry point; consumer code mints via <see cref="Of"/>.</summary>
-    public EdictTenantId(string value) => Value = value;
+    /// <summary>
+    /// Validating deserialization entry point: admits only the safe-everywhere
+    /// character set and throws <see cref="EdictInvalidTenantIdException"/>
+    /// otherwise, so a value reconstructed off the wire can never carry the key
+    /// delimiter or a storage-reserved character into a composed key. Consumer
+    /// code mints via <see cref="Of"/>.
+    /// </summary>
+    public EdictTenantId(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (!IsSafe(value))
+        {
+            throw new EdictInvalidTenantIdException(value);
+        }
+        Value = value;
+    }
 
-    /// <summary>The underlying opaque tenant string, guaranteed safe-everywhere when minted through <see cref="Of"/>.</summary>
+    /// <summary>The underlying opaque tenant string, guaranteed safe-everywhere because every construction path validates.</summary>
     public string Value { get; init; }
 
     /// <summary>
@@ -32,15 +48,7 @@ public readonly record struct EdictTenantId
     /// non-ASCII. The consumer maps their identity provider's tenant claim to a
     /// value in this set.
     /// </summary>
-    public static EdictTenantId Of(string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        if (!IsSafe(value))
-        {
-            throw new EdictInvalidTenantIdException(value);
-        }
-        return new EdictTenantId(value);
-    }
+    public static EdictTenantId Of(string value) => new(value);
 
     /// <inheritdoc />
     public override string ToString() => Value;

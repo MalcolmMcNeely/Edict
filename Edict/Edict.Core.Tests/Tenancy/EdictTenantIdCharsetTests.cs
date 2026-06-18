@@ -46,4 +46,15 @@ public sealed class EdictTenantIdCharsetTests
     {
         Assert.Throws<ArgumentNullException>(() => EdictTenantId.Of(null!));
     }
+
+    // Direct construction is its own path: validation lives in the constructor so
+    // no caller — Of, a consumer, or the serializer — can mint an unsafe value.
+    [Theory]
+    [InlineData("acme|globex")]
+    [InlineData("acme corp")]
+    [InlineData("")]
+    public void Constructor_WithUnsafeValue_Throws(string value)
+    {
+        Assert.Throws<EdictInvalidTenantIdException>(() => new EdictTenantId(value));
+    }
 }
