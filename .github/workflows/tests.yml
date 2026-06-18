@@ -54,6 +54,7 @@ jobs:
         shell: bash
         run: |
           seed=$(( (RANDOM << 15 | RANDOM) & 0x7FFFFFFF ))   # non-negative Int32
+          echo "Chaos seed for this run: EDICT_CHAOS_SEED=$seed"
           echo "EDICT_CHAOS_SEED=$seed" >> "$GITHUB_ENV"
           {
             echo "### Chaos seed — this run"
