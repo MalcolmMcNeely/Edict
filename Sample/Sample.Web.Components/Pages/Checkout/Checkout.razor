@@ -95,11 +95,16 @@
         {
             _checkedOut = true;
 
-            // Read-your-writes: feeding the cursor from Accepted waits, briefly and
-            // boundedly, until the bridge Saga's placed Order is visible, so the row
-            // comes back on this same click. The correlation propagates through the
-            // bridge, so the cursor reaches the Order keyed by the cart id.
-            var read = await OrdersByStatus.GetAsync(_cartId.ToString("N"), "status", after: accepted.Cursor);
+            // Read-your-writes: feeding the cursor from Accepted waits, boundedly,
+            // until the bridge Saga's placed Order is visible, so the row comes back
+            // on this same click. The correlation propagates through the bridge, so
+            // the cursor reaches the Order keyed by the cart id. This path crosses two
+            // stream hops (Cart -> Saga, Order -> projection) and every checkout uses a
+            // fresh cart id, so the Saga and Order grains cold-activate each time; the
+            // explicit timeout buys that cold two-hop bridge the headroom the 2s silo
+            // default does not.
+            var read = await OrdersByStatus.GetAsync(
+                _cartId.ToString("N"), "status", after: accepted.Cursor, timeout: TimeSpan.FromSeconds(8));
             _orderStatus = read.Value;
             _message = read.Status == EdictReadStatus.CursorReached
                 ? "Checked out. The bridge Saga placed an Order and the cursor read it straight back: no poll, no lag."
