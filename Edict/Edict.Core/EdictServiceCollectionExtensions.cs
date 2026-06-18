@@ -15,6 +15,7 @@ using Edict.Core.DeadLetter;
 using Edict.Core.Metrics;
 using Edict.Core.Outbox;
 using Edict.Core.Projections;
+using Edict.Core.Serialization;
 using Edict.Core.Tenancy;
 using Edict.Telemetry;
 
@@ -100,6 +101,7 @@ public static class EdictServiceCollectionExtensions
 
         services.AddValidatorsFromAssemblies(materialised);
 
+        services.AddSingleton<ITypeFilter, EdictGrainTypeFilter>();
         services.AddSingleton(new CommandRouteResolver(routes));
         services.AddSingleton(new ProjectionReadRouteResolver(projectionReadRoutes));
         services.AddSingleton(typeof(IEdictListProjectionReader<>), typeof(EdictListProjectionReader<>));

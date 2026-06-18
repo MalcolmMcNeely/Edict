@@ -1,0 +1,14 @@
+# Edict-owned type filter for Orleans' manifest allow-list
+
+Orleans 10.2 enforces its serializer type-manifest allow-list during silo grain-manifest build and grain-method type formatting, not only on the deserialize path as before; types absent from the allow-list throw `Type "…" is not allowed` and the silo cannot start. Edict's grain interfaces are emitted by Edict's own generator (ADR-0005, so Orleans' serializer code generator never observes them) and its contract surface is hand-MessagePack (ADR-0006, so it carries no `[GenerateSerializer]`), so neither is allow-listed by Orleans codegen. We register one framework-owned `ITypeFilter` (`EdictGrainTypeFilter`) in `AddEdict()` — the universal silo and client front door — that opts the Edict surface back in, so no consumer, fixture, or Sample wiring changes.
+
+## Considered Options
+
+- **`ITypeFilter` in `AddEdict()` (chosen)** — the mechanism Orleans' own error points to, registered at the one chokepoint every silo and client already calls. Scopes the allowance to the Edict surface; no security regression because the gate exists to stop untrusted *wire-named* types resolving to dangerous code, and Edict's own assemblies are framework-owned and already referenced into the silo.
+- **Enumerate `TypeManifestOptions.AllowedTypes`** — rejected: impossible for this surface. The grain interfaces are generator-emitted and consumer commands/events are consumer-defined, so `Edict.Core` cannot list them at build time.
+- **Make Edict's types visible to Orleans codegen** (`[GenerateSerializer]`, restructure so the generator sees the interfaces) — rejected: directly fights ADR-0005 and ADR-0006 (the latter records that a generated codec surrogate is *impossible* because of the generator-ordering trap) and would change the wire format.
+- **Allow all types globally** — rejected: discards the exact untrusted-deserialization protection the gate provides, for every type, in a library others install.
+
+## Consequences
+
+The allow predicate trusts **any type defined in `Edict.Core` or `Edict.Contracts`** plus anything assignable to the grain-interface markers (`IEdictCommandHandler`/`IEdictEventConsumer`) plus the `IsEdictContract` surface. The assembly-level clause is broader than the literal set Orleans rejects, chosen deliberately so a new internal grain-state type (the next `SagaLifecycleState`) never silently regresses silo startup — the failure mode is a dead silo, not a soft degrade. The marker and contract clauses remain essential because consumer grain interfaces and consumer command/event subtypes live in consumer assemblies the assembly clause does not cover. A focused guard in `Edict.Architecture.Tests` asserts the filter still allows a representative of each category, so a future Orleans bump or a new grain species cannot quietly break startup.

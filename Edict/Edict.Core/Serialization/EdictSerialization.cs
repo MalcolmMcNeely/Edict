@@ -32,7 +32,7 @@ public static class EdictSerialization
     public static ISerializerBuilder AddEdictContractSerializer(this ISerializerBuilder builder) =>
         builder.AddMessagePackSerializer(IsEdictContract);
 
-    static bool IsEdictContract(Type type) =>
+    internal static bool IsEdictContract(Type type) =>
         typeof(EdictCommand).IsAssignableFrom(type)
         || typeof(EdictCommandResult).IsAssignableFrom(type)
         || type == typeof(EdictRejectionReason)
