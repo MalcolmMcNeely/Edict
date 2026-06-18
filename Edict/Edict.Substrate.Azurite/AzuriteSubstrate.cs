@@ -1,9 +1,10 @@
-using System.Diagnostics;
 using System.Net.Sockets;
 
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
+
+using DotNet.Testcontainers.Builders;
 
 using Edict.Azure.Persistence;
 using Edict.Azure.Persistence.TableStorage;
@@ -36,6 +37,24 @@ public sealed class AzuriteSubstrate : ISubstrate
     public const string GrainStateContainerName = "edict-state";
     public const string ClaimCheckBlobContainerName = "edict-claim-check";
 
+    readonly TimeProvider _timeProvider;
+    readonly BringUpTuning _tuning;
+    readonly SubstrateBringUpPolicy _bringUpPolicy;
+
+    public AzuriteSubstrate()
+        : this(TimeProvider.System, BringUpTuning.FromEnvironment())
+    {
+    }
+
+    public AzuriteSubstrate(TimeProvider timeProvider, BringUpTuning tuning)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(tuning);
+        _timeProvider = timeProvider;
+        _tuning = tuning;
+        _bringUpPolicy = new SubstrateBringUpPolicy(timeProvider);
+    }
+
     public string Name => "azure";
 
     public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop)
@@ -43,10 +62,15 @@ public sealed class AzuriteSubstrate : ISubstrate
         // Azure Queue streams poll on a timer; there is no Earliest/Latest
         // analogue. Saturation mode is accepted for harness uniformity.
         _ = mode;
-        return SubstrateBringUp.WithRetryAsync(Name, StartOnceAsync, cancellationToken);
+        return _bringUpPolicy.BringUpAsync(
+            Name,
+            [StartContainerAsync],
+            disposables => Build((AzuriteContainer)disposables[0]),
+            _tuning,
+            cancellationToken);
     }
 
-    static async Task<ISubstrateRuntime> StartOnceAsync(CancellationToken cancellationToken)
+    async Task<IAsyncDisposable> StartContainerAsync(BringUpTuning tuning, CancellationToken cancellationToken)
     {
         var container = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.35.0")
             .WithCreateParameterModifier(p =>
@@ -54,23 +78,20 @@ public sealed class AzuriteSubstrate : ISubstrate
                 p.Cmd ??= [];
                 p.Cmd.Add("--skipApiVersionCheck");
             })
+            // The stock module wait keys off an in-container log line under the
+            // ~1 h default timeout; bound it instead to the lowered tuning value
+            // against the container's own blob/queue/table ports, so an
+            // in-container readiness hang fails fast into a fresh-container retry.
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilInternalTcpPortIsAvailable(10000, waitStrategy => waitStrategy.WithTimeout(tuning.TestcontainersWaitTimeout))
+                .UntilInternalTcpPortIsAvailable(10001, waitStrategy => waitStrategy.WithTimeout(tuning.TestcontainersWaitTimeout))
+                .UntilInternalTcpPortIsAvailable(10002, waitStrategy => waitStrategy.WithTimeout(tuning.TestcontainersWaitTimeout)))
             .Build();
         try
         {
             await container.StartAsync(cancellationToken);
-            await WaitForHostEndpointsAsync(container, cancellationToken);
-
-            var connectionString = container.GetConnectionString();
-            var tableClient = new TableServiceClient(connectionString);
-            var blobClient = new BlobServiceClient(connectionString);
-            var queueClient = new QueueServiceClient(connectionString);
-
-            return new AzuriteSubstrateRuntime(
-                container,
-                connectionString,
-                tableClient,
-                blobClient,
-                queueClient);
+            await WaitForHostEndpointsAsync(container, tuning, cancellationToken);
+            return container;
         }
         catch
         {
@@ -89,6 +110,21 @@ public sealed class AzuriteSubstrate : ISubstrate
         }
     }
 
+    static AzuriteSubstrateRuntime Build(AzuriteContainer container)
+    {
+        var connectionString = container.GetConnectionString();
+        var tableClient = new TableServiceClient(connectionString);
+        var blobClient = new BlobServiceClient(connectionString);
+        var queueClient = new QueueServiceClient(connectionString);
+
+        return new AzuriteSubstrateRuntime(
+            container,
+            connectionString,
+            tableClient,
+            blobClient,
+            queueClient);
+    }
+
     // Testcontainers' Azurite wait strategy keys off in-container readiness,
     // not the host-side port mapping. On Podman/Windows the gvproxy forwarder
     // can lag behind the container being "ready" — the in-container Azurite
@@ -100,7 +136,7 @@ public sealed class AzuriteSubstrate : ISubstrate
     // This probe makes the substrate wait for host-side TCP connectivity on
     // every endpoint before handing the runtime back, so the silo configurator
     // never races the forwarder.
-    static async Task WaitForHostEndpointsAsync(AzuriteContainer container, CancellationToken cancellationToken)
+    async Task WaitForHostEndpointsAsync(AzuriteContainer container, BringUpTuning tuning, CancellationToken cancellationToken)
     {
         Uri[] endpoints =
         [
@@ -109,11 +145,9 @@ public sealed class AzuriteSubstrate : ISubstrate
             new Uri(container.GetTableEndpoint()),
         ];
 
-        var deadline = TimeSpan.FromSeconds(60);
-
         foreach (var endpoint in endpoints)
         {
-            var stopwatch = Stopwatch.StartNew();
+            var startTimestamp = _timeProvider.GetTimestamp();
             SocketException? lastError = null;
             while (true)
             {
@@ -128,18 +162,18 @@ public sealed class AzuriteSubstrate : ISubstrate
                 catch (SocketException exception)
                 {
                     lastError = exception;
-                    if (stopwatch.Elapsed >= deadline)
+                    if (_timeProvider.GetElapsedTime(startTimestamp) >= tuning.HostReadinessProbeDeadline)
                     {
                         break;
                     }
-                    await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
+                    await Task.Delay(tuning.HostReadinessProbePollInterval, _timeProvider, cancellationToken);
                 }
             }
 
             if (lastError is not null)
             {
                 throw new InvalidOperationException(
-                    $"Azurite container reported ready, but the host could not connect to {endpoint} within {deadline.TotalSeconds:F0} s. On Podman/Windows this is typically a gvproxy port-forwarder stall after rapid container churn — the in-container Azurite is reachable, the host-mapped port is not.",
+                    $"Azurite container reported ready, but the host could not connect to {endpoint} within {tuning.HostReadinessProbeDeadline.TotalSeconds:F0} s. On Podman/Windows this is typically a gvproxy port-forwarder stall after rapid container churn — the in-container Azurite is reachable, the host-mapped port is not.",
                     lastError);
             }
         }

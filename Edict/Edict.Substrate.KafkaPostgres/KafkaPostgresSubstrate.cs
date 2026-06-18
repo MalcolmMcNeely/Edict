@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 using Confluent.Kafka;
 
 using Edict.Contracts.DeadLetter;
@@ -34,12 +32,55 @@ namespace Edict.Substrate.KafkaPostgres;
 /// </summary>
 public sealed class KafkaPostgresSubstrate : ISubstrate
 {
+    readonly TimeProvider _timeProvider;
+    readonly BringUpTuning _tuning;
+    readonly SubstrateBringUpPolicy _bringUpPolicy;
+
+    public KafkaPostgresSubstrate()
+        : this(TimeProvider.System, BringUpTuning.FromEnvironment())
+    {
+    }
+
+    public KafkaPostgresSubstrate(TimeProvider timeProvider, BringUpTuning tuning)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(tuning);
+        _timeProvider = timeProvider;
+        _tuning = tuning;
+        _bringUpPolicy = new SubstrateBringUpPolicy(timeProvider);
+    }
+
     public string Name => "kafkapostgres";
 
     public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop) =>
-        SubstrateBringUp.WithRetryAsync(Name, token => StartOnceAsync(token, mode), cancellationToken);
+        _bringUpPolicy.BringUpAsync(
+            Name,
+            [StartContainersAsync],
+            disposables => Build((StartedContainerPair)disposables[0], mode),
+            _tuning,
+            cancellationToken);
 
-    async Task<ISubstrateRuntime> StartOnceAsync(CancellationToken cancellationToken, SubstrateStartMode mode)
+    static KafkaPostgresSubstrateRuntime Build(StartedContainerPair started, SubstrateStartMode mode)
+    {
+        var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
+        // Both saturation passes measure count-at-window-end on a fresh
+        // consumer group; Latest avoids replaying warmup-window backlog into
+        // the measurement, which would inflate EPS. Closed-loop keeps Earliest
+        // so fresh-group consumers replay deterministically from offset 0.
+        var autoOffsetReset = mode is SubstrateStartMode.SaturationList or SubstrateStartMode.SaturationState
+            ? AutoOffsetReset.Latest
+            : AutoOffsetReset.Earliest;
+
+        return new KafkaPostgresSubstrateRuntime(
+            started.PostgresContainer,
+            started.KafkaContainer,
+            started.PostgresConnectionString,
+            started.BootstrapServers,
+            consumerGroupId,
+            autoOffsetReset);
+    }
+
+    async Task<IAsyncDisposable> StartContainersAsync(BringUpTuning tuning, CancellationToken cancellationToken)
     {
         var postgresContainer = new PostgreSqlBuilder("postgres:17-alpine")
             // Postgres ships max_connections=100. The bench silo opens up to
@@ -56,6 +97,9 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         var kafkaContainer = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         try
         {
+            // Postgres and Kafka still start together here; serializing them
+            // (Postgres-then-Kafka) so two heavy containers do not fight for
+            // CPU and disk is a later within-boot-sequencing slice.
             await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));
 
             var postgresConnectionString = postgresContainer.GetConnectionString();
@@ -66,23 +110,9 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
                 ? bootstrapAddress["PLAINTEXT://".Length..]
                 : bootstrapAddress;
 
-            await WaitForKafkaReadyAsync(bootstrapServers, cancellationToken);
-            var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
-            // Both saturation passes measure count-at-window-end on a fresh
-            // consumer group; Latest avoids replaying warmup-window backlog into
-            // the measurement, which would inflate EPS. Closed-loop keeps Earliest
-            // so fresh-group consumers replay deterministically from offset 0.
-            var autoOffsetReset = mode is SubstrateStartMode.SaturationList or SubstrateStartMode.SaturationState
-                ? AutoOffsetReset.Latest
-                : AutoOffsetReset.Earliest;
+            await WaitForKafkaReadyAsync(bootstrapServers, tuning, cancellationToken);
 
-            return new KafkaPostgresSubstrateRuntime(
-                postgresContainer,
-                kafkaContainer,
-                postgresConnectionString,
-                bootstrapServers,
-                consumerGroupId,
-                autoOffsetReset);
+            return new StartedContainerPair(postgresContainer, kafkaContainer, postgresConnectionString, bootstrapServers);
         }
         catch
         {
@@ -108,6 +138,30 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         }
     }
 
+    // Holds the started container pair (plus the values derived from them at
+    // start) so the policy owns disposal on a failed attempt while the assembly
+    // callback composes the runtime on success.
+    sealed class StartedContainerPair(
+        PostgreSqlContainer postgresContainer,
+        KafkaContainer kafkaContainer,
+        string postgresConnectionString,
+        string bootstrapServers) : IAsyncDisposable
+    {
+        public PostgreSqlContainer PostgresContainer { get; } = postgresContainer;
+
+        public KafkaContainer KafkaContainer { get; } = kafkaContainer;
+
+        public string PostgresConnectionString { get; } = postgresConnectionString;
+
+        public string BootstrapServers { get; } = bootstrapServers;
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeQuietlyAsync(KafkaContainer);
+            await DisposeQuietlyAsync(PostgresContainer);
+        }
+    }
+
     // Mirrors AzuriteSubstrate.WaitForHostEndpointsAsync: Testcontainers'
     // Kafka wait strategy keys off an in-container log line, so the container
     // is reported ready while the broker is still settling — fresh listeners,
@@ -118,10 +172,9 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     // times out as "Local: Broker transport failure" and aborts silo
     // startup. Waiting for a single successful metadata round-trip here
     // proves the broker can serve the API surface before the silos race.
-    static async Task WaitForKafkaReadyAsync(string bootstrapServers, CancellationToken cancellationToken)
+    async Task WaitForKafkaReadyAsync(string bootstrapServers, BringUpTuning tuning, CancellationToken cancellationToken)
     {
-        var deadline = TimeSpan.FromSeconds(60);
-        var stopwatch = Stopwatch.StartNew();
+        var startTimestamp = _timeProvider.GetTimestamp();
         var adminConfig = new AdminClientConfig
         {
             BootstrapServers = bootstrapServers,
@@ -148,13 +201,13 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
                 lastError = exception;
             }
 
-            if (stopwatch.Elapsed >= deadline)
+            if (_timeProvider.GetElapsedTime(startTimestamp) >= tuning.HostReadinessProbeDeadline)
             {
                 throw new InvalidOperationException(
-                    $"Kafka container reported ready, but the host could not complete an AdminClient.GetMetadata round-trip against '{bootstrapServers}' within {deadline.TotalSeconds:F0} s. The broker may be stuck in KRaft controller election or the host port-forwarder may not have published the mapping.",
+                    $"Kafka container reported ready, but the host could not complete an AdminClient.GetMetadata round-trip against '{bootstrapServers}' within {tuning.HostReadinessProbeDeadline.TotalSeconds:F0} s. The broker may be stuck in KRaft controller election or the host port-forwarder may not have published the mapping.",
                     lastError);
             }
-            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            await Task.Delay(tuning.HostReadinessProbePollInterval, _timeProvider, cancellationToken);
         }
     }
 }

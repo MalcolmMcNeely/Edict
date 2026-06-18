@@ -3,6 +3,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Orleans.TestingHost" />
         <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Verify.Xunit" />
     </ItemGroup>
 
