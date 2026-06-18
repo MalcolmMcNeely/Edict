@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 
+using DotNet.Testcontainers.Builders;
+
 using Edict.Contracts.DeadLetter;
 using Edict.Contracts.TableStorage;
 using Edict.Core;
@@ -55,12 +57,15 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
     public Task<ISubstrateRuntime> StartAsync(CancellationToken cancellationToken, SubstrateStartMode mode = SubstrateStartMode.ClosedLoop) =>
         _bringUpPolicy.BringUpAsync(
             Name,
-            [StartContainersAsync],
-            disposables => Build((StartedContainerPair)disposables[0], mode),
+            // Postgres before Kafka: the policy staggers successive steps, so
+            // ordering them keeps two heavy containers from fighting for CPU and
+            // disk during initialization on a constrained machine.
+            [StartPostgresAsync, StartKafkaAsync],
+            disposables => Build((StartedPostgres)disposables[0], (StartedKafka)disposables[1], mode),
             _tuning,
             cancellationToken);
 
-    static KafkaPostgresSubstrateRuntime Build(StartedContainerPair started, SubstrateStartMode mode)
+    static KafkaPostgresSubstrateRuntime Build(StartedPostgres postgres, StartedKafka kafka, SubstrateStartMode mode)
     {
         var consumerGroupId = $"edict-substrate-{Guid.NewGuid():N}";
         // Both saturation passes measure count-at-window-end on a fresh
@@ -72,15 +77,15 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             : AutoOffsetReset.Earliest;
 
         return new KafkaPostgresSubstrateRuntime(
-            started.PostgresContainer,
-            started.KafkaContainer,
-            started.PostgresConnectionString,
-            started.BootstrapServers,
+            postgres.Container,
+            kafka.Container,
+            postgres.ConnectionString,
+            kafka.BootstrapServers,
             consumerGroupId,
             autoOffsetReset);
     }
 
-    async Task<IAsyncDisposable> StartContainersAsync(BringUpTuning tuning, CancellationToken cancellationToken)
+    static async Task<IAsyncDisposable> StartPostgresAsync(BringUpTuning tuning, CancellationToken cancellationToken)
     {
         var postgresContainer = new PostgreSqlBuilder("postgres:17-alpine")
             // Postgres ships max_connections=100. The bench silo opens up to
@@ -93,16 +98,44 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
             // and keeps the per-silo pool-size budget satisfied
             // ("silos × MaxPoolSize ≤ pg.max_connections").
             .WithCommand("-c", "max_connections=1024")
+            // The module's stock wait runs under the silent ~1 h Testcontainers
+            // default; bound it to the lowered tuning value against the
+            // in-container listener so an in-container readiness hang fails fast
+            // into a fresh-container retry. Postgres only binds TCP 5432 once it
+            // is serving (initdb runs over a Unix socket), so the port check is a
+            // sound readiness proxy.
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilInternalTcpPortIsAvailable(5432, waitStrategy => waitStrategy.WithTimeout(tuning.TestcontainersWaitTimeout)))
             .Build();
-        var kafkaContainer = new KafkaBuilder("confluentinc/cp-kafka:7.5.12").Build();
         try
         {
-            // Postgres and Kafka still start together here; serializing them
-            // (Postgres-then-Kafka) so two heavy containers do not fight for
-            // CPU and disk is a later within-boot-sequencing slice.
-            await Task.WhenAll(postgresContainer.StartAsync(cancellationToken), kafkaContainer.StartAsync(cancellationToken));
+            await postgresContainer.StartAsync(cancellationToken);
+            return new StartedPostgres(postgresContainer, postgresContainer.GetConnectionString());
+        }
+        catch
+        {
+            // Release the container before the retry: a stalled host-port
+            // forwarder never clears on the same mapping, so the next attempt
+            // must start from a freshly created container (and its disposal keeps
+            // a doomed run from leaking Docker/Podman resources).
+            await DisposeQuietlyAsync(postgresContainer);
+            throw;
+        }
+    }
 
-            var postgresConnectionString = postgresContainer.GetConnectionString();
+    async Task<IAsyncDisposable> StartKafkaAsync(BringUpTuning tuning, CancellationToken cancellationToken)
+    {
+        var kafkaContainer = new KafkaBuilder("confluentinc/cp-kafka:7.5.12")
+            // Bound the module's in-container wait to the lowered tuning value,
+            // mirroring the Postgres step. The host-side WaitForKafkaReadyAsync
+            // below still gates on a real metadata round-trip before the silos race.
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilInternalTcpPortIsAvailable(9092, waitStrategy => waitStrategy.WithTimeout(tuning.TestcontainersWaitTimeout)))
+            .Build();
+        try
+        {
+            await kafkaContainer.StartAsync(cancellationToken);
+
             var bootstrapAddress = kafkaContainer.GetBootstrapAddress();
             // Confluent.Kafka clients reject the "PLAINTEXT://" scheme prefix —
             // matches the strip in Edict.Kafka.Tests/KafkaAssemblyHost.
@@ -112,16 +145,11 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
 
             await WaitForKafkaReadyAsync(bootstrapServers, tuning, cancellationToken);
 
-            return new StartedContainerPair(postgresContainer, kafkaContainer, postgresConnectionString, bootstrapServers);
+            return new StartedKafka(kafkaContainer, bootstrapServers);
         }
         catch
         {
-            // Release both containers before the retry: a stalled host-port
-            // forwarder never clears on the same mapping, so the next attempt
-            // must start from freshly created containers (and their disposal
-            // keeps a doomed run from leaking Docker/Podman resources).
             await DisposeQuietlyAsync(kafkaContainer);
-            await DisposeQuietlyAsync(postgresContainer);
             throw;
         }
     }
@@ -138,27 +166,30 @@ public sealed class KafkaPostgresSubstrate : ISubstrate
         }
     }
 
-    // Holds the started container pair (plus the values derived from them at
-    // start) so the policy owns disposal on a failed attempt while the assembly
-    // callback composes the runtime on success.
-    sealed class StartedContainerPair(
-        PostgreSqlContainer postgresContainer,
-        KafkaContainer kafkaContainer,
-        string postgresConnectionString,
-        string bootstrapServers) : IAsyncDisposable
+    // One per within-boot step: the policy owns disposal on a failed attempt
+    // (disposing the container) while the assembly callback hands the container
+    // to the runtime on success.
+    sealed class StartedPostgres(PostgreSqlContainer container, string connectionString) : IAsyncDisposable
     {
-        public PostgreSqlContainer PostgresContainer { get; } = postgresContainer;
+        public PostgreSqlContainer Container { get; } = container;
 
-        public KafkaContainer KafkaContainer { get; } = kafkaContainer;
+        public string ConnectionString { get; } = connectionString;
 
-        public string PostgresConnectionString { get; } = postgresConnectionString;
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeQuietlyAsync(Container);
+        }
+    }
+
+    sealed class StartedKafka(KafkaContainer container, string bootstrapServers) : IAsyncDisposable
+    {
+        public KafkaContainer Container { get; } = container;
 
         public string BootstrapServers { get; } = bootstrapServers;
 
         public async ValueTask DisposeAsync()
         {
-            await DisposeQuietlyAsync(KafkaContainer);
-            await DisposeQuietlyAsync(PostgresContainer);
+            await DisposeQuietlyAsync(Container);
         }
     }
 
