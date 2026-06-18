@@ -3,6 +3,7 @@ using Azure.Storage.Queues;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
@@ -39,6 +40,7 @@ namespace Edict.Azure.Streaming.Tests;
 public class AqsStreamingFixture : StreamingConformanceFixture
 {
     ReferenceClaimCheckStore _claimCheckStore = null!;
+    ReferenceTableStoreFactory _tableStoreFactory = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -51,13 +53,17 @@ public class AqsStreamingFixture : StreamingConformanceFixture
     public override Task<bool> ClaimCheckBlobExistsAsync(Guid eventId) =>
         Task.FromResult(_claimCheckStore.Exists(eventId));
 
+    public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
+        _tableStoreFactory.CreateStore<T>(tableName);
+
     public override async Task InitializeAsync()
     {
         var connectionString = await AzuriteAssemblyHost.GetConnectionStringAsync();
         _claimCheckStore = new ReferenceClaimCheckStore();
+        _tableStoreFactory = new ReferenceTableStoreFactory();
 
         var context = new AqsStreamingClusterContext(
-            connectionString, _claimCheckStore, new ReferenceTableStoreFactory(), StorageFault,
+            connectionString, _claimCheckStore, _tableStoreFactory, StorageFault,
             UsesVirtualClock ? VirtualClock : TimeProvider.System);
         _contextKey = AqsStreamingClusterContextRegistry.Register(context);
 

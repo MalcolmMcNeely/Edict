@@ -1,4 +1,5 @@
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Tests.Conformance.Outbox;
 
 using Microsoft.Extensions.Time.Testing;
@@ -73,4 +74,15 @@ public abstract class StreamingConformanceFixture : IAsyncLifetime
     /// touching a provider SDK or asserting a durable-store property.
     /// </summary>
     public abstract Task<bool> ClaimCheckBlobExistsAsync(Guid eventId);
+
+    /// <summary>
+    /// Typed read accessor over the fixture's in-memory reference table store —
+    /// the same store the silo's projection grains write through. The cursor-over-
+    /// stream scenario uses it to wait deterministically for the real-stream-
+    /// delivered event to land as the List-projection row before reading through
+    /// the cursor, so the cursor read is never racing real-stream delivery latency.
+    /// Reads stay in-process: a row read is an in-grain property, not a real-store
+    /// property, so it does not breach the streaming axis's purity rule.
+    /// </summary>
+    public abstract IEdictTableWriteStore<T> GetTableStore<T>(string tableName) where T : class, new();
 }

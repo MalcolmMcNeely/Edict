@@ -23,7 +23,17 @@ public sealed class ReferenceTableStoreFactory : IEdictTableStoreFactory
 
     public Task<IEdictTableWriteStore<T>> CreateAsync<T>(string tableName, CancellationToken cancellationToken = default)
         where T : class, new() =>
-        Task.FromResult<IEdictTableWriteStore<T>>(new ReferenceTableWriteStore<T>(this, tableName));
+        Task.FromResult(CreateStore<T>(tableName));
+
+    /// <summary>
+    /// Synchronous read accessor over this shared backing store, for the streaming
+    /// fixture's <c>GetTableStore</c> seam: the store completes synchronously, so a
+    /// scenario can poll the reference List-projection row without a sync-over-async
+    /// hop. Returns the same <see cref="IEdictTableWriteStore{T}"/> shape the silo's
+    /// projection grains write through, so reads see their writes.
+    /// </summary>
+    public IEdictTableWriteStore<T> CreateStore<T>(string tableName) where T : class, new() =>
+        new ReferenceTableWriteStore<T>(this, tableName);
 
     public Task UpsertRowAsync(string tableName, string partitionKey, string rowKey, object row, CancellationToken cancellationToken = default)
     {

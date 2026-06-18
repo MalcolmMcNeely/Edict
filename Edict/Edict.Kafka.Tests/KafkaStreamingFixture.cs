@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using Edict.Contracts.ClaimCheck;
 using Edict.Contracts.Configuration;
 using Edict.Contracts.Sending;
+using Edict.Contracts.TableStorage;
 using Edict.Core;
 using Edict.Core.Commands;
 using Edict.Core.Serialization;
@@ -43,6 +44,7 @@ namespace Edict.Kafka.Tests;
 public class KafkaStreamingFixture : StreamingConformanceFixture
 {
     ReferenceClaimCheckStore _claimCheckStore = null!;
+    ReferenceTableStoreFactory _tableStoreFactory = null!;
     string _contextKey = "";
 
     public TestCluster Cluster { get; private set; } = null!;
@@ -55,16 +57,20 @@ public class KafkaStreamingFixture : StreamingConformanceFixture
     public override Task<bool> ClaimCheckBlobExistsAsync(Guid eventId) =>
         Task.FromResult(_claimCheckStore.Exists(eventId));
 
+    public override IEdictTableWriteStore<T> GetTableStore<T>(string tableName) =>
+        _tableStoreFactory.CreateStore<T>(tableName);
+
     public override async Task InitializeAsync()
     {
         var bootstrapServers = await KafkaAssemblyHost.GetBootstrapServersAsync();
         _claimCheckStore = new ReferenceClaimCheckStore();
+        _tableStoreFactory = new ReferenceTableStoreFactory();
 
         var context = new KafkaStreamingClusterContext(
             bootstrapServers,
             $"edict-kafka-streaming-{Guid.NewGuid():N}",
             _claimCheckStore,
-            new ReferenceTableStoreFactory(),
+            _tableStoreFactory,
             StorageFault,
             UsesVirtualClock ? VirtualClock : TimeProvider.System);
         _contextKey = KafkaStreamingClusterContextRegistry.Register(context);
