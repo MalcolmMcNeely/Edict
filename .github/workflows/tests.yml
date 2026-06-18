@@ -44,6 +44,25 @@ jobs:
       - name: Build
         run: dotnet build Edict/Edict.slnx --configuration Release --no-restore
 
+      # Pin this job's chaos seed up front so it is known before the tests run.
+      # Every container-free `dotnet test` process below inherits EDICT_CHAOS_SEED
+      # from the job environment, unifying the run on one seed, and the seed is
+      # written to the summary directly — no scraping it back out of test stdout
+      # (which xUnit captures per-test and does not forward on a green run). A
+      # fresh random value each run keeps the per-run interleaving exploration.
+      - name: Generate chaos seed
+        shell: bash
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) & 0x7FFFFFFF ))   # non-negative Int32
+          echo "EDICT_CHAOS_SEED=$seed" >> "$GITHUB_ENV"
+          {
+            echo "### Chaos seed — this run"
+            echo ""
+            echo "\`EDICT_CHAOS_SEED=$seed\`"
+            echo ""
+            echo "Reproduce this run's interleaving by setting this env var and rerunning."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Test (container-free projects)
         shell: bash
         env:
@@ -61,38 +80,11 @@ jobs:
           if [ "$UPLOAD_COVERAGE" = "true" ]; then
             coverage_args=(--collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage")
           fi
-          # Tee each project's output to a per-project log so a later best-effort
-          # step can surface the Sample suite's random chaos seed. pipefail keeps a
-          # failing `dotnet test` fatal despite the pipe to tee.
-          mkdir -p "${{ github.workspace }}/test-logs"
           for project in "${projects[@]}"; do
             echo "::group::Testing $project"
-            logfile="${{ github.workspace }}/test-logs/$(echo "$project" | tr '/.' '__').log"
-            dotnet test "$project" --configuration Release --no-build "${coverage_args[@]}" 2>&1 | tee "$logfile"
+            dotnet test "$project" --configuration Release --no-build "${coverage_args[@]}"
             echo "::endgroup::"
           done
-
-      - name: Surface chaos seed to job summary
-        if: always()
-        shell: bash
-        # Best-effort: echo the Sample suite's random chaos seed into the job
-        # summary so a failing run's interleaving is reproducible without digging
-        # through logs. The stdout line captured in the test log is the source of
-        # truth; this step never fails the job.
-        run: |
-          sample_log=$(find "${{ github.workspace }}/test-logs" -name '*Sample_Azure_Silo_Tests*csproj.log' 2>/dev/null | head -n1 || true)
-          if [ -n "${sample_log:-}" ] && [ -f "$sample_log" ]; then
-            seed_line=$(grep -m1 '\[Edict\] Chaos seed for this run is' "$sample_log" || true)
-            if [ -n "$seed_line" ]; then
-              {
-                echo "### Chaos seed — Sample suite"
-                echo ""
-                echo "\`$seed_line\`"
-                echo ""
-                echo "Reproduce a failing interleaving by setting \`EDICT_CHAOS_SEED\` to this value and rerunning. The stdout line in the test log is the source of truth."
-              } >> "$GITHUB_STEP_SUMMARY"
-            fi
-          fi
 
       - name: Upload coverage to Codecov
         if: ${{ inputs.upload-coverage }}
