@@ -35,7 +35,7 @@ That's both sides of an event-driven flow. No Orleans interfaces, no stream wiri
 |---|---|
 | **Idempotent** | Redeliveries are deduplicated by `EventId` before `HandleAsync` runs |
 | **Atomic** | Aggregate state and raised events commit in a single write |
-| **Traced** | One OpenTelemetry trace covers every hop from `SendAsync` to the terminal handler |
+| **Traced** | Each grain turn is its own OpenTelemetry trace, span-linked across every hop from `SendAsync` to the terminal handler |
 | **Forensic** | Poison messages land in a queryable dead-letter projection |
 | **At-least-once** | Duplicates and bounded reorder are deterministically exercised in tests |
 | **Wired** | Source generators connect `HandleAsync` to its stream by parameter type |
@@ -87,12 +87,12 @@ Edict answers all four from one place: every consumer inherits a base class that
 
 - **The double webhook** is deduplicated by `EventId` before `HandleAsync` runs. Idempotency is the default, not an opt-in.
 - **The half-finished crash** can't happen: aggregate state and raised events commit in one grain write, with no two-phase commit to stall halfway.
-- **The broken trace** stays whole. The envelope carries trace context across every async stream hop, so `SendAsync` to the terminal handler is one OpenTelemetry trace.
+- **The broken trace** stays whole. The envelope carries trace context across every async stream hop, so each grain turn is its own trace, span-linked back to the one that caused it — the path from `SendAsync` to the terminal handler stays navigable end to end.
 - **The poison message** lands in a queryable dead-letter projection. The aggregate keeps accepting commands; the failure has a forensic home instead of a wedged grain.
 
 The consumer-facing surface is seven concepts: **[Command Handler](docs/usage/concepts/commands.md)**, **[Command Validator](docs/usage/concepts/validators.md)**, **[Event Handler](docs/usage/concepts/event-handlers.md)**, **[Saga](docs/usage/concepts/sagas.md)**, **[Projection Builder](docs/usage/concepts/projections.md)**, **[Sender](docs/usage/concepts/commands.md)**, **[Stream](docs/usage/concepts/events.md)**. Everything else is the framework's problem. That matters for AI-assisted development too: a small, well-defined pattern set is easier to compose against than asking an AI to invent a distributed system from scratch every time.
 
-Edict isn't a production framework yet — there are gaps a hardened one would close. But the bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
+The bet holds: a single programming model is worth more than a polyglot stack pretends, once the framework absorbs the hard parts.
 
 ## Multi-tenancy
 
@@ -138,32 +138,36 @@ C# / .NET 10, Microsoft Orleans, OpenTelemetry, Roslyn source generators + analy
 | Azure Storage    | Azure Queue  | Azure Table + Blob  |
 | Kafka + Postgres | Apache Kafka | PostgreSQL          |
 
-## Highlights
+## Adding a substrate
 
-- **Agentic-friendly.** An MCP server and Claude Code skill bundle let consumers use Claude against Edict without first teaching the agent how it works.
-- **Pluggable.** Same handlers on Azure Storage or Kafka + Postgres.
+Substrate-neutrality is proven by a conformance harness split along the two axes the Outbox already decouples — **streaming** and **persistence**. Each axis battery runs one real backend and a dumb reference for the other, so a scenario can only assert its own axis. That makes a third backend small to add:
+
+- **Streaming** is a stream adapter (Kafka ships as a custom `IQueueAdapter`); **persistence** is a grain-storage provider (Postgres ships its own). A backend can supply one axis or both.
+- Bind it into the matching axis battery and you inherit every conformance scenario. A drift guard fails the build if any scenario is left unbound, so partial coverage can't pass silently.
+- Mapping a backend's errors to Edict's retry and dead-letter buckets is a registered fault-classification extension point, not a framework edit.
+
+None of this touches the consumer-facing API or a single handler: the same domain code that runs on Azure Storage runs on the new backend once it passes conformance.
+
+## Features
+
+- **Agentic-friendly.** An MCP server and Claude Code skill bundle let consumers drive Claude against Edict without first writing scaffolding to teach the agent how it works.
+- **Pluggable.** The same handlers run on Azure Storage or Kafka + Postgres.
 - **Event-driven, not event-sourced.** Events are transient; grain state is snapshot-persisted by Orleans.
-- **Atomic state + events.** One grain write covers both.
+- **Atomic state + events.** One grain write commits both.
 - **Read-your-writes.** A command returns a cursor; a query with `after:` waits until that write is visible, so a user reliably sees their own change.
-- **Projection species.** Two builders over one root: in-grain state for small, hot, per-id read models; an external list for large or unbounded ones.
-- **Effectively-once.** Per-consumer dedup in the base class.
+- **Projection species.** Two builders over one root — in-grain state for small, hot, per-id read models; an external list for large or unbounded ones.
+- **Effectively-once.** Per-consumer dedup in the base class drops redeliveries by `EventId`.
 - **Multi-tenant by structure.** Mark a route-key type tenant-scoped and the tenant folds into every key; a session can only ever address its own tenant's data. Within-tenant authorization stays yours.
-- **Retries that don't block.** Failing outbox entries back off independently.
-- **Claim check.** Large payloads spill to blob storage; the wire format carries a pointer.
-- **One trace per business flow.** Trace context follows every async stream hop.
+- **Retries that don't block.** Failing outbox entries back off independently with jittered exponential delay, then dead-letter at the cap.
+- **Claim check.** Oversized payloads spill to blob storage; the wire format carries a pointer.
+- **Trace causality at scale.** Trace context rides every async hop, but each grain turn is its own OpenTelemetry trace, span-linked to the turn that caused it — a navigable causal chain rather than one unbounded mega-trace.
 - **Operational metrics.** Outbox depth and age, dead-letter rate, handler p99, stream lag, saga age, and claim-check size on one `Meter` named `"Edict"`, with PromQL alert recipes in [`docs/operations/alerts.md`](docs/operations/alerts.md).
-- **Dead-letter as observability.** Permanently failing effects land in a queryable projection.
+- **Dead-letter as observability.** Permanently failing effects land in a queryable projection; the aggregate keeps serving.
 - **Regulator-grade audit log.** Opt in, and every command decision (accept *and* reject) and raised event is captured under an authenticated principal to a tamper-evident WORM store, committed atomically with the action and proven unaltered by a per-aggregate hash chain.
-- **Saga timeouts.** Every saga has an absolute lifetime cap (7-day default, overridable or opt-out); on expiry it runs a compensation hook and dead-letters, so a stalled workflow stays bounded, not immortal.
+- **Saga timeouts.** Every saga has an absolute lifetime cap (7-day default, overridable or opt-out); on expiry it compensates and dead-letters, so a stalled workflow stays bounded.
 - **In-grain durable scheduling.** A handler or saga schedules recurring work from inside `HandleAsync` in one line; the schedule persists a message (never a delegate), survives deactivation, and catches up on reactivation.
 - **Configurable.** Every knob is an options property with a default and startup validation.
-- **In-memory tests.** SendAsync → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
-
-## What's next
-
-- **Outbox circuit breaker.** Per-target breaker on the executor seam, so a flapping downstream stops getting hammered by per-entry retries.
-- **External-work primitive.** Dispatch a slow out-of-grain operation (API call, batch job, external process), park via reminder, resume with the result to issue a command. Orleans grain turns should stay short, and there is no framework-shape way to do this today.
-- **More substrates.** AWS SQS + DynamoDB. NATS JetStream. Cosmos DB. MongoDB. The conformance harness already exists, so the next substrate add is mostly a queue adapter and a state-storage provider: no public-API changes, and provider-specific fault classification is a registered extension point.
+- **In-memory tests.** `SendAsync` → drain → verify without containers; the framework itself is tested against real Azurite via Testcontainers.
 
 ## Running locally
 
@@ -175,12 +179,21 @@ cd Edict
 dotnet run --project Sample/Sample.Azure.AppHost
 ```
 
-The Aspire dashboard prints a URL on startup. From there, follow two links:
+The Aspire dashboard prints a URL on startup. Open **Sample.Azure.Web** — a believable commerce console, not a feature gallery. Each view wears one concept badge and links to its doc, so you exercise every Edict feature just by using the app:
 
-- **Sample.Azure.Web** — a believable commerce console with six views: **Dashboard** (live order traffic, the order spotlight, a fault-injection panel, fire-one-order, and the dead-letter counter), **Checkout** (cart to order through a bridge saga, with read-your-writes on the checkout click), **Orders** (drive one order's lifecycle, payment compensation, and the notifications panel), **Schedules** (reservation holds, delivery ETA, gateway settlement), **Operations** (metrics and dead-letter RCA), and **Audit Log** (act as a chosen principal, drive an accepted or rejected order, and read back the attributed, tamper-evident decision chain from the WORM store). Press ▶ on the Dashboard to start traffic, or press **Fire one order** for a single deterministic lifecycle that produces one clean trace tree in Aspire.
-- **Aspire telemetry** — the trace view is the source of truth for what Edict is actually doing. Look for spans named `edict.command.send`, `edict.event.publish`, and `edict.event.handle`. Oversize events carry `envelope.shape=ClaimCheck` on the publish span.
+| View | Concept | What you do |
+|---|---|---|
+| **Dashboard** | ListProjection | Watch live order traffic and the dead-letter counter. ▶ starts traffic; **Fire one order** runs one deterministic lifecycle; a fault panel injects poison, oversize, and reject faults |
+| **Checkout** | Saga (bridge) | Take a cart to an order through a bridge saga, with read-your-writes on the click |
+| **Orders** | Saga | Drive one order's lifecycle, payment compensation, and the notifications panel |
+| **Employees** | Tenancy | Switch companies and watch each tenant address only its own data |
+| **Schedules** | EdictSchedule | Watch a reservation hold expire, a delivery ETA tick down, and a gateway settlement poll until it settles |
+| **Operations** | Telemetry · Dead Letter | Read live metrics and the dead-letter RCA surface |
+| **Audit Log** | Audit | Act as a chosen principal, drive an accepted or rejected order, and read back the tamper-evident decision chain from the WORM store |
 
-Each view names the Edict concept it exercises and links to its concept doc. The framing rationale, plus a feature-to-walkthrough-to-test index, lives in [`docs/usage/sample.md`](docs/usage/sample.md); the use-case-to-test map lives in [`docs/usage/testing/sample-map.md`](docs/usage/testing/sample-map.md).
+Then open **Aspire telemetry** — the trace view is the source of truth for what Edict is doing. Each grain turn is its own trace, span-linked to its cause; look for `edict.command.send`, `edict.event.publish`, and `edict.event.handle`, with `envelope.shape=ClaimCheck` on the publish span for oversized events.
+
+The framing rationale and a feature-to-test index live in [`docs/usage/sample.md`](docs/usage/sample.md); the use-case-to-test map lives in [`docs/usage/testing/sample-map.md`](docs/usage/testing/sample-map.md).
 
 <img src="docs/assets/live-metrics-demo.gif" alt="Edict live metrics dashboard: outbox depth, dead-letter rate, handler p99 and stream lag updating in real time" width="640">
 
