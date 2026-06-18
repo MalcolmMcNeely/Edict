@@ -49,6 +49,20 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
   - `QueuePollingPeriod = 10 ms` (`EdictAzureStreamsOptions`) — Azure substrate, consumer-side poll cadence.
 - Single run per substrate on dev hardware; expect ±20% variance run-to-run. Numbers are a baseline for the registered defaults of each substrate, not a framework ceiling.
 
+### Bring-up tuning
+
+The bench stands fresh Testcontainers up once per pass (closed-loop, then the two saturation species) per substrate, so it lowers the stock Testcontainers waits and times out fast into a fresh-container retry rather than hanging on a stalled port mapping. Each knob is read from an environment variable at start-up, falling back to the default below if the variable is absent or malformed. Override them only if a genuinely slow machine is failing bring-up on the defaults.
+
+| Environment variable | Default | What it bounds |
+|---|---|---|
+| `EDICT_BENCH_TESTCONTAINERS_WAIT_SECONDS` | `90` | In-container readiness wait handed to Testcontainers, replacing its silent ~1 h default. |
+| `EDICT_BENCH_HOST_PROBE_DEADLINE_SECONDS` | `30` | Host-side TCP-connect readiness probe deadline against the container's mapped ports. |
+| `EDICT_BENCH_HOST_PROBE_POLL_MS` | `250` | Poll cadence (milliseconds) the host-readiness probe retries its connect on. |
+| `EDICT_BENCH_BRINGUP_STAGGER_SECONDS` | `2` | Gap between successive within-boot steps (e.g. Postgres then Kafka) so heavy starts don't fight for CPU and disk. |
+| `EDICT_BENCH_BRINGUP_SETTLE_SECONDS` | `5` | Cross-boot settle gap between a pass's teardown and the next pass's bring-up, letting the port-forwarder drain. |
+| `EDICT_BENCH_BRINGUP_RETRIES` | `3` | Number of dispose-and-recreate fresh-container bring-up attempts before failing the run. |
+| `EDICT_BENCH_SETUP_DEADLINE_SECONDS` | `300` | Whole-pass setup budget (container bring-up + silo deploy); a breach fails the run fast, naming the substrate and phase. |
+
 ## What you're looking at — `azure` (Azurite + Azure Queue streams)
 
 Azurite emulator, single Orleans silo, producer and consumers in one process. Three substrate ceilings, not framework ceilings:
