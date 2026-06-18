@@ -254,9 +254,14 @@ public abstract class EdictCommandHandler<TState>
         // The fire is its own grain turn: a new trace root linking back to the
         // command that armed the schedule. Capturing it as the current context makes
         // any event the fire raises nest under it as parent-child within the turn.
+        // A fire is also a fresh causal root, so it mints its own conversation here at
+        // span-start and threads it onto the events it raises below — never inheriting
+        // the arming command's conversation, which the link already ties back to.
+        var conversationId = Guid.NewGuid();
         var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
         using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
         fireSpan?.CaptureToRequestContext();
+        fireSpan?.SetEdictConversationId(conversationId);
         OriginIdentity.Seed(entry.ArmPrincipal, entry.ArmTenant);
 
         EdictScheduleResult result;
@@ -277,11 +282,11 @@ public abstract class EdictCommandHandler<TState>
             ? base.State.Schedule.Complete(entry.ScheduleId)
             : base.State.Schedule.Continue(entry.ScheduleId, now);
 
-        // A fire is a fresh causal root (new correlation) but stays attributed to the
-        // arming principal and tenant carried durably in the entry, so a recurring
-        // job's events are still ascribed to whoever armed it, inside that tenant
-        // wall, across reactivation.
-        await CommitAndDrainRaisedEventsAsync(Guid.NewGuid(), entry.ArmPrincipal, entry.ArmTenant);
+        // A fire is a fresh causal root (the conversation minted at span-start) but
+        // stays attributed to the arming principal and tenant carried durably in the
+        // entry, so a recurring job's events are still ascribed to whoever armed it,
+        // inside that tenant wall, across reactivation.
+        await CommitAndDrainRaisedEventsAsync(conversationId, entry.ArmPrincipal, entry.ArmTenant);
     }
 
     // The dispatch delegate ScheduleHost calls per timed-out entry. A timeout is
@@ -474,6 +479,7 @@ public abstract class EdictCommandHandler<TState>
         if (activity is not null)
         {
             activity.SetEdictCommandTags(this.GetPrimaryKeyString());
+            activity.SetEdictConversationId(command.ConversationId);
             if (ServiceProvider.GetService<CommandRouteResolver>() is { } resolver
                 && resolver.TryGetRoute(command, out var route))
             {

@@ -36,6 +36,7 @@ sealed class SendCommandExecutor(Serializer serializer, IServiceProvider service
         var parentContext = ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState);
         using var activity = EdictDiagnostics.ActivitySource.StartEdictCommandSend(
             command.GetType().Name, parentContext);
+        activity?.SetEdictConversationId(command.ConversationId);
 
         // A saga's dispatch is fire-and-forget: the handled command runs in its own
         // grain turn. Carry this send span as the cross-turn link source so the

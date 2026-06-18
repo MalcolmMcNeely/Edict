@@ -63,6 +63,43 @@ public sealed class SagaCommandHandleLinksToSendSpanTests
     }
 
     [Fact]
+    public async Task EveryTurnSpan_ShouldCarryTheConversationId_AcrossTheSagaDispatchChain()
+    {
+        var workflowId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        using var capture = new SpanCapture();
+
+        var publisher = _fixture.GrainFactory.GetGrain<ISpanSagaEventPublisher>(workflowId);
+        await publisher.PublishAsync(new SpanSagaTriggerEvent(workflowId) with
+        {
+            EventId = Guid.NewGuid(),
+            OccurredAt = DateTimeOffset.UtcNow,
+            ConversationId = conversationId,
+        });
+
+        // The conversation id is chain-stable: it rides the handled trigger event onto
+        // the saga's generated event-handle spine, onto the dispatched command's send
+        // and handle turns, so one query returns every span in the chain. Each span is
+        // scoped to this workflow so a parallel collection's spans never satisfy it.
+        var eventHandleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Events.Spans.Handle} SpanSagaTriggerEvent"
+                && conversationId.ToString().Equals(activity.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId)),
+            "event handle span carrying the conversation id");
+        var sendSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Send} SpanTrackerCommand"
+                && conversationId.ToString().Equals(activity.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId)),
+            "command send span carrying the conversation id");
+        var handleSpan = await capture.WaitForSpanAsync(
+            activity => activity.OperationName == $"{SemanticConventions.Commands.Spans.Handle} SpanTrackerCommand"
+                && SpanWorkflowScoping.BelongsToWorkflow(activity, workflowId),
+            "command handle span for SpanTrackerCommand");
+
+        Assert.Equal(conversationId.ToString(), eventHandleSpan.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+        Assert.Equal(conversationId.ToString(), sendSpan.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+        Assert.Equal(conversationId.ToString(), handleSpan.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+    }
+
+    [Fact]
     public async Task RaisedEventPublish_ShouldNestUnderHandle_InTheDispatchedCommandsOwnTrace()
     {
         var workflowId = Guid.NewGuid();

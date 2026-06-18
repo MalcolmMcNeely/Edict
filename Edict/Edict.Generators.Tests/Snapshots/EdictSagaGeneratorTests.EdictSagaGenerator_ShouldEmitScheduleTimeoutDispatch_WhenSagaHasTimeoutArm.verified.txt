@@ -22,7 +22,11 @@ namespace Sample
                 {
                     var link = global::Edict.Telemetry.ActivityExtensions.BuildLink(edictEvent.TraceId, edictEvent.SpanId, edictEvent.TraceState);
                     using var span = global::Edict.Telemetry.ActivitySourceExtensions.StartEdictEventHandle(global::Edict.Telemetry.EdictDiagnostics.ActivitySource, "OrderPlacedEvent", link);
-                    if (span is not null && this.ServiceProvider.GetService(typeof(global::Edict.Telemetry.IEventTagWriters)) is global::Edict.Telemetry.IEventTagWriters __writers && __writers.TryGet(typeof(global::Sample.OrderPlacedEvent), out var __write)) { __write(typed, span); }
+                    if (span is not null)
+                    {
+                        global::Edict.Telemetry.ActivityExtensions.SetEdictConversationId(span, typed.ConversationId);
+                        if (this.ServiceProvider.GetService(typeof(global::Edict.Telemetry.IEventTagWriters)) is global::Edict.Telemetry.IEventTagWriters __writers && __writers.TryGet(typeof(global::Sample.OrderPlacedEvent), out var __write)) { __write(typed, span); }
+                    }
                     return await DispatchEventAsync(typed, HandleAsync);
                 }
                 default:

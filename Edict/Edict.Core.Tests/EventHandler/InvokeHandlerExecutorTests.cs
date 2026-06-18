@@ -50,6 +50,50 @@ public sealed class InvokeHandlerExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ShouldStampTheEventsConversationId_OnTheHandleSpan()
+    {
+        var conversationId = new Guid("77777777-8888-9999-aaaa-bbbbbbbbbbbb");
+        var edictEvent = new OrderPlacedEvent(
+            OrderId: new Guid("11111111-1111-1111-1111-111111111111"),
+            Sku: "WIDGET")
+        {
+            EventId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            ConversationId = conversationId,
+        };
+        var envelope = EnvelopeCodec.WrapInline(Serializer.SerializeToArray<EdictEvent>(edictEvent));
+        var entry = new OutboxEntry
+        {
+            EntryId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            Kind = OutboxEffectKind.InvokeHandler,
+            Payload = Serializer.SerializeToArray<EdictEvent>(envelope),
+        };
+
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => { lock (stopped) { stopped.Add(activity); } },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var executor = new InvokeHandlerExecutor(Serializer, BuildUnwrap(store: null), NoWriters, TimeProvider.System);
+        await executor.ExecuteAsync(
+            entry, NullStreamProvider.Instance, e => Task.FromResult<OutboxEntry?>(null), consumerType: typeof(object), liveWireEvent: null);
+
+        // The inline-envelope handle span starts named for the wrapper frame and has
+        // its DisplayName corrected to the inner type once unwrapped; scope by the
+        // unique conversation-id value so a sibling class's handle span never matches.
+        Activity handle;
+        lock (stopped)
+        {
+            handle = stopped.Single(a =>
+                conversationId.ToString().Equals(a.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId)));
+        }
+        Assert.Equal($"{SemanticConventions.Events.Spans.Handle} {nameof(OrderPlacedEvent)}", handle.DisplayName);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ShouldFetchAndDispatchInnerEvent_WhenPointerEnvelopeEntry()
     {
         var inner = new OrderPlacedEvent(

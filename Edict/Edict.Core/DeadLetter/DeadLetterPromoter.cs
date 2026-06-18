@@ -46,6 +46,10 @@ sealed class DeadLetterPromoter(
             sourceGrainType, ActivityExtensions.BuildLink(failed.TraceParent, failed.TraceState));
         activity?.SetTag(SemanticConventions.Common.Tags.GrainType, sourceGrainType);
         activity?.SetTag(SemanticConventions.Outbox.Tags.EffectKind, failed.Kind.ToString());
+        // Read the conversation id off the top of the durable entry, never the body:
+        // a dead-lettered turn must still name its conversation even when the failing
+        // payload can no longer be deserialized, the exact case the safety net exists for.
+        activity?.SetEdictConversationId(failed.ConversationId);
 
         // Promote() runs outside the engine's per-group catch. A throw here
         // propagates up the grain drain, skips the state write, leaves the
@@ -73,6 +77,14 @@ sealed class DeadLetterPromoter(
             raised = BuildForSerializationFailure(failed, promotionException, sourceGrainKey, sourceGrainType, now);
         }
 
+        // The body-deserialising builders set the row's conversation id from the
+        // decoded payload; the synthetic body-free fallbacks cannot, so backfill from
+        // the durable entry field. A with-clone cannot throw, so the no-throw rule holds.
+        if (raised.ConversationId == Guid.Empty)
+        {
+            raised = raised with { ConversationId = failed.ConversationId };
+        }
+
         var failureReason = DeadLetterFailureClassifier.Classify(exception, services.GetServices<IDeadLetterFaultClassifier>());
         activity?.SetTag(SemanticConventions.DeadLetter.Tags.FailureReason, failureReason);
 
@@ -95,6 +107,7 @@ sealed class DeadLetterPromoter(
             TraceState = failed.TraceState,
             AttemptCount = 0,
             NextAttemptUtc = now,
+            ConversationId = failed.ConversationId,
         };
     }
 

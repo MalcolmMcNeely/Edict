@@ -57,6 +57,32 @@ public sealed class ActivityExtensionsTests : IDisposable
     }
 
     [Fact]
+    public void SetEdictConversationId_ShouldStampTheStandardOtelConversationAttribute()
+    {
+        var conversationId = new Guid("11111111-2222-3333-4444-555555555555");
+
+        using (var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test"))
+        {
+            activity?.SetEdictConversationId(conversationId);
+        }
+
+        var span = Assert.Single(_stopped);
+        Assert.Equal(conversationId.ToString(), span.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+    }
+
+    [Fact]
+    public void SetEdictConversationId_ShouldStampNothing_WhenConversationIdIsEmpty()
+    {
+        using (var activity = EdictDiagnostics.ActivitySource.StartEdictCommand("test"))
+        {
+            activity?.SetEdictConversationId(Guid.Empty);
+        }
+
+        var span = Assert.Single(_stopped);
+        Assert.Null(span.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+    }
+
+    [Fact]
     public void ReadRequestContext_ShouldReturnSameTraceIds_WhenPreviouslyCaptured()
     {
         string? capturedTraceId, capturedSpanId;

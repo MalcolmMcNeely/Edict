@@ -27,6 +27,22 @@ public static class SemanticConventions
         }
     }
 
+    /// <summary>The OpenTelemetry <c>messaging.*</c> semantic-convention attributes Edict emits
+    /// against the one <c>"Edict"</c> source — the standard names, so off-the-shelf tooling reads
+    /// them without house-specific configuration.</summary>
+    public static class Messaging
+    {
+        public static class Tags
+        {
+            /// <summary>The chain-stable conversation id — the OpenTelemetry messaging convention's
+            /// canonical name for the value its spec also calls a "Correlation ID". Stamped by the
+            /// framework on every turn-root span so an operator filters one conversation in a single
+            /// query, then follows the cross-turn span links to pivot between conversations. There is
+            /// exactly one tag, the standard one; no house-namespaced alias.</summary>
+            public const string ConversationId = "messaging.message.conversation_id";
+        }
+    }
+
     public static class Commands
     {
         public static class Spans

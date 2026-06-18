@@ -20,6 +20,7 @@ namespace Edict.Core.Tests.Serialization;
 public sealed class EnvelopeStateShapeTests
 {
     static readonly Guid EntryId = new("aaaaaaaa-0000-0000-0000-000000000001");
+    static readonly Guid ConversationId = new("dddddddd-0000-0000-0000-000000000004");
     static readonly Guid HandledEventId = new("cccccccc-0000-0000-0000-000000000003");
     static readonly DateTimeOffset Now = new(2026, 5, 19, 12, 0, 0, TimeSpan.Zero);
 
@@ -45,6 +46,7 @@ public sealed class EnvelopeStateShapeTests
                 TraceState = "edict=1",
                 AttemptCount = 2,
                 NextAttemptUtc = Now,
+                ConversationId = ConversationId,
             })
             .Enqueue(new OutboxEntry { EntryId = EntryId, Kind = OutboxEffectKind.PublishEvent });
 

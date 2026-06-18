@@ -29,9 +29,13 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
 
         using var publishActivity = StartPublishActivity(edictEvent.GetType().Name, entry, liveWireEvent);
 
-        if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
+        if (publishActivity is not null)
         {
-            write(edictEvent, publishActivity);
+            publishActivity.SetEdictConversationId(edictEvent.ConversationId);
+            if (tagWriters.TryGet(edictEvent.GetType(), out var write))
+            {
+                write(edictEvent, publishActivity);
+            }
         }
 
         var stamped = Stamp(edictEvent, entry, publishActivity);
@@ -74,9 +78,13 @@ sealed class PublishEventExecutor(Serializer serializer, IEventStreamAccessors a
                 var entry = entries[i];
                 var edictEvent = liveWireEvents[i] ?? serializer.Deserialize<EdictEvent>(entry.Payload);
                 activities[i] = StartPublishActivity(edictEvent.GetType().Name, entry, liveWireEvents[i]);
-                if (activities[i] is { } a && tagWriters.TryGet(edictEvent.GetType(), out var write))
+                if (activities[i] is { } a)
                 {
-                    write(edictEvent, a);
+                    a.SetEdictConversationId(edictEvent.ConversationId);
+                    if (tagWriters.TryGet(edictEvent.GetType(), out var write))
+                    {
+                        write(edictEvent, a);
+                    }
                 }
                 stamped[i] = Stamp(edictEvent, entry, activities[i]);
             }

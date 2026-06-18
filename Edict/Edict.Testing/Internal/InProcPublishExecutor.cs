@@ -84,9 +84,13 @@ sealed class InProcPublishExecutor(
             : EdictDiagnostics.ActivitySource.StartEdictEventPublish(
                 edictEvent.GetType().Name, ActivityExtensions.RestoreFromTraceParent(entry.TraceParent, entry.TraceState));
 
-        if (publishActivity is not null && tagWriters.TryGet(edictEvent.GetType(), out var write))
+        if (publishActivity is not null)
         {
-            write(edictEvent, publishActivity);
+            publishActivity.SetEdictConversationId(edictEvent.ConversationId);
+            if (tagWriters.TryGet(edictEvent.GetType(), out var write))
+            {
+                write(edictEvent, publishActivity);
+            }
         }
 
         var (fallbackTraceId, fallbackSpanId) = SplitTraceParent(entry.TraceParent);

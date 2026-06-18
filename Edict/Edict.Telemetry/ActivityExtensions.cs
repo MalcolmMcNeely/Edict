@@ -16,6 +16,21 @@ public static class ActivityExtensions
         => activity.SetTag(SemanticConventions.Commands.Tags.RouteKey, routeKey);
 
     /// <summary>
+    /// Stamps <c>messaging.message.conversation_id</c> — the chain-stable conversation
+    /// id of this turn's own work — onto a turn-root span so an operator can filter one
+    /// whole conversation in a single query. An empty id stamps nothing: a
+    /// framework-internal message that carries no conversation, or an untraced edge,
+    /// leaves a clean span rather than an all-zero tag.
+    /// </summary>
+    public static void SetEdictConversationId(this Activity activity, Guid conversationId)
+    {
+        if (conversationId != Guid.Empty)
+        {
+            activity.SetTag(SemanticConventions.Messaging.Tags.ConversationId, conversationId.ToString());
+        }
+    }
+
+    /// <summary>
     /// Captures the current activity's W3C trace context into Orleans
     /// <see cref="RequestContext"/> so that <see cref="RestoreFromRequestContext"/>
     /// can reconstitute it on the handler-grain side of the stream hop.

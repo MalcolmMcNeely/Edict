@@ -71,4 +71,48 @@ public sealed class SagaTimeoutSpanTests
         Assert.Equal(ActivityTraceId.CreateFromString(ArmTraceId), onlyLink.Context.TraceId);
         Assert.Equal(armSpanId, onlyLink.Context.SpanId);
     }
+
+    [Fact]
+    public async Task FiredCap_ShouldCarryAFreshConversationId_DistinctFromTheArmingEvent()
+    {
+        var workflowId = Guid.NewGuid();
+        var armingConversationId = Guid.NewGuid();
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EdictDiagnostics.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => { lock (stopped) { stopped.Add(activity); } },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var saga = _fixture.GrainFactory.GetGrain<ISagaLifecycleProbe>(
+            workflowId, grainClassNamePrefix: typeof(CappedSaga).FullName);
+
+        await saga.DeliverAsync(new LifecycleTriggerEvent(workflowId)
+        {
+            EventId = Guid.NewGuid(),
+            TraceId = ArmTraceId,
+            SpanId = ArmSpanId,
+            ConversationId = armingConversationId,
+        });
+
+        SagaLifecycleClusterFixture.Time.Advance(TimeSpan.FromMinutes(2));
+        await saga.FireCapAsync();
+
+        var armSpanId = ActivitySpanId.CreateFromString(ArmSpanId);
+        Activity timeoutSpan;
+        lock (stopped)
+        {
+            timeoutSpan = stopped.Single(a =>
+                a.OperationName == $"{SemanticConventions.Sagas.Spans.Timeout} CappedSaga"
+                && a.Links.Any(link => link.Context.SpanId == armSpanId));
+        }
+
+        // A fired cap is a fresh causal root: its compensation reads as its own
+        // conversation, not the conversation that armed the saga.
+        var capConversationId = Assert.IsType<string>(timeoutSpan.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+        Assert.NotEqual(Guid.Empty, Guid.Parse(capConversationId));
+        Assert.NotEqual(armingConversationId.ToString(), capConversationId);
+    }
 }

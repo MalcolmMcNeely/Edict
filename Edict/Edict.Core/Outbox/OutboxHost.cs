@@ -317,6 +317,7 @@ sealed class OutboxHost<TPayload>
                 Payload = results[i].Payload,
                 TraceParent = traceParent,
                 TraceState = traceState,
+                ConversationId = correlationId,
             };
             liveRefs[entryId] = results[i].WireEvent;
         }

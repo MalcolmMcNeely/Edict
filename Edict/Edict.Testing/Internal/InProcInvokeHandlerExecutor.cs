@@ -52,6 +52,7 @@ sealed class InProcInvokeHandlerExecutor(
         if (span is not null)
         {
             span.DisplayName = $"{SemanticConventions.Events.Spans.Handle} {materialised.GetType().Name}";
+            span.SetEdictConversationId(materialised.ConversationId);
         }
 
         var stagedEffect = await deferredDispatch(materialised);

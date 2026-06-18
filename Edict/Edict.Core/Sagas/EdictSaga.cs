@@ -452,9 +452,14 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
         // The fired cap is its own grain turn: a new trace root linking back to the
         // context that armed the saga. As the current span it makes a compensating
-        // command's edict.command.send (or the dead-letter publish) nest under it.
+        // command's edict.command.send (or the dead-letter publish) nest under it. The
+        // cap is a fresh causal root, so it mints its own conversation here at
+        // span-start and threads it onto the compensating command rather than relying
+        // on the sender's lazy mint-on-empty, so the span and the command agree.
+        var conversationId = Guid.NewGuid();
         var link = ActivityExtensions.BuildLink(lifecycle?.ArmTraceParent, lifecycle?.ArmTraceState);
         using var timeoutSpan = EdictDiagnostics.ActivitySource.StartEdictSagaTimeout(GetType().Name, link);
+        timeoutSpan?.SetEdictConversationId(conversationId);
 
         var buffer = _dispatch.Begin();
 
@@ -469,7 +474,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             // hook requested a dead-letter; otherwise (an override that only mutated
             // Progress) the terminal write rides alone.
             stagedEffect =
-                command is not null ? BuildSendCommandEntry(command)
+                command is not null ? BuildSendCommandEntry(command with { ConversationId = conversationId })
                 : buffer.DeadLetterRequested ? BuildSagaDeadLetterEntry(new EdictSagaTimeoutException(
                     $"Saga '{SagaType}' hit its absolute lifetime cap with no OnSagaTimeoutAsync override; the timeout was dead-lettered."))
                 : null;
@@ -645,10 +650,15 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
 
         // The fire is its own grain turn: a new trace root linking back to the event
         // that armed the schedule. As the current context it makes a Dispatched
-        // command's edict.command.send nest under the fire within the turn.
+        // command's edict.command.send nest under the fire within the turn. A fire is
+        // also a fresh causal root, so it mints its own conversation here at span-start
+        // and threads it onto any Dispatched command rather than inheriting the arming
+        // conversation, which the link already ties back to.
+        var conversationId = Guid.NewGuid();
         var link = ActivityExtensions.BuildLink(entry.ArmTraceParent, entry.ArmTraceState);
         using var fireSpan = EdictDiagnostics.ActivitySource.StartEdictScheduleFire(message.GetType().Name, link);
         fireSpan?.CaptureToRequestContext();
+        fireSpan?.SetEdictConversationId(conversationId);
         OriginIdentity.Seed(entry.ArmPrincipal, entry.ArmTenant);
 
         EdictScheduleResult result;
@@ -667,7 +677,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
         // in the entry, so a Dispatched poll-then-send command is ascribed to whoever
         // armed the schedule, inside that tenant wall, even across a reactivation.
         var command = buffer.Take();
-        var effect = command is null ? null : BuildSendCommandEntry(command with { Principal = entry.ArmPrincipal, Tenant = entry.ArmTenant });
+        var effect = command is null ? null : BuildSendCommandEntry(command with { ConversationId = conversationId, Principal = entry.ArmPrincipal, Tenant = entry.ArmTenant });
 
         var nextSchedule = result is EdictScheduleResult.Complete
             ? base.State.Schedule.Complete(entry.ScheduleId)
@@ -780,6 +790,7 @@ public abstract class EdictSaga<TProgress> : EdictIdempotencyBase<TProgress>, IE
             Payload = serializer.SerializeToArray<EdictCommand>(command),
             TraceParent = traceParent,
             TraceState = current?.TraceStateString,
+            ConversationId = command.ConversationId,
         };
     }
 

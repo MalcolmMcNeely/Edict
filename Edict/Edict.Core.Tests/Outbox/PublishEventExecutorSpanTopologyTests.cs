@@ -132,6 +132,23 @@ public sealed class PublishEventExecutorSpanTopologyTests
         Assert.Equal(StagingSpanId, onlyLink.Context.SpanId);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ShouldStampTheEventsConversationId_OnThePublishSpan()
+    {
+        var stopped = ListenForPublishSpans();
+
+        var conversationId = new Guid("12121212-3434-5656-7878-9a9a9a9a9a9a");
+        var edictEvent = new OrderPlacedEvent(OrderId, "SKU-1") { EventId = PayloadEventId, ConversationId = conversationId };
+        var executor = BuildExecutor();
+        var stream = new CapturingStreamProvider();
+
+        await executor.ExecuteAsync(
+            PublishEntry(edictEvent), stream, deferredDispatch: null, consumerType: null, liveWireEvent: edictEvent);
+
+        var publish = SinglePublishSpan(stopped);
+        Assert.Equal(conversationId.ToString(), publish.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+    }
+
     static List<Activity> ListenForPublishSpans()
     {
         var stopped = new List<Activity>();

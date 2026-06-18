@@ -50,4 +50,11 @@ public sealed record OutboxEntry
     /// reactivations.</summary>
     [Id(7)]
     public DateTimeOffset EnqueuedAt { get; init; }
+
+    /// <summary>The chain-stable conversation id of the effect's payload, stamped at the top
+    /// level of the durable entry at construction. The dead-letter promote turn reads it from
+    /// here to name the failing conversation on its span without deserializing the failing body
+    /// — the body-free source the non-throwing safety-net path depends on.</summary>
+    [Id(8)]
+    public Guid ConversationId { get; init; }
 }

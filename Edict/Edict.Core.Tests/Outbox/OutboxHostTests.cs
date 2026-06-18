@@ -216,6 +216,27 @@ public sealed class OutboxHostTests
     }
 
     [Fact]
+    public async Task EnqueueRaisedEventsAndDrainAsync_ShouldStampConversationId_OntoEveryEntry()
+    {
+        var log = new CallLog();
+        var state = new CountingPersistentState<GrainEnvelope<EdictUnit>>(log);
+        var executor = new RecordingExecutor();
+        var host = BuildHostWithClaimCheck(state, log, executor);
+
+        var correlationId = Guid.NewGuid();
+        var first = new OrderPlacedEvent(FixedOrderId, "SKU-1") { OccurredAt = Now };
+        var second = new OrderPlacedEvent(FixedOrderId, "SKU-2") { OccurredAt = Now };
+
+        await host.EnqueueRaisedEventsAndDrainAsync([first, second], traceParent: null, traceState: null, correlationId);
+
+        // The body-free conversation id rides at the top level of the durable entry, so
+        // the no-throw dead-letter promote path can name the conversation without
+        // deserializing the payload.
+        var entryConversationIds = executor.Invocations.Select(entry => entry.ConversationId).ToArray();
+        Assert.Equal([correlationId, correlationId], entryConversationIds);
+    }
+
+    [Fact]
     public async Task WriteStateOnlyAsync_ShouldWriteOnce_WithoutEnqueueOrDrain()
     {
         var log = new CallLog();

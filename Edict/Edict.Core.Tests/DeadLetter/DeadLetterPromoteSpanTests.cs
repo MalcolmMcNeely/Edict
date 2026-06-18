@@ -122,6 +122,42 @@ public sealed class DeadLetterPromoteSpanTests
     }
 
     [Fact]
+    public void Promote_ShouldCarryTheFailingConversationId_OntoSpanAndPromotedEntry_WithoutDeserializingTheBody()
+    {
+        var stopped = new List<Activity>();
+        using var listener = StartPromoteListener(stopped);
+
+        var conversationId = new Guid("abcabcab-1111-2222-3333-444455556666");
+        var originatingSpanId = ActivitySpanId.CreateRandom();
+        var originatingTraceId = ActivityTraceId.CreateRandom();
+        var entry = new OutboxEntry
+        {
+            EntryId = Guid.NewGuid(),
+            Kind = OutboxEffectKind.PublishEvent,
+            // A body that cannot be deserialized back: the promote path must still
+            // recover the conversation id, so it reads the durable field, never the bytes.
+            Payload = [0xDE, 0xAD],
+            ConversationId = conversationId,
+            AttemptCount = 3,
+            TraceParent = ActivityExtensions.BuildTraceParent(originatingTraceId.ToHexString(), originatingSpanId.ToHexString()),
+        };
+
+        var promoter = BuildPromoter();
+        var promoted = promoter.Promote(entry, new InvalidOperationException("downstream"), "grain-key", "Sample.OrderCommandHandler", Now);
+
+        Activity promote;
+        lock (stopped)
+        {
+            promote = stopped.Single(a =>
+                a.OperationName == $"{SemanticConventions.DeadLetter.Spans.Promote} Sample.OrderCommandHandler"
+                && a.Links.Any(link => link.Context.SpanId == originatingSpanId));
+        }
+
+        Assert.Equal(conversationId.ToString(), promote.GetTagItem(SemanticConventions.Messaging.Tags.ConversationId));
+        Assert.Equal(conversationId, promoted.ConversationId);
+    }
+
+    [Fact]
     public void Promote_ShouldNotThrow_AndStillReturnARow_WhenTraceParentIsMalformed_WithListenerActive()
     {
         var stopped = new List<Activity>();

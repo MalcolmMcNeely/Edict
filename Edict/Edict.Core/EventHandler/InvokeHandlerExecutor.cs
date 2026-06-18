@@ -51,6 +51,7 @@ sealed class InvokeHandlerExecutor(
         if (span is not null)
         {
             span.DisplayName = $"{SemanticConventions.Events.Spans.Handle} {materialised.GetType().Name}";
+            span.SetEdictConversationId(materialised.ConversationId);
             if (tagWriters.TryGet(materialised.GetType(), out var write))
             {
                 write(materialised, span);
