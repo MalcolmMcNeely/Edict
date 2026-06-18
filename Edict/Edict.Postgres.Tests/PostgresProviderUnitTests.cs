@@ -156,6 +156,28 @@ public sealed class PostgresProviderUnitTests
     }
 
     [Fact]
+    public async Task EnsureProjectionTable_ShouldNotRace_WhenManyFirstWritersCreateTheSameTableConcurrently()
+    {
+        // The shape that turned three CI suites red: multiple tenants first-writing the same
+        // projection table fire EnsureProjectionTableAsync concurrently. CREATE TABLE IF NOT
+        // EXISTS is not concurrency-safe in Postgres — without the table-name advisory lock,
+        // the losers collide inserting the table's implicit row type into pg_type and throw
+        // 23505 on pg_type_typname_nsp_index. A fresh table name guarantees every caller is a
+        // genuine first-writer racing on creation, not hitting an already-present table.
+        var tableName = $"unit_concurrent_create_{Guid.NewGuid():N}";
+
+        var creators = Enumerable.Range(0, 24)
+            .Select(_ => Task.Run(() =>
+                PostgresTableSchema.EnsureProjectionTableAsync(_dataSource, tableName, CancellationToken.None)))
+            .ToArray();
+
+        // No throw is the assertion — every concurrent creator must converge on the one table.
+        await Task.WhenAll(creators);
+
+        Assert.Contains(tableName, await ListPublicTablesAsync());
+    }
+
+    [Fact]
     public async Task DdlBootstrap_ShouldBeIdempotentOnRerun()
     {
         // The fixture already ran the bootstrap once when the silo wired
