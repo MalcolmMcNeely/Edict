@@ -52,22 +52,31 @@ sealed class EdictTenantIsolationCallFilter(IServiceProvider serviceProvider) : 
 
         if (TenantCrossing.IsAuthorized())
         {
-            RecordCrossing(SemanticConventions.Tenant.Events.CrossTenantAuthorized, relayTenant, keyTenant);
+            RecordCrossing(SemanticConventions.Tenant.Events.CrossTenantAuthorized,
+                SemanticConventions.Tenant.Tags.OutcomeValues.Authorized, relayTenant, keyTenant);
             await RecordCrossingAuditRowAsync(context.Grain.GetType(), grainKey, keyTenant);
             await context.Invoke();
             return;
         }
 
-        RecordCrossing(SemanticConventions.Tenant.Events.CrossTenantDenied, relayTenant, keyTenant);
+        RecordCrossing(SemanticConventions.Tenant.Events.CrossTenantDenied,
+            SemanticConventions.Tenant.Tags.OutcomeValues.Denied, relayTenant, keyTenant);
         throw new EdictCrossTenantAccessException(relayTenant, keyTenant);
     }
 
-    static void RecordCrossing(string eventName, EdictTenantId? relayTenant, EdictTenantId? keyTenant) =>
+    // The span event carries the tenant values for forensics; the counter carries only the
+    // bounded outcome, so a breach is alarmable without the tenant id leaking into a metric.
+    static void RecordCrossing(string eventName, string outcome, EdictTenantId? relayTenant, EdictTenantId? keyTenant)
+    {
         Activity.Current?.AddEvent(new ActivityEvent(eventName, tags: new ActivityTagsCollection
         {
             { SemanticConventions.Tenant.Tags.RelayTenant, relayTenant?.Value },
             { SemanticConventions.Tenant.Tags.KeyTenant, keyTenant?.Value },
         }));
+
+        TenantMetrics.CrossingCount.Add(1,
+            new KeyValuePair<string, object?>(SemanticConventions.Tenant.Tags.Outcome, outcome));
+    }
 
     // Lands one self-sealed audit row for an authorized crossing, attributed to the
     // operator who crossed and scoped to the wall crossed into, so the privileged

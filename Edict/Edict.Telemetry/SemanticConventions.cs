@@ -383,6 +383,29 @@ public static class SemanticConventions
 
             /// <summary>The ambient tenant of the calling turn — the wall the call came from.</summary>
             public const string RelayTenant = "edict.tenant.relay";
+
+            /// <summary>Closed allowlist tagging a <see cref="Meters.CrossingCount"/> increment by how
+            /// the divergence resolved: <see cref="OutcomeValues.Authorized"/> for an explicitly-authorized
+            /// crossing that proceeded, <see cref="OutcomeValues.Denied"/> for a denial. The tenant value
+            /// is never a meter tag — it is unbounded and lives on the span event only.</summary>
+            public const string Outcome = "edict.tenant.crossing.outcome";
+
+            /// <summary>The closed allowlist of values for <see cref="Outcome"/>.</summary>
+            public static class OutcomeValues
+            {
+                public const string Authorized = "authorized";
+                public const string Denied = "denied";
+            }
+        }
+
+        public static class Meters
+        {
+            /// <summary>Counter of tenant-boundary divergences reached by the isolation filter, partitioned
+            /// by <see cref="Tags.Outcome"/>. The filter only reaches this code on a real divergence, so the
+            /// volume is naturally low and meaningful; the denied slice is the breach signal — alert on any
+            /// non-zero rate. Carries no tenant value, honouring the rule that an unbounded tenant id must
+            /// never become a meter tag.</summary>
+            public const string CrossingCount = "edict.tenant.crossing.count";
         }
     }
 

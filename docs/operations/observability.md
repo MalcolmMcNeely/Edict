@@ -45,6 +45,14 @@ The **`edict.audit.drain`** span is the drain turn itself: pending records being
 
 These two counters are the audit exception to the carve-out rule above: both are recorded inside a live span, so both carry exemplars.
 
+## Tenant isolation metric
+
+When tenancy is on, the isolation filter is the runtime backstop that compares the tenant parsed from a target grain's own key against the calling turn's ambient tenant (see [`multi-tenancy.md`](../usage/concepts/multi-tenancy.md)). The common path is silent — every key is composed from the ambient tenant, so the two agree by construction. The filter only reaches the counter on a real divergence, so its volume is naturally low and every increment is meaningful.
+
+| Instrument | Type | What it tells you |
+|---|---|---|
+| `edict.tenant.crossing.count` | counter (tag: `edict.tenant.crossing.outcome` ∈ `authorized\|denied`) | A tenant-boundary divergence the filter reached. `denied` is the breach signal — a call into another tenant's wall the filter refused and threw on; `authorized` is an explicitly-authorized crossing that proceeded. The tag is a closed allowlist; **the tenant value is never a meter tag** — an unbounded tenant id would explode the dimension, so it lives on the `edict.tenant.cross_denied` / `edict.tenant.cross_authorized` span events only. **Alert on `denied` greater than zero**: on the common path it is structurally unreachable, so any denial is either a keying bug that bypassed the composition chokepoint or an illegitimate reach into another wall. Pivot from the count to the span event to see which walls (`edict.tenant.relay` → `edict.tenant.key`) the call crossed. |
+
 ## Substrate meters
 
 The substrate underneath Edict surfaces its own metrics on its own `Meter`. This is the map of those names; [`alerts.md`](alerts.md) treats the framework metric as the **symptom** and the substrate metric as the **suspect**. Wire each substrate `Meter` alongside `EdictDiagnostics.SourceName`:
