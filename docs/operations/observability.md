@@ -24,6 +24,23 @@ Three meters deliberately carry **no** exemplar. Their absence is a documented d
 - **`outbox.drain.*`** (`drain.count`, `drain.entries`). A per-pass aggregate that can cover entries staged by many different command turns and traces; a single-trace exemplar would misrepresent the batch, so the framework starts no span for the drain pass ([ADR-0038](../adr/0038-meters-naming-and-cross-cutting-attributes.md)).
 - **`saga.completed`**. Counted only after the saga's terminal write is durable, so a write-fault redelivery cannot double-count it; that durable-commit point sits outside any span (the inline completion path has no handle span there at all). Forcing it under a span would regress exactly-once counting, so it stays the bare cardinality-bounded denominator companion to `saga.timeout.fired` ([ADR-0039](../adr/0039-metrics-cardinality-policy.md)). Pivot to the completing trace from the `edict.command.handle` / `edict.event.handle` spans and their links instead.
 
+## The conversation-id query: filter, then follow links
+
+The exemplar pivot drops you onto *one* turn's trace. To reconstruct a whole business interaction — "what happened to this order, end to end?" — you need to navigate across the split per-turn traces. Edict makes that a query, not a manual link-by-link walk, by exposing correlation at **three distinct scopes**, each answering a different question and never collapsed into one flat identifier ([ADR-0069](../adr/0069-conversation-id-as-otel-attribute.md)):
+
+| Scope | Question it answers | Carrier |
+|---|---|---|
+| Turn | "what happened in this one grain turn?" | `trace_id` (one trace per turn, [ADR-0060](../adr/0060-trace-causality-at-scale-one-turn-links.md)) |
+| Conversation | "what is the whole Command → Event → Command chain this turn belongs to?" | the span attribute **`messaging.message.conversation_id`** |
+| Business operation | "what did this saga / recurring schedule do across all the conversations it spawned?" | the **grain key**, already tagged on the turn span (`edict.grain.*`) |
+
+The framework stamps `messaging.message.conversation_id` on **every** turn-root span itself, so you do not register a baggage span processor in your OTel pipeline to get coverage. The attribute uses the OpenTelemetry messaging semantic-convention name — the spec's own noun for the concept "sometimes called 'Correlation ID'" — so Jaeger, Tempo, and the Aspire dashboard recognise it with no custom configuration and your saved queries port between backends. There is one tag and no house-namespaced alias.
+
+The recipe is two moves:
+
+1. **Filter `messaging.message.conversation_id = <id>`.** You get every turn in *that one conversation* — the Command, the Event it raised, the Command that followed — in a single query, instead of clicking link to link. A dead-lettered turn still carries its conversation id on its span (and on the dead-letter row), so this filter surfaces the failure too — usually the exact moment you opened the dashboard to find.
+2. **Follow the links to pivot *between* conversations.** Each turn span carries the conversation id of *its own* work, never an ancestor's, so the filter returns exactly one conversation and never a mix of scopes. The two timer-triggered turns — a schedule fire, a saga cap fire — are deliberate fresh causal roots: their spans carry the *fresh* conversation id they mint, and the `ActivityLink` ties them back to the arming turn. So a recurring job's fire reads as its own conversation; to cross from the conversation that armed it into the fired one, traverse the link. The business-operation scope that *does* span all those conversations already has its own carrier — the saga/schedule grain key — which is why the conversation id is not smeared across the descendant turns a timer fire spawns.
+
 ## Sampling at scale
 
 Because a trace is one grain turn and turns are connected by `ActivityLink`s, each trace makes its **own** head-sampling decision. The link carries the producing turn's real sampled flag (restore honours the flag byte rather than forcing `Recorded`), so a dropped command yields a fully-dropped turn-trace and a sampled one yields a complete turn-trace — head sampling at `edict.command` is your volume lever.

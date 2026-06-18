@@ -44,6 +44,23 @@ The link carrier is the W3C trace context already persisted on the wire — `Edi
 
 Each trace makes its own head-sampling decision, and the link carries the producing turn's real sampled flag. Tail sampling (or a link-aware sampler) is the lever that keeps a whole link-group together; head sampling at `edict.command` controls volume. The rationale for this model — bounded per-turn traces, honest waterfalls, explicit cross-silo edges — is [ADR-0060](../../adr/0060-trace-causality-at-scale-one-turn-links.md) (supersedes ADR-0003); the operator-side guidance is in [`observability.md`](../../operations/observability.md).
 
+## Correlation at three scopes: filter, then follow links
+
+The per-turn trace model is the right shape at scale, but it raises the obvious question: how do you see the whole picture across the split traces? Edict answers by exposing correlation at **three distinct scopes**, each answering a different debugging question and never collapsed into one flat identifier ([ADR-0069](../../adr/0069-conversation-id-as-otel-attribute.md)):
+
+| Scope | Question it answers | Carrier |
+|---|---|---|
+| Turn | "what happened in this one grain turn?" | `trace_id` (the per-turn trace, above) |
+| Conversation | "what is the whole Command → Event → Command chain this turn belongs to?" | the span attribute **`messaging.message.conversation_id`** |
+| Business operation | "what did this saga / recurring schedule do across all the conversations it spawned?" | the **grain key**, already tagged on the turn span (`edict.grain.*`) |
+
+The framework stamps `messaging.message.conversation_id` on **every** turn-root span itself — it does not depend on the consumer having registered a baggage span processor in their OTel pipeline, which a library cannot assume. The attribute uses the OpenTelemetry messaging semantic-convention name (the spec's own noun for the concept "sometimes called 'Correlation ID'"), so off-the-shelf tooling and saved queries understand it with no custom configuration; there is one tag and no house-namespaced alias.
+
+The recipe for "what happened in the whole picture" is two moves:
+
+1. **Filter by the conversation id** (`messaging.message.conversation_id = <id>`) to get every turn in *that one conversation* in a single query, instead of walking links by hand. A dead-lettered turn still names its conversation on its span, so the filter surfaces failures too.
+2. **Follow the links to pivot *between* conversations.** Each turn span carries the conversation id of *its own* work, never an ancestor's. The two timer-triggered turns (a schedule fire, a saga cap fire) are deliberate fresh causal roots, so their spans carry the *fresh* conversation id they mint, and the `ActivityLink` ties them back to whoever armed them. Crossing that boundary is a link traversal — which is exactly what links are for — so a single conversation-id filter returns exactly one conversation and never a confusing mix of scopes. The business-operation scope already has its native carrier (the saga/schedule grain key), which is why the conversation id is deliberately *not* smeared across the descendant turns a timer fire spawns.
+
 ## Canonical `edict.*` tag taxonomy
 
 Tag keys are stable across declaring types — the same domain property name (`OrderId`, `CustomerReference`) lands under the same key regardless of which command or event declared it. The snake-case derivation matches `System.Text.Json.JsonNamingPolicy.SnakeCaseLower` (`SKU` → `sku`, `HTTPMethod` → `http_method`, `CustomerID` → `customer_id`).
@@ -65,6 +82,7 @@ Span names:
 
 Framework tag keys that the runtime stamps regardless of `[EdictTelemeterized]`:
 
+- `messaging.message.conversation_id` — the chain-stable conversation id of *this turn's* work; on every turn-root span. The one OTel-standard-named tag (not `edict.*`-prefixed) precisely so off-the-shelf tooling recognises it. See [the three-scope model](#correlation-at-three-scopes-filter-then-follow-links) above.
 - `edict.grain.type` — cross-cutting; on every grain-scoped span and metric.
 - `edict.command.type`, `edict.command.route_key` — on command spans.
 - `edict.event.type`, `edict.event.size_bytes`, `edict.event.claim_checked` — on event spans.

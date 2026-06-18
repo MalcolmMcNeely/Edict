@@ -35,6 +35,23 @@ When investigating a missing event or unrouted Command, the trace is what stitch
 
 Each dead-letter row also carries a `ConversationId`: the chain-stable id every message in one causal chain shares, framework-stamped and propagated across the Saga hop. It is the durable grouping key that survives an unsampled trace (where `TraceParent` is null), so a fleet-wide `ListAllAsync()` grouped by `ConversationId` shows every failure one Command set in motion. Unlike the `[EdictRouteKey]` Guid (which re-keys across domains) it stays constant end to end.
 
+## The conversation-id query: filter, then follow links
+
+Edict exposes correlation at **three distinct scopes** — query at the right altitude rather than collapsing them:
+
+| Scope | Question it answers | Carrier |
+|---|---|---|
+| Turn | "what happened in this one grain turn?" | `trace_id` (the per-turn trace) |
+| Conversation | "what is the whole Command → Event → Command chain this turn belongs to?" | the span attribute **`messaging.message.conversation_id`** |
+| Business operation | "what did this saga / recurring schedule do across all the conversations it spawned?" | the **grain key**, already tagged on the turn span (`edict.grain.*`) |
+
+The framework stamps `messaging.message.conversation_id` on **every** turn-root span itself — no consumer-side baggage span processor required — so the recipe for "what happened in the whole picture" is two moves:
+
+1. **Filter by the conversation id.** In Jaeger/Tempo/the Aspire dashboard, filter `messaging.message.conversation_id = <id>` and you get every turn in that one conversation — the Command, the Event it raised, the Command that followed — in a single query, instead of walking links by hand. A dead-lettered turn still names its conversation on its span (and on the `ConversationId` row), so this filter surfaces the failure too — usually the exact moment you are searching for.
+2. **Follow the links to pivot *between* conversations.** A timer-triggered turn (a schedule fire, a saga cap fire) is a deliberate fresh causal root: its span carries its **own fresh** conversation id, not the arming turn's, and the ADR-0060 `ActivityLink` ties it back to whoever armed it. So a schedule fire reads as its own conversation; to cross from the arming conversation into the fired one, traverse the link — that boundary is a link traversal by design, which is why a single conversation-id filter returns exactly one conversation and never a confusing mix of scopes. The third scope (the saga/schedule grain key) is what threads the whole multi-conversation business operation; the conversation id is deliberately *not* smeared across descendant turns, because that scope already has its own native carrier.
+
+The attribute uses the OpenTelemetry-standard name `messaging.message.conversation_id` (the spec's own noun for "sometimes called 'Correlation ID'"), so off-the-shelf tooling and saved queries understand it with no custom configuration — there is one tag and no house-namespaced alias.
+
 ## Common failure shapes
 
 - **`PublishEvent` dead-lettered with `FailureKind = BlobMissing`** — a claim-checked event's blob was reaped before delivery. Read `SourceEventId` on the row: the claim-check key is the event's `EventId`, so that one id both identifies the event and locates the (now-gone) parked body. The event payload itself is gone. Claim-check blobs are append-only on purpose; if you see this, something is deleting blobs out-of-band.

@@ -94,6 +94,17 @@ public class SkillPrescriptionTests
         Assert.Contains("edict_check_configuration", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EdictDiagnosticsSkill_TeachesTheConversationIdQueryRecipe()
+    {
+        var body = LoadSkillBody("edict-diagnostics");
+
+        Assert.Contains("messaging.message.conversation_id", body, StringComparison.Ordinal);
+        Assert.True(
+            AreCoLocated(body, "messaging.message.conversation_id", "filter"),
+            "edict-diagnostics must co-locate the standard `messaging.message.conversation_id` attribute with the `filter` query verb so the filter-then-follow-links recipe survives.");
+    }
+
     [Theory]
     [MemberData(nameof(HandlerRoleNames))]
     public void EdictMcp_HandlerRole_EveryEnumValueIsCoveredByScanner(string roleName)
