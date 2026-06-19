@@ -2,9 +2,9 @@
 
 Machine: Microsoft Windows 10.0.26200 / 20 cores / AMD Ryzen AI 9 365 @ 2.0 GHz / 64 GB RAM
 .NET version: 10.0.8
-Azure run date: 2026-06-06
-Kafka × Postgres run date: 2026-06-06
-Git SHA: 31cfa0b
+Azure run date: 2026-06-19
+Kafka × Postgres run date: 2026-06-19
+Git SHA: 2cb8187
 
 > **Read this first.** The substrates are Testcontainers (Azurite, Postgres, Kafka) on the same laptop as the silo process. Containers share host CPU and RAM with the producer/consumer Orleans process; no resource caps are set, so Docker defaults apply. The reported machine class is what the .NET process sees, not what each substrate sees in isolation. **Do not read these numbers as "Edict will do X EPS in production"** — a managed Postgres, a real Kafka cluster, or an Azure Storage account would all change the substrate ceiling independently of any Edict code change. The bench is a regression guard for the *framework's* per-event overhead on a known substrate, not a sizing tool for your deployment.
 
@@ -21,10 +21,10 @@ The EPS delta between a substrate's two rows is the storage-commit cost in isola
 
 | Substrate | Projection | Events / sec (end-to-end) | Health |
 | --- | --- | ---: | :---: |
-| azure | List (external store) | 66 | OK (0.00 %) |
-| azure | State (in-grain) | 80 | OK (0.00 %) |
-| kafkapostgres | List (external store) | 792 | OK (0.00 %) |
-| kafkapostgres | State (in-grain) | 1482 | OK (0.00 %) |
+| azure | List (external store) | 60 | OK (0.00 %) |
+| azure | State (in-grain) | 78 | OK (0.00 %) |
+| kafkapostgres | List (external store) | 475 | OK (0.00 %) |
+| kafkapostgres | State (in-grain) | 3183 | OK (0.00 %) |
 
 > **Read the delta, not the absolutes.** The in-grain advantage shown here is the per-event commit saving on a small, hot, per-aggregate counter — the case the State species exists for. It is not a blanket "grain state is faster": a large read model in grain state inflates every activation of that grain, because the whole payload is read and written on each turn, which the external List store avoids. Choose State for small per-aggregate read models and List for large or unbounded ones; this table prices the commit, not the activation.
 
@@ -39,18 +39,18 @@ Closed-loop sweep across `N ∈ {2, 16, 64}` issuer tasks, two scenarios per sub
 
 | Substrate | Scenario | Parallelism | p50 (ms) | p95 (ms) | p99 (ms) | Health |
 | --- | --- | --- | ---: | ---: | ---: | :---: |
-| azure | Command acceptance | 2 | 23.77 | 34.51 | 42.73 | OK (0.00 %) |
-| azure | Command acceptance | 16 | 74.02 | 93.23 | 179.55 | OK (0.00 %) |
-| azure | Command acceptance | 64 | 288.37 | 329.09 | 420.17 | OK (0.00 %) |
-| azure | Command → Event delivery | 2 | 77.12 | 97.55 | 116.65 | OK (0.00 %) |
-| azure | Command → Event delivery | 16 | 292.48 | 428.30 | 520.95 | OK (0.00 %) |
-| azure | Command → Event delivery | 64 | 1218.28 | 1449.34 | 1576.85 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 2 | 1.73 | 2.45 | 3.58 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 16 | 6.02 | 8.43 | 11.82 | OK (0.00 %) |
-| kafkapostgres | Command acceptance | 64 | 20.70 | 27.69 | 31.78 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 2 | 128.82 | 194.78 | 209.15 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 16 | 110.71 | 176.13 | 191.43 | OK (0.00 %) |
-| kafkapostgres | Command → Event delivery | 64 | 172.78 | 257.42 | 280.99 | OK (0.00 %) |
+| azure | Command acceptance | 2 | 25.91 | 36.07 | 44.24 | OK (0.00 %) |
+| azure | Command acceptance | 16 | 75.55 | 94.51 | 133.54 | OK (0.00 %) |
+| azure | Command acceptance | 64 | 289.44 | 362.72 | 577.04 | OK (0.00 %) |
+| azure | Command → Event delivery | 2 | 81.94 | 108.48 | 172.85 | OK (0.00 %) |
+| azure | Command → Event delivery | 16 | 318.04 | 422.64 | 448.37 | OK (0.00 %) |
+| azure | Command → Event delivery | 64 | 1273.18 | 1391.24 | 1475.55 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 2 | 1.12 | 1.40 | 1.90 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 16 | 2.29 | 4.60 | 6.15 | OK (0.00 %) |
+| kafkapostgres | Command acceptance | 64 | 6.46 | 17.28 | 23.97 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 2 | 173.34 | 237.94 | 242.16 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 16 | 111.78 | 189.29 | 206.59 | OK (0.00 %) |
+| kafkapostgres | Command → Event delivery | 64 | 222.94 | 313.11 | 353.99 | OK (0.00 %) |
 
 ## Run health
 

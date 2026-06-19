@@ -37,7 +37,7 @@ public sealed class EventsScenario : IClosedLoopScenario
 
     async Task WaitForEventRowAsync(Guid aggregateId, string rowKey, CancellationToken cancellationToken)
     {
-        var partitionKey = aggregateId.ToString();
+        var partitionKey = BenchProjectionPartitionKey.For(aggregateId);
         while (!cancellationToken.IsCancellationRequested)
         {
             var row = await _rowStore.GetAsync(partitionKey, rowKey, cancellationToken);

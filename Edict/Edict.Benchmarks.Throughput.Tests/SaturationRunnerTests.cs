@@ -13,8 +13,10 @@ public sealed class SaturationRunnerTests
         // Smoke shape against Azurite, both species. The State pass exercises the
         // in-grain reader sum path end-to-end (the List pass the store-direct sum).
         // Short warmup + window so the test finishes in seconds; production call
-        // site uses 20 s + 30 s at N = 256. The assertion is shape + non-negative
-        // EPS — exact throughput is out of scope for a unit-style fact.
+        // site uses 20 s + 30 s at N = 256. EPS must be strictly positive: a zero
+        // means events were produced but the window-end count read nothing back,
+        // which is exactly the failure a partition-key fold drift produces — the
+        // List read addressing a partition the projection grain never wrote to.
         var substrate = new AzuriteSubstrate();
         var runner = new SaturationRunner();
 
@@ -30,6 +32,6 @@ public sealed class SaturationRunnerTests
         Assert.Equal(4, result.ProducerConcurrency);
         Assert.Equal(3, result.WindowSeconds);
         Assert.Equal(1024, result.AggregateCount);
-        Assert.True(result.EventsPerSecond >= 0, $"EventsPerSecond was {result.EventsPerSecond}");
+        Assert.True(result.EventsPerSecond > 0, $"EventsPerSecond was {result.EventsPerSecond}");
     }
 }

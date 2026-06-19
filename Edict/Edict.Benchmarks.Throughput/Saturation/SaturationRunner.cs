@@ -187,7 +187,7 @@ public sealed class SaturationRunner
         foreach (var aggregateId in aggregatePool)
         {
             var row = await repository.GetAsync(
-                aggregateId.ToString(),
+                BenchProjectionPartitionKey.For(aggregateId),
                 BenchCounterListProjectionBuilder.FixedRowKey,
                 cancellationToken);
             if (row is not null)
